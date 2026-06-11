@@ -1,0 +1,13 @@
+{
+  "name": "PITCH",
+  "short_name": "PITCH",
+  "description": "O teu jogo semanal, organizado.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07070A",
+  "theme_color": "#07070A",
+  "lang": "pt-PT",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

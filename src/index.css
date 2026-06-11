@@ -1,0 +1,20 @@
+* {
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: #07070a; /* C.bg — keep in sync with src/theme.js */
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
