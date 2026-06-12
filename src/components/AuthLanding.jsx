@@ -3,7 +3,7 @@ import { C, cardStyle, BRAND, fieldBackdrop } from "../theme";
 
 /** Entry screen — choose role. No backend yet, so "login" is a local
  *  role pick; magic-link auth replaces this when Supabase lands. */
-export default function AuthLanding({ onPick }) {
+export default function AuthLanding({ onPick, onBack }) {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center",
@@ -43,6 +43,12 @@ export default function AuthLanding({ onPick }) {
       <div style={{ textAlign: "center", marginTop: 28, fontSize: 11, color: C.text3 }}>
         Versão de demonstração — os dados ficam só neste dispositivo
       </div>
+
+      {onBack && (
+        <button onClick={onBack} style={{ background: "none", border: "none", color: C.text2, fontSize: 13, cursor: "pointer", marginTop: 18, textDecoration: "underline" }}>
+          ← Voltar à página inicial
+        </button>
+      )}
     </div>
   );
 }

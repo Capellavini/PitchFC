@@ -16,6 +16,7 @@ import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { nextGameDateLabel, fmtEUR } from "./lib/helpers";
+import LandingPage from "./components/LandingPage";
 import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
@@ -37,6 +38,7 @@ export default function PitchApp() {
   const [teams, setTeams]       = usePersistentState("teams", null);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votedFor: null });
   const [tab, setTab]           = useState("jogo");
+  const [authOpen, setAuthOpen] = useState(false);
   const [statMode, setStatMode] = useState("goals");
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
@@ -90,7 +92,10 @@ export default function PitchApp() {
   const openProfile = (id) => { setViewPlayerId(id); setTab("perfil"); };
   const backToMe = () => setViewPlayerId(null);
 
-  const logout = () => setSession({ role: null, onboarded: false });
+  // Back to the marketing page on logout; back from onboarding only
+  // returns to the role pick.
+  const logout = () => { setSession({ role: null, onboarded: false }); setAuthOpen(false); };
+  const backToRolePick = () => setSession({ role: null, onboarded: false });
 
   const resetDemo = () => {
     if (window.confirm("Repor os dados de demonstração? As alterações locais serão perdidas.")) {
@@ -105,9 +110,10 @@ export default function PitchApp() {
     </div>
   );
 
-  // ── Auth gate ──────────────────────────────────────────
+  // ── Marketing page → auth gate ─────────────────────────
   if (!session.role) {
-    return shell(<AuthLanding onPick={(role) => setSession({ role, onboarded: false })} />);
+    if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} />;
+    return shell(<AuthLanding onPick={(role) => setSession({ role, onboarded: false })} onBack={() => setAuthOpen(false)} />);
   }
 
   if (!session.onboarded) {
@@ -115,13 +121,13 @@ export default function PitchApp() {
       session.role === "player" ? (
         <OnboardingPlayer
           me={me}
-          onBack={logout}
+          onBack={backToRolePick}
           onDone={(form) => { updateProfile(form); setSession((s) => ({ ...s, onboarded: true })); }}
         />
       ) : (
         <OnboardingOrganizer
           settings={settings}
-          onBack={logout}
+          onBack={backToRolePick}
           onDone={(form) => { setSettings(form); setSession((s) => ({ ...s, onboarded: true })); }}
         />
       )
