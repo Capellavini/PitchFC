@@ -5,3 +5,55 @@ export const ini = (n) =>
 
 export const playerColor = (group, p) =>
   AVATAR_PALETTE[group.indexOf(p) % AVATAR_PALETTE.length];
+
+// € formatting, PT style ("€5" / "€4,50")
+export const fmtEUR = (n) =>
+  n % 1 === 0 ? `€${n}` : `€${n.toFixed(2).replace(".", ",")}`;
+
+// ── Dates ────────────────────────────────────────────────
+export const WEEKDAYS_PT = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+/** Next occurrence of a weekday (0=Sunday), formatted "Sábado, 14 Jun". */
+export function nextGameDateLabel(weekday) {
+  const now = new Date();
+  const d = new Date(now);
+  d.setDate(now.getDate() + ((weekday - now.getDay() + 7) % 7));
+  return `${WEEKDAYS_PT[weekday]}, ${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
+}
+
+// ── FUT card overall ─────────────────────────────────────
+export const ATTR_LABELS = { rit: "RIT", rem: "REM", pas: "PAS", dri: "DRI", def: "DEF", fis: "FIS" };
+
+const OVERALL_WEIGHTS = {
+  "Guarda-redes": { def: 0.40, fis: 0.25, pas: 0.15, rit: 0.10, dri: 0.05, rem: 0.05 },
+  "Defesa":       { def: 0.35, fis: 0.25, rit: 0.15, pas: 0.15, dri: 0.05, rem: 0.05 },
+  "Médio":        { pas: 0.30, dri: 0.20, rit: 0.15, fis: 0.15, rem: 0.10, def: 0.10 },
+  "Avançado":     { rem: 0.35, rit: 0.25, dri: 0.20, pas: 0.10, fis: 0.05, def: 0.05 },
+};
+
+export function computeOverall(position, attrs) {
+  const w = OVERALL_WEIGHTS[position] ?? OVERALL_WEIGHTS["Médio"];
+  return Math.round(Object.keys(w).reduce((sum, k) => sum + (attrs?.[k] ?? 60) * w[k], 0));
+}
+
+export const POSITION_ABBR = { "Guarda-redes": "GR", "Defesa": "DEF", "Médio": "MED", "Avançado": "AVA" };
+
+// ── Image upload → small base64 (fits localStorage) ─────
+export function fileToDataUrl(file, max = 320) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}

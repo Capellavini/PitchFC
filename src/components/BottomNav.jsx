@@ -1,8 +1,9 @@
-import { Zap, Users, Trophy, User } from "lucide-react";
+import { Zap, Users, Trophy, User, Flame } from "lucide-react";
 import { C } from "../theme";
 
 const NAV = [
   { id: "jogo",   Icon: Zap,    label: "Jogo"   },
+  { id: "social", Icon: Flame,  label: "Social" },
   { id: "stats",  Icon: Trophy, label: "Stats"  },
   { id: "grupo",  Icon: Users,  label: "Grupo"  },
   { id: "perfil", Icon: User,   label: "Perfil" },

@@ -8,26 +8,49 @@
  * State lives here (lifted to the root) and persists to
  * localStorage. See CLAUDE.md for the backend plan (Supabase) —
  * when it lands, these handlers become the thin data layer's
- * mutation calls.
+ * mutation calls, and the local "session" is replaced by
+ * magic-link auth.
  */
 import { useState } from "react";
 import { C } from "./theme";
-import { INITIAL_GROUP, INITIAL_MATERIAL, POSITIONS } from "./data";
+import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
+import { nextGameDateLabel, fmtEUR } from "./lib/helpers";
+import AuthLanding from "./components/AuthLanding";
+import OnboardingPlayer from "./components/OnboardingPlayer";
+import OnboardingOrganizer from "./components/OnboardingOrganizer";
 import BottomNav from "./components/BottomNav";
 import JogoTab from "./components/JogoTab";
+import SocialTab from "./components/SocialTab";
 import StatsTab from "./components/StatsTab";
 import GrupoTab from "./components/GrupoTab";
 import PerfilTab from "./components/PerfilTab";
 
+const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
+
 export default function PitchApp() {
-  const [tab, setTab]           = useState("jogo");
+  const [session, setSession]   = usePersistentState("session", { role: null, onboarded: false });
+  const [settings, setSettings] = usePersistentState("settings", DEFAULT_SETTINGS);
   const [group, setGroup]       = usePersistentState("group", INITIAL_GROUP);
   const [material, setMaterial] = usePersistentState("material", INITIAL_MATERIAL);
+  const [posts, setPosts]       = usePersistentState("posts", INITIAL_POSTS);
   const [teams, setTeams]       = usePersistentState("teams", null);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votedFor: null });
+  const [tab, setTab]           = useState("jogo");
   const [statMode, setStatMode] = useState("goals");
   const [viewPlayerId, setViewPlayerId] = useState(null);
+  const [editingGroup, setEditingGroup] = useState(false);
+
+  const me = group.find((p) => p.isMe);
+
+  // The "next game" as the UI consumes it — derived from organizer settings.
+  const game = {
+    ...settings,
+    label: settings.groupName,
+    date: nextGameDateLabel(settings.weekday),
+    spots: settings.maxPlayers,
+    priceEach: settings.maxPlayers > 0 ? settings.monthlyPrice / settings.maxPlayers : 0,
+  };
 
   const togglePaid = (id) =>
     setGroup((g) => g.map((p) => (p.id === id ? { ...p, paid: !p.paid } : p)));
@@ -67,6 +90,8 @@ export default function PitchApp() {
   const openProfile = (id) => { setViewPlayerId(id); setTab("perfil"); };
   const backToMe = () => setViewPlayerId(null);
 
+  const logout = () => setSession({ role: null, onboarded: false });
+
   const resetDemo = () => {
     if (window.confirm("Repor os dados de demonstração? As alterações locais serão perdidas.")) {
       clearAppStorage();
@@ -74,16 +99,54 @@ export default function PitchApp() {
     }
   };
 
-  return (
-    <div style={{
-      background: C.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto",
-      color: C.text1,
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
-    }}>
+  const shell = (children) => (
+    <div style={{ background: C.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", color: C.text1, fontFamily: APP_FONT }}>
+      {children}
+    </div>
+  );
+
+  // ── Auth gate ──────────────────────────────────────────
+  if (!session.role) {
+    return shell(<AuthLanding onPick={(role) => setSession({ role, onboarded: false })} />);
+  }
+
+  if (!session.onboarded) {
+    return shell(
+      session.role === "player" ? (
+        <OnboardingPlayer
+          me={me}
+          onBack={logout}
+          onDone={(form) => { updateProfile(form); setSession((s) => ({ ...s, onboarded: true })); }}
+        />
+      ) : (
+        <OnboardingOrganizer
+          settings={settings}
+          onBack={logout}
+          onDone={(form) => { setSettings(form); setSession((s) => ({ ...s, onboarded: true })); }}
+        />
+      )
+    );
+  }
+
+  // Organizer re-editing group settings from the profile tab
+  if (editingGroup) {
+    return shell(
+      <OnboardingOrganizer
+        settings={settings}
+        onBack={() => setEditingGroup(false)}
+        onDone={(form) => { setSettings(form); setEditingGroup(false); }}
+      />
+    );
+  }
+
+  // ── Main app ───────────────────────────────────────────
+  return shell(
+    <>
       <div style={{ paddingBottom: 80 }}>
         {tab === "jogo" && (
           <JogoTab
             group={group}
+            game={game}
             togglePaid={togglePaid}
             toggleMyStatus={toggleMyStatus}
             payMine={payMine}
@@ -95,16 +158,27 @@ export default function PitchApp() {
             drawTeams={drawTeams}
           />
         )}
+        {tab === "social" && <SocialTab group={group} posts={posts} setPosts={setPosts} meId={me.id} />}
         {tab === "stats" && (
           <StatsTab group={group} mvpVote={mvpVote} setMvpVote={setMvpVote} statMode={statMode} setStatMode={setStatMode} />
         )}
-        {tab === "grupo" && <GrupoTab group={group} openProfile={openProfile} />}
+        {tab === "grupo" && <GrupoTab group={group} game={game} openProfile={openProfile} />}
         {tab === "perfil" && (
-          <PerfilTab key={viewPlayerId ?? "me"} group={group} viewPlayerId={viewPlayerId} updateProfile={updateProfile} backToMe={backToMe} resetDemo={resetDemo} />
+          <PerfilTab
+            key={viewPlayerId ?? "me"}
+            group={group}
+            viewPlayerId={viewPlayerId}
+            updateProfile={updateProfile}
+            backToMe={backToMe}
+            resetDemo={resetDemo}
+            isOrganizer={session.role === "organizer"}
+            onEditGroup={() => setEditingGroup(true)}
+            logout={logout}
+          />
         )}
       </div>
 
       <BottomNav tab={tab} onSelect={(id) => { setTab(id); if (id === "perfil") setViewPlayerId(null); }} />
-    </div>
+    </>
   );
 }

@@ -1,12 +1,14 @@
 import { MessageCircle, ChevronRight } from "lucide-react";
-import { C, cardStyle } from "../theme";
-import { GROUP_NAME, TOTAL_GAMES } from "../data";
-import { playerColor } from "../lib/helpers";
+import { C, cardStyle, displayFont } from "../theme";
+import { TOTAL_GAMES } from "../data";
+import { playerColor, computeOverall } from "../lib/helpers";
 import { openWhatsApp, inviteMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 
-export default function GrupoTab({ group, openProfile }) {
+const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
+
+export default function GrupoTab({ group, game, openProfile }) {
   const sections = [
     { label: "CONFIRMADOS",  items: group.filter((p) => p.status === "confirmed") },
     { label: "SEM RESPOSTA", items: group.filter((p) => p.status === "pending")   },
@@ -16,8 +18,8 @@ export default function GrupoTab({ group, openProfile }) {
   return (
     <div style={{ padding: "0 16px" }}>
       <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ fontSize: 22, fontWeight: 900 }}>O Grupo</div>
-        <div style={{ fontSize: 13, color: C.text2 }}>{group.length} jogadores · {GROUP_NAME}</div>
+        <div style={{ ...displayFont, fontSize: 22 }}>O Grupo</div>
+        <div style={{ fontSize: 13, color: C.text2 }}>{group.length} jogadores · {game.groupName}</div>
       </div>
 
       {sections.map((section) => section.items.length > 0 && (
@@ -26,16 +28,21 @@ export default function GrupoTab({ group, openProfile }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {section.items.map((p) => {
               const reliability = Math.round((p.gamesPlayed / TOTAL_GAMES) * 100);
+              const overall = computeOverall(p.position, p.attrs);
               return (
                 <button key={p.id} onClick={() => openProfile(p.id)} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", cursor: "pointer", textAlign: "left", width: "100%", color: C.text1 }}>
-                  <Avatar name={p.name} color={playerColor(group, p)} size={40} fontSize={13} isMe={p.isMe} />
-                  <div style={{ flex: 1 }}>
+                  <Avatar name={p.name} color={playerColor(group, p)} size={40} fontSize={13} isMe={p.isMe} photo={p.photo} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1 }}>
                       {p.nick} {p.isMe && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}>(tu)</span>}
                     </div>
                     <div style={{ fontSize: 11, color: C.text2 }}>{p.position} · {p.gamesPlayed}/{TOTAL_GAMES} jogos</div>
                   </div>
-                  <div style={{ textAlign: "right", minWidth: 50 }}>
+                  <div style={{ ...displayFont, fontSize: 15, color: tierColor(overall), minWidth: 26, textAlign: "center" }}>
+                    {overall}
+                    <div style={{ fontSize: 8, fontWeight: 700, fontStyle: "normal", letterSpacing: "0.05em", color: C.text3 }}>OVR</div>
+                  </div>
+                  <div style={{ textAlign: "right", minWidth: 44 }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: reliability >= 80 ? C.green : reliability >= 60 ? C.orange : C.red }}>{reliability}%</div>
                     <div style={{ fontSize: 10, color: C.text3 }}>fiável</div>
                   </div>
@@ -51,7 +58,7 @@ export default function GrupoTab({ group, openProfile }) {
         <div style={{ fontSize: 24, marginBottom: 8 }}>👤</div>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Adicionar ao grupo</div>
         <div style={{ fontSize: 12, color: C.text2, marginBottom: 14 }}>Convida um amigo pelo link ou WhatsApp</div>
-        <button onClick={() => openWhatsApp(inviteMessage())} style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <button onClick={() => openWhatsApp(inviteMessage(game.groupName, game))} style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
           <MessageCircle size={14} /> Convidar
         </button>
       </div>

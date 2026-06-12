@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
-const PREFIX = "pitch.";
+// v2: schema gained FUT attributes, session, settings and posts —
+// bumping the prefix invalidates v1 demo data cleanly.
+const PREFIX = "pitch.v2.";
 
 /** useState that survives reloads via localStorage. */
 export function usePersistentState(key, initial) {
@@ -28,6 +30,6 @@ export function usePersistentState(key, initial) {
 /** Drop all persisted app state (used by "repor dados de demonstração"). */
 export function clearAppStorage() {
   Object.keys(localStorage)
-    .filter((k) => k.startsWith(PREFIX))
+    .filter((k) => k.startsWith("pitch."))
     .forEach((k) => localStorage.removeItem(k));
 }

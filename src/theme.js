@@ -24,6 +24,14 @@ export const C = {
   blueDim:      "rgba(72,149,255,0.10)",
   blueBorder:   "rgba(72,149,255,0.25)",
   whatsapp:     "#25D366",
+  // Football theming — pitch & FUT card tiers
+  grass:        "#0E5C36",
+  grassDim:     "rgba(14,160,90,0.08)",
+  grassLine:    "rgba(255,255,255,0.07)",
+  gold:         "#E8C547",
+  goldDim:      "rgba(232,197,71,0.10)",
+  silver:       "#C0C8D0",
+  bronze:       "#C9824F",
 };
 
 export const cardStyle = {
@@ -31,6 +39,13 @@ export const cardStyle = {
   borderRadius: 16,
   border: `1px solid ${C.border}`,
   padding: 16,
+};
+
+// FIFA-ish italic display style for headings / numbers
+export const displayFont = {
+  fontWeight: 900,
+  fontStyle: "italic",
+  letterSpacing: "-0.02em",
 };
 
 export const AVATAR_PALETTE = [
