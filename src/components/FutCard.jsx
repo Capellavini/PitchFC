@@ -1,10 +1,11 @@
 import { C, displayFont } from "../theme";
 import { ini, computeOverall, POSITION_ABBR, ATTR_LABELS } from "../lib/helpers";
 
+// Tier tint fades into C.card so the cards sit on the navy palette.
 const TIERS = {
-  gold:   { color: C.gold,   bg: "linear-gradient(160deg, #2B2410 0%, #18181E 70%)",   label: "OURO"   },
-  silver: { color: C.silver, bg: "linear-gradient(160deg, #23262B 0%, #18181E 70%)",   label: "PRATA"  },
-  bronze: { color: C.bronze, bg: "linear-gradient(160deg, #2A1E14 0%, #18181E 70%)",   label: "BRONZE" },
+  gold:   { color: C.gold,   bg: `linear-gradient(160deg, #2D2818 0%, ${C.card} 70%)`, label: "OURO"   },
+  silver: { color: C.silver, bg: `linear-gradient(160deg, #242C3A 0%, ${C.card} 70%)`, label: "PRATA"  },
+  bronze: { color: C.bronze, bg: `linear-gradient(160deg, #2C231B 0%, ${C.card} 70%)`, label: "BRONZE" },
 };
 
 /** FIFA/FUT-style player card. `player` needs attrs/position/club/nationality. */

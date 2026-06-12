@@ -2,17 +2,20 @@
 // DESIGN TOKENS — all colors live here, never hardcode hex
 // in a component (see CLAUDE.md).
 // ─────────────────────────────────────────────────────────
+// Navy palette anchored on the brand field artwork:
+// surface = the field's background (#121A27 sampled),
+// border  = the field's line color (#262E3D sampled).
 export const C = {
-  bg:           "#07070A",
-  surface:      "#111114",
-  card:         "#18181E",
-  border:       "#22222C",
+  bg:           "#0A0F18",
+  surface:      "#121A27",
+  card:         "#1A2433",
+  border:       "#262E3D",
   accent:       "#C8FF00",
   accentDim:    "rgba(200,255,0,0.07)",
   accentBorder: "rgba(200,255,0,0.20)",
   text1:        "#FFFFFF",
-  text2:        "#7C7C8A",
-  text3:        "#35353F",
+  text2:        "#8A94A8",
+  text3:        "#3D4659",
   green:        "#00D08A",
   greenDim:     "rgba(0,208,138,0.12)",
   greenBorder:  "rgba(0,208,138,0.30)",
@@ -55,9 +58,9 @@ export const BRAND = {
 };
 
 /** Navy-field backdrop with a dark fade so content stays readable.
- *  rgba(7,7,10,…) = C.bg. */
+ *  rgba(10,15,24,…) = C.bg. */
 export const fieldBackdrop = (top = 0.35, bottom = 0.85) => ({
-  backgroundImage: `linear-gradient(180deg, rgba(7,7,10,${top}) 0%, rgba(7,7,10,${bottom}) 100%), url(${BRAND.field})`,
+  backgroundImage: `linear-gradient(180deg, rgba(10,15,24,${top}) 0%, rgba(10,15,24,${bottom}) 100%), url(${BRAND.field})`,
   backgroundSize: "cover",
   backgroundPosition: "center",
 });
