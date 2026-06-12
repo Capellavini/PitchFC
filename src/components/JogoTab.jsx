@@ -10,11 +10,12 @@ import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
+import Matchday from "./Matchday";
 
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
-  teams, drawTeams,
+  teams, drawTeams, matchdayProps,
 }) {
   const [newItem, setNewItem] = useState("");
 
@@ -181,6 +182,9 @@ export default function JogoTab({
           </div>
         )}
       </div>
+
+      {/* LIVE MATCHDAY */}
+      <Matchday {...matchdayProps} group={group} teams={teams} />
 
       {/* PENDING */}
       {pending.length > 0 && (

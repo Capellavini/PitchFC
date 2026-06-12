@@ -2,6 +2,7 @@
 // MOCK DATA (mirrors the Supabase schema in CLAUDE.md).
 // This becomes the seed data when the backend lands.
 // ─────────────────────────────────────────────────────────
+import { isoDay } from "./lib/helpers";
 export const INITIAL_GROUP = [
   { id: 1,  name: "Carlos Silva",     nick: "Carlão",     status: "confirmed", paid: true,  isMe: true,
     email: "carlos@email.com", phone: "+351 912 345 678", position: "Médio",    foot: "Direito",
@@ -129,6 +130,42 @@ export const EXTERNAL_PLAYERS = [
   { id: 101, name: "Marco Sousa",  nick: "Marquinho", club: "SC Braga",    nationality: "🇵🇹 Portugal", groupName: "Os Galácticos" },
   { id: 102, name: "Leo Martins",  nick: "Leozinho",  club: "Flamengo",    nationality: "🇧🇷 Brasil",   groupName: "Várzea FC" },
   { id: 103, name: "Samir Tavares", nick: "Samir",    club: "Sporting CP", nationality: "🇨🇻 Cabo Verde", groupName: "Os Intocáveis" },
+];
+
+// ── Court bookings (the club's 2 courts; hour slots per day) ──
+export const COURT_HOURS = ["18:00", "19:00", "20:00", "21:00", "22:00", "23:00"];
+
+export const INITIAL_BOOKINGS = [
+  { id: 1, court: 1, date: isoDay(0), hour: "19:00", groupName: "Os Galácticos" },
+  { id: 2, court: 2, date: isoDay(0), hour: "21:00", groupName: "Várzea FC" },
+  { id: 3, court: 1, date: isoDay(1), hour: "20:00", groupName: "Os Intocáveis" },
+  { id: 4, court: 1, date: isoDay(1), hour: "21:00", groupName: "Os Intocáveis" },
+  { id: 5, court: 2, date: isoDay(2), hour: "19:00", groupName: "FC Lapa" },
+  { id: 6, court: 1, date: isoDay(3), hour: "22:00", groupName: "Os Galácticos" },
+  { id: 7, court: 2, date: isoDay(4), hour: "20:00", groupName: "Várzea FC" },
+];
+
+// ── Club events (broadcasts, pop-ups, sales…) with RSVP + payment ──
+export const CLUB_EVENTS = [
+  { id: 1, emoji: "📺", title: "Final da Champions — ecrã gigante", date: isoDay(3),  time: "20:00",
+    desc: "Transmissão no lounge com som de estádio. Reserva mesa para o teu grupo.",
+    kind: "mesa", price: 20, going: 18, myStatus: null },
+  { id: 2, emoji: "🍔", title: "Pop-up: Smash burgers do Mané", date: isoDay(5),  time: "19:00",
+    desc: "Food pop-up na esplanada, das 19h até esgotar. Entrada livre.",
+    kind: null, price: 0, going: 31, myStatus: null },
+  { id: 3, emoji: "👕", title: "Feira de camisolas retro", date: isoDay(8),  time: "15:00",
+    desc: "Compra, venda e troca de camisolas clássicas. Traz as tuas relíquias.",
+    kind: "bilhete", price: 3, going: 12, myStatus: null },
+  { id: 4, emoji: "🏆", title: "Mundial — jogos de Portugal", date: isoDay(12), time: "17:00",
+    desc: "Todos os jogos de Portugal no ecrã gigante. Mesa reservada por jogo.",
+    kind: "mesa", price: 15, going: 24, myStatus: null },
+];
+
+// ── Open matches ("falta 1!") — games from any group with free spots ──
+export const OPEN_MATCHES = [
+  { id: 1, groupName: "Várzea FC",      court: "Campo 2", date: isoDay(1), time: "21:00", spotsLeft: 2, level: "Casual",      price: 4,   joined: false },
+  { id: 2, groupName: "Os Galácticos",  court: "Campo 1", date: isoDay(2), time: "19:00", spotsLeft: 1, level: "Competitivo", price: 5,   joined: false },
+  { id: 3, groupName: "Os Intocáveis",  court: "Campo 2", date: isoDay(4), time: "20:00", spotsLeft: 3, level: "Casual",      price: 4.5, joined: false },
 ];
 
 export const INITIAL_POSTS = [

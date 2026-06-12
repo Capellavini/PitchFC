@@ -13,9 +13,9 @@
  */
 import { useState } from "react";
 import { C, BRAND } from "./theme";
-import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS } from "./data";
+import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
-import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs } from "./lib/helpers";
+import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay } from "./lib/helpers";
 import LandingPage from "./components/LandingPage";
 import RatePlayer from "./components/RatePlayer";
 import AuthLanding from "./components/AuthLanding";
@@ -23,6 +23,7 @@ import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
 import BottomNav from "./components/BottomNav";
 import JogoTab from "./components/JogoTab";
+import ClubeTab from "./components/ClubeTab";
 import SocialTab from "./components/SocialTab";
 import StatsTab from "./components/StatsTab";
 import GrupoTab from "./components/GrupoTab";
@@ -39,6 +40,13 @@ export default function PitchApp() {
   const [teams, setTeams]       = usePersistentState("teams", null);
   const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", []);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votedFor: null });
+  const [history, setHistory]   = usePersistentState("history", HISTORY);
+  const [matchday, setMatchday] = usePersistentState("matchday", null);
+  const [lastMatchday, setLastMatchday] = usePersistentState("lastMatchday", null);
+  const [bookings, setBookings] = usePersistentState("bookings", INITIAL_BOOKINGS);
+  const [events, setEvents]     = usePersistentState("events", CLUB_EVENTS);
+  const [openMatches, setOpenMatches] = usePersistentState("openMatches", OPEN_MATCHES);
+  const [ownPublished, setOwnPublished] = usePersistentState("ownPublished", false);
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
   const [statMode, setStatMode] = useState("goals");
@@ -107,6 +115,89 @@ export default function PitchApp() {
     byPos.forEach((p, i) => (i % 2 === 0 ? a : b).push(p.id));
     setTeams({ a, b });
   };
+
+  // ── Live matchday ──────────────────────────────────────
+  const startMatchday = () =>
+    setMatchday({ startedAt: Date.now(), matches: [{ id: Date.now(), n: 1, events: [] }] });
+
+  const addMatch = () =>
+    setMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, events: [] }] }));
+
+  const addGoal = (matchId, event) =>
+    setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
+
+  /** Close the matchday: per-player stats (goals/assists + clean sheets
+   *  for GR/Defesa), season totals, history entry, MVP vote opens. */
+  const endMatchday = () => {
+    if (!matchday) return;
+    if (!window.confirm("Terminar o dia de jogo? As stats entram para a época e abre a votação MVP.")) return;
+
+    const stats = {};
+    const bump = (id, key) => {
+      if (!id) return;
+      stats[id] = stats[id] ?? { goals: 0, assists: 0, cleanSheets: 0 };
+      stats[id][key] += 1;
+    };
+    matchday.matches.forEach((m) => m.events.forEach((e) => { bump(e.scorerId, "goals"); bump(e.assistId, "assists"); }));
+
+    let totalA = 0, totalB = 0;
+    matchday.matches.forEach((m) => {
+      const ga = m.events.filter((e) => e.team === "a").length;
+      const gb = m.events.filter((e) => e.team === "b").length;
+      totalA += ga; totalB += gb;
+      const awardCleanSheet = (ids) => ids.forEach((id) => {
+        const p = group.find((x) => x.id === id);
+        if (p && (p.position === "Guarda-redes" || p.position === "Defesa")) bump(id, "cleanSheets");
+      });
+      if (teams) {
+        if (gb === 0) awardCleanSheet(teams.a);
+        if (ga === 0) awardCleanSheet(teams.b);
+      }
+    });
+
+    const confirmed = group.filter((p) => p.status === "confirmed");
+    setGroup((g) => g.map((p) => {
+      const s = stats[p.id];
+      const played = p.status === "confirmed";
+      if (!s && !played) return p;
+      return { ...p, goals: p.goals + (s?.goals ?? 0), assists: p.assists + (s?.assists ?? 0), gamesPlayed: p.gamesPlayed + (played ? 1 : 0) };
+    }));
+
+    const date = fmtDayMonth(isoDay(0));
+    setHistory((h) => [{
+      id: Date.now(), date, confirmed: confirmed.length, result: `${totalA}–${totalB}`,
+      allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length,
+    }, ...h]);
+    setLastMatchday({
+      date,
+      matches: matchday.matches.map((m) => ({
+        n: m.n,
+        scoreA: m.events.filter((e) => e.team === "a").length,
+        scoreB: m.events.filter((e) => e.team === "b").length,
+      })),
+      playerStats: stats,
+      playerIds: confirmed.map((p) => p.id),
+    });
+    setMvpVote({ open: true, votedFor: null });
+    setMatchday(null);
+  };
+
+  // ── Club: bookings, events, open matches ───────────────
+  const toggleBooking = (court, date, hour) =>
+    setBookings((bs) => {
+      const mine = bs.find((b) => b.court === court && b.date === date && b.hour === hour && b.mine);
+      if (mine) return bs.filter((b) => b !== mine);
+      return [...bs, { id: Date.now(), court, date, hour, groupName: settings.groupName, mine: true }];
+    });
+
+  const rsvpEvent = (id, cancel = false) =>
+    setEvents((es) => es.map((e) => (e.id === id ? { ...e, myStatus: cancel ? null : "going" } : e)));
+
+  const payEvent = (id) =>
+    setEvents((es) => es.map((e) => (e.id === id ? { ...e, myStatus: "paid" } : e)));
+
+  const joinOpenMatch = (id) =>
+    setOpenMatches((ms) => ms.map((m) => (m.id === id && m.spotsLeft > 0 ? { ...m, spotsLeft: m.spotsLeft - 1, joined: true } : m)));
 
   const openProfile = (id) => { setViewPlayerId(id); setTab("perfil"); };
   const backToMe = () => setViewPlayerId(null);
@@ -191,11 +282,27 @@ export default function PitchApp() {
             addMaterial={addMaterial}
             teams={teams}
             drawTeams={drawTeams}
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
+          />
+        )}
+        {tab === "clube" && (
+          <ClubeTab
+            bookings={bookings}
+            toggleBooking={toggleBooking}
+            events={events}
+            rsvpEvent={rsvpEvent}
+            payEvent={payEvent}
+            openMatches={openMatches}
+            joinOpenMatch={joinOpenMatch}
+            ownOpenSpots={Math.max(0, game.spots - group.filter((p) => p.status === "confirmed").length)}
+            ownPublished={ownPublished}
+            publishOwnGame={() => setOwnPublished((v) => !v)}
+            game={game}
           />
         )}
         {tab === "social" && <SocialTab group={displayGroup} posts={posts} setPosts={setPosts} meId={me.id} />}
         {tab === "stats" && (
-          <StatsTab group={displayGroup} mvpVote={mvpVote} setMvpVote={setMvpVote} statMode={statMode} setStatMode={setStatMode} />
+          <StatsTab group={displayGroup} history={history} lastMatchday={lastMatchday} mvpVote={mvpVote} setMvpVote={setMvpVote} statMode={statMode} setStatMode={setStatMode} />
         )}
         {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} />}
         {tab === "perfil" && (

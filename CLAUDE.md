@@ -11,7 +11,7 @@ PITCH is a mobile-first web app that organizes a **weekly football game between 
 ## Current state
 
 - `src/PitchApp.jsx` — a complete, working UI prototype in a single React file with in-memory state and mock data. All screens and interactions are designed and functional. **This is the design reference**: when building the real app, match this UI exactly.
-- No backend yet. The next milestone is wiring this UI to Supabase.
+- No backend yet. The next milestone is wiring this UI to Supabase — `supabase/schema.sql` (full schema, ready to paste) and `SUPABASE.md` (setup guide + migration order) are prepared.
 
 ## Product principles
 
@@ -25,10 +25,13 @@ PITCH is a mobile-first web app that organizes a **weekly football game between 
 ## Feature scope (current phase)
 
 ### Implemented in the prototype
-- **Jogo tab**: slot grid (10 spots), confirm/decline flow ("Estou dentro!" / "Não posso"), pending players list with WhatsApp reminder buttons, declined players, payment overview with per-player tracking and "mark as paid", MB Way pay button for own payment, position-balanced team draw (Sorteio de Equipas), material checklist (ball, bibs) with assignment.
-- **Stats tab**: post-game MVP voting (24h window, one vote per player), leaderboards for goals/assists/MVPs with relative bars, game history with results and MVP per game.
-- **Grupo tab**: full roster grouped by status, reliability % (games attended / total), tap-through to player profiles, invite via WhatsApp link.
-- **Perfil tab**: identity card (position + strong foot), editable profile (name, nick, email, phone, position via chips, strong foot via chips), season stats grid, payment method (MB Way), view other players' profiles (read-only, no contact info).
+- **Entry**: public marketing landing page → role pick (player/organizer) → onboarding (player builds a FUT-style card with photo/attributes; organizer sets group, venue, weekday/time, monthly price split). Local "session" in localStorage until Supabase.
+- **Jogo tab**: slot grid (10 spots) on the field artwork, confirm/decline flow, pending players with WhatsApp reminders, payment overview + MB Way pay button, position-balanced team draw, material checklist, and **live matchday**: score the night's games (Jogo 1, Jogo 2…) with per-goal scorer/assist; ending it feeds season stats, history, clean sheets (GR/Defesa) and opens MVP voting.
+- **Clube tab**: court booking (Campo 1×2, 7-day × hour-slot grid), events calendar with RSVP + mock table/ticket payment, open matches across groups ("falta 1") with join + publish-own-spots.
+- **Stats tab**: last-matchday card (per-game scores + per-player goals/assists/clean sheets), MVP voting with real matchday candidates, leaderboards, game history.
+- **Social tab**: cross-group feed (posts, photos, video-highlight mock), golaço likes, comments, WhatsApp share, Golo da Semana voting.
+- **Grupo tab**: roster grouped by status with overall (OVR) chips and reliability %, invite via WhatsApp.
+- **Perfil tab**: FUT card hero (gold/silver/bronze + LENDA ≥86 tiers), full profile editing incl. attribute sliders, peer ratings (request via WhatsApp `?rate=` link → friend rates on a no-login page → code paste back; card shows 50/50 blend of self and friends), organizer group settings, logout.
 
 ### Designed but needs backend
 - Magic-link confirmation (one unique URL per player per game, no auth needed)

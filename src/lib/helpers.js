@@ -22,6 +22,33 @@ export function nextGameDateLabel(weekday) {
   return `${WEEKDAYS_PT[weekday]}, ${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
 }
 
+/** Local-timezone ISO day (YYYY-MM-DD), offset in days from today. */
+export function isoDay(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const fromIso = (iso) => new Date(`${iso}T12:00:00`);
+
+/** "Sex 13" — short chip label for a day picker. */
+export const dayChipLabel = (iso) => {
+  const d = fromIso(iso);
+  return `${WEEKDAYS_PT[d.getDay()].slice(0, 3)} ${d.getDate()}`;
+};
+
+/** "13 Jun" */
+export const fmtDayMonth = (iso) => {
+  const d = fromIso(iso);
+  return `${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
+};
+
+/** "Sexta, 13 Jun" */
+export const fmtFullDay = (iso) => {
+  const d = fromIso(iso);
+  return `${WEEKDAYS_PT[d.getDay()]}, ${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
+};
+
 // ── FUT card overall ─────────────────────────────────────
 export const ATTR_LABELS = { rit: "RIT", rem: "REM", pas: "PAS", dri: "DRI", def: "DEF", fis: "FIS" };
 
