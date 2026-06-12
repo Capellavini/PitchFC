@@ -3,26 +3,13 @@ import {
   Clock, MapPin, Check, X, MessageCircle,
   Shuffle, ClipboardList, CreditCard, Plus,
 } from "lucide-react";
-import { C, cardStyle, displayFont } from "../theme";
+import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR } from "../lib/helpers";
 import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
-
-/** Decorative pitch lines behind the slot grid. */
-function PitchLines() {
-  return (
-    <svg viewBox="0 0 340 230" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-      <rect x="6" y="6" width="328" height="218" rx="10" fill="none" stroke={C.grassLine} strokeWidth="1.5" />
-      <line x1="170" y1="6" x2="170" y2="224" stroke={C.grassLine} strokeWidth="1.5" />
-      <circle cx="170" cy="115" r="36" fill="none" stroke={C.grassLine} strokeWidth="1.5" />
-      <rect x="6" y="70" width="42" height="90" fill="none" stroke={C.grassLine} strokeWidth="1.5" />
-      <rect x="292" y="70" width="42" height="90" fill="none" stroke={C.grassLine} strokeWidth="1.5" />
-    </svg>
-  );
-}
 
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
@@ -69,10 +56,9 @@ export default function JogoTab({
       {/* SLOT GRID — the pitch */}
       <div style={{
         ...cardStyle, marginBottom: 14, position: "relative", overflow: "hidden",
-        background: `linear-gradient(180deg, ${C.grassDim} 0%, ${C.card} 85%)`,
-        border: `1px solid ${C.grass}55`,
+        ...fieldBackdrop(0.25, 0.55),
+        border: `1px solid ${C.blueBorder}`,
       }}>
-        <PitchLines />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16, position: "relative" }}>
           <div>
             <span style={{ ...displayFont, fontSize: 34, color: confirmed.length >= game.spots ? C.green : C.text1 }}>{confirmed.length}</span>
@@ -110,7 +96,7 @@ export default function JogoTab({
               </div>
             ) : (
               <div key={i} style={{ textAlign: "center" }}>
-                <div style={{ width: "100%", aspectRatio: "1", borderRadius: 14, border: `2px dashed ${C.grass}66`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: C.text3 }}>+</div>
+                <div style={{ width: "100%", aspectRatio: "1", borderRadius: 14, border: `2px dashed ${C.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: C.text3 }}>+</div>
                 <div style={{ fontSize: 10, color: C.text3, marginTop: 5 }}>livre</div>
               </div>
             );

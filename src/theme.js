@@ -48,6 +48,20 @@ export const displayFont = {
   letterSpacing: "-0.02em",
 };
 
+// Brand assets (public/brand/) — official logo + navy field artwork
+export const BRAND = {
+  logo:  "/brand/logo.png",   // PITCH Club wordmark, white on transparent
+  field: "/brand/field.jpg",  // navy pitch illustration (presentation background)
+};
+
+/** Navy-field backdrop with a dark fade so content stays readable.
+ *  rgba(7,7,10,…) = C.bg. */
+export const fieldBackdrop = (top = 0.35, bottom = 0.85) => ({
+  backgroundImage: `linear-gradient(180deg, rgba(7,7,10,${top}) 0%, rgba(7,7,10,${bottom}) 100%), url(${BRAND.field})`,
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+});
+
 export const AVATAR_PALETTE = [
   C.accent, C.blue, C.orange, C.green,
   "#A78BFA", "#FB923C", "#34D399", "#60A5FA",

@@ -12,7 +12,7 @@
  * magic-link auth.
  */
 import { useState } from "react";
-import { C } from "./theme";
+import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { nextGameDateLabel, fmtEUR } from "./lib/helpers";
@@ -142,6 +142,9 @@ export default function PitchApp() {
   // ── Main app ───────────────────────────────────────────
   return shell(
     <>
+      <div style={{ display: "flex", alignItems: "center", padding: "14px 16px 0" }}>
+        <img src={BRAND.logo} alt="PITCH Club" style={{ height: 24 }} />
+      </div>
       <div style={{ paddingBottom: 80 }}>
         {tab === "jogo" && (
           <JogoTab
