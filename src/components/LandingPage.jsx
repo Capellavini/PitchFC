@@ -25,7 +25,7 @@ const APP_FEATURES = [
 const VENUE_FEATURES = [
   { Icon: MapPin,       title: "2 campos + campo 1v1", text: "Dois campos de 5 e uma arena 1v1 para resolver discussões à parte." },
   { Icon: Beer,         title: "Bar & esplanada",      text: "A terceira parte do jogo: aquela bebida depois do apito final." },
-  { Icon: Gamepad2,     title: "Lounge",               text: "Videojogos e matraquilhos para os que ficam à espera do próximo jogo." },
+  { Icon: Gamepad2,     title: "Lounge",               text: "Videojogos e fut mesa para os que ficam à espera do próximo jogo." },
   { Icon: Users,        title: "Clube social",         text: "Um espaço para a comunidade: convívio entre grupos, ligas internas." },
   { Icon: PartyPopper,  title: "Eventos",              text: "Torneios, aniversários e eventos de empresa com o futebol ao centro." },
   { Icon: Clapperboard, title: "Transmissão dos jogos", text: "Os teus jogos gravados e transmitidos — revê o golaço as vezes que quiseres." },
