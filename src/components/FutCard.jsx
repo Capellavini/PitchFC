@@ -2,26 +2,43 @@ import { C, displayFont } from "../theme";
 import { ini, computeOverall, POSITION_ABBR, ATTR_LABELS } from "../lib/helpers";
 
 // Tier tint fades into C.card so the cards sit on the navy palette.
+// "icon" (>= 86) is the FIFA-legend look: champagne gold, light rays,
+// glow and an ornate inner frame.
 const TIERS = {
-  gold:   { color: C.gold,   bg: `linear-gradient(160deg, #2D2818 0%, ${C.card} 70%)`, label: "OURO"   },
-  silver: { color: C.silver, bg: `linear-gradient(160deg, #242C3A 0%, ${C.card} 70%)`, label: "PRATA"  },
-  bronze: { color: C.bronze, bg: `linear-gradient(160deg, #2C231B 0%, ${C.card} 70%)`, label: "BRONZE" },
+  icon:   { color: "#F2DA8A", bg: `linear-gradient(155deg, #4A3D1E 0%, #2C2715 45%, ${C.card} 92%)`, label: "LENDA",  rayAlpha: "0E", glowAlpha: "30" },
+  gold:   { color: C.gold,   bg: `linear-gradient(155deg, #2D2818 0%, ${C.card} 75%)`,               label: "OURO",   rayAlpha: "07", glowAlpha: "1E" },
+  silver: { color: C.silver, bg: `linear-gradient(155deg, #242C3A 0%, ${C.card} 75%)`,               label: "PRATA",  rayAlpha: "06", glowAlpha: "18" },
+  bronze: { color: C.bronze, bg: `linear-gradient(155deg, #2C231B 0%, ${C.card} 75%)`,               label: "BRONZE", rayAlpha: "06", glowAlpha: "18" },
 };
+
+const tierFor = (overall) =>
+  overall >= 86 ? TIERS.icon : overall >= 80 ? TIERS.gold : overall >= 70 ? TIERS.silver : TIERS.bronze;
 
 /** FIFA/FUT-style player card. `player` needs attrs/position/club/nationality. */
 export default function FutCard({ player, width = 260 }) {
   const overall = computeOverall(player.position, player.attrs);
-  const tier = TIERS[overall >= 80 ? "gold" : overall >= 70 ? "silver" : "bronze"];
+  const tier = tierFor(overall);
+  const isIcon = tier === TIERS.icon;
   const flag = (player.nationality || "🌍").split(" ")[0];
   const scale = width / 260;
+
+  const overlay = { position: "absolute", inset: 0, borderRadius: 20 * scale, pointerEvents: "none" };
 
   return (
     <div style={{
       width, padding: 18 * scale, borderRadius: 20 * scale,
-      background: tier.bg, border: `1.5px solid ${tier.color}55`,
-      boxShadow: `0 0 ${40 * scale}px ${tier.color}18`,
+      background: tier.bg, border: `1.5px solid ${tier.color}${isIcon ? "88" : "55"}`,
+      boxShadow: `0 0 ${(isIcon ? 60 : 40) * scale}px ${tier.color}${isIcon ? "30" : "18"}`,
       position: "relative", overflow: "hidden", flexShrink: 0,
     }}>
+      {/* light rays */}
+      <div style={{ ...overlay, background: `repeating-linear-gradient(115deg, transparent 0 ${14 * scale}px, ${tier.color}${tier.rayAlpha} ${14 * scale}px ${17 * scale}px)` }} />
+      {/* glow behind the photo */}
+      <div style={{ ...overlay, background: `radial-gradient(circle at 66% 26%, ${tier.color}${tier.glowAlpha}, transparent 58%)` }} />
+      {/* shine sweep */}
+      <div style={{ ...overlay, background: "linear-gradient(120deg, transparent 32%, rgba(255,255,255,0.07) 46%, transparent 58%)" }} />
+      {/* ornate inner frame */}
+      <div style={{ ...overlay, inset: 6 * scale, borderRadius: 15 * scale, border: `1px solid ${tier.color}${isIcon ? "55" : "2E"}` }} />
       {/* pitch-line watermark */}
       <svg viewBox="0 0 260 160" style={{ position: "absolute", inset: 0, width: "100%", opacity: 0.05 }}>
         <circle cx="130" cy="80" r="50" fill="none" stroke={tier.color} strokeWidth="1.5" />
@@ -31,7 +48,7 @@ export default function FutCard({ player, width = 260 }) {
       <div style={{ display: "flex", gap: 12 * scale, position: "relative" }}>
         {/* Left column: overall + position + flag + club */}
         <div style={{ textAlign: "center", minWidth: 52 * scale }}>
-          <div style={{ ...displayFont, fontSize: 40 * scale, color: tier.color, lineHeight: 1 }}>{overall}</div>
+          <div style={{ ...displayFont, fontSize: 40 * scale, color: tier.color, lineHeight: 1, textShadow: isIcon ? `0 0 ${14 * scale}px ${tier.color}66` : "none" }}>{overall}</div>
           <div style={{ fontSize: 13 * scale, fontWeight: 800, color: C.text1, letterSpacing: "0.06em" }}>
             {POSITION_ABBR[player.position] ?? "MED"}
           </div>
@@ -50,7 +67,11 @@ export default function FutCard({ player, width = 260 }) {
         {/* Photo / initials */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {player.photo ? (
-            <img src={player.photo} alt={player.nick} style={{ width: 104 * scale, height: 104 * scale, borderRadius: 16 * scale, objectFit: "cover", border: `1.5px solid ${tier.color}66` }} />
+            <img src={player.photo} alt={player.nick} style={{
+              width: 104 * scale, height: 104 * scale, borderRadius: 16 * scale, objectFit: "cover",
+              border: `${isIcon ? 2 : 1.5}px solid ${tier.color}${isIcon ? "AA" : "66"}`,
+              boxShadow: isIcon ? `0 0 ${18 * scale}px ${tier.color}44` : "none",
+            }} />
           ) : (
             <div style={{ width: 104 * scale, height: 104 * scale, borderRadius: 16 * scale, background: `${tier.color}12`, border: `1.5px solid ${tier.color}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 * scale, fontWeight: 900, color: tier.color }}>
               {ini(player.name)}
@@ -80,6 +101,15 @@ export default function FutCard({ player, width = 260 }) {
           </div>
         ))}
       </div>
+
+      {/* Legend ribbon */}
+      {isIcon && (
+        <div style={{ textAlign: "center", marginTop: 10 * scale, position: "relative" }}>
+          <span style={{ fontSize: 9 * scale, fontWeight: 900, letterSpacing: "0.35em", color: tier.color }}>
+            ★ {tier.label} ★
+          </span>
+        </div>
+      )}
     </div>
   );
 }

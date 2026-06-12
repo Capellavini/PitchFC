@@ -6,11 +6,13 @@ import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
 
-// Demo card shown in the hero — sells the FUT-card feature without assets.
+// Demo card shown in the hero — invented legend player to sell the
+// FUT-card feature (overall >= 86 triggers the "LENDA" tier).
 const DEMO_PLAYER = {
-  name: "O Teu Nome", nick: "Tu", age: 27, nationality: "🇵🇹 Portugal",
-  club: "FC Porto", position: "Avançado", foot: "Direito",
-  attrs: { rit: 86, rem: 84, pas: 75, dri: 82, def: 48, fis: 78 },
+  name: "André Falcão", nick: "Falcão", age: 26, nationality: "🇵🇹 Portugal",
+  club: "FC Porto", position: "Avançado", foot: "Esquerdo",
+  photo: "https://randomuser.me/api/portraits/men/32.jpg",
+  attrs: { rit: 92, rem: 93, pas: 85, dri: 91, def: 55, fis: 84 },
 };
 
 const APP_FEATURES = [
