@@ -31,6 +31,9 @@ export const inviteMessage = (groupName, game) =>
 export const sharePostMessage = (authorNick, text) =>
   `⚽ Vê isto no PITCH — ${authorNick}: "${text}" ${appUrl()}`;
 
+export const accessLinkMessage = (nick, groupName, url) =>
+  `⚽ ${nick}, o teu acesso pessoal ao PITCH (${groupName}): ${url} — abre, confirma o jogo de sábado e vê o teu cartão. Sem registo, sem password.`;
+
 export const rateRequestMessage = (nick, url) =>
   `⚽ Olá! Como achas que eu jogo? Avalia o meu cartão PITCH (demora 30 segundos, sem registo): ${url}`;
 

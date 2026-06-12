@@ -1,14 +1,19 @@
-import { MessageCircle, ChevronRight } from "lucide-react";
+import { MessageCircle, ChevronRight, Link2 } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
-import { openWhatsApp, inviteMessage } from "../lib/whatsapp";
+import { openWhatsApp, inviteMessage, accessLinkMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 
-export default function GrupoTab({ group, game, openProfile }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode }) {
+  const sendAccessLink = (e, p) => {
+    e.stopPropagation(); // don't open the profile
+    const url = `${window.location.origin}?p=${p.magicToken}`;
+    openWhatsApp(accessLinkMessage(p.nick, game.groupName, url), p.phone);
+  };
   const sections = [
     { label: "CONFIRMADOS",  items: group.filter((p) => p.status === "confirmed") },
     { label: "SEM RESPOSTA", items: group.filter((p) => p.status === "pending")   },
@@ -46,6 +51,16 @@ export default function GrupoTab({ group, game, openProfile }) {
                     <div style={{ fontSize: 14, fontWeight: 800, color: reliability >= 80 ? C.green : reliability >= 60 ? C.orange : C.red }}>{reliability}%</div>
                     <div style={{ fontSize: 10, color: C.text3 }}>fiável</div>
                   </div>
+                  {cloudMode && p.magicToken && !p.isMe && (
+                    <span
+                      role="button"
+                      title="Enviar link de acesso pessoal"
+                      onClick={(e) => sendAccessLink(e, p)}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: `${C.whatsapp}1A`, border: `1px solid ${C.whatsapp}55`, cursor: "pointer", flexShrink: 0 }}
+                    >
+                      <Link2 size={14} color={C.whatsapp} />
+                    </span>
+                  )}
                   <ChevronRight size={15} color={C.text3} />
                 </button>
               );

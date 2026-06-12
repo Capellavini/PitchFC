@@ -203,4 +203,4 @@ begin
 end $$;
 
 -- Realtime: the slot grid and live scores update for everyone
-alter publication supabase_realtime add table attendances, match_events, bookings, event_rsvps, posts;
+alter publication supabase_realtime add table attendances, match_events, bookings, event_rsvps, posts, players, groups;
