@@ -15,8 +15,9 @@ import { useState } from "react";
 import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
-import { nextGameDateLabel, fmtEUR } from "./lib/helpers";
+import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs } from "./lib/helpers";
 import LandingPage from "./components/LandingPage";
+import RatePlayer from "./components/RatePlayer";
 import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
@@ -36,6 +37,7 @@ export default function PitchApp() {
   const [material, setMaterial] = usePersistentState("material", INITIAL_MATERIAL);
   const [posts, setPosts]       = usePersistentState("posts", INITIAL_POSTS);
   const [teams, setTeams]       = usePersistentState("teams", null);
+  const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", []);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votedFor: null });
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
@@ -44,6 +46,21 @@ export default function PitchApp() {
   const [editingGroup, setEditingGroup] = useState(false);
 
   const me = group.find((p) => p.isMe);
+
+  // Card attrs shown everywhere = 50/50 blend of self-assessment and
+  // friends' ratings; selfAttrs keeps the editable original.
+  const displayGroup = group.map((p) =>
+    p.isMe && peerRatings.length
+      ? { ...p, attrs: blendAttrs(p.attrs, peerRatings.map((r) => r.a)), selfAttrs: p.attrs }
+      : p
+  );
+
+  const addPeerRating = (codeStr) => {
+    const rating = decodePayload(codeStr);
+    if (!rating?.a || typeof rating.a.rit !== "number") return false;
+    setPeerRatings((prev) => [...prev, rating]);
+    return true;
+  };
 
   // The "next game" as the UI consumes it — derived from organizer settings.
   const game = {
@@ -74,8 +91,10 @@ export default function PitchApp() {
   const addMaterial = (item) =>
     setMaterial((m) => [...m, { id: Date.now(), item, assignedTo: null, done: false }]);
 
-  const updateProfile = (form) =>
-    setGroup((g) => g.map((p) => (p.isMe ? { ...p, ...form } : p)));
+  const updateProfile = (form) => {
+    const { selfAttrs: _ignored, ...rest } = form; // display-only field
+    setGroup((g) => g.map((p) => (p.isMe ? { ...p, ...rest } : p)));
+  };
 
   // Position-balanced team draw: shuffle, group by position,
   // alternate assignment so each team gets a spread. Stores ids
@@ -109,6 +128,13 @@ export default function PitchApp() {
       {children}
     </div>
   );
+
+  // ── "Rate me" link (?rate=payload) — no login needed ───
+  const rateParam = new URLSearchParams(window.location.search).get("rate");
+  if (rateParam) {
+    // '+' in base64 arrives as a space after URL decoding — restore it.
+    return shell(<RatePlayer payload={rateParam.replace(/ /g, "+")} />);
+  }
 
   // ── Marketing page → auth gate ─────────────────────────
   if (!session.role) {
@@ -154,7 +180,7 @@ export default function PitchApp() {
       <div style={{ paddingBottom: 80 }}>
         {tab === "jogo" && (
           <JogoTab
-            group={group}
+            group={displayGroup}
             game={game}
             togglePaid={togglePaid}
             toggleMyStatus={toggleMyStatus}
@@ -167,15 +193,15 @@ export default function PitchApp() {
             drawTeams={drawTeams}
           />
         )}
-        {tab === "social" && <SocialTab group={group} posts={posts} setPosts={setPosts} meId={me.id} />}
+        {tab === "social" && <SocialTab group={displayGroup} posts={posts} setPosts={setPosts} meId={me.id} />}
         {tab === "stats" && (
-          <StatsTab group={group} mvpVote={mvpVote} setMvpVote={setMvpVote} statMode={statMode} setStatMode={setStatMode} />
+          <StatsTab group={displayGroup} mvpVote={mvpVote} setMvpVote={setMvpVote} statMode={statMode} setStatMode={setStatMode} />
         )}
-        {tab === "grupo" && <GrupoTab group={group} game={game} openProfile={openProfile} />}
+        {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} />}
         {tab === "perfil" && (
           <PerfilTab
             key={viewPlayerId ?? "me"}
-            group={group}
+            group={displayGroup}
             viewPlayerId={viewPlayerId}
             updateProfile={updateProfile}
             backToMe={backToMe}
@@ -183,6 +209,8 @@ export default function PitchApp() {
             isOrganizer={session.role === "organizer"}
             onEditGroup={() => setEditingGroup(true)}
             logout={logout}
+            peerRatings={peerRatings}
+            addPeerRating={addPeerRating}
           />
         )}
       </div>

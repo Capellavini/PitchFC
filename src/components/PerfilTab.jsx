@@ -1,20 +1,41 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES, CLUBS } from "../data";
-import { ATTR_LABELS, fileToDataUrl } from "../lib/helpers";
+import { ATTR_LABELS, fileToDataUrl, encodePayload, averageAttrs, computeOverall } from "../lib/helpers";
+import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
 import FutCard from "./FutCard";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 
 const ATTR_NAMES = { rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(player);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeDraft, setCodeDraft] = useState("");
+  const [codeStatus, setCodeStatus] = useState(null); // 'ok' | 'error'
+
+  // Edit mode works on the self-assessment, not the blended card attrs.
+  const startEditing = () => { setForm({ ...player, attrs: player.selfAttrs ?? player.attrs }); setEditing(true); };
+
+  const requestRating = () => {
+    const payload = encodePayload({
+      name: player.name, nick: player.nick, position: player.position,
+      club: player.club, nationality: player.nationality, foot: player.foot, age: player.age,
+    });
+    openWhatsApp(rateRequestMessage(player.nick, `${window.location.origin}?rate=${encodeURIComponent(payload)}`));
+  };
+
+  const submitCode = () => {
+    const ok = addPeerRating(codeDraft);
+    setCodeStatus(ok ? "ok" : "error");
+    if (ok) setCodeDraft("");
+  };
 
   const attendance = Math.round((player.gamesPlayed / TOTAL_GAMES) * 100);
 
@@ -115,7 +136,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" }}>
         <div style={{ ...displayFont, fontSize: 22 }}>{isOwn ? "O Meu Cartão" : "Perfil"}</div>
         {isOwn ? (
-          <button onClick={() => { setForm(player); setEditing(true); }} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+          <button onClick={startEditing} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
             <Pencil size={13} /> Editar
           </button>
         ) : (
@@ -132,6 +153,63 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
       <div style={{ textAlign: "center", fontSize: 12, color: C.text2, marginBottom: 16 }}>
         {player.name} · @{player.nick.toLowerCase()}
       </div>
+
+      {/* Peer rating (own profile only) */}
+      {isOwn && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <SectionLabel>AVALIAÇÃO DOS AMIGOS</SectionLabel>
+          {peerRatings.length > 0 ? (() => {
+            const friendsAvg = averageAttrs(peerRatings.map((r) => r.a));
+            const friendsOvr = computeOverall(player.position, friendsAvg);
+            const selfOvr = computeOverall(player.position, player.selfAttrs ?? player.attrs);
+            const names = peerRatings.map((r) => r.from).filter((n) => n && n !== "Anónimo");
+            return (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                  {[{ label: "Amigos", value: friendsOvr, color: C.gold }, { label: "Auto", value: selfOvr, color: C.text2 }, { label: "Cartão", value: computeOverall(player.position, player.attrs), color: C.accent }].map((s) => (
+                    <div key={s.label} style={{ flex: 1, background: C.surface, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+                      <div style={{ ...displayFont, fontSize: 20, color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: 10, color: C.text2, marginTop: 2 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: C.text2 }}>
+                  {peerRatings.length} {peerRatings.length === 1 ? "avaliação recebida" : "avaliações recebidas"}
+                  {names.length > 0 && ` — ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}`}.
+                  O cartão mostra a média entre a tua auto-avaliação e a dos amigos.
+                </div>
+              </div>
+            );
+          })() : (
+            <div style={{ fontSize: 12, color: C.text2, marginBottom: 14 }}>
+              Ainda ninguém te avaliou — o cartão mostra só a tua auto-avaliação. Pede aos teus amigos para dizerem como jogas de verdade 👀
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={requestRating} style={{ flex: 1.4, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 11, fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <MessageCircle size={14} /> Pedir avaliação
+            </button>
+            <button onClick={() => { setCodeOpen(!codeOpen); setCodeStatus(null); }} style={{ flex: 1, background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Star size={14} /> Inserir código
+            </button>
+          </div>
+
+          {codeOpen && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={codeDraft} onChange={(e) => { setCodeDraft(e.target.value); setCodeStatus(null); }} placeholder="Cola aqui o código recebido…"
+                  style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 12, color: C.text1, outline: "none", fontFamily: "monospace" }} />
+                <button onClick={submitCode} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "0 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                  Adicionar
+                </button>
+              </div>
+              {codeStatus === "ok" && <div style={{ fontSize: 11, color: C.green, marginTop: 6 }}>Avaliação adicionada — o teu cartão já reflete a opinião ✓</div>}
+              {codeStatus === "error" && <div style={{ fontSize: 11, color: C.red, marginTop: 6 }}>Código inválido — confirma que copiaste tudo.</div>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Contact (own profile only) */}
       {isOwn && (

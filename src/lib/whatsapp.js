@@ -30,3 +30,9 @@ export const inviteMessage = (groupName, game) =>
 
 export const sharePostMessage = (authorNick, text) =>
   `⚽ Vê isto no PITCH — ${authorNick}: "${text}" ${appUrl()}`;
+
+export const rateRequestMessage = (nick, url) =>
+  `⚽ Olá! Como achas que eu jogo? Avalia o meu cartão PITCH (demora 30 segundos, sem registo): ${url}`;
+
+export const rateResultMessage = (nick, code) =>
+  `⚽ Avaliei-te no PITCH, ${nick}! Cola este código na app em Perfil → "Inserir código": ${code}`;

@@ -39,6 +39,45 @@ export function computeOverall(position, attrs) {
 
 export const POSITION_ABBR = { "Guarda-redes": "GR", "Defesa": "DEF", "Médio": "MED", "Avançado": "AVA" };
 
+// ── Peer ratings ─────────────────────────────────────────
+// URL-safe base64 payloads for the no-backend rating flow:
+// request link carries the player's identity; the friend's
+// answer comes back as a paste-able code. Replaced by real
+// rows in Supabase later.
+export const encodePayload = (obj) =>
+  btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+
+export function decodePayload(s) {
+  try {
+    return JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
+  } catch {
+    return null;
+  }
+}
+
+const ATTR_KEYS = ["rit", "rem", "pas", "dri", "def", "fis"];
+
+/** Average a list of attrs objects, per attribute. */
+export function averageAttrs(list) {
+  if (!list.length) return null;
+  const out = {};
+  ATTR_KEYS.forEach((k) => {
+    out[k] = Math.round(list.reduce((s, a) => s + (a?.[k] ?? 60), 0) / list.length);
+  });
+  return out;
+}
+
+/** Public card attrs: 50/50 between self-assessment and friends' average. */
+export function blendAttrs(self, peerAttrsList) {
+  const avg = averageAttrs(peerAttrsList);
+  if (!avg) return self;
+  const out = {};
+  ATTR_KEYS.forEach((k) => {
+    out[k] = Math.round(((self?.[k] ?? 60) + avg[k]) / 2);
+  });
+  return out;
+}
+
 // ── Image upload → small base64 (fits localStorage) ─────
 export function fileToDataUrl(file, max = 320) {
   return new Promise((resolve, reject) => {
