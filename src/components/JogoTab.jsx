@@ -12,12 +12,12 @@ import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import Matchday from "./Matchday";
 import MatchTimer from "./MatchTimer";
-import StatsSummary from "./StatsSummary";
+import MatchSummary from "./MatchSummary";
 
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
-  teams, drawTeams, matchdayProps,
+  teams, drawTeams, matchdayProps, lastMatchday,
 }) {
   const [newItem, setNewItem] = useState("");
 
@@ -191,8 +191,8 @@ export default function JogoTab({
       {/* LIVE MATCHDAY */}
       <Matchday {...matchdayProps} group={group} teams={teams} />
 
-      {/* SEASON STATS SUMMARY */}
-      <StatsSummary group={group} />
+      {/* MATCHDAY SUMMARY (current/last games) */}
+      <MatchSummary matchday={matchdayProps.matchday} lastMatchday={lastMatchday} group={group} />
 
       {/* PENDING */}
       {pending.length > 0 && (
@@ -233,49 +233,8 @@ export default function JogoTab({
         </div>
       )}
 
-      {/* PAYMENTS OVERVIEW */}
-      <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>Pagamentos</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>{price}/jogador por mês · {fmtEUR(game.monthlyPrice)} total</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ ...displayFont, fontSize: 19, color: C.green }}>{fmtEUR(paidCount * game.priceEach)}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>de {fmtEUR(confirmed.length * game.priceEach)} recebidos</div>
-          </div>
-        </div>
-
-        <div style={{ height: 4, background: C.border, borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ height: "100%", borderRadius: 2, background: C.green, width: `${confirmed.length ? (paidCount / confirmed.length) * 100 : 0}%`, transition: "width 0.3s" }} />
-        </div>
-
-        {debtors.length > 0 ? (
-          <>
-            <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>DEVEM PAGAR</SectionLabel>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-              {debtors.map((p) => (
-                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} />
-                  <span style={{ flex: 1, fontSize: 13 }}>{p.nick}</span>
-                  <span style={{ fontSize: 13, color: C.orange, fontWeight: 700 }}>{price}</span>
-                  <button onClick={() => togglePaid(p.id)} style={{ background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.accent, fontWeight: 700, cursor: "pointer" }}>Pago ✓</button>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => openWhatsApp(chargeMessage(debtors, price, game, me?.phone))} style={{ width: "100%", background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <MessageCircle size={15} /> Cobrar pelo WhatsApp
-            </button>
-          </>
-        ) : (
-          <div style={{ textAlign: "center", padding: "8px 0", fontSize: 13, color: C.green, fontWeight: 700 }}>
-            <Check size={14} style={{ display: "inline", marginRight: 6 }} /> Todos pagaram!
-          </div>
-        )}
-      </div>
-
       {/* MATERIAL CHECKLIST */}
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
+      <div style={{ ...cardStyle, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
           <ClipboardList size={15} color={C.text2} />
           <div style={{ fontSize: 13, fontWeight: 700 }}>Material do Jogo</div>
@@ -322,6 +281,48 @@ export default function JogoTab({
           </button>
         </div>
       </div>
+
+      {/* PAYMENTS OVERVIEW */}
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Pagamentos</div>
+            <div style={{ fontSize: 11, color: C.text2 }}>{price}/jogador por mês · {fmtEUR(game.monthlyPrice)} total</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ ...displayFont, fontSize: 19, color: C.green }}>{fmtEUR(paidCount * game.priceEach)}</div>
+            <div style={{ fontSize: 11, color: C.text2 }}>de {fmtEUR(confirmed.length * game.priceEach)} recebidos</div>
+          </div>
+        </div>
+
+        <div style={{ height: 4, background: C.border, borderRadius: 2, marginBottom: 14 }}>
+          <div style={{ height: "100%", borderRadius: 2, background: C.green, width: `${confirmed.length ? (paidCount / confirmed.length) * 100 : 0}%`, transition: "width 0.3s" }} />
+        </div>
+
+        {debtors.length > 0 ? (
+          <>
+            <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>DEVEM PAGAR</SectionLabel>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+              {debtors.map((p) => (
+                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} />
+                  <span style={{ flex: 1, fontSize: 13 }}>{p.nick}</span>
+                  <span style={{ fontSize: 13, color: C.orange, fontWeight: 700 }}>{price}</span>
+                  <button onClick={() => togglePaid(p.id)} style={{ background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.accent, fontWeight: 700, cursor: "pointer" }}>Pago ✓</button>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => openWhatsApp(chargeMessage(debtors, price, game, me?.phone))} style={{ width: "100%", background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <MessageCircle size={15} /> Cobrar pelo WhatsApp
+            </button>
+          </>
+        ) : (
+          <div style={{ textAlign: "center", padding: "8px 0", fontSize: 13, color: C.green, fontWeight: 700 }}>
+            <Check size={14} style={{ display: "inline", marginRight: 6 }} /> Todos pagaram!
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

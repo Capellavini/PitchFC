@@ -455,6 +455,7 @@ export default function PitchApp() {
             material={material} toggleMaterial={toggleMaterial} assignMaterial={assignMaterial} addMaterial={addMaterial}
             teams={teams} drawTeams={drawTeams}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
+            lastMatchday={lastMatchday}
           />
         )}
         {tab === "clube" && (
