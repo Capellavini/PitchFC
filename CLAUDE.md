@@ -10,8 +10,12 @@ PITCH is a mobile-first web app that organizes a **weekly football game between 
 
 ## Current state
 
-- `src/PitchApp.jsx` — a complete, working UI prototype in a single React file with in-memory state and mock data. All screens and interactions are designed and functional. **This is the design reference**: when building the real app, match this UI exactly.
-- No backend yet. The next milestone is wiring this UI to Supabase — `supabase/schema.sql` (full schema, ready to paste) and `SUPABASE.md` (setup guide + migration order) are prepared.
+- The app is split into `src/PitchApp.jsx` (root state + gating) and `src/components/` (one component per screen). It runs in **two modes**, decided at runtime by whether Supabase env keys are present:
+  - **Cloud mode** (`.env.local` has `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`): real accounts (Supabase Auth email+password), groups created from scratch, invite links (`?join=<token>`), admin-created club events, realtime slot grid. Auth/data live in `src/hooks/useCloud.js`.
+  - **Local demo mode** (no keys): the original localStorage prototype, unchanged. This is the fallback if keys are missing or a cloud query fails.
+- Supabase migration is **in progress**, PR by PR. Done: PR 1 (roster/attendances/realtime), PR 2 (auth + groups + invites + admin events + cloud bookings). SQL lives in `supabase/schema.sql` (base) and `supabase/migration-2-auth.sql` (run once for PR 2). Setup guide: `SUPABASE.md`.
+- **Owner/admin**: emails in `VITE_ADMIN_EMAILS` (default `capella.vinicius@gmail.com`) get the "Criar evento" UI in the Clube → Eventos tab. See `isAdminEmail` in `src/lib/supabase.js`.
+- **Still local even in cloud mode** (later PRs): social feed/posts, live matchday + season totals (`extras` map), peer ratings, material checklist, team draw, MVP votes, history, open-matches mock, event RSVP (`eventStatus` map).
 
 ## Product principles
 

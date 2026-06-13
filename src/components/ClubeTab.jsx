@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { CalendarDays, Ticket, Radar, Check, MapPin, CreditCard, Users } from "lucide-react";
+import { CalendarDays, Ticket, Radar, Check, MapPin, CreditCard, Users, Plus, Trash2, ShieldCheck } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { COURT_HOURS } from "../data";
 import { isoDay, dayChipLabel, fmtFullDay, fmtEUR } from "../lib/helpers";
 import SectionLabel from "./SectionLabel";
+import BtnPrimary from "./BtnPrimary";
 
 const SEGMENTS = [
   { id: "reservas", Icon: CalendarDays, label: "Reservas" },
@@ -11,16 +12,30 @@ const SEGMENTS = [
   { id: "abertos",  Icon: Radar,        label: "Jogos abertos" },
 ];
 
-/** Club tab: court booking, events with RSVP/payment, open matches. */
+const EMPTY_EVENT = { emoji: "📺", title: "", date: isoDay(3), time: "20:00", desc: "", kind: "", price: 0 };
+
+/** Club tab: court booking, events with RSVP/payment, open matches.
+ *  App owner (isAdmin) can create/remove events here. */
 export default function ClubeTab({
   bookings, toggleBooking,
   events, rsvpEvent, payEvent,
   openMatches, joinOpenMatch,
   ownOpenSpots, ownPublished, publishOwnGame, game,
+  isAdmin, onCreateEvent, onDeleteEvent,
 }) {
   const [segment, setSegment] = useState("reservas");
   const [day, setDay] = useState(isoDay(0));
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState(EMPTY_EVENT);
   const days = Array.from({ length: 7 }, (_, i) => isoDay(i));
+
+  const setD = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+  const submitEvent = async () => {
+    if (!draft.title.trim()) return;
+    await onCreateEvent(draft);
+    setDraft(EMPTY_EVENT);
+    setComposing(false);
+  };
 
   const slotState = (court, hour) => {
     const b = bookings.find((x) => x.court === court && x.date === day && x.hour === hour);
@@ -101,6 +116,52 @@ export default function ClubeTab({
       {/* ── EVENTOS ──────────────────────────────────────── */}
       {segment === "eventos" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+          {/* admin: create event */}
+          {isAdmin && !composing && (
+            <button onClick={() => setComposing(true)} style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 14, cursor: "pointer", color: C.accent, border: `1px dashed ${C.accentBorder}`, background: C.accentDim, fontWeight: 800, fontSize: 13 }}>
+              <Plus size={16} /> Criar evento <span style={{ fontSize: 10, color: C.text3, fontWeight: 400, display: "flex", alignItems: "center", gap: 3 }}><ShieldCheck size={11} /> dono</span>
+            </button>
+          )}
+          {isAdmin && composing && (
+            <div style={{ ...cardStyle, padding: 16, border: `1px solid ${C.accentBorder}` }}>
+              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Novo evento</div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input value={draft.emoji} onChange={(e) => setD("emoji", e.target.value)} maxLength={2}
+                  style={{ width: 52, textAlign: "center", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 0", fontSize: 18, color: C.text1, outline: "none" }} />
+                <input value={draft.title} onChange={(e) => setD("title", e.target.value)} placeholder="Título do evento"
+                  style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                <input type="date" value={draft.date} onChange={(e) => setD("date", e.target.value)}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, color: C.text1, outline: "none", colorScheme: "dark" }} />
+                <input type="time" value={draft.time} onChange={(e) => setD("time", e.target.value)}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, color: C.text1, outline: "none", colorScheme: "dark" }} />
+              </div>
+              <textarea value={draft.desc} onChange={(e) => setD("desc", e.target.value)} placeholder="Descrição" rows={2}
+                style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, color: C.text1, outline: "none", resize: "none", fontFamily: "inherit", marginBottom: 10 }} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                <select value={draft.kind} onChange={(e) => setD("kind", e.target.value)}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 8px", fontSize: 13, color: C.text1, outline: "none" }}>
+                  <option value="">Entrada livre</option>
+                  <option value="mesa">Reserva de mesa</option>
+                  <option value="bilhete">Bilhete</option>
+                </select>
+                <input type="number" min="0" value={draft.price} onChange={(e) => setD("price", Number(e.target.value))} placeholder="Preço €" disabled={!draft.kind}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, color: draft.kind ? C.text1 : C.text3, outline: "none" }} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <BtnPrimary onClick={submitEvent} style={{ flex: 1 }}>Publicar evento</BtnPrimary>
+                <button onClick={() => { setComposing(false); setDraft(EMPTY_EVENT); }} style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {events.length === 0 && !composing && (
+            <div style={{ ...cardStyle, textAlign: "center", padding: "28px 20px", color: C.text2, fontSize: 13 }}>
+              Ainda não há eventos no clube.
+            </div>
+          )}
+
           {events.map((ev) => {
             const priceLabel = ev.kind === "mesa" ? `Mesa · ${fmtEUR(ev.price)}` : ev.kind === "bilhete" ? `Bilhete · ${fmtEUR(ev.price)}` : "Entrada livre";
             return (
@@ -113,6 +174,13 @@ export default function ClubeTab({
                     <div style={{ fontSize: 14, fontWeight: 800 }}>{ev.title}</div>
                     <div style={{ fontSize: 11, color: C.text2 }}>{fmtFullDay(ev.date)} · {ev.time} · {priceLabel}</div>
                   </div>
+                  {isAdmin && onDeleteEvent && (
+                    <button onClick={() => window.confirm("Apagar este evento?") && onDeleteEvent(ev.id)}
+                      title="Apagar evento"
+                      style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", padding: 4, flexShrink: 0, alignSelf: "flex-start" }}>
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
                 <div style={{ fontSize: 12, color: C.text2, lineHeight: 1.5, marginBottom: 12 }}>{ev.desc}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

@@ -1,18 +1,18 @@
-import { MessageCircle, ChevronRight, Link2 } from "lucide-react";
+import { useState } from "react";
+import { MessageCircle, ChevronRight, Copy, Check } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
-import { openWhatsApp, inviteMessage, accessLinkMessage } from "../lib/whatsapp";
+import { openWhatsApp, inviteMessage, groupInviteMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 
-export default function GrupoTab({ group, game, openProfile, cloudMode }) {
-  const sendAccessLink = (e, p) => {
-    e.stopPropagation(); // don't open the profile
-    const url = `${window.location.origin}?p=${p.magicToken}`;
-    openWhatsApp(accessLinkMessage(p.nick, game.groupName, url), p.phone);
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl }) {
+  const [copied, setCopied] = useState(false);
+  const copyInvite = async () => {
+    try { await navigator.clipboard.writeText(inviteUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
   const sections = [
     { label: "CONFIRMADOS",  items: group.filter((p) => p.status === "confirmed") },
@@ -51,16 +51,6 @@ export default function GrupoTab({ group, game, openProfile, cloudMode }) {
                     <div style={{ fontSize: 14, fontWeight: 800, color: reliability >= 80 ? C.green : reliability >= 60 ? C.orange : C.red }}>{reliability}%</div>
                     <div style={{ fontSize: 10, color: C.text3 }}>fiável</div>
                   </div>
-                  {cloudMode && p.magicToken && !p.isMe && (
-                    <span
-                      role="button"
-                      title="Enviar link de acesso pessoal"
-                      onClick={(e) => sendAccessLink(e, p)}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: `${C.whatsapp}1A`, border: `1px solid ${C.whatsapp}55`, cursor: "pointer", flexShrink: 0 }}
-                    >
-                      <Link2 size={14} color={C.whatsapp} />
-                    </span>
-                  )}
                   <ChevronRight size={15} color={C.text3} />
                 </button>
               );
@@ -72,10 +62,23 @@ export default function GrupoTab({ group, game, openProfile, cloudMode }) {
       <div style={{ ...cardStyle, textAlign: "center", padding: "22px 20px", marginBottom: 24 }}>
         <div style={{ fontSize: 24, marginBottom: 8 }}>👤</div>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Adicionar ao grupo</div>
-        <div style={{ fontSize: 12, color: C.text2, marginBottom: 14 }}>Convida um amigo pelo link ou WhatsApp</div>
-        <button onClick={() => openWhatsApp(inviteMessage(game.groupName, game))} style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <MessageCircle size={14} /> Convidar
-        </button>
+        <div style={{ fontSize: 12, color: C.text2, marginBottom: 14 }}>
+          {inviteUrl ? "Partilha o link de convite — quem abrir cria conta e entra logo no grupo." : "Convida um amigo pelo link ou WhatsApp"}
+        </div>
+        {inviteUrl ? (
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+            <button onClick={() => openWhatsApp(groupInviteMessage(game.groupName, inviteUrl))} style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: "10px 18px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <MessageCircle size={14} /> Convidar
+            </button>
+            <button onClick={copyInvite} style={{ background: C.card, color: copied ? C.green : C.text1, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 12, padding: "10px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {copied ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Link</>}
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => openWhatsApp(inviteMessage(game.groupName, game))} style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <MessageCircle size={14} /> Convidar
+          </button>
+        )}
       </div>
     </div>
   );

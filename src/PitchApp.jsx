@@ -5,20 +5,20 @@
  * Replace the WhatsApp chaos: confirmations, payments,
  * stats, MVP voting, team draw, equipment.
  *
- * State lives here (lifted to the root) and persists to
- * localStorage. See CLAUDE.md for the backend plan (Supabase) —
- * when it lands, these handlers become the thin data layer's
- * mutation calls, and the local "session" is replaced by
- * magic-link auth.
+ * Two runtime modes:
+ *  - Cloud (Supabase keys present): real accounts, groups created
+ *    from scratch, invite links, admin events, realtime slot grid.
+ *  - Local demo (no keys): the original localStorage prototype.
  */
 import { useEffect, useState } from "react";
 import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay } from "./lib/helpers";
-import { useCloudGroup } from "./hooks/useCloudGroup";
+import { useCloud } from "./hooks/useCloud";
 import LandingPage from "./components/LandingPage";
-import PickPlayer from "./components/PickPlayer";
+import AuthForm from "./components/AuthForm";
+import JoinGroup from "./components/JoinGroup";
 import RatePlayer from "./components/RatePlayer";
 import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
@@ -32,15 +32,21 @@ import GrupoTab from "./components/GrupoTab";
 import PerfilTab from "./components/PerfilTab";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
+const DEFAULT_ATTRS = { rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 };
 
-// Season totals stay device-local until the matchday PR moves them to
-// the cloud; seeded with the demo numbers, keyed by legacy player id.
+// Season totals stay device-local until a later PR; seeded with the
+// demo numbers (local mode), keyed by player id.
 const SEASON_EXTRAS = Object.fromEntries(
   INITIAL_GROUP.map((p) => [p.id, { goals: p.goals, assists: p.assists, mvps: p.mvps, gamesPlayed: p.gamesPlayed }])
 );
 
-// Seed uuids encode the prototype's numeric id in the last segment.
-const legacyId = (uuid) => parseInt(uuid.slice(-12), 10);
+// Stable positive integer from a uuid, so cloud players slot into the
+// local features that assume numeric ids (teams, matchday, posts…).
+const hashId = (uuid) => {
+  let h = 0;
+  for (let i = 0; i < uuid.length; i++) h = (h * 31 + uuid.charCodeAt(i)) >>> 0;
+  return h;
+};
 
 export default function PitchApp() {
   const [session, setSession]   = usePersistentState("session", { role: null, onboarded: false });
@@ -58,32 +64,43 @@ export default function PitchApp() {
   const [events, setEvents]     = usePersistentState("events", CLUB_EVENTS);
   const [openMatches, setOpenMatches] = usePersistentState("openMatches", OPEN_MATCHES);
   const [ownPublished, setOwnPublished] = usePersistentState("ownPublished", false);
-  const [identity, setIdentity] = usePersistentState("identity", null); // { uuid, token }
   const [extras, setExtras]     = usePersistentState("extras", SEASON_EXTRAS);
+  const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
+  const [pendingRole, setPendingRole] = useState(null);
   const [statMode, setStatMode] = useState("goals");
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
 
-  // ── Cloud sync (PR 1: roster + settings + attendances) ──
-  const cloud = useCloudGroup();
+  // ── Cloud (PR 2: auth + groups + invites + events) ─────
+  const cloud = useCloud();
+  const localMode = cloud.status === "off" || cloud.status === "failed";
   const cloudMode = cloud.status === "ready";
 
-  // Cloud rows → the app's player shape. Numeric legacy ids keep all
-  // local features (posts, teams, material…) working unchanged.
+  // ?join=<token>: attach the logged-in user to that group.
+  const joinParam = new URLSearchParams(window.location.search).get("join");
+  useEffect(() => {
+    if (!joinParam || !cloud.user) return;
+    cloud.joinGroupByToken(joinParam).finally(() => {
+      window.history.replaceState({}, "", window.location.pathname);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joinParam, cloud.user]);
+
+  // Cloud rows → the app's player shape.
   const baseGroup = cloudMode
     ? cloud.players.map((p) => {
         const att = cloud.attendances.find((a) => a.player_id === p.id);
-        const id = legacyId(p.id);
+        const id = hashId(p.id);
         const ex = extras[id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0 };
         return {
           id, uuid: p.id, name: p.name, nick: p.nick, email: p.email, phone: p.phone,
           photo: p.photo_url, age: p.age, nationality: p.nationality, club: p.club,
-          position: p.position, foot: p.foot, attrs: p.attrs,
-          isOrganizerPlayer: p.is_organizer, magicToken: p.magic_token,
+          position: p.position, foot: p.foot, attrs: p.attrs ?? DEFAULT_ATTRS,
+          isOrganizerPlayer: p.is_organizer,
           status: att?.status ?? "pending", paid: att?.paid ?? false,
-          isMe: identity?.uuid === p.id, ...ex,
+          isMe: cloud.myPlayer?.id === p.id, ...ex,
         };
       })
     : group;
@@ -108,22 +125,9 @@ export default function PitchApp() {
   };
 
   const me = baseGroup.find((p) => p.isMe);
+  const gameId = cloud.game?.id;
 
-  // Magic link (?p=token): identifies this device as that player.
-  const pToken = new URLSearchParams(window.location.search).get("p");
-  useEffect(() => {
-    if (!pToken || cloud.status !== "ready") return;
-    const pl = cloud.players.find((x) => x.magic_token === pToken);
-    if (pl) {
-      setIdentity({ uuid: pl.id, token: pToken });
-      setSession({ role: pl.is_organizer ? "organizer" : "player", onboarded: true });
-    }
-    window.history.replaceState({}, "", window.location.pathname);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pToken, cloud.status]);
-
-  // Card attrs shown everywhere = 50/50 blend of self-assessment and
-  // friends' ratings; selfAttrs keeps the editable original.
+  // Card attrs = 50/50 blend of self-assessment and friends' ratings.
   const displayGroup = baseGroup.map((p) =>
     p.isMe && peerRatings.length
       ? { ...p, attrs: blendAttrs(p.attrs, peerRatings.map((r) => r.a)), selfAttrs: p.attrs }
@@ -137,7 +141,7 @@ export default function PitchApp() {
     return true;
   };
 
-  // The "next game" as the UI consumes it — derived from organizer settings.
+  // The "next game" as the UI consumes it.
   const game = {
     ...groupSettings,
     label: groupSettings.groupName,
@@ -148,19 +152,19 @@ export default function PitchApp() {
 
   const togglePaid = (id) => {
     const player = baseGroup.find((p) => p.id === id);
-    if (cloudMode) cloud.setPaid(player.uuid, !player.paid);
+    if (cloudMode) cloud.setPaid(!player.paid, player.uuid, gameId);
     else setGroup((g) => g.map((p) => (p.id === id ? { ...p, paid: !p.paid } : p)));
   };
 
   const payMine = () => {
-    if (cloudMode && me) cloud.setPaid(me.uuid, true);
+    if (cloudMode && me) cloud.setPaid(true, me.uuid, gameId);
     else setGroup((g) => g.map((p) => (p.isMe ? { ...p, paid: true } : p)));
   };
 
   const toggleMyStatus = (newStatus) => {
     if (cloudMode && me) {
-      cloud.setMyStatus(me.uuid, newStatus);
-      if (newStatus !== "confirmed" && me.paid) cloud.setPaid(me.uuid, false);
+      cloud.setMyStatus(newStatus, me.uuid, gameId);
+      if (newStatus !== "confirmed" && me.paid) cloud.setPaid(false, me.uuid, gameId);
     } else {
       setGroup((g) => g.map((p) => (p.isMe ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false } : p)));
     }
@@ -169,15 +173,13 @@ export default function PitchApp() {
 
   const toggleMaterial = (id) =>
     setMaterial((m) => m.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
-
   const assignMaterial = (id, playerId) =>
     setMaterial((m) => m.map((x) => (x.id === id ? { ...x, assignedTo: playerId } : x)));
-
   const addMaterial = (item) =>
     setMaterial((m) => [...m, { id: Date.now(), item, assignedTo: null, done: false }]);
 
   const updateProfile = (form) => {
-    const { selfAttrs: _ignored, ...rest } = form; // display-only field
+    const { selfAttrs: _ignored, ...rest } = form;
     if (cloudMode && me) {
       cloud.updatePlayer(me.uuid, {
         name: rest.name, nick: rest.nick, email: rest.email, phone: rest.phone,
@@ -190,9 +192,7 @@ export default function PitchApp() {
     }
   };
 
-  // Position-balanced team draw: shuffle, group by position,
-  // alternate assignment so each team gets a spread. Stores ids
-  // so the roster stays the single source of truth.
+  // Position-balanced team draw.
   const drawTeams = () => {
     const confirmed = baseGroup.filter((p) => p.status === "confirmed");
     const shuffled = [...confirmed].sort(() => Math.random() - 0.5);
@@ -202,18 +202,14 @@ export default function PitchApp() {
     setTeams({ a, b });
   };
 
-  // ── Live matchday ──────────────────────────────────────
+  // ── Live matchday (still local) ────────────────────────
   const startMatchday = () =>
     setMatchday({ startedAt: Date.now(), matches: [{ id: Date.now(), n: 1, events: [] }] });
-
   const addMatch = () =>
     setMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, events: [] }] }));
-
   const addGoal = (matchId, event) =>
     setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
 
-  /** Close the matchday: per-player stats (goals/assists + clean sheets
-   *  for GR/Defesa), season totals, history entry, MVP vote opens. */
   const endMatchday = () => {
     if (!matchday) return;
     if (!window.confirm("Terminar o dia de jogo? As stats entram para a época e abre a votação MVP.")) return;
@@ -242,19 +238,19 @@ export default function PitchApp() {
     });
 
     const confirmed = baseGroup.filter((p) => p.status === "confirmed");
-    if (cloudMode) {
-      setExtras((ex) => {
-        const out = { ...ex };
-        baseGroup.forEach((p) => {
-          const s = stats[p.id];
-          const played = p.status === "confirmed";
-          if (!s && !played) return;
-          const cur = out[p.id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0 };
-          out[p.id] = { ...cur, goals: cur.goals + (s?.goals ?? 0), assists: cur.assists + (s?.assists ?? 0), gamesPlayed: cur.gamesPlayed + (played ? 1 : 0) };
-        });
-        return out;
+    setExtras((ex) => {
+      const out = { ...ex };
+      baseGroup.forEach((p) => {
+        const s = stats[p.id];
+        const played = p.status === "confirmed";
+        if (!s && !played) return;
+        const cur = out[p.id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0 };
+        out[p.id] = { ...cur, goals: cur.goals + (s?.goals ?? 0), assists: cur.assists + (s?.assists ?? 0), gamesPlayed: cur.gamesPlayed + (played ? 1 : 0) };
       });
-    } else {
+      return out;
+    });
+    // Local mode also mirrors totals onto the group rows it renders from.
+    if (!cloudMode) {
       setGroup((g) => g.map((p) => {
         const s = stats[p.id];
         const played = p.status === "confirmed";
@@ -282,19 +278,44 @@ export default function PitchApp() {
     setMatchday(null);
   };
 
-  // ── Club: bookings, events, open matches ───────────────
-  const toggleBooking = (court, date, hour) =>
-    setBookings((bs) => {
-      const mine = bs.find((b) => b.court === court && b.date === date && b.hour === hour && b.mine);
-      if (mine) return bs.filter((b) => b !== mine);
-      return [...bs, { id: Date.now(), court, date, hour, groupName: groupSettings.groupName, mine: true }];
-    });
+  // ── Club: events + bookings ────────────────────────────
+  const cloudEvents = cloudMode
+    ? cloud.events.map((e) => ({
+        id: e.id, emoji: e.emoji, title: e.title, date: e.day, time: e.event_time,
+        desc: e.description, kind: e.kind, price: (e.price_cents || 0) / 100,
+        going: e.going ?? 0, myStatus: eventStatus[e.id] ?? null,
+      }))
+    : events;
 
-  const rsvpEvent = (id, cancel = false) =>
-    setEvents((es) => es.map((e) => (e.id === id ? { ...e, myStatus: cancel ? null : "going" } : e)));
+  const cloudBookings = cloudMode
+    ? cloud.bookings.map((b) => ({
+        id: b.id, court: b.court, date: b.day, hour: b.hour,
+        groupName: b.groups?.name ?? "Reservado", mine: b.group_id === cloud.groupRow?.id,
+      }))
+    : bookings;
 
-  const payEvent = (id) =>
-    setEvents((es) => es.map((e) => (e.id === id ? { ...e, myStatus: "paid" } : e)));
+  const toggleBooking = (court, date, hour) => {
+    if (cloudMode) {
+      const mine = cloud.bookings.find((b) => b.court === court && b.day === date && b.hour === hour && b.group_id === cloud.groupRow?.id);
+      if (mine) cloud.removeBooking(mine.id);
+      else cloud.addBooking(court, date, hour);
+    } else {
+      setBookings((bs) => {
+        const mine = bs.find((b) => b.court === court && b.date === date && b.hour === hour && b.mine);
+        if (mine) return bs.filter((b) => b !== mine);
+        return [...bs, { id: Date.now(), court, date, hour, groupName: groupSettings.groupName, mine: true }];
+      });
+    }
+  };
+
+  const rsvpEvent = (id, cancel = false) => {
+    if (cloudMode) setEventStatus((s) => ({ ...s, [id]: cancel ? null : "going" }));
+    else setEvents((es) => es.map((e) => (e.id === id ? { ...e, myStatus: cancel ? null : "going" } : e)));
+  };
+  const payEvent = (id) => {
+    if (cloudMode) setEventStatus((s) => ({ ...s, [id]: "paid" }));
+    else setEvents((es) => es.map((e) => (e.id === id ? { ...e, myStatus: "paid" } : e)));
+  };
 
   const joinOpenMatch = (id) =>
     setOpenMatches((ms) => ms.map((m) => (m.id === id && m.spotsLeft > 0 ? { ...m, spotsLeft: m.spotsLeft - 1, joined: true } : m)));
@@ -302,29 +323,17 @@ export default function PitchApp() {
   const openProfile = (id) => { setViewPlayerId(id); setTab("perfil"); };
   const backToMe = () => setViewPlayerId(null);
 
-  // Back to the marketing page on logout; back from onboarding only
-  // returns to the role pick.
-  const logout = () => { setSession({ role: null, onboarded: false }); setAuthOpen(false); setIdentity(null); };
+  // ── Session / auth gating ──────────────────────────────
+  const logout = () => {
+    if (cloudMode || cloud.user) cloud.signOut();
+    setSession({ role: null, onboarded: false });
+    setAuthOpen(false);
+    setPendingRole(null);
+  };
   const backToRolePick = () => setSession({ role: null, onboarded: false });
 
-  // Cloud mode: profiles already exist, so picking a role claims an
-  // identity instead of creating a profile.
-  const handlePickRole = (role) => {
-    if (cloudMode && role === "organizer") {
-      const org = baseGroup.find((p) => p.isOrganizerPlayer);
-      if (org) setIdentity({ uuid: org.uuid, token: org.magicToken });
-      setSession({ role, onboarded: true });
-      return;
-    }
-    setSession({ role, onboarded: false });
-  };
-
-  const claimPlayer = (id) => {
-    const pl = baseGroup.find((p) => p.id === id);
-    if (!pl) return;
-    setIdentity({ uuid: pl.uuid, token: pl.magicToken });
-    setSession({ role: pl.isOrganizerPlayer ? "organizer" : "player", onboarded: true });
-  };
+  // Local-demo role pick (no Supabase).
+  const handlePickRole = (role) => setSession({ role, onboarded: false });
 
   const resetDemo = () => {
     if (window.confirm("Repor os dados de demonstração? As alterações locais serão perdidas.")) {
@@ -342,44 +351,76 @@ export default function PitchApp() {
   // ── "Rate me" link (?rate=payload) — no login needed ───
   const rateParam = new URLSearchParams(window.location.search).get("rate");
   if (rateParam) {
-    // '+' in base64 arrives as a space after URL decoding — restore it.
     return shell(<RatePlayer payload={rateParam.replace(/ /g, "+")} />);
   }
 
-  // Cloud sync in flight — short splash before any gate decisions
-  if (cloud.status === "loading") {
-    return shell(
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
-        <img src={BRAND.logo} alt="PITCH Club" style={{ height: 30 }} />
-        <div style={{ fontSize: 13, color: C.text2 }}>A ligar ao clube…</div>
-      </div>
-    );
-  }
+  // Default profile from the signed-up account's metadata.
+  const meta = cloud.user?.user_metadata || {};
+  const profileDefaults = {
+    name: meta.name || "", nick: (meta.name || "").split(" ")[0] || "",
+    phone: meta.phone || "", age: 25, nationality: "🇵🇹 Portugal", club: "FC Porto",
+    position: "Médio", foot: "Direito", attrs: { ...DEFAULT_ATTRS },
+  };
 
-  // ── Marketing page → auth gate ─────────────────────────
-  if (!session.role) {
-    if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} />;
-    return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} />);
-  }
+  // ═══ CLOUD MODE GATING ═════════════════════════════════
+  if (!localMode) {
+    if (cloud.status === "loading") {
+      return shell(
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+          <img src={BRAND.logo} alt="PITCH Club" style={{ height: 30 }} />
+          <div style={{ fontSize: 13, color: C.text2 }}>A ligar ao clube…</div>
+        </div>
+      );
+    }
 
-  if (!session.onboarded || (cloudMode && !me)) {
-    return shell(
-      cloudMode ? (
-        <PickPlayer players={baseGroup} groupName={groupSettings.groupName} onPick={claimPlayer} onBack={backToRolePick} />
-      ) : session.role === "player" ? (
-        <OnboardingPlayer
-          me={me}
-          onBack={backToRolePick}
-          onDone={(form) => { updateProfile(form); setSession((s) => ({ ...s, onboarded: true })); }}
-        />
-      ) : (
+    if (cloud.status === "anon") {
+      if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} />;
+      return shell(<AuthForm onSignUp={cloud.signUp} onSignIn={cloud.signIn} onBack={() => setAuthOpen(false)} />);
+    }
+
+    if (cloud.status === "needsProfile") {
+      if (!pendingRole) {
+        return shell(<AuthLanding onPick={setPendingRole} onBack={logout} />);
+      }
+      if (pendingRole === "player") {
+        return shell(
+          <OnboardingPlayer
+            me={profileDefaults}
+            onBack={() => setPendingRole(null)}
+            onDone={(form) => cloud.createPlayerProfile(form)}
+          />
+        );
+      }
+      return shell(
         <OnboardingOrganizer
-          settings={settings}
-          onBack={backToRolePick}
-          onDone={(form) => { setSettings(form); setSession((s) => ({ ...s, onboarded: true })); }}
+          settings={DEFAULT_SETTINGS}
+          onBack={() => setPendingRole(null)}
+          onDone={(form) => cloud.createGroupAsOrganizer(form, { ...profileDefaults, name: profileDefaults.name || cloud.user.email, nick: profileDefaults.nick || "Eu" })}
         />
-      )
-    );
+      );
+    }
+
+    if (cloud.status === "needsGroup") {
+      return shell(<JoinGroup onJoin={cloud.joinGroupByToken} onLogout={logout} />);
+    }
+    // status 'ready' → fall through to the app
+  } else {
+    // ═══ LOCAL DEMO GATING ═══════════════════════════════
+    if (!session.role) {
+      if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} />;
+      return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} />);
+    }
+    if (!session.onboarded) {
+      return shell(
+        session.role === "player" ? (
+          <OnboardingPlayer me={me} onBack={backToRolePick}
+            onDone={(form) => { updateProfile(form); setSession((s) => ({ ...s, onboarded: true })); }} />
+        ) : (
+          <OnboardingOrganizer settings={settings} onBack={backToRolePick}
+            onDone={(form) => { setSettings(form); setSession((s) => ({ ...s, onboarded: true })); }} />
+        )
+      );
+    }
   }
 
   // Organizer re-editing group settings from the profile tab
@@ -393,6 +434,11 @@ export default function PitchApp() {
     );
   }
 
+  const isOrganizer = cloudMode ? Boolean(me?.isOrganizerPlayer) : session.role === "organizer";
+  const inviteUrl = cloudMode && cloud.groupRow?.invite_token
+    ? `${window.location.origin}?join=${cloud.groupRow.invite_token}`
+    : null;
+
   // ── Main app ───────────────────────────────────────────
   return shell(
     <>
@@ -402,53 +448,38 @@ export default function PitchApp() {
       <div style={{ paddingBottom: 80 }}>
         {tab === "jogo" && (
           <JogoTab
-            group={displayGroup}
-            game={game}
-            togglePaid={togglePaid}
-            toggleMyStatus={toggleMyStatus}
-            payMine={payMine}
-            material={material}
-            toggleMaterial={toggleMaterial}
-            assignMaterial={assignMaterial}
-            addMaterial={addMaterial}
-            teams={teams}
-            drawTeams={drawTeams}
+            group={displayGroup} game={game}
+            togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
+            material={material} toggleMaterial={toggleMaterial} assignMaterial={assignMaterial} addMaterial={addMaterial}
+            teams={teams} drawTeams={drawTeams}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
           />
         )}
         {tab === "clube" && (
           <ClubeTab
-            bookings={bookings}
-            toggleBooking={toggleBooking}
-            events={events}
-            rsvpEvent={rsvpEvent}
-            payEvent={payEvent}
-            openMatches={openMatches}
-            joinOpenMatch={joinOpenMatch}
+            bookings={cloudBookings} toggleBooking={toggleBooking}
+            events={cloudEvents} rsvpEvent={rsvpEvent} payEvent={payEvent}
+            openMatches={openMatches} joinOpenMatch={joinOpenMatch}
             ownOpenSpots={Math.max(0, game.spots - baseGroup.filter((p) => p.status === "confirmed").length)}
-            ownPublished={ownPublished}
-            publishOwnGame={() => setOwnPublished((v) => !v)}
+            ownPublished={ownPublished} publishOwnGame={() => setOwnPublished((v) => !v)}
             game={game}
+            isAdmin={cloud.isAdmin}
+            onCreateEvent={cloud.createEvent}
+            onDeleteEvent={cloud.deleteEvent}
           />
         )}
         {tab === "social" && <SocialTab group={displayGroup} posts={posts} setPosts={setPosts} meId={me.id} />}
         {tab === "stats" && (
           <StatsTab group={displayGroup} history={history} lastMatchday={lastMatchday} mvpVote={mvpVote} setMvpVote={setMvpVote} statMode={statMode} setStatMode={setStatMode} />
         )}
-        {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} />}
+        {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} />}
         {tab === "perfil" && (
           <PerfilTab
             key={viewPlayerId ?? "me"}
-            group={displayGroup}
-            viewPlayerId={viewPlayerId}
-            updateProfile={updateProfile}
-            backToMe={backToMe}
-            resetDemo={resetDemo}
-            isOrganizer={session.role === "organizer"}
-            onEditGroup={() => setEditingGroup(true)}
-            logout={logout}
-            peerRatings={peerRatings}
-            addPeerRating={addPeerRating}
+            group={displayGroup} viewPlayerId={viewPlayerId}
+            updateProfile={updateProfile} backToMe={backToMe} resetDemo={resetDemo}
+            isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} logout={logout}
+            peerRatings={peerRatings} addPeerRating={addPeerRating}
           />
         )}
       </div>
