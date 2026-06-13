@@ -34,6 +34,10 @@ import PerfilTab from "./components/PerfilTab";
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 const DEFAULT_ATTRS = { rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 };
 
+// Team draw supports 2–6 teams; each gets a colour and an editable name.
+const TEAM_PALETTE = ["#C8FF00", "#4895FF", "#FF9F0A", "#A78BFA", "#FF6B9D", "#2DD4BF"];
+const TEAM_NAMES = ["Coletes", "Sem coletes", "Equipa 3", "Equipa 4", "Equipa 5", "Equipa 6"];
+
 // Season totals stay device-local until a later PR; seeded with the
 // demo numbers (local mode), keyed by player id.
 const SEASON_EXTRAS = Object.fromEntries(
@@ -54,7 +58,7 @@ export default function PitchApp() {
   const [group, setGroup]       = usePersistentState("group", INITIAL_GROUP);
   const [material, setMaterial] = usePersistentState("material", INITIAL_MATERIAL);
   const [posts, setPosts]       = usePersistentState("posts", INITIAL_POSTS);
-  const [teams, setTeams]       = usePersistentState("teams", null);
+  const [teamsRaw, setTeams]    = usePersistentState("teams", null);
   const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", []);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votedFor: null });
   const [history, setHistory]   = usePersistentState("history", HISTORY);
@@ -127,6 +131,15 @@ export default function PitchApp() {
   const me = baseGroup.find((p) => p.isMe);
   const gameId = cloud.game?.id;
 
+  // Teams: array of { id, name, color, players:[playerId] }. Old saves
+  // used a { a:[], b:[] } object — ignore those (force a fresh draw).
+  const teams = Array.isArray(teamsRaw) ? teamsRaw : null;
+  useEffect(() => {
+    if (teamsRaw && !Array.isArray(teamsRaw)) setTeams(null);
+    if (matchday?.matches?.some((m) => m.homeId === undefined)) setMatchday(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Card attrs = 50/50 blend of self-assessment and friends' ratings.
   const displayGroup = baseGroup.map((p) =>
     p.isMe && peerRatings.length
@@ -192,21 +205,35 @@ export default function PitchApp() {
     }
   };
 
-  // Position-balanced team draw.
-  const drawTeams = () => {
+  // Position-balanced team draw into N (2–6) teams: shuffle, order by
+  // position, then snake-deal across teams so each gets a fair spread.
+  const drawTeams = (numTeams = 2) => {
+    const n = Math.max(2, Math.min(6, numTeams));
     const confirmed = baseGroup.filter((p) => p.status === "confirmed");
     const shuffled = [...confirmed].sort(() => Math.random() - 0.5);
-    const byPos = POSITIONS.flatMap((pos) => shuffled.filter((p) => p.position === pos));
-    const a = [], b = [];
-    byPos.forEach((p, i) => (i % 2 === 0 ? a : b).push(p.id));
-    setTeams({ a, b });
+    const order = POSITIONS.flatMap((pos) => shuffled.filter((p) => p.position === pos));
+    const newTeams = Array.from({ length: n }, (_, i) => ({
+      id: `t${i + 1}`, name: TEAM_NAMES[i], color: TEAM_PALETTE[i], players: [],
+    }));
+    order.forEach((p, idx) => {
+      const round = Math.floor(idx / n);
+      const slot = idx % n;
+      const ti = round % 2 === 0 ? slot : n - 1 - slot; // snake
+      newTeams[ti].players.push(p.id);
+    });
+    setTeams(newTeams);
   };
 
+  const renameTeam = (teamId, name) =>
+    setTeams((ts) => (Array.isArray(ts) ? ts.map((t) => (t.id === teamId ? { ...t, name } : t)) : ts));
+
   // ── Live matchday (still local) ────────────────────────
-  const startMatchday = (mode = "avulsa") =>
-    setMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, events: [] }] });
-  const addMatch = () =>
-    setMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, events: [] }] }));
+  const startMatchday = (mode = "avulsa") => {
+    if (!teams || teams.length < 2) return;
+    setMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, homeId: teams[0].id, awayId: teams[1].id, events: [] }] });
+  };
+  const addMatch = (homeId, awayId) =>
+    setMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, homeId, awayId, events: [] }] }));
   const addGoal = (matchId, event) =>
     setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
 
@@ -222,21 +249,32 @@ export default function PitchApp() {
     };
     matchday.matches.forEach((m) => m.events.forEach((e) => { bump(e.scorerId, "goals"); bump(e.assistId, "assists"); }));
 
-    let totalA = 0, totalB = 0;
+    const teamsById = Object.fromEntries((teams || []).map((t) => [t.id, t]));
+    const teamResults = (teams || []).map((t) => ({ id: t.id, name: t.name, color: t.color, wins: 0 }));
+    const winsById = Object.fromEntries(teamResults.map((t) => [t.id, t]));
+    const mdMatches = [];
+    let totalGoals = 0;
+
     matchday.matches.forEach((m) => {
-      const ga = m.events.filter((e) => e.team === "a").length;
-      const gb = m.events.filter((e) => e.team === "b").length;
-      totalA += ga; totalB += gb;
-      const awardCleanSheet = (ids) => ids.forEach((id) => {
-        const p = baseGroup.find((x) => x.id === id);
-        if (p && (p.position === "Guarda-redes" || p.position === "Defesa")) bump(id, "cleanSheets");
-      });
-      if (teams) {
-        if (gb === 0) awardCleanSheet(teams.a);
-        if (ga === 0) awardCleanSheet(teams.b);
-        const winners = ga > gb ? teams.a : gb > ga ? teams.b : null;
-        if (winners) winners.forEach((id) => bump(id, "wins"));
+      const hg = m.events.filter((e) => e.teamId === m.homeId).length;
+      const ag = m.events.filter((e) => e.teamId === m.awayId).length;
+      const home = teamsById[m.homeId], away = teamsById[m.awayId];
+      totalGoals += hg + ag;
+      const awardCleanSheet = (team, conceded) => {
+        if (conceded !== 0 || !team) return;
+        team.players.forEach((id) => {
+          const p = baseGroup.find((x) => x.id === id);
+          if (p && (p.position === "Guarda-redes" || p.position === "Defesa")) bump(id, "cleanSheets");
+        });
+      };
+      awardCleanSheet(home, ag);
+      awardCleanSheet(away, hg);
+      const winId = hg > ag ? m.homeId : ag > hg ? m.awayId : null;
+      if (winId) {
+        if (winsById[winId]) winsById[winId].wins += 1;
+        (teamsById[winId]?.players || []).forEach((id) => bump(id, "wins"));
       }
+      mdMatches.push({ n: m.n, homeName: home?.name ?? "—", awayName: away?.name ?? "—", homeGoals: hg, awayGoals: ag });
     });
 
     const confirmed = baseGroup.filter((p) => p.status === "confirmed");
@@ -263,16 +301,13 @@ export default function PitchApp() {
 
     const date = fmtDayMonth(isoDay(0));
     setHistory((h) => [{
-      id: Date.now(), date, confirmed: confirmed.length, result: `${totalA}–${totalB}`,
+      id: Date.now(), date, confirmed: confirmed.length, result: `${totalGoals}⚽`,
       allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length,
     }, ...h]);
     setLastMatchday({
-      date,
-      matches: matchday.matches.map((m) => ({
-        n: m.n,
-        scoreA: m.events.filter((e) => e.team === "a").length,
-        scoreB: m.events.filter((e) => e.team === "b").length,
-      })),
+      date, mode: matchday.mode,
+      matches: mdMatches,
+      teamResults,
       playerStats: stats,
       playerIds: confirmed.map((p) => p.id),
     });
@@ -453,7 +488,7 @@ export default function PitchApp() {
             group={displayGroup} game={game}
             togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
             material={material} toggleMaterial={toggleMaterial} assignMaterial={assignMaterial} addMaterial={addMaterial}
-            teams={teams} drawTeams={drawTeams}
+            teams={teams} drawTeams={drawTeams} renameTeam={renameTeam}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
             lastMatchday={lastMatchday}
           />

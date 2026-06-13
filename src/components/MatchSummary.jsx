@@ -3,13 +3,12 @@ import { C, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
 import Avatar from "./Avatar";
 
-const TEAM = { a: { label: "Coletes", color: C.accent }, b: { label: "S/ Coletes", color: C.blue } };
 const MEDAL = ["#E8C547", "#C0C8D0", "#C9824F"]; // gold / silver / bronze
 
 /** Summary of the CURRENT matchday's games (or the last finished one):
- *  team wins, top scorers and top assisters — built from those matches,
- *  not the season totals. */
-export default function MatchSummary({ matchday, lastMatchday, group }) {
+ *  wins per TEAM, top scorers and top assisters — built from those
+ *  matches, not the season totals. */
+export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
   const byId = (id) => group.find((p) => p.id === id);
   const live = Boolean(matchday);
   const source = matchday || lastMatchday;
@@ -24,30 +23,34 @@ export default function MatchSummary({ matchday, lastMatchday, group }) {
   }
 
   const scorers = {}, assists = {};
-  const teamWins = { a: 0, b: 0, draws: 0 };
+  let teamWins = [];
   let nGames = 0;
 
   if (live) {
+    const tally = {};
+    (teams || []).forEach((t) => { tally[t.id] = { name: t.name, color: t.color, wins: 0 }; });
     matchday.matches.forEach((m) => {
       nGames++;
-      const ga = m.events.filter((e) => e.team === "a").length;
-      const gb = m.events.filter((e) => e.team === "b").length;
-      if (ga > gb) teamWins.a++; else if (gb > ga) teamWins.b++; else teamWins.draws++;
+      const hg = m.events.filter((e) => e.teamId === m.homeId).length;
+      const ag = m.events.filter((e) => e.teamId === m.awayId).length;
+      if (hg > ag && tally[m.homeId]) tally[m.homeId].wins++;
+      else if (ag > hg && tally[m.awayId]) tally[m.awayId].wins++;
       m.events.forEach((e) => {
         scorers[e.scorerId] = (scorers[e.scorerId] || 0) + 1;
         if (e.assistId) assists[e.assistId] = (assists[e.assistId] || 0) + 1;
       });
     });
+    teamWins = Object.values(tally);
   } else {
-    (lastMatchday.matches || []).forEach((m) => {
-      nGames++;
-      if (m.scoreA > m.scoreB) teamWins.a++; else if (m.scoreB > m.scoreA) teamWins.b++; else teamWins.draws++;
-    });
+    nGames = (lastMatchday.matches || []).length;
+    teamWins = lastMatchday.teamResults || [];
     Object.entries(lastMatchday.playerStats || {}).forEach(([id, s]) => {
       if (s.goals) scorers[id] = s.goals;
       if (s.assists) assists[id] = s.assists;
     });
   }
+
+  teamWins = [...teamWins].sort((a, b) => b.wins - a.wins);
 
   const top3 = (map) => Object.entries(map)
     .map(([id, v]) => ({ p: byId(Number(id)) ?? byId(id), v }))
@@ -69,7 +72,7 @@ export default function MatchSummary({ matchday, lastMatchday, group }) {
         </span>
       </div>
       <div style={{ fontSize: 11, color: C.text2, marginBottom: 14 }}>
-        {matchday?.mode === "campeonato" ? "Campeonato" : matchday ? "Avulsa" : "Resultado do último dia de jogo"}
+        {source.mode === "campeonato" ? "Campeonato" : live ? "Avulsa" : "Resultado do último dia de jogo"}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
@@ -79,20 +82,19 @@ export default function MatchSummary({ matchday, lastMatchday, group }) {
             <Trophy size={12} color={C.gold} />
             <span style={{ fontSize: 10, fontWeight: 800, color: C.text2 }}>Vitórias</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {["a", "b"].map((k) => (
-              <div key={k} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 4, background: TEAM[k].color, flexShrink: 0 }} />
-                <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{TEAM[k].label}</span>
-                <span style={{ ...displayFont, fontSize: 15, color: TEAM[k].color }}>{teamWins[k]}</span>
-              </div>
-            ))}
-            {teamWins.draws > 0 && (
-              <div style={{ fontSize: 10, color: C.text3, textAlign: "center", marginTop: 2 }}>
-                {teamWins.draws} empate{teamWins.draws > 1 ? "s" : ""}
-              </div>
-            )}
-          </div>
+          {teamWins.length === 0 ? (
+            <div style={{ textAlign: "center", fontSize: 11, color: C.text3, padding: "8px 0" }}>—</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {teamWins.map((t, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 4, background: t.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+                  <span style={{ ...displayFont, fontSize: 14, color: t.color }}>{t.wins}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Artilheiros + Assistências */}

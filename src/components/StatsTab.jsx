@@ -42,13 +42,18 @@ export default function StatsTab({ group, history, lastMatchday, mvpVote, setMvp
           <SectionLabel>ÚLTIMO DIA DE JOGO · {lastMatchday.date.toUpperCase()}</SectionLabel>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: matchdayLines.length ? 14 : 0 }}>
             {lastMatchday.matches.map((m) => (
-              <div key={m.n} style={{ background: C.surface, borderRadius: 12, padding: "10px 14px", textAlign: "center", flex: 1, minWidth: 90 }}>
+              <div key={m.n} style={{ background: C.surface, borderRadius: 12, padding: "10px 12px", textAlign: "center", flex: 1, minWidth: 110 }}>
                 <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: 4 }}>JOGO {m.n}</div>
                 <div style={{ ...displayFont, fontSize: 20 }}>
-                  <span style={{ color: C.accent }}>{m.scoreA}</span>
+                  <span style={{ color: C.accent }}>{m.homeGoals ?? m.scoreA}</span>
                   <span style={{ color: C.text3 }}> – </span>
-                  <span style={{ color: C.blue }}>{m.scoreB}</span>
+                  <span style={{ color: C.blue }}>{m.awayGoals ?? m.scoreB}</span>
                 </div>
+                {(m.homeName || m.awayName) && (
+                  <div style={{ fontSize: 9, color: C.text3, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {m.homeName} vs {m.awayName}
+                  </div>
+                )}
               </div>
             ))}
           </div>

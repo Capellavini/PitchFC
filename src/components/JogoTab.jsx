@@ -17,9 +17,10 @@ import MatchSummary from "./MatchSummary";
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
-  teams, drawTeams, matchdayProps, lastMatchday,
+  teams, drawTeams, renameTeam, matchdayProps, lastMatchday,
 }) {
   const [newItem, setNewItem] = useState("");
+  const [numTeams, setNumTeams] = useState(teams?.length || 2);
 
   const confirmed = group.filter((p) => p.status === "confirmed");
   const pending   = group.filter((p) => p.status === "pending");
@@ -143,22 +144,34 @@ export default function JogoTab({
 
       {/* TEAM DRAW */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: teams ? 14 : 0 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>Sorteio de Equipas</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>
-              {confirmed.length >= game.spots ? "Equipa completa — pronto a sortear" : `Faltam ${spotsLeft} para sortear`}
-            </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Sorteio de Equipas</div>
+          <div style={{ fontSize: 11, color: C.text2 }}>
+            {confirmed.length < 2 ? "Faltam confirmações para sortear" : "Escolhe quantas equipas e sorteia — depois podes renomear."}
           </div>
+        </div>
+
+        {/* number of teams */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: C.text2 }}>Equipas:</span>
+          {[2, 3, 4, 5, 6].map((n) => {
+            const active = numTeams === n;
+            const disabled = n > confirmed.length;
+            return (
+              <button key={n} onClick={() => !disabled && setNumTeams(n)} disabled={disabled}
+                style={{ width: 32, height: 32, borderRadius: 9, background: active ? C.accent : C.surface, color: active ? C.bg : disabled ? C.text3 : C.text1, border: `1px solid ${active ? C.accent : C.border}`, fontSize: 13, fontWeight: 800, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1 }}>
+                {n}
+              </button>
+            );
+          })}
           <button
-            onClick={drawTeams}
+            onClick={() => drawTeams(numTeams)}
             disabled={confirmed.length < 2}
             style={{
-              background: confirmed.length >= game.spots ? C.accent : C.accentDim,
-              color: confirmed.length >= game.spots ? C.bg : C.accent,
-              border: `1px solid ${C.accentBorder}`,
+              marginLeft: "auto", background: confirmed.length >= 2 ? C.accent : C.accentDim,
+              color: confirmed.length >= 2 ? C.bg : C.accent, border: `1px solid ${C.accentBorder}`,
               borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 800,
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+              cursor: confirmed.length >= 2 ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6,
             }}
           >
             <Shuffle size={14} /> {teams ? "Re-sortear" : "Sortear"}
@@ -167,17 +180,25 @@ export default function JogoTab({
 
         {teams && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {[{ label: "COLETES", players: resolveTeam(teams.a), color: C.accent }, { label: "SEM COLETES", players: resolveTeam(teams.b), color: C.blue }].map((t) => (
-              <div key={t.label} style={{ background: C.surface, borderRadius: 12, padding: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: t.color, marginBottom: 10 }}>{t.label}</div>
+            {teams.map((t) => (
+              <div key={t.id} style={{ background: C.surface, borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 4, background: t.color, flexShrink: 0 }} />
+                  <input
+                    value={t.name}
+                    onChange={(e) => renameTeam(t.id, e.target.value)}
+                    style={{ flex: 1, minWidth: 0, background: "none", border: "none", borderBottom: `1px dashed ${C.border}`, color: t.color, fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", outline: "none", padding: "2px 0" }}
+                  />
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  {t.players.map((p) => (
+                  {resolveTeam(t.players).map((p) => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <div style={{ width: 6, height: 6, borderRadius: 3, background: t.color }} />
                       <span style={{ fontSize: 12, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1 }}>{p.nick}</span>
                       <span style={{ fontSize: 9, color: C.text3, marginLeft: "auto" }}>{p.position.slice(0, 3).toUpperCase()}</span>
                     </div>
                   ))}
+                  {t.players.length === 0 && <span style={{ fontSize: 11, color: C.text3 }}>sem jogadores</span>}
                 </div>
               </div>
             ))}
@@ -192,7 +213,7 @@ export default function JogoTab({
       <Matchday {...matchdayProps} group={group} teams={teams} />
 
       {/* MATCHDAY SUMMARY (current/last games) */}
-      <MatchSummary matchday={matchdayProps.matchday} lastMatchday={lastMatchday} group={group} />
+      <MatchSummary matchday={matchdayProps.matchday} lastMatchday={lastMatchday} teams={teams} group={group} />
 
       {/* PENDING */}
       {pending.length > 0 && (
