@@ -11,6 +11,8 @@ import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import Matchday from "./Matchday";
+import MatchTimer from "./MatchTimer";
+import StatsSummary from "./StatsSummary";
 
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
@@ -183,8 +185,14 @@ export default function JogoTab({
         )}
       </div>
 
+      {/* MATCH TIMER */}
+      <MatchTimer />
+
       {/* LIVE MATCHDAY */}
       <Matchday {...matchdayProps} group={group} teams={teams} />
+
+      {/* SEASON STATS SUMMARY */}
+      <StatsSummary group={group} />
 
       {/* PENDING */}
       {pending.length > 0 && (

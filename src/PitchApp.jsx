@@ -93,7 +93,7 @@ export default function PitchApp() {
     ? cloud.players.map((p) => {
         const att = cloud.attendances.find((a) => a.player_id === p.id);
         const id = hashId(p.id);
-        const ex = extras[id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0 };
+        const ex = extras[id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0, wins: 0 };
         return {
           id, uuid: p.id, name: p.name, nick: p.nick, email: p.email, phone: p.phone,
           photo: p.photo_url, age: p.age, nationality: p.nationality, club: p.club,
@@ -203,8 +203,8 @@ export default function PitchApp() {
   };
 
   // ── Live matchday (still local) ────────────────────────
-  const startMatchday = () =>
-    setMatchday({ startedAt: Date.now(), matches: [{ id: Date.now(), n: 1, events: [] }] });
+  const startMatchday = (mode = "avulsa") =>
+    setMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, events: [] }] });
   const addMatch = () =>
     setMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, events: [] }] }));
   const addGoal = (matchId, event) =>
@@ -217,7 +217,7 @@ export default function PitchApp() {
     const stats = {};
     const bump = (id, key) => {
       if (!id) return;
-      stats[id] = stats[id] ?? { goals: 0, assists: 0, cleanSheets: 0 };
+      stats[id] = stats[id] ?? { goals: 0, assists: 0, cleanSheets: 0, wins: 0 };
       stats[id][key] += 1;
     };
     matchday.matches.forEach((m) => m.events.forEach((e) => { bump(e.scorerId, "goals"); bump(e.assistId, "assists"); }));
@@ -234,6 +234,8 @@ export default function PitchApp() {
       if (teams) {
         if (gb === 0) awardCleanSheet(teams.a);
         if (ga === 0) awardCleanSheet(teams.b);
+        const winners = ga > gb ? teams.a : gb > ga ? teams.b : null;
+        if (winners) winners.forEach((id) => bump(id, "wins"));
       }
     });
 
@@ -244,8 +246,8 @@ export default function PitchApp() {
         const s = stats[p.id];
         const played = p.status === "confirmed";
         if (!s && !played) return;
-        const cur = out[p.id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0 };
-        out[p.id] = { ...cur, goals: cur.goals + (s?.goals ?? 0), assists: cur.assists + (s?.assists ?? 0), gamesPlayed: cur.gamesPlayed + (played ? 1 : 0) };
+        const cur = out[p.id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0, wins: 0 };
+        out[p.id] = { ...cur, goals: cur.goals + (s?.goals ?? 0), assists: cur.assists + (s?.assists ?? 0), gamesPlayed: cur.gamesPlayed + (played ? 1 : 0), wins: (cur.wins || 0) + (s?.wins ?? 0) };
       });
       return out;
     });
@@ -255,7 +257,7 @@ export default function PitchApp() {
         const s = stats[p.id];
         const played = p.status === "confirmed";
         if (!s && !played) return p;
-        return { ...p, goals: p.goals + (s?.goals ?? 0), assists: p.assists + (s?.assists ?? 0), gamesPlayed: p.gamesPlayed + (played ? 1 : 0) };
+        return { ...p, goals: p.goals + (s?.goals ?? 0), assists: p.assists + (s?.assists ?? 0), gamesPlayed: p.gamesPlayed + (played ? 1 : 0), wins: (p.wins || 0) + (s?.wins ?? 0) };
       }));
     }
 
