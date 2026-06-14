@@ -29,6 +29,7 @@ function nextGameISO(weekday, time) {
 const EMPTY = {
   user: null, myPlayer: null, groupRow: null,
   players: [], game: null, attendances: [], events: [], bookings: [],
+  matchdays: [], mvpVotes: [],
 };
 
 export function useCloud() {
@@ -67,7 +68,21 @@ export function useCloud() {
         const a = await supabase.from("attendances").select("*").eq("game_id", game.id);
         attendances = a.data ?? [];
       }
-      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [] });
+
+      // Matchday history + the latest day's MVP votes. The matchdays
+      // table only exists after migration 3 — tolerate its absence.
+      let matchdays = [], mvpVotes = [];
+      const md = await supabase.from("matchdays").select("*").eq("group_id", gid)
+        .order("played_on", { ascending: false }).order("created_at", { ascending: false }).limit(12);
+      if (!md.error) {
+        matchdays = md.data ?? [];
+        if (matchdays[0]) {
+          const v = await supabase.from("matchday_votes").select("*").eq("matchday_id", matchdays[0].id);
+          mvpVotes = v.data ?? [];
+        }
+      }
+
+      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -100,6 +115,8 @@ export function useCloud() {
       .on("postgres_changes", { event: "*", schema: "public", table: "players" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "matchdays" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "matchday_votes" }, refetch)
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [refetch]);
@@ -234,6 +251,56 @@ export function useCloud() {
   };
   const removeBooking = async (id) => { await supabase.from("bookings").delete().eq("id", id); await refetch(); };
 
+  // ── Matchday close: bump season stats + record the day + MVP ──
+  /** statsByUuid: { [playerUuid]: { goals, assists, cleanSheets, wins, played } }
+   *  summary: { teamResults, matches, lines, candidates } (display-ready). */
+  const commitMatchday = async ({ statsByUuid, summary, totalGoals, mode, nGames }) => {
+    // Increment each affected player's season totals (read-modify-write;
+    // the organizer is the only writer so races aren't a concern).
+    const current = Object.fromEntries(data.players.map((p) => [p.id, p]));
+    const updates = Object.entries(statsByUuid).map(([uuid, s]) => {
+      const p = current[uuid];
+      if (!p) return null;
+      return supabase.from("players").update({
+        goals: (p.goals || 0) + (s.goals || 0),
+        assists: (p.assists || 0) + (s.assists || 0),
+        clean_sheets: (p.clean_sheets || 0) + (s.cleanSheets || 0),
+        wins: (p.wins || 0) + (s.wins || 0),
+        games_played: (p.games_played || 0) + (s.played ? 1 : 0),
+      }).eq("id", uuid);
+    }).filter(Boolean);
+    await Promise.all(updates);
+    await supabase.from("matchdays").insert({
+      group_id: data.groupRow.id, n_games: nGames, total_goals: totalGoals, mode,
+      summary, mvp_open: true,
+    });
+    await refetch();
+  };
+
+  const castMvpVote = async (matchdayId, votedForId) => {
+    if (!data.myPlayer) return;
+    await supabase.from("matchday_votes").upsert(
+      { matchday_id: matchdayId, voter_id: data.myPlayer.id, voted_for_id: votedForId },
+      { onConflict: "matchday_id,voter_id" });
+    await refetch();
+  };
+
+  /** Close voting: tally, store winner, +1 to their season MVPs. */
+  const closeMvp = async (matchdayId) => {
+    const votes = data.mvpVotes.filter((v) => v.matchday_id === matchdayId);
+    if (votes.length) {
+      const tally = {};
+      votes.forEach((v) => { tally[v.voted_for_id] = (tally[v.voted_for_id] || 0) + 1; });
+      const winnerId = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+      const winner = data.players.find((p) => p.id === winnerId);
+      if (winner) await supabase.from("players").update({ mvps: (winner.mvps || 0) + 1 }).eq("id", winnerId);
+      await supabase.from("matchdays").update({ mvp_open: false, mvp_id: winnerId }).eq("id", matchdayId);
+    } else {
+      await supabase.from("matchdays").update({ mvp_open: false }).eq("id", matchdayId);
+    }
+    await refetch();
+  };
+
   return {
     status, ...data,
     isAdmin: isAdminEmail(data.user?.email),
@@ -241,6 +308,7 @@ export function useCloud() {
     createPlayerProfile, createGroupAsOrganizer, joinGroupByToken,
     setMyStatus, setPaid, updatePlayer, updateGroupRow,
     createEvent, deleteEvent, addBooking, removeBooking,
+    commitMatchday, castMvpVote, closeMvp,
     refetch,
   };
 }

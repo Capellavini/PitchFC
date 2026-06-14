@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
-import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay } from "./lib/helpers";
+import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor } from "./lib/helpers";
 import { useCloud } from "./hooks/useCloud";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
@@ -37,12 +37,6 @@ const DEFAULT_ATTRS = { rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 };
 // Team draw supports 2–6 teams; each gets a colour and an editable name.
 const TEAM_PALETTE = ["#C8FF00", "#4895FF", "#FF9F0A", "#A78BFA", "#FF6B9D", "#2DD4BF"];
 const TEAM_NAMES = ["Coletes", "Sem coletes", "Equipa 3", "Equipa 4", "Equipa 5", "Equipa 6"];
-
-// Season totals stay device-local until a later PR; seeded with the
-// demo numbers (local mode), keyed by player id.
-const SEASON_EXTRAS = Object.fromEntries(
-  INITIAL_GROUP.map((p) => [p.id, { goals: p.goals, assists: p.assists, mvps: p.mvps, gamesPlayed: p.gamesPlayed }])
-);
 
 // Stable positive integer from a uuid, so cloud players slot into the
 // local features that assume numeric ids (teams, matchday, posts…).
@@ -68,7 +62,6 @@ export default function PitchApp() {
   const [events, setEvents]     = usePersistentState("events", CLUB_EVENTS);
   const [openMatches, setOpenMatches] = usePersistentState("openMatches", OPEN_MATCHES);
   const [ownPublished, setOwnPublished] = usePersistentState("ownPublished", false);
-  const [extras, setExtras]     = usePersistentState("extras", SEASON_EXTRAS);
   const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
@@ -97,14 +90,16 @@ export default function PitchApp() {
     ? cloud.players.map((p) => {
         const att = cloud.attendances.find((a) => a.player_id === p.id);
         const id = hashId(p.id);
-        const ex = extras[id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0, wins: 0 };
         return {
           id, uuid: p.id, name: p.name, nick: p.nick, email: p.email, phone: p.phone,
           photo: p.photo_url, age: p.age, nationality: p.nationality, club: p.club,
           position: p.position, foot: p.foot, attrs: p.attrs ?? DEFAULT_ATTRS,
           isOrganizerPlayer: p.is_organizer,
           status: att?.status ?? "pending", paid: att?.paid ?? false,
-          isMe: cloud.myPlayer?.id === p.id, ...ex,
+          isMe: cloud.myPlayer?.id === p.id,
+          // Season stats now live on the cloud player row (shared ranking).
+          goals: p.goals || 0, assists: p.assists || 0, mvps: p.mvps || 0,
+          gamesPlayed: p.games_played || 0, wins: p.wins || 0, cleanSheets: p.clean_sheets || 0,
         };
       })
     : group;
@@ -278,40 +273,42 @@ export default function PitchApp() {
     });
 
     const confirmed = baseGroup.filter((p) => p.status === "confirmed");
-    setExtras((ex) => {
-      const out = { ...ex };
+    const date = fmtDayMonth(isoDay(0));
+    const keyOf = (p) => (cloudMode ? p.uuid : p.id);
+
+    // Display-ready per-player lines (who did what today), sorted.
+    const lines = Object.entries(stats)
+      .map(([lid, s]) => {
+        const p = baseGroup.find((x) => x.id === Number(lid));
+        return p ? { key: keyOf(p), nick: p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.goals * 2 + b.assists) - (a.goals * 2 + a.assists));
+    const candidates = confirmed.map((p) => ({ key: keyOf(p), nick: p.nick, position: p.position }));
+    const summary = { teamResults: teamResults.map(({ id, ...r }) => r), matches: mdMatches, lines, candidates };
+
+    if (cloudMode) {
+      // Bump season totals on each player row + record the matchday;
+      // MVP voting opens in the cloud for everyone.
+      const statsByUuid = {};
       baseGroup.forEach((p) => {
         const s = stats[p.id];
         const played = p.status === "confirmed";
         if (!s && !played) return;
-        const cur = out[p.id] ?? { goals: 0, assists: 0, mvps: 0, gamesPlayed: 0, wins: 0 };
-        out[p.id] = { ...cur, goals: cur.goals + (s?.goals ?? 0), assists: cur.assists + (s?.assists ?? 0), gamesPlayed: cur.gamesPlayed + (played ? 1 : 0), wins: (cur.wins || 0) + (s?.wins ?? 0) };
+        statsByUuid[p.uuid] = { goals: s?.goals ?? 0, assists: s?.assists ?? 0, cleanSheets: s?.cleanSheets ?? 0, wins: s?.wins ?? 0, played };
       });
-      return out;
-    });
-    // Local mode also mirrors totals onto the group rows it renders from.
-    if (!cloudMode) {
+      cloud.commitMatchday({ statsByUuid, summary, totalGoals, mode: matchday.mode, nGames: matchday.matches.length });
+    } else {
       setGroup((g) => g.map((p) => {
         const s = stats[p.id];
         const played = p.status === "confirmed";
         if (!s && !played) return p;
         return { ...p, goals: p.goals + (s?.goals ?? 0), assists: p.assists + (s?.assists ?? 0), gamesPlayed: p.gamesPlayed + (played ? 1 : 0), wins: (p.wins || 0) + (s?.wins ?? 0) };
       }));
+      setHistory((h) => [{ id: Date.now(), date, confirmed: confirmed.length, result: `${totalGoals}⚽`, allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length }, ...h]);
+      setLastMatchday({ date, mode: matchday.mode, ...summary });
+      setMvpVote({ open: true, votedFor: null });
     }
-
-    const date = fmtDayMonth(isoDay(0));
-    setHistory((h) => [{
-      id: Date.now(), date, confirmed: confirmed.length, result: `${totalGoals}⚽`,
-      allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length,
-    }, ...h]);
-    setLastMatchday({
-      date, mode: matchday.mode,
-      matches: mdMatches,
-      teamResults,
-      playerStats: stats,
-      playerIds: confirmed.map((p) => p.id),
-    });
-    setMvpVote({ open: true, votedFor: null });
     setMatchday(null);
   };
 
@@ -476,6 +473,56 @@ export default function PitchApp() {
     ? `${window.location.origin}?join=${cloud.groupRow.invite_token}`
     : null;
 
+  // ── Normalized views for Stats/MVP (shared between cloud & local) ──
+  const nickByKey = (key) => baseGroup.find((p) => (cloudMode ? p.uuid : p.id) === key)?.nick;
+
+  let lastMatchdayView = null, historyView = [], mvp = null;
+  if (cloudMode) {
+    const rows = cloud.matchdays;
+    const last = rows[0];
+    if (last) {
+      lastMatchdayView = { date: fmtDayMonth(last.played_on), mode: last.mode, ...(last.summary || {}) };
+      const tally = {};
+      cloud.mvpVotes.forEach((v) => { tally[v.voted_for_id] = (tally[v.voted_for_id] || 0) + 1; });
+      mvp = {
+        open: last.mvp_open,
+        candidates: last.summary?.candidates ?? [],
+        myVote: cloud.mvpVotes.find((v) => v.voter_id === cloud.myPlayer?.id)?.voted_for_id ?? null,
+        tally,
+        winnerNick: last.mvp_id ? nickByKey(last.mvp_id) : null,
+        canClose: isOrganizer,
+        onVote: (key) => cloud.castMvpVote(last.id, key),
+        onClose: () => cloud.closeMvp(last.id),
+      };
+    }
+    historyView = rows.map((r) => ({
+      id: r.id, date: fmtDayMonth(r.played_on), result: `${r.total_goals}⚽`,
+      confirmed: r.summary?.candidates?.length ?? 0, games: r.n_games,
+      mvpNick: r.mvp_id ? nickByKey(r.mvp_id) : null,
+    }));
+  } else {
+    lastMatchdayView = lastMatchday;
+    historyView = history.map((g) => ({ ...g, mvpNick: g.mvpId ? baseGroup.find((p) => p.id === g.mvpId)?.nick : null }));
+    if (lastMatchday) {
+      mvp = {
+        open: mvpVote.open,
+        candidates: lastMatchday.candidates ?? [],
+        myVote: mvpVote.votedFor,
+        tally: null,
+        winnerNick: !mvpVote.open && mvpVote.votedFor ? baseGroup.find((p) => p.id === mvpVote.votedFor)?.nick : null,
+        canClose: true,
+        onVote: (key) => setMvpVote((v) => ({ ...v, votedFor: v.votedFor === key ? null : key })),
+        onClose: () => {
+          if (mvpVote.votedFor) {
+            setGroup((g) => g.map((p) => (p.id === mvpVote.votedFor ? { ...p, mvps: (p.mvps || 0) + 1 } : p)));
+            setHistory((h) => h.map((item, i) => (i === 0 ? { ...item, mvpId: mvpVote.votedFor } : item)));
+          }
+          setMvpVote((v) => ({ ...v, open: false }));
+        },
+      };
+    }
+  }
+
   // ── Main app ───────────────────────────────────────────
   return shell(
     <>
@@ -490,7 +537,7 @@ export default function PitchApp() {
             material={material} toggleMaterial={toggleMaterial} assignMaterial={assignMaterial} addMaterial={addMaterial}
             teams={teams} drawTeams={drawTeams} renameTeam={renameTeam}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
-            lastMatchday={lastMatchday}
+            lastMatchday={lastMatchdayView}
           />
         )}
         {tab === "clube" && (
@@ -508,7 +555,7 @@ export default function PitchApp() {
         )}
         {tab === "social" && <SocialTab group={displayGroup} posts={posts} setPosts={setPosts} meId={me.id} />}
         {tab === "stats" && (
-          <StatsTab group={displayGroup} history={history} lastMatchday={lastMatchday} mvpVote={mvpVote} setMvpVote={setMvpVote} statMode={statMode} setStatMode={setStatMode} />
+          <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} />
         )}
         {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} />}
         {tab === "perfil" && (

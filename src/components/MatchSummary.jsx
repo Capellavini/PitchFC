@@ -5,9 +5,9 @@ import Avatar from "./Avatar";
 
 const MEDAL = ["#E8C547", "#C0C8D0", "#C9824F"]; // gold / silver / bronze
 
-/** Summary of the CURRENT matchday's games (or the last finished one):
- *  wins per TEAM, top scorers and top assisters — built from those
- *  matches, not the season totals. */
+/** Summary of the CURRENT matchday's games (live, local) or the last
+ *  finished one (from the normalized lastMatchday): wins per TEAM, top
+ *  scorers and top assisters — built from those matches. */
 export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
   const byId = (id) => group.find((p) => p.id === id);
   const live = Boolean(matchday);
@@ -22,12 +22,10 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
     );
   }
 
-  const scorers = {}, assists = {};
-  let teamWins = [];
-  let nGames = 0;
+  let teamWins = [], scorerRows = [], assistRows = [], nGames = 0;
 
   if (live) {
-    const tally = {};
+    const tally = {}, sc = {}, as = {};
     (teams || []).forEach((t) => { tally[t.id] = { name: t.name, color: t.color, wins: 0 }; });
     matchday.matches.forEach((m) => {
       nGames++;
@@ -36,31 +34,32 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
       if (hg > ag && tally[m.homeId]) tally[m.homeId].wins++;
       else if (ag > hg && tally[m.awayId]) tally[m.awayId].wins++;
       m.events.forEach((e) => {
-        scorers[e.scorerId] = (scorers[e.scorerId] || 0) + 1;
-        if (e.assistId) assists[e.assistId] = (assists[e.assistId] || 0) + 1;
+        sc[e.scorerId] = (sc[e.scorerId] || 0) + 1;
+        if (e.assistId) as[e.assistId] = (as[e.assistId] || 0) + 1;
       });
     });
     teamWins = Object.values(tally);
+    const rows = (map) => Object.entries(map)
+      .map(([id, v]) => { const p = byId(Number(id)) ?? byId(id); return p ? { nick: p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(group, p), v } : null; })
+      .filter(Boolean).sort((a, b) => b.v - a.v).slice(0, 3);
+    scorerRows = rows(sc);
+    assistRows = rows(as);
   } else {
     nGames = (lastMatchday.matches || []).length;
     teamWins = lastMatchday.teamResults || [];
-    Object.entries(lastMatchday.playerStats || {}).forEach(([id, s]) => {
-      if (s.goals) scorers[id] = s.goals;
-      if (s.assists) assists[id] = s.assists;
-    });
+    const fromLines = (field) => (lastMatchday.lines || [])
+      .filter((l) => l[field] > 0)
+      .map((l) => ({ nick: l.nick, photo: l.photo, isMe: l.isMe, color: l.color, v: l[field] }))
+      .sort((a, b) => b.v - a.v).slice(0, 3);
+    scorerRows = fromLines("goals");
+    assistRows = fromLines("assists");
   }
 
   teamWins = [...teamWins].sort((a, b) => b.wins - a.wins);
 
-  const top3 = (map) => Object.entries(map)
-    .map(([id, v]) => ({ p: byId(Number(id)) ?? byId(id), v }))
-    .filter((x) => x.p && x.v > 0)
-    .sort((a, b) => b.v - a.v)
-    .slice(0, 3);
-
   const playerColumns = [
-    { label: "Artilheiros", Icon: Target, color: C.accent, rows: top3(scorers) },
-    { label: "Assistências", Icon: Sparkles, color: C.blue, rows: top3(assists) },
+    { label: "Artilheiros", Icon: Target, color: C.accent, rows: scorerRows },
+    { label: "Assistências", Icon: Sparkles, color: C.blue, rows: assistRows },
   ];
 
   return (
@@ -108,12 +107,12 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
               <div style={{ textAlign: "center", fontSize: 11, color: C.text3, padding: "8px 0" }}>—</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {rows.map(({ p, v }, i) => (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {rows.map((r, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ ...displayFont, fontSize: 12, width: 10, color: MEDAL[i] || C.text3 }}>{i + 1}</span>
-                    <Avatar name={p.name} color={playerColor(group, p)} size={22} fontSize={8} isMe={p.isMe} photo={p.photo} />
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
-                    <span style={{ ...displayFont, fontSize: 13, color }}>{v}</span>
+                    <Avatar name={r.nick} color={r.color || C.text2} size={22} fontSize={8} isMe={r.isMe} photo={r.photo} />
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: r.isMe ? 800 : 500, color: r.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nick}</span>
+                    <span style={{ ...displayFont, fontSize: 13, color }}>{r.v}</span>
                   </div>
                 ))}
               </div>
