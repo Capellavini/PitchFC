@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist } from "../lib/helpers";
-import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, gameShareMessage } from "../lib/whatsapp";
+import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
@@ -33,7 +33,6 @@ export default function JogoTab({
   const myWaitPos = me ? waitlist.findIndex((p) => p.id === me.id) + 1 : 0; // 1-based, 0 = not waiting
   const spotsLeft = game.spots - playing.length;
   const shareUrl  = inviteUrl || window.location.origin;
-  const shareGame = () => openWhatsApp(gameShareMessage(game, shareUrl, spotsLeft));
   const copyShare = async () => {
     try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
@@ -68,9 +67,9 @@ export default function JogoTab({
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {game.venue}</span>
             </div>
           </div>
-          <button onClick={shareGame} title="Partilhar jogo"
-            style={{ flexShrink: 0, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            <Share2 size={14} /> Partilhar
+          <button onClick={copyShare} title="Copiar link do jogo"
+            style={{ flexShrink: 0, background: copied ? C.greenDim : C.accentDim, color: copied ? C.green : C.accent, border: `1px solid ${copied ? C.greenBorder : C.accentBorder}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            {copied ? <><Check size={14} /> Copiado</> : <><Share2 size={14} /> Partilhar</>}
           </button>
         </div>
       </div>
