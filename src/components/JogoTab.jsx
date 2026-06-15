@@ -17,7 +17,7 @@ import MatchSummary from "./MatchSummary";
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
-  teams, drawTeams, renameTeam, matchdayProps, lastMatchday,
+  teams, drawTeams, renameTeam, canManageTeams, matchdayProps, lastMatchday,
 }) {
   const [newItem, setNewItem] = useState("");
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
@@ -147,36 +147,38 @@ export default function JogoTab({
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700 }}>Sorteio de Equipas</div>
           <div style={{ fontSize: 11, color: C.text2 }}>
-            {confirmed.length < 2 ? "Faltam confirmações para sortear" : "Escolhe quantas equipas e sorteia — depois podes renomear."}
+            {!canManageTeams ? "Só o organizador (ou o auxiliar) pode sortear e renomear." : confirmed.length < 2 ? "Faltam confirmações para sortear" : "Escolhe quantas equipas e sorteia — depois podes renomear."}
           </div>
         </div>
 
-        {/* number of teams */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: C.text2 }}>Equipas:</span>
-          {[2, 3, 4, 5, 6].map((n) => {
-            const active = numTeams === n;
-            const disabled = n > confirmed.length;
-            return (
-              <button key={n} onClick={() => !disabled && setNumTeams(n)} disabled={disabled}
-                style={{ width: 32, height: 32, borderRadius: 9, background: active ? C.accent : C.surface, color: active ? C.bg : disabled ? C.text3 : C.text1, border: `1px solid ${active ? C.accent : C.border}`, fontSize: 13, fontWeight: 800, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1 }}>
-                {n}
-              </button>
-            );
-          })}
-          <button
-            onClick={() => drawTeams(numTeams)}
-            disabled={confirmed.length < 2}
-            style={{
-              marginLeft: "auto", background: confirmed.length >= 2 ? C.accent : C.accentDim,
-              color: confirmed.length >= 2 ? C.bg : C.accent, border: `1px solid ${C.accentBorder}`,
-              borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 800,
-              cursor: confirmed.length >= 2 ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
-            <Shuffle size={14} /> {teams ? "Re-sortear" : "Sortear"}
-          </button>
-        </div>
+        {/* number of teams — organizer/assistant only */}
+        {canManageTeams && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, color: C.text2 }}>Equipas:</span>
+            {[2, 3, 4, 5, 6].map((n) => {
+              const active = numTeams === n;
+              const disabled = n > confirmed.length;
+              return (
+                <button key={n} onClick={() => !disabled && setNumTeams(n)} disabled={disabled}
+                  style={{ width: 32, height: 32, borderRadius: 9, background: active ? C.accent : C.surface, color: active ? C.bg : disabled ? C.text3 : C.text1, border: `1px solid ${active ? C.accent : C.border}`, fontSize: 13, fontWeight: 800, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1 }}>
+                  {n}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => drawTeams(numTeams)}
+              disabled={confirmed.length < 2}
+              style={{
+                marginLeft: "auto", background: confirmed.length >= 2 ? C.accent : C.accentDim,
+                color: confirmed.length >= 2 ? C.bg : C.accent, border: `1px solid ${C.accentBorder}`,
+                borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 800,
+                cursor: confirmed.length >= 2 ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              <Shuffle size={14} /> {teams ? "Re-sortear" : "Sortear"}
+            </button>
+          </div>
+        )}
 
         {teams && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -184,11 +186,15 @@ export default function JogoTab({
               <div key={t.id} style={{ background: C.surface, borderRadius: 12, padding: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 4, background: t.color, flexShrink: 0 }} />
-                  <input
-                    value={t.name}
-                    onChange={(e) => renameTeam(t.id, e.target.value)}
-                    style={{ flex: 1, minWidth: 0, background: "none", border: "none", borderBottom: `1px dashed ${C.border}`, color: t.color, fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", outline: "none", padding: "2px 0" }}
-                  />
+                  {canManageTeams ? (
+                    <input
+                      value={t.name}
+                      onChange={(e) => renameTeam(t.id, e.target.value)}
+                      style={{ flex: 1, minWidth: 0, background: "none", border: "none", borderBottom: `1px dashed ${C.border}`, color: t.color, fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", outline: "none", padding: "2px 0" }}
+                    />
+                  ) : (
+                    <span style={{ flex: 1, minWidth: 0, color: t.color, fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                   {resolveTeam(t.players).map((p) => (

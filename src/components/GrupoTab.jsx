@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircle, ChevronRight, Copy, Check } from "lucide-react";
+import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
@@ -9,7 +9,7 @@ import SectionLabel from "./SectionLabel";
 
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant }) {
   const [copied, setCopied] = useState(false);
   const copyInvite = async () => {
     try { await navigator.clipboard.writeText(inviteUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
@@ -40,9 +40,21 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1 }}>
                       {p.nick} {p.isMe && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}>(tu)</span>}
+                      {p.isOrganizerPlayer && <span style={{ fontSize: 9, color: C.blue, fontWeight: 700, marginLeft: 6 }}>ORG</span>}
+                      {p.isAssistant && !p.isOrganizerPlayer && <span style={{ fontSize: 9, color: C.green, fontWeight: 700, marginLeft: 6 }}>AUXILIAR</span>}
                     </div>
                     <div style={{ fontSize: 11, color: C.text2 }}>{p.position} · {p.gamesPlayed}/{TOTAL_GAMES} jogos</div>
                   </div>
+                  {cloudMode && isOrganizer && !p.isMe && !p.isOrganizerPlayer && (
+                    <span
+                      role="button"
+                      title={p.isAssistant ? "Remover auxiliar" : "Tornar auxiliar"}
+                      onClick={(e) => { e.stopPropagation(); onToggleAssistant(p.uuid, !p.isAssistant); }}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: p.isAssistant ? C.greenDim : C.surface, border: `1px solid ${p.isAssistant ? C.greenBorder : C.border}`, cursor: "pointer", flexShrink: 0 }}
+                    >
+                      <ShieldCheck size={14} color={p.isAssistant ? C.green : C.text3} />
+                    </span>
+                  )}
                   <div style={{ ...displayFont, fontSize: 15, color: tierColor(overall), minWidth: 26, textAlign: "center" }}>
                     {overall}
                     <div style={{ fontSize: 8, fontWeight: 700, fontStyle: "normal", letterSpacing: "0.05em", color: C.text3 }}>OVR</div>

@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
-import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor } from "./lib/helpers";
+import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime } from "./lib/helpers";
 import { useCloud } from "./hooks/useCloud";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
@@ -94,7 +94,7 @@ export default function PitchApp() {
           id, uuid: p.id, name: p.name, nick: p.nick, email: p.email, phone: p.phone,
           photo: p.photo_url, age: p.age, nationality: p.nationality, club: p.club,
           position: p.position, foot: p.foot, attrs: p.attrs ?? DEFAULT_ATTRS,
-          isOrganizerPlayer: p.is_organizer,
+          isOrganizerPlayer: p.is_organizer, isAssistant: p.is_assistant,
           status: att?.status ?? "pending", paid: att?.paid ?? false,
           isMe: cloud.myPlayer?.id === p.id,
           // Season stats now live on the cloud player row (shared ranking).
@@ -523,6 +523,58 @@ export default function PitchApp() {
     }
   }
 
+  // Only the organizer (or an assistant they appointed) draws/renames.
+  const canManageTeams = cloudMode ? Boolean(me?.isOrganizerPlayer || me?.isAssistant) : session.role === "organizer";
+
+  // ── Social: normalized for SocialTab (cloud or local) ──
+  let social;
+  if (cloudMode) {
+    const myUuid = cloud.myPlayer?.id;
+    const accepted = cloud.friendships.filter((f) => f.status === "accepted");
+    const friendIds = accepted.map((f) => (f.requester_id === myUuid ? f.addressee_id : f.requester_id));
+    const relatedIds = new Set(cloud.friendships.map((f) => (f.requester_id === myUuid ? f.addressee_id : f.requester_id)));
+    const pAll = (id) => cloud.allPlayers.find((x) => x.id === id);
+    social = {
+      meId: myUuid, myGroupId: cloud.groupRow?.id,
+      posts: cloud.posts.map((p) => ({
+        id: p.id,
+        author: { id: p.author?.id, nick: p.author?.nick, name: p.author?.name, photo: p.author?.photo_url, groupId: p.author?.group_id },
+        mine: p.author?.id === myUuid,
+        time: relativeTime(p.created_at), type: p.type, text: p.body, media: p.media_url,
+        likes: (p.post_likes || []).map((l) => l.player_id),
+        liked: (p.post_likes || []).some((l) => l.player_id === myUuid),
+        comments: (p.post_comments || []).map((c) => ({ id: c.id, nick: c.author?.nick, photo: c.author?.photo_url, text: c.body })),
+      })),
+      friendIds,
+      friends: friendIds.map(pAll).filter(Boolean),
+      requests: cloud.friendships.filter((f) => f.status === "pending" && f.addressee_id === myUuid)
+        .map((f) => ({ id: f.id, player: pAll(f.requester_id) })).filter((r) => r.player),
+      sentPending: cloud.friendships.filter((f) => f.status === "pending" && f.requester_id === myUuid).map((f) => f.addressee_id),
+      candidates: cloud.allPlayers.filter((x) => x.id !== myUuid && !relatedIds.has(x.id)),
+      friendshipIdOf: (otherId) => accepted.find((f) => f.requester_id === otherId || f.addressee_id === otherId)?.id,
+      onCreatePost: (post) => cloud.createPost(post),
+      onDeletePost: (id) => cloud.deletePost(id),
+      onToggleLike: (id, liked) => cloud.toggleLike(id, liked),
+      onAddComment: (id, body) => cloud.addComment(id, body),
+      onSendFriend: (id) => cloud.sendFriendRequest(id),
+      onRespondFriend: (id, accept) => cloud.respondFriend(id, accept),
+      onRemoveFriend: (id) => cloud.removeFriend(id),
+    };
+  } else {
+    const meLocal = baseGroup.find((p) => p.isMe);
+    social = {
+      meId: meLocal?.id, myGroupId: "local",
+      posts,
+      friendIds: [], friends: [], requests: [], sentPending: [], candidates: [],
+      friendshipIdOf: () => null,
+      onCreatePost: (post) => setPosts((ps) => [{ id: Date.now(), author: { id: meLocal?.id, nick: meLocal?.nick, name: meLocal?.name, photo: meLocal?.photo, groupId: "local" }, mine: true, time: "agora", type: post.type, text: post.body, media: post.media_url, likes: [], liked: false, comments: [] }, ...ps]),
+      onDeletePost: (id) => setPosts((ps) => ps.filter((p) => p.id !== id)),
+      onToggleLike: (id, liked) => setPosts((ps) => ps.map((p) => (p.id === id ? { ...p, liked: !liked, likes: liked ? p.likes.filter((x) => x !== meLocal?.id) : [...p.likes, meLocal?.id] } : p))),
+      onAddComment: (id, body) => setPosts((ps) => ps.map((p) => (p.id === id ? { ...p, comments: [...p.comments, { id: Date.now(), nick: meLocal?.nick, photo: meLocal?.photo, text: body }] } : p))),
+      onSendFriend: () => {}, onRespondFriend: () => {}, onRemoveFriend: () => {},
+    };
+  }
+
   // ── Main app ───────────────────────────────────────────
   return shell(
     <>
@@ -535,7 +587,7 @@ export default function PitchApp() {
             group={displayGroup} game={game}
             togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
             material={material} toggleMaterial={toggleMaterial} assignMaterial={assignMaterial} addMaterial={addMaterial}
-            teams={teams} drawTeams={drawTeams} renameTeam={renameTeam}
+            teams={teams} drawTeams={drawTeams} renameTeam={renameTeam} canManageTeams={canManageTeams}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
             lastMatchday={lastMatchdayView}
           />
@@ -553,11 +605,11 @@ export default function PitchApp() {
             onDeleteEvent={cloud.deleteEvent}
           />
         )}
-        {tab === "social" && <SocialTab group={displayGroup} posts={posts} setPosts={setPosts} meId={me.id} />}
+        {tab === "social" && <SocialTab social={social} />}
         {tab === "stats" && (
           <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} />
         )}
-        {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} />}
+        {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} />}
         {tab === "perfil" && (
           <PerfilTab
             key={viewPlayerId ?? "me"}

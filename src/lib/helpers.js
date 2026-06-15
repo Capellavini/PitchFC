@@ -49,6 +49,20 @@ export const fmtFullDay = (iso) => {
   return `${WEEKDAYS_PT[d.getDay()]}, ${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
 };
 
+/** "agora" / "há 5 min" / "há 3h" / "há 2 dias" / "13 Jun" */
+export function relativeTime(ts) {
+  const then = new Date(ts).getTime();
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return "agora";
+  if (mins < 60) return `há ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `há ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `há ${days} ${days === 1 ? "dia" : "dias"}`;
+  const d = new Date(ts);
+  return `${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
+}
+
 // ── FUT card overall ─────────────────────────────────────
 export const ATTR_LABELS = { rit: "RIT", rem: "REM", pas: "PAS", dri: "DRI", def: "DEF", fis: "FIS" };
 

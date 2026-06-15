@@ -1,71 +1,56 @@
 import { useState } from "react";
-import { Play, MessageCircle, Share2, Trophy, ImagePlus, Send } from "lucide-react";
+import { Users, Building2, UserPlus, MessageCircle, Send, ImagePlus, Trash2, Check, X } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { EXTERNAL_PLAYERS } from "../data";
-import { playerColor, fileToDataUrl, ini } from "../lib/helpers";
+import { fileToDataUrl, ini } from "../lib/helpers";
 import { openWhatsApp, sharePostMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 
-/** Football social feed — cross-group: posts also come from players
- *  outside your group (mock community until the backend lands). */
-export default function SocialTab({ group, posts, setPosts, meId }) {
+const SCOPES = [
+  { id: "grupo", Icon: Users,      label: "Grupo"  },
+  { id: "clube", Icon: Building2,  label: "Clube"  },
+  { id: "amigos", Icon: UserPlus,  label: "Amigos" },
+];
+
+// Stable colour from an id/nick so each author has a consistent tint.
+const PALETTE = [C.accent, C.blue, C.orange, "#A78BFA", "#FF6B9D", "#2DD4BF", "#34D399", "#60A5FA"];
+const colorFor = (key = "") => PALETTE[[...String(key)].reduce((h, c) => (h + c.charCodeAt(0)) % PALETTE.length, 0)];
+
+/** Football social feed — three scopes (grupo / clube / amigos) with a
+ *  friends graph. Cloud-backed when logged in; same UI for the local
+ *  demo (fed normalized data by PitchApp). */
+export default function SocialTab({ social }) {
+  const [scope, setScope] = useState("clube");
   const [draft, setDraft] = useState("");
   const [draftPhoto, setDraftPhoto] = useState(null);
   const [openComments, setOpenComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
+  const [addOpen, setAddOpen] = useState(false);
 
-  const me = group.find((p) => p.id === meId) ?? group.find((p) => p.isMe);
+  const { meId, myGroupId, posts, friendIds, friends, requests, candidates, sentPending, friendshipIdOf } = social;
 
-  const findAuthor = (id) =>
-    group.find((p) => p.id === id) ?? EXTERNAL_PLAYERS.find((p) => p.id === id);
-
-  const toggleLike = (postId) =>
-    setPosts((ps) => ps.map((p) => p.id !== postId ? p : {
-      ...p,
-      likes: p.likes.includes(me.id) ? p.likes.filter((id) => id !== me.id) : [...p.likes, me.id],
-    }));
-
-  const voteGotw = (postId) =>
-    setPosts((ps) => ps.map((p) => {
-      if (!p.gotw) return p;
-      const votes = p.gotwVotes.filter((id) => id !== me.id);
-      return { ...p, gotwVotes: p.id === postId && !p.gotwVotes.includes(me.id) ? [...votes, me.id] : votes };
-    }));
-
-  const addComment = (postId) => {
-    const text = (commentDrafts[postId] ?? "").trim();
-    if (!text) return;
-    setPosts((ps) => ps.map((p) => p.id !== postId ? p : {
-      ...p, comments: [...p.comments, { id: Date.now(), authorId: me.id, text }],
-    }));
-    setCommentDrafts((d) => ({ ...d, [postId]: "" }));
-  };
+  const visible = posts.filter((p) => {
+    if (scope === "clube") return true;
+    if (scope === "grupo") return p.author.groupId === myGroupId;
+    return p.author.id === meId || friendIds.includes(p.author.id); // amigos
+  });
 
   const publish = () => {
     const text = draft.trim();
     if (!text && !draftPhoto) return;
-    setPosts((ps) => [{
-      id: Date.now(), authorId: me.id, time: "agora", type: draftPhoto ? "photo" : "text",
-      text, photo: draftPhoto, likes: [], comments: [], gotw: false, gotwVotes: [],
-    }, ...ps]);
-    setDraft("");
-    setDraftPhoto(null);
+    social.onCreatePost({ type: draftPhoto ? "photo" : "text", body: text, media_url: draftPhoto });
+    setDraft(""); setDraftPhoto(null);
   };
-
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];
-    if (file) setDraftPhoto(await fileToDataUrl(file, 640));
+    if (file) setDraftPhoto(await fileToDataUrl(file, 720));
     e.target.value = "";
   };
-
-  const gotwCandidates = [...posts.filter((p) => p.gotw)].sort((a, b) => b.gotwVotes.length - a.gotwVotes.length);
-  const myGotwVote = gotwCandidates.find((p) => p.gotwVotes.includes(me.id))?.id ?? null;
-
-  const authorChip = (author) => {
-    const isExternal = !group.includes(author);
-    const color = isExternal ? C.blue : playerColor(group, author);
-    return { color, sub: isExternal ? `${author.groupName} · ${author.club}` : `${me.id === author.id ? "tu · " : ""}${author.club}` };
+  const submitComment = (postId) => {
+    const text = (commentDrafts[postId] ?? "").trim();
+    if (!text) return;
+    social.onAddComment(postId, text);
+    setCommentDrafts((d) => ({ ...d, [postId]: "" }));
   };
 
   return (
@@ -75,21 +60,25 @@ export default function SocialTab({ group, posts, setPosts, meId }) {
         <div style={{ fontSize: 13, color: C.text2 }}>A comunidade de futebol do PITCH</div>
       </div>
 
-      {/* Composer */}
+      {/* scope tabs */}
+      <div style={{ display: "flex", background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 4, marginBottom: 14, gap: 4 }}>
+        {SCOPES.map(({ id, Icon, label }) => {
+          const active = scope === id;
+          return (
+            <button key={id} onClick={() => setScope(id)} style={{ flex: 1, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: "none", borderRadius: 10, padding: "9px 4px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+              <Icon size={13} /> {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* composer */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <Avatar name={me.name} color={playerColor(group, me)} size={34} fontSize={11} isMe photo={me.photo} />
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Partilha um momento, um golo, uma jogada…"
-            rows={2}
-            style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text1, outline: "none", resize: "none", fontFamily: "inherit" }}
-          />
-        </div>
+        <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Partilha um momento, um golo, uma jogada…" rows={2}
+          style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text1, outline: "none", resize: "none", fontFamily: "inherit" }} />
         {draftPhoto && (
           <div style={{ position: "relative", marginTop: 10 }}>
-            <img src={draftPhoto} alt="" style={{ width: "100%", borderRadius: 12, maxHeight: 220, objectFit: "cover" }} />
+            <img src={draftPhoto} alt="" style={{ width: "100%", borderRadius: 12, maxHeight: 240, objectFit: "cover" }} />
             <button onClick={() => setDraftPhoto(null)} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.7)", color: C.text1, border: "none", borderRadius: 8, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>Remover</button>
           </div>
         )}
@@ -104,128 +93,147 @@ export default function SocialTab({ group, posts, setPosts, meId }) {
         </div>
       </div>
 
-      {/* Golo da Semana */}
-      {gotwCandidates.length > 0 && (
-        <div style={{ background: `linear-gradient(135deg, ${C.card} 0%, ${C.goldDim} 100%)`, border: `1px solid ${C.gold}44`, borderRadius: 16, padding: 16, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-            <Trophy size={14} color={C.gold} />
-            <span style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em" }}>GOLO DA SEMANA</span>
+      {/* friends management (amigos scope) */}
+      {scope === "amigos" && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: requests.length || addOpen || friends.length ? 12 : 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>Amigos {friends.length > 0 && <span style={{ color: C.text3, fontWeight: 400 }}>({friends.length})</span>}</span>
+            <button onClick={() => setAddOpen((v) => !v)} style={{ background: addOpen ? C.surface : C.accentDim, color: addOpen ? C.text2 : C.accent, border: `1px solid ${addOpen ? C.border : C.accentBorder}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+              <UserPlus size={13} /> Adicionar amigo
+            </button>
           </div>
-          <div style={{ fontSize: 12, color: C.text2, marginBottom: 12 }}>Vota no melhor golo — fecha domingo à noite</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {gotwCandidates.map((p, idx) => {
-              const author = findAuthor(p.authorId);
-              const voted = myGotwVote === p.id;
-              const maxVotes = gotwCandidates[0].gotwVotes.length || 1;
-              return (
-                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ ...displayFont, width: 18, fontSize: 14, color: idx === 0 ? C.gold : C.text3 }}>{idx + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {author?.nick} <span style={{ color: C.text3, fontWeight: 400 }}>· {p.videoLabel}</span>
-                    </div>
-                    <div style={{ height: 3, background: C.border, borderRadius: 2, marginTop: 4 }}>
-                      <div style={{ height: "100%", borderRadius: 2, background: C.gold, width: `${(p.gotwVotes.length / maxVotes) * 100}%`, transition: "width 0.3s" }} />
-                    </div>
+
+          {/* incoming requests */}
+          {requests.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <SectionLabel style={{ marginBottom: 8 }}>PEDIDOS</SectionLabel>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {requests.map((r) => (
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Avatar name={r.player.name} color={colorFor(r.player.id)} size={32} fontSize={11} photo={r.player.photo_url} />
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{r.player.nick}</span>
+                    <button onClick={() => social.onRespondFriend(r.id, true)} style={{ background: C.greenDim, color: C.green, border: `1px solid ${C.greenBorder}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Check size={12} /> Aceitar</button>
+                    <button onClick={() => social.onRespondFriend(r.id, false)} style={{ background: "none", color: C.text3, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 8px", fontSize: 11, cursor: "pointer", display: "flex" }}><X size={12} /></button>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: C.text2 }}>{p.gotwVotes.length}</span>
-                  <button onClick={() => voteGotw(p.id)} style={{ background: voted ? C.gold : "transparent", color: voted ? C.bg : C.gold, border: `1px solid ${C.gold}66`, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
-                    {voted ? "Votado ✓" : "Votar"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Feed */}
-      <SectionLabel>FEED</SectionLabel>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-        {posts.map((post) => {
-          const author = findAuthor(post.authorId);
-          if (!author) return null;
-          const { color, sub } = authorChip(author);
-          const liked = post.likes.includes(me.id);
-          const commentsOpen = openComments[post.id];
-          return (
-            <div key={post.id} style={{ ...cardStyle, padding: 14 }}>
-              {/* author row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <Avatar name={author.name} color={color} size={36} fontSize={12} photo={author.photo} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>{author.nick}</div>
-                  <div style={{ fontSize: 11, color: C.text2 }}>{sub} · {post.time}</div>
-                </div>
-                {post.gotw && <Trophy size={13} color={C.gold} />}
+                ))}
               </div>
+            </div>
+          )}
 
-              {post.text && <div style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 10 }}>{post.text}</div>}
-
-              {/* media */}
-              {post.type === "video" && (
-                <div style={{ position: "relative", background: `linear-gradient(135deg, ${C.grassDim}, ${C.surface})`, border: `1px solid ${C.border}`, borderRadius: 12, height: 150, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 24, background: "rgba(0,0,0,0.55)", border: `1.5px solid ${C.accent}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Play size={20} color={C.accent} fill={C.accent} />
-                  </div>
-                  <span style={{ position: "absolute", bottom: 8, right: 10, background: "rgba(0,0,0,0.7)", borderRadius: 6, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{post.videoLabel}</span>
-                  <span style={{ position: "absolute", top: 8, left: 10, fontSize: 10, color: C.text2 }}>🎬 highlight</span>
-                </div>
-              )}
-              {post.type === "photo" && post.photo && (
-                <img src={post.photo} alt="" style={{ width: "100%", borderRadius: 12, maxHeight: 260, objectFit: "cover", marginBottom: 10 }} />
-              )}
-
-              {/* actions */}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => toggleLike(post.id)} style={{ background: liked ? C.accentDim : "transparent", color: liked ? C.accent : C.text2, border: `1px solid ${liked ? C.accentBorder : C.border}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                  ⚽ Golaço {post.likes.length > 0 && post.likes.length}
-                </button>
-                <button onClick={() => setOpenComments((o) => ({ ...o, [post.id]: !o[post.id] }))} style={{ background: "transparent", color: C.text2, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                  <MessageCircle size={13} /> {post.comments.length || "Comentar"}
-                </button>
-                <button onClick={() => openWhatsApp(sharePostMessage(author.nick, post.text))} style={{ background: "transparent", color: C.text2, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 10px", fontSize: 12, cursor: "pointer", marginLeft: "auto", display: "flex", alignItems: "center" }}>
-                  <Share2 size={13} />
-                </button>
-              </div>
-
-              {/* comments */}
-              {commentsOpen && (
-                <div style={{ marginTop: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
-                    {post.comments.map((c) => {
-                      const cAuthor = findAuthor(c.authorId);
-                      return (
-                        <div key={c.id} style={{ display: "flex", gap: 8 }}>
-                          <div style={{ width: 26, height: 26, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: C.text2, flexShrink: 0 }}>
-                            {ini(cAuthor?.name ?? "?")}
-                          </div>
-                          <div style={{ flex: 1, background: C.surface, borderRadius: 10, padding: "7px 10px" }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: C.text2 }}>{cAuthor?.nick} </span>
-                            <span style={{ fontSize: 12 }}>{c.text}</span>
-                          </div>
+          {/* add-friend candidate list */}
+          {addOpen && (
+            <div style={{ marginBottom: 12 }}>
+              <SectionLabel style={{ marginBottom: 8 }}>MEMBROS DO CLUBE</SectionLabel>
+              {candidates.length === 0 ? (
+                <div style={{ fontSize: 12, color: C.text3 }}>Sem ninguém para adicionar por agora.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 240, overflowY: "auto" }}>
+                  {candidates.map((c) => {
+                    const sent = sentPending.includes(c.id);
+                    return (
+                      <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <Avatar name={c.name} color={colorFor(c.id)} size={32} fontSize={11} photo={c.photo_url} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{c.nick}</div>
+                          <div style={{ fontSize: 10, color: C.text3 }}>{c.groups?.name ?? "Sem grupo"}</div>
                         </div>
-                      );
-                    })}
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      value={commentDrafts[post.id] ?? ""}
-                      onChange={(e) => setCommentDrafts((d) => ({ ...d, [post.id]: e.target.value }))}
-                      onKeyDown={(e) => e.key === "Enter" && addComment(post.id)}
-                      placeholder="Escreve um comentário…"
-                      style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, color: C.text1, outline: "none" }}
-                    />
-                    <button onClick={() => addComment(post.id)} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "0 12px", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                      <Send size={14} />
-                    </button>
-                  </div>
+                        <button onClick={() => !sent && social.onSendFriend(c.id)} disabled={sent} style={{ background: sent ? C.surface : C.accentDim, color: sent ? C.text3 : C.accent, border: `1px solid ${sent ? C.border : C.accentBorder}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: sent ? "default" : "pointer" }}>
+                          {sent ? "Pedido enviado" : "Adicionar"}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
-          );
-        })}
-      </div>
+          )}
+
+          {/* my friends */}
+          {friends.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {friends.map((f) => (
+                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <Avatar name={f.name} color={colorFor(f.id)} size={30} fontSize={11} photo={f.photo_url} />
+                  <span style={{ flex: 1, fontSize: 13 }}>{f.nick}</span>
+                  <button onClick={() => social.onRemoveFriend(friendshipIdOf(f.id))} style={{ background: "none", color: C.text3, border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Remover</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {friends.length === 0 && requests.length === 0 && !addOpen && (
+            <div style={{ fontSize: 12, color: C.text3, marginTop: 10 }}>Ainda não tens amigos por aqui. Toca em "Adicionar amigo" para começar. 🤝</div>
+          )}
+        </div>
+      )}
+
+      {/* feed */}
+      <SectionLabel>{scope === "grupo" ? "DO TEU GRUPO" : scope === "amigos" ? "DOS TEUS AMIGOS" : "FEED DO CLUBE"}</SectionLabel>
+      {visible.length === 0 ? (
+        <div style={{ ...cardStyle, textAlign: "center", padding: "28px 20px", color: C.text3, fontSize: 13, marginBottom: 24 }}>
+          {scope === "amigos" ? "Sem publicações de amigos ainda." : scope === "grupo" ? "O teu grupo ainda não publicou nada." : "Ainda não há publicações. Sê o primeiro! ⚽"}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+          {visible.map((post) => {
+            const liked = post.liked;
+            const commentsOpen = openComments[post.id];
+            const color = post.mine ? C.accent : colorFor(post.author.id);
+            return (
+              <div key={post.id} style={{ ...cardStyle, padding: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <Avatar name={post.author.name || post.author.nick} color={color} size={36} fontSize={12} isMe={post.mine} photo={post.author.photo} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{post.author.nick}{post.mine && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}> · tu</span>}</div>
+                    <div style={{ fontSize: 11, color: C.text2 }}>{post.time}</div>
+                  </div>
+                  {post.mine && (
+                    <button onClick={() => window.confirm("Apagar publicação?") && social.onDeletePost(post.id)} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", padding: 4 }}><Trash2 size={15} /></button>
+                  )}
+                </div>
+
+                {post.text && <div style={{ fontSize: 14, lineHeight: 1.5, marginBottom: post.media ? 10 : 10 }}>{post.text}</div>}
+                {post.type === "photo" && post.media && (
+                  <img src={post.media} alt="" style={{ width: "100%", borderRadius: 12, maxHeight: 320, objectFit: "cover", marginBottom: 10 }} />
+                )}
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => social.onToggleLike(post.id, liked)} style={{ background: liked ? C.accentDim : "transparent", color: liked ? C.accent : C.text2, border: `1px solid ${liked ? C.accentBorder : C.border}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    ⚽ Golaço {post.likes.length > 0 && post.likes.length}
+                  </button>
+                  <button onClick={() => setOpenComments((o) => ({ ...o, [post.id]: !o[post.id] }))} style={{ background: "transparent", color: C.text2, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                    <MessageCircle size={13} /> {post.comments.length || "Comentar"}
+                  </button>
+                  <button onClick={() => openWhatsApp(sharePostMessage(post.author.nick, post.text || "uma publicação"))} style={{ background: "transparent", color: C.text2, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 10px", fontSize: 12, cursor: "pointer", marginLeft: "auto" }}>↗</button>
+                </div>
+
+                {commentsOpen && (
+                  <div style={{ marginTop: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
+                      {post.comments.map((c) => (
+                        <div key={c.id} style={{ display: "flex", gap: 8 }}>
+                          <div style={{ width: 26, height: 26, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: C.text2, flexShrink: 0, overflow: "hidden" }}>
+                            {c.photo ? <img src={c.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : ini(c.nick || "?")}
+                          </div>
+                          <div style={{ flex: 1, background: C.surface, borderRadius: 10, padding: "7px 10px" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: C.text2 }}>{c.nick} </span>
+                            <span style={{ fontSize: 12 }}>{c.text}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input value={commentDrafts[post.id] ?? ""} onChange={(e) => setCommentDrafts((d) => ({ ...d, [post.id]: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && submitComment(post.id)} placeholder="Escreve um comentário…"
+                        style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, color: C.text1, outline: "none" }} />
+                      <button onClick={() => submitComment(post.id)} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "0 12px", cursor: "pointer", display: "flex", alignItems: "center" }}><Send size={14} /></button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

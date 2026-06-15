@@ -30,6 +30,7 @@ const EMPTY = {
   user: null, myPlayer: null, groupRow: null,
   players: [], game: null, attendances: [], events: [], bookings: [],
   matchdays: [], mvpVotes: [],
+  posts: [], friendships: [], allPlayers: [],
 };
 
 export function useCloud() {
@@ -82,7 +83,20 @@ export function useCloud() {
         }
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes });
+      // Social: cloud feed (author + likes + comments), my friend graph,
+      // and the club-wide roster (for "add friend").
+      let posts = [], friendships = [], allPlayers = [];
+      const pq = await supabase.from("posts")
+        .select("*, author:players!author_id(id,nick,name,photo_url,group_id), post_likes(player_id), post_comments(id,author_id,body,created_at, author:players!author_id(nick,photo_url))")
+        .order("created_at", { ascending: false }).limit(100);
+      if (!pq.error) posts = pq.data ?? [];
+      const fq = await supabase.from("friendships").select("*")
+        .or(`requester_id.eq.${myPlayer.id},addressee_id.eq.${myPlayer.id}`);
+      if (!fq.error) friendships = fq.data ?? [];
+      const apq = await supabase.from("players").select("id,nick,name,photo_url,group_id,groups(name)").order("nick");
+      if (!apq.error) allPlayers = apq.data ?? [];
+
+      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, posts, friendships, allPlayers });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -117,6 +131,10 @@ export function useCloud() {
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "matchdays" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "matchday_votes" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "post_likes" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "post_comments" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, refetch)
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [refetch]);
@@ -301,6 +319,41 @@ export function useCloud() {
     await refetch();
   };
 
+  // ── Permissions (organizer grants the assistant role) ──
+  const toggleAssistant = async (playerId, value) => {
+    setData((d) => ({ ...d, players: d.players.map((p) => (p.id === playerId ? { ...p, is_assistant: value } : p)) }));
+    await supabase.from("players").update({ is_assistant: value }).eq("id", playerId);
+  };
+
+  // ── Social: posts, likes, comments ─────────────────────
+  const createPost = async ({ type, body, media_url }) => {
+    if (!data.myPlayer) return;
+    await supabase.from("posts").insert({ author_id: data.myPlayer.id, type, body, media_url });
+    await refetch();
+  };
+  const deletePost = async (id) => { await supabase.from("posts").delete().eq("id", id); await refetch(); };
+  const toggleLike = async (postId, liked) => {
+    if (liked) await supabase.from("post_likes").delete().eq("post_id", postId).eq("player_id", data.myPlayer.id);
+    else await supabase.from("post_likes").insert({ post_id: postId, player_id: data.myPlayer.id });
+    await refetch();
+  };
+  const addComment = async (postId, body) => {
+    await supabase.from("post_comments").insert({ post_id: postId, author_id: data.myPlayer.id, body });
+    await refetch();
+  };
+
+  // ── Friends (request → accept) ─────────────────────────
+  const sendFriendRequest = async (addresseeId) => {
+    await supabase.from("friendships").insert({ requester_id: data.myPlayer.id, addressee_id: addresseeId, status: "pending" });
+    await refetch();
+  };
+  const respondFriend = async (id, accept) => {
+    if (accept) await supabase.from("friendships").update({ status: "accepted" }).eq("id", id);
+    else await supabase.from("friendships").delete().eq("id", id);
+    await refetch();
+  };
+  const removeFriend = async (id) => { await supabase.from("friendships").delete().eq("id", id); await refetch(); };
+
   return {
     status, ...data,
     isAdmin: isAdminEmail(data.user?.email),
@@ -309,6 +362,8 @@ export function useCloud() {
     setMyStatus, setPaid, updatePlayer, updateGroupRow,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, closeMvp,
+    toggleAssistant, createPost, deletePost, toggleLike, addComment,
+    sendFriendRequest, respondFriend, removeFriend,
     refetch,
   };
 }

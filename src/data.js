@@ -125,13 +125,6 @@ export const CLUBS = [
   "Real Madrid", "Barcelona", "Man. United", "Liverpool", "Flamengo", "Outro",
 ];
 
-// ── Social feed (mock community — includes players from other groups) ──
-export const EXTERNAL_PLAYERS = [
-  { id: 101, name: "Marco Sousa",  nick: "Marquinho", club: "SC Braga",    nationality: "🇵🇹 Portugal", groupName: "Os Galácticos" },
-  { id: 102, name: "Leo Martins",  nick: "Leozinho",  club: "Flamengo",    nationality: "🇧🇷 Brasil",   groupName: "Várzea FC" },
-  { id: 103, name: "Samir Tavares", nick: "Samir",    club: "Sporting CP", nationality: "🇨🇻 Cabo Verde", groupName: "Os Intocáveis" },
-];
-
 // ── Court bookings (the club's 2 courts; hour slots per day) ──
 export const COURT_HOURS = ["18:00", "19:00", "20:00", "21:00", "22:00", "23:00"];
 
@@ -168,30 +161,5 @@ export const OPEN_MATCHES = [
   { id: 3, groupName: "Os Intocáveis",  court: "Campo 2", date: isoDay(4), time: "20:00", spotsLeft: 3, level: "Casual",      price: 4.5, joined: false },
 ];
 
-export const INITIAL_POSTS = [
-  { id: 1, authorId: 2,   time: "há 2h",  type: "video", videoLabel: "0:42",
-    text: "Golaço de fora da área no jogo de sábado 🚀 quem esteve lá sabe",
-    likes: [1, 3, 6, 101], comments: [
-      { id: 1, authorId: 6, text: "Que misso Joãozão 🔥" },
-      { id: 2, authorId: 101, text: "Belo golo! Saudações de Braga 👏" },
-    ], gotw: true, gotwVotes: [3, 6] },
-  { id: 2, authorId: 102, time: "há 5h", type: "video", videoLabel: "0:18",
-    text: "Bicicleta no campo sintético 🤸 avaliem de 0 a 10",
-    likes: [2, 5, 103], comments: [
-      { id: 1, authorId: 2, text: "10/10 e não se fala mais nisso" },
-    ], gotw: true, gotwVotes: [5, 8, 103] },
-  { id: 3, authorId: 4,  time: "ontem", type: "text",
-    text: "3 defesas no último minuto e ainda dizem que GR não cansa 🧤😤",
-    likes: [1, 2, 3, 5, 7], comments: [
-      { id: 1, authorId: 1, text: "O muro de Matosinhos 🧱" },
-    ], gotw: false, gotwVotes: [] },
-  { id: 4, authorId: 103, time: "ontem", type: "video", videoLabel: "1:03",
-    text: "Highlights do nosso jogo de 6ª feira — que batalha 💪⚽",
-    likes: [6, 11], comments: [], gotw: true, gotwVotes: [1] },
-  { id: 5, authorId: 6,  time: "há 2 dias", type: "text",
-    text: "Alguém recomenda chuteiras para sintético? As minhas já estão a pedir reforma 👟",
-    likes: [8], comments: [
-      { id: 1, authorId: 12, text: "Nike Phantom, melhores que já tive" },
-      { id: 2, authorId: 102, text: "Mizuno Morelia, confia 🇧🇷" },
-    ], gotw: false, gotwVotes: [] },
-];
+// Social feed starts empty — real posts from real members.
+export const INITIAL_POSTS = [];
