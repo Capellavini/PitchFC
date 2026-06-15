@@ -325,6 +325,19 @@ export function useCloud() {
     await supabase.from("players").update({ is_assistant: value }).eq("id", playerId);
   };
 
+  /** Organizer adds a guest player (no account) — confirmed for the
+   *  current game so they show up on the grid and in the draw. */
+  const addManualPlayer = async ({ name, nick, position, attrs }) => {
+    const ins = await supabase.from("players")
+      .insert({ group_id: data.groupRow.id, name, nick, position, foot: "Direito", attrs })
+      .select().single();
+    if (data.game && ins.data) {
+      await supabase.from("attendances")
+        .upsert({ game_id: data.game.id, player_id: ins.data.id, status: "confirmed" }, { onConflict: "game_id,player_id" });
+    }
+    await refetch();
+  };
+
   // ── Social: posts, likes, comments ─────────────────────
   const createPost = async ({ type, body, media_url }) => {
     if (!data.myPlayer) return;
@@ -362,7 +375,7 @@ export function useCloud() {
     setMyStatus, setPaid, updatePlayer, updateGroupRow,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, closeMvp,
-    toggleAssistant, createPost, deletePost, toggleLike, addComment,
+    toggleAssistant, addManualPlayer, createPost, deletePost, toggleLike, addComment,
     sendFriendRequest, respondFriend, removeFriend,
     refetch,
   };

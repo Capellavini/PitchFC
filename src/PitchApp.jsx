@@ -222,6 +222,26 @@ export default function PitchApp() {
   const renameTeam = (teamId, name) =>
     setTeams((ts) => (Array.isArray(ts) ? ts.map((t) => (t.id === teamId ? { ...t, name } : t)) : ts));
 
+  // Manually move a player to another team (remove everywhere, add to target).
+  const movePlayer = (playerId, toTeamId) =>
+    setTeams((ts) => (Array.isArray(ts)
+      ? ts.map((t) => ({ ...t, players: t.id === toTeamId ? [...t.players.filter((id) => id !== playerId), playerId] : t.players.filter((id) => id !== playerId) }))
+      : ts));
+
+  // Organizer adds a guest player (no account). Overall optional → uniform attrs.
+  const addManualPlayer = ({ name, position, overall }) => {
+    const clean = name.trim();
+    if (!clean) return;
+    const o = overall ? Math.max(40, Math.min(99, overall)) : 65;
+    const attrs = { rit: o, rem: o, pas: o, dri: o, def: o, fis: o };
+    const nick = clean.split(/\s+/)[0] || clean;
+    if (cloudMode) {
+      cloud.addManualPlayer({ name: clean, nick, position, attrs });
+    } else {
+      setGroup((g) => [...g, { id: Date.now(), name: clean, nick, position, foot: "Direito", attrs, status: "confirmed", paid: false, goals: 0, assists: 0, mvps: 0, gamesPlayed: 0, wins: 0 }]);
+    }
+  };
+
   // ── Live matchday (still local) ────────────────────────
   const startMatchday = (mode = "avulsa") => {
     if (!teams || teams.length < 2) return;
@@ -587,7 +607,7 @@ export default function PitchApp() {
             group={displayGroup} game={game}
             togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
             material={material} toggleMaterial={toggleMaterial} assignMaterial={assignMaterial} addMaterial={addMaterial}
-            teams={teams} drawTeams={drawTeams} renameTeam={renameTeam} canManageTeams={canManageTeams}
+            teams={teams} drawTeams={drawTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
             lastMatchday={lastMatchdayView}
           />
@@ -609,7 +629,7 @@ export default function PitchApp() {
         {tab === "stats" && (
           <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} />
         )}
-        {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} />}
+        {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} canManageTeams={canManageTeams} />}
         {tab === "perfil" && (
           <PerfilTab
             key={viewPlayerId ?? "me"}

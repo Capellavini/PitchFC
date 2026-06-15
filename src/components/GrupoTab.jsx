@@ -1,16 +1,26 @@
 import { useState } from "react";
-import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck } from "lucide-react";
+import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck, UserPlus, X } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { TOTAL_GAMES } from "../data";
+import { TOTAL_GAMES, POSITIONS } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
 import { openWhatsApp, inviteMessage, groupInviteMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
+import BtnPrimary from "./BtnPrimary";
 
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
+const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, canManageTeams }) {
   const [copied, setCopied] = useState(false);
+  const [guestOpen, setGuestOpen] = useState(false);
+  const [guest, setGuest] = useState(EMPTY_GUEST);
+  const submitGuest = () => {
+    if (!guest.name.trim()) return;
+    onAddManualPlayer({ name: guest.name, position: guest.position, overall: guest.overall ? Number(guest.overall) : null });
+    setGuest(EMPTY_GUEST);
+    setGuestOpen(false);
+  };
   const copyInvite = async () => {
     try { await navigator.clipboard.writeText(inviteUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
@@ -70,6 +80,39 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
           </div>
         </div>
       ))}
+
+      {/* manual / guest player (organizer or assistant) */}
+      {canManageTeams && (
+        guestOpen ? (
+          <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 800 }}>Jogador avulso</span>
+              <button onClick={() => { setGuestOpen(false); setGuest(EMPTY_GUEST); }} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex" }}><X size={16} /></button>
+            </div>
+            <input value={guest.name} onChange={(e) => setGuest((g) => ({ ...g, name: e.target.value }))} placeholder="Nome do jogador"
+              style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", marginBottom: 10 }} />
+            <div style={{ fontSize: 11, color: C.text2, marginBottom: 6 }}>Posição</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              {POSITIONS.map((pos) => {
+                const active = guest.position === pos;
+                return (
+                  <button key={pos} onClick={() => setGuest((g) => ({ ...g, position: pos }))} style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "5px 11px", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" }}>
+                    {pos}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: C.text2, marginBottom: 6 }}>Overall <span style={{ color: C.text3 }}>(opcional)</span></div>
+            <input type="number" min="40" max="99" value={guest.overall} onChange={(e) => setGuest((g) => ({ ...g, overall: e.target.value }))} placeholder="ex.: 75"
+              style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", marginBottom: 14 }} />
+            <BtnPrimary onClick={submitGuest} style={{ width: "100%" }}>Adicionar jogador</BtnPrimary>
+          </div>
+        ) : (
+          <button onClick={() => setGuestOpen(true)} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14, cursor: "pointer", color: C.accent, border: `1px dashed ${C.accentBorder}`, background: C.accentDim, fontWeight: 800, fontSize: 13 }}>
+            <UserPlus size={16} /> Adicionar jogador avulso (sem conta)
+          </button>
+        )
+      )}
 
       <div style={{ ...cardStyle, textAlign: "center", padding: "22px 20px", marginBottom: 24 }}>
         <div style={{ fontSize: 24, marginBottom: 8 }}>👤</div>

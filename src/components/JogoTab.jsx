@@ -17,7 +17,7 @@ import MatchSummary from "./MatchSummary";
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
-  teams, drawTeams, renameTeam, canManageTeams, matchdayProps, lastMatchday,
+  teams, drawTeams, renameTeam, movePlayer, canManageTeams, matchdayProps, lastMatchday,
 }) {
   const [newItem, setNewItem] = useState("");
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
@@ -200,8 +200,19 @@ export default function JogoTab({
                   {resolveTeam(t.players).map((p) => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <div style={{ width: 6, height: 6, borderRadius: 3, background: t.color }} />
-                      <span style={{ fontSize: 12, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1 }}>{p.nick}</span>
-                      <span style={{ fontSize: 9, color: C.text3, marginLeft: "auto" }}>{p.position.slice(0, 3).toUpperCase()}</span>
+                      <span style={{ fontSize: 12, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+                      {canManageTeams && teams.length > 1 ? (
+                        <select
+                          value={t.id}
+                          onChange={(e) => movePlayer(p.id, e.target.value)}
+                          title="Mover de equipa"
+                          style={{ marginLeft: "auto", background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: 9, padding: "1px 2px", outline: "none", maxWidth: 70 }}
+                        >
+                          {teams.map((tt) => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
+                        </select>
+                      ) : (
+                        <span style={{ fontSize: 9, color: C.text3, marginLeft: "auto" }}>{p.position.slice(0, 3).toUpperCase()}</span>
+                      )}
                     </div>
                   ))}
                   {t.players.length === 0 && <span style={{ fontSize: 11, color: C.text3 }}>sem jogadores</span>}
