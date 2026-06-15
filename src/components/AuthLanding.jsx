@@ -1,9 +1,9 @@
-import { User, Megaphone, ChevronRight } from "lucide-react";
+import { User, Megaphone, ChevronRight, ShieldCheck } from "lucide-react";
 import { C, cardStyle, BRAND, fieldBackdrop } from "../theme";
 
 /** Entry screen — choose role. No backend yet, so "login" is a local
  *  role pick; magic-link auth replaces this when Supabase lands. */
-export default function AuthLanding({ onPick, onBack }) {
+export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin }) {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center",
@@ -39,6 +39,12 @@ export default function AuthLanding({ onPick, onBack }) {
           <ChevronRight size={18} color={C.text3} />
         </button>
       </div>
+
+      {isAdmin && (
+        <button onClick={onOpenAdmin} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "11px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", marginTop: 16, display: "flex", alignItems: "center", gap: 7, justifyContent: "center" }}>
+          <ShieldCheck size={15} /> Painel de administrador
+        </button>
+      )}
 
       <div style={{ textAlign: "center", marginTop: 28, fontSize: 11, color: C.text3 }}>
         Versão de demonstração — os dados ficam só neste dispositivo

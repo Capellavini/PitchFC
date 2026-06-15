@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Users, LogOut } from "lucide-react";
+import { Users, LogOut, ShieldCheck } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
 import BtnPrimary from "./BtnPrimary";
 
 /** Logged-in player with no group yet: paste an invite code (or arrive
  *  via a ?join= link, handled upstream) to attach to a group. */
-export default function JoinGroup({ onJoin, onLogout }) {
+export default function JoinGroup({ onJoin, onLogout, isAdmin, onOpenAdmin }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -45,7 +45,13 @@ export default function JoinGroup({ onJoin, onLogout }) {
         </BtnPrimary>
       </div>
 
-      <button onClick={onLogout} style={{ background: "none", border: "none", color: C.text2, fontSize: 13, cursor: "pointer", marginTop: 18, display: "flex", alignItems: "center", gap: 5, justifyContent: "center" }}>
+      {isAdmin && (
+        <button onClick={onOpenAdmin} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "11px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", marginTop: 18, display: "flex", alignItems: "center", gap: 7, justifyContent: "center" }}>
+          <ShieldCheck size={15} /> Painel de administrador
+        </button>
+      )}
+
+      <button onClick={onLogout} style={{ background: "none", border: "none", color: C.text2, fontSize: 13, cursor: "pointer", marginTop: 14, display: "flex", alignItems: "center", gap: 5, justifyContent: "center" }}>
         <LogOut size={14} /> Sair
       </button>
     </div>

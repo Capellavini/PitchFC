@@ -1,11 +1,11 @@
 import { useState } from "react";
 import {
   Clock, MapPin, Check, X, MessageCircle,
-  Shuffle, ClipboardList, CreditCard, Plus,
+  Shuffle, ClipboardList, CreditCard, Plus, Minus, Share2, Copy, ListOrdered,
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
-import { ini, playerColor, fmtEUR } from "../lib/helpers";
-import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage } from "../lib/whatsapp";
+import { ini, playerColor, fmtEUR, splitWaitlist } from "../lib/helpers";
+import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, gameShareMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
@@ -18,18 +18,28 @@ export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
   teams, drawTeams, renameTeam, movePlayer, canManageTeams, matchdayProps, lastMatchday,
+  inviteUrl, canManageGame, onSetSpots,
 }) {
   const [newItem, setNewItem] = useState("");
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
+  const [copied, setCopied] = useState(false);
 
   const confirmed = group.filter((p) => p.status === "confirmed");
   const pending   = group.filter((p) => p.status === "pending");
   const declined  = group.filter((p) => p.status === "declined");
   const me        = group.find((p) => p.isMe);
-  const spotsLeft = game.spots - confirmed.length;
-  const paidCount = confirmed.filter((p) => p.paid).length;
-  const debtors   = confirmed.filter((p) => !p.paid);
-  const slots     = Array.from({ length: game.spots }, (_, i) => confirmed[i] ?? null);
+  // Once the game is full, extra confirmations form an ordered waiting line.
+  const { playing, waitlist } = splitWaitlist(confirmed, game.spots);
+  const myWaitPos = me ? waitlist.findIndex((p) => p.id === me.id) + 1 : 0; // 1-based, 0 = not waiting
+  const spotsLeft = game.spots - playing.length;
+  const shareUrl  = inviteUrl || window.location.origin;
+  const shareGame = () => openWhatsApp(gameShareMessage(game, shareUrl, spotsLeft));
+  const copyShare = async () => {
+    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+  };
+  const paidCount = playing.filter((p) => p.paid).length;
+  const debtors   = playing.filter((p) => !p.paid);
+  const slots     = Array.from({ length: game.spots }, (_, i) => playing[i] ?? null);
   const price     = fmtEUR(game.priceEach);
 
   const resolveTeam = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
@@ -46,14 +56,22 @@ export default function JogoTab({
 
       {/* Header */}
       <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.text2 }}>PRÓXIMO JOGO</div>
-          <div style={{ fontSize: 10, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>RECORRENTE</div>
-        </div>
-        <div style={{ ...displayFont, fontSize: 24, marginBottom: 2 }}>{game.label}</div>
-        <div style={{ display: "flex", gap: 14, fontSize: 12, color: C.text2 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {game.date} · {game.time}</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {game.venue}</span>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.text2 }}>PRÓXIMO JOGO</div>
+              <div style={{ fontSize: 10, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>RECORRENTE</div>
+            </div>
+            <div style={{ ...displayFont, fontSize: 24, marginBottom: 2 }}>{game.label}</div>
+            <div style={{ display: "flex", gap: 14, fontSize: 12, color: C.text2 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {game.date} · {game.time}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {game.venue}</span>
+            </div>
+          </div>
+          <button onClick={shareGame} title="Partilhar jogo"
+            style={{ flexShrink: 0, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            <Share2 size={14} /> Partilhar
+          </button>
         </div>
       </div>
 
@@ -65,14 +83,41 @@ export default function JogoTab({
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16, position: "relative" }}>
           <div>
-            <span style={{ ...displayFont, fontSize: 34, color: confirmed.length >= game.spots ? C.green : C.text1 }}>{confirmed.length}</span>
+            <span style={{ ...displayFont, fontSize: 34, color: playing.length >= game.spots ? C.green : C.text1 }}>{playing.length}</span>
             <span style={{ fontSize: 18, fontWeight: 500, color: C.text3 }}>/{game.spots}</span>
           </div>
           {spotsLeft > 0
             ? <div style={{ fontSize: 13, color: C.orange, fontWeight: 700 }}>{spotsLeft} {spotsLeft === 1 ? "vaga em aberto" : "vagas em aberto"}</div>
-            : <div style={{ fontSize: 13, color: C.green, fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}><Check size={14} /> Equipa completa!</div>
+            : (
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 13, color: C.green, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}><Check size={14} /> Equipa completa!</div>
+                {waitlist.length > 0 && <div style={{ fontSize: 11, color: C.orange, fontWeight: 700, marginTop: 2 }}>{waitlist.length} na lista de espera</div>}
+              </div>
+            )
           }
         </div>
+
+        {/* Spots control + share link — organizer only */}
+        {canManageGame && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, color: C.text2 }}>Nº de jogadores:</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => onSetSpots(game.spots - 1)} disabled={game.spots <= 2}
+                style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, color: game.spots <= 2 ? C.text3 : C.text1, border: `1px solid ${C.border}`, cursor: game.spots <= 2 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: game.spots <= 2 ? 0.4 : 1 }}>
+                <Minus size={14} />
+              </button>
+              <span style={{ ...displayFont, fontSize: 20, minWidth: 26, textAlign: "center" }}>{game.spots}</span>
+              <button onClick={() => onSetSpots(game.spots + 1)} disabled={game.spots >= 22}
+                style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, color: game.spots >= 22 ? C.text3 : C.text1, border: `1px solid ${C.border}`, cursor: game.spots >= 22 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: game.spots >= 22 ? 0.4 : 1 }}>
+                <Plus size={14} />
+              </button>
+            </div>
+            <button onClick={copyShare} title="Copiar link do jogo"
+              style={{ marginLeft: "auto", background: C.card, color: copied ? C.green : C.text2, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+              {copied ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Link</>}
+            </button>
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 4, position: "relative" }}>
           {slots.map((player, i) => {
@@ -109,7 +154,20 @@ export default function JogoTab({
       </div>
 
       {/* MY STATUS + PAYMENT */}
-      {me?.status === "confirmed" ? (
+      {me?.status === "confirmed" && myWaitPos > 0 ? (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, ...displayFont, fontSize: 18, color: C.accent }}>
+              {myWaitPos}º
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.accent }}>Estás na lista de espera</div>
+              <div style={{ fontSize: 12, color: C.text2 }}>Entras automaticamente se alguém desistir. Sem pagar até entrares.</div>
+            </div>
+            <button onClick={() => toggleMyStatus("declined")} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "7px 12px", fontSize: 12, color: C.text2, cursor: "pointer" }}>Sair</button>
+          </div>
+        </div>
+      ) : me?.status === "confirmed" ? (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: me.paid ? 0 : 14 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: C.greenDim, border: `1px solid ${C.greenBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -134,10 +192,33 @@ export default function JogoTab({
         </div>
       ) : (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ fontSize: 13, color: C.text2, marginBottom: 12 }}>Vais jogar?</div>
+          <div style={{ fontSize: 13, color: C.text2, marginBottom: 12 }}>
+            {spotsLeft > 0 ? "Vais jogar?" : "Jogo cheio — entra na lista de espera e entras se alguém desistir."}
+          </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <BtnPrimary onClick={() => toggleMyStatus("confirmed")} style={{ flex: 1, fontSize: 15 }}>Estou dentro!</BtnPrimary>
+            <BtnPrimary onClick={() => toggleMyStatus("confirmed")} style={{ flex: 1, fontSize: 15 }}>{spotsLeft > 0 ? "Estou dentro!" : "Entrar na lista de espera"}</BtnPrimary>
             <button onClick={() => toggleMyStatus("declined")} style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 13, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Não posso</button>
+          </div>
+        </div>
+      )}
+
+      {/* WAITING LINE */}
+      {waitlist.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <ListOrdered size={15} color={C.accent} />
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Lista de espera ({waitlist.length})</div>
+          </div>
+          <div style={{ fontSize: 11, color: C.text2, marginBottom: 12 }}>Por ordem de confirmação. Entra automaticamente quem está em 1º se um titular desistir.</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {waitlist.map((p, i) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ ...displayFont, fontSize: 15, color: i === 0 ? C.accent : C.text3, width: 22, textAlign: "center" }}>{i + 1}º</div>
+                <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} isMe={p.isMe} photo={p.photo} />
+                <span style={{ flex: 1, fontSize: 13, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1 }}>{p.nick}{p.isMe && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}> (tu)</span>}</span>
+                <span style={{ fontSize: 10, color: C.text3 }}>{p.position.slice(0, 3).toUpperCase()}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -147,7 +228,7 @@ export default function JogoTab({
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700 }}>Sorteio de Equipas</div>
           <div style={{ fontSize: 11, color: C.text2 }}>
-            {!canManageTeams ? "Só o organizador (ou o auxiliar) pode sortear e renomear." : confirmed.length < 2 ? "Faltam confirmações para sortear" : "Escolhe quantas equipas e sorteia — depois podes renomear."}
+            {!canManageTeams ? "Só o organizador (ou o auxiliar) pode sortear e renomear." : playing.length < 2 ? "Faltam confirmações para sortear" : "Escolhe quantas equipas e sorteia — depois podes renomear."}
           </div>
         </div>
 
@@ -157,7 +238,7 @@ export default function JogoTab({
             <span style={{ fontSize: 11, color: C.text2 }}>Equipas:</span>
             {[2, 3, 4, 5, 6].map((n) => {
               const active = numTeams === n;
-              const disabled = n > confirmed.length;
+              const disabled = n > playing.length;
               return (
                 <button key={n} onClick={() => !disabled && setNumTeams(n)} disabled={disabled}
                   style={{ width: 32, height: 32, borderRadius: 9, background: active ? C.accent : C.surface, color: active ? C.bg : disabled ? C.text3 : C.text1, border: `1px solid ${active ? C.accent : C.border}`, fontSize: 13, fontWeight: 800, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1 }}>
@@ -167,12 +248,12 @@ export default function JogoTab({
             })}
             <button
               onClick={() => drawTeams(numTeams)}
-              disabled={confirmed.length < 2}
+              disabled={playing.length < 2}
               style={{
-                marginLeft: "auto", background: confirmed.length >= 2 ? C.accent : C.accentDim,
-                color: confirmed.length >= 2 ? C.bg : C.accent, border: `1px solid ${C.accentBorder}`,
+                marginLeft: "auto", background: playing.length >= 2 ? C.accent : C.accentDim,
+                color: playing.length >= 2 ? C.bg : C.accent, border: `1px solid ${C.accentBorder}`,
                 borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 800,
-                cursor: confirmed.length >= 2 ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6,
+                cursor: playing.length >= 2 ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6,
               }}
             >
               <Shuffle size={14} /> {teams ? "Re-sortear" : "Sortear"}
@@ -329,12 +410,12 @@ export default function JogoTab({
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ ...displayFont, fontSize: 19, color: C.green }}>{fmtEUR(paidCount * game.priceEach)}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>de {fmtEUR(confirmed.length * game.priceEach)} recebidos</div>
+            <div style={{ fontSize: 11, color: C.text2 }}>de {fmtEUR(playing.length * game.priceEach)} recebidos</div>
           </div>
         </div>
 
         <div style={{ height: 4, background: C.border, borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ height: "100%", borderRadius: 2, background: C.green, width: `${confirmed.length ? (paidCount / confirmed.length) * 100 : 0}%`, transition: "width 0.3s" }} />
+          <div style={{ height: "100%", borderRadius: 2, background: C.green, width: `${playing.length ? (paidCount / playing.length) * 100 : 0}%`, transition: "width 0.3s" }} />
         </div>
 
         {debtors.length > 0 ? (

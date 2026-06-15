@@ -10,6 +10,20 @@ export const playerColor = (group, p) =>
 export const fmtEUR = (n) =>
   n % 1 === 0 ? `€${n}` : `€${n.toFixed(2).replace(".", ",")}`;
 
+/**
+ * Split confirmed players into those actually playing (the first `spots`,
+ * in confirmation order) and the ordered waiting line for the overflow.
+ * Order is by responded_at (earliest first); players with no timestamp
+ * — the core roster and organizer-added guests — count as earliest, so
+ * they're always in. When someone drops out, the next in line takes the
+ * freed slot automatically (this is derived, not stored).
+ */
+export const splitWaitlist = (confirmed, spots) => {
+  const ts = (p) => (p.respondedAt ? new Date(p.respondedAt).getTime() : 0);
+  const ordered = [...confirmed].sort((a, b) => ts(a) - ts(b)); // stable for ties
+  return { playing: ordered.slice(0, spots), waitlist: ordered.slice(spots) };
+};
+
 // ── Dates ────────────────────────────────────────────────
 export const WEEKDAYS_PT = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];

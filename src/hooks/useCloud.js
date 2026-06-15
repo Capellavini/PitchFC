@@ -234,8 +234,9 @@ export function useCloud() {
 
   // ── In-app mutations (optimistic patch + write) ────────
   const setMyStatus = async (status_, playerId, gameId) => {
-    setData((d) => ({ ...d, attendances: d.attendances.map((a) => (a.player_id === playerId ? { ...a, status: status_ } : a)) }));
-    await supabase.from("attendances").update({ status: status_, responded_at: new Date().toISOString() })
+    const respondedAt = new Date().toISOString();
+    setData((d) => ({ ...d, attendances: d.attendances.map((a) => (a.player_id === playerId ? { ...a, status: status_, responded_at: respondedAt } : a)) }));
+    await supabase.from("attendances").update({ status: status_, responded_at: respondedAt })
       .eq("game_id", gameId).eq("player_id", playerId);
   };
   const setPaid = async (paid, playerId, gameId) => {
@@ -250,6 +251,58 @@ export function useCloud() {
   const updateGroupRow = async (fields) => {
     setData((d) => ({ ...d, groupRow: { ...d.groupRow, ...fields } }));
     await supabase.from("groups").update(fields).eq("id", data.groupRow.id);
+  };
+
+  /** Organizer changes the number of players for this game. Keeps the
+   *  group default (max_players) and the live game row (spots) in sync. */
+  const setSpots = async (n) => {
+    setData((d) => ({
+      ...d,
+      groupRow: d.groupRow ? { ...d.groupRow, max_players: n } : d.groupRow,
+      game: d.game ? { ...d.game, spots: n } : d.game,
+    }));
+    if (data.groupRow) await supabase.from("groups").update({ max_players: n }).eq("id", data.groupRow.id);
+    if (data.game) await supabase.from("games").update({ spots: n }).eq("id", data.game.id);
+  };
+
+  // ── Owner-only admin mutations (cross-group). RLS is permissive
+  //    (open write v1), so the anon key can write across groups. These
+  //    are gated client-side by the admin email; lock down via RLS/role
+  //    before real users (see SUPABASE.md). ──
+  const adminUpdateGroup = async (id, fields) => {
+    const r = await supabase.from("groups").update(fields).eq("id", id);
+    return r.error ? { error: r.error.message } : {};
+  };
+  const adminDeleteGroup = async (id) => {
+    // players/games/attendances cascade via FK on delete.
+    const r = await supabase.from("groups").delete().eq("id", id);
+    return r.error ? { error: r.error.message } : {};
+  };
+  const adminUpdatePlayer = async (id, fields) => {
+    const r = await supabase.from("players").update(fields).eq("id", id);
+    return r.error ? { error: r.error.message } : {};
+  };
+  const adminDeletePlayer = async (id) => {
+    // Removes the player card + their attendances/stats. The underlying
+    // auth account (if any) needs the service role to delete — not here.
+    const r = await supabase.from("players").delete().eq("id", id);
+    return r.error ? { error: r.error.message } : {};
+  };
+
+  /** Owner-only: snapshot of every group for the admin overview. RLS is
+   *  permissive (open read v1), so the anon key can read across groups. */
+  const fetchAdminData = async () => {
+    const [g, p, gm, at] = await Promise.all([
+      supabase.from("groups").select("*").order("created_at"),
+      supabase.from("players").select("*"),
+      supabase.from("games").select("id,group_id,scheduled_at,status,spots").order("scheduled_at", { ascending: false }),
+      supabase.from("attendances").select("game_id,player_id,status,paid"),
+    ]);
+    return {
+      groups: g.data ?? [], players: p.data ?? [],
+      games: gm.data ?? [], attendances: at.data ?? [],
+      error: g.error?.message || p.error?.message || gm.error?.message || at.error?.message || null,
+    };
   };
 
   // ── Club events (admin) + bookings ─────────────────────
@@ -372,7 +425,8 @@ export function useCloud() {
     isAdmin: isAdminEmail(data.user?.email),
     signUp, signIn, signOut,
     createPlayerProfile, createGroupAsOrganizer, joinGroupByToken,
-    setMyStatus, setPaid, updatePlayer, updateGroupRow,
+    setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots,
+    fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, closeMvp,
     toggleAssistant, addManualPlayer, createPost, deletePost, toggleLike, addComment,

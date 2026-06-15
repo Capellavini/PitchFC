@@ -28,6 +28,13 @@ export const chargeMessage = (debtors, priceLabel, game, mbwayPhone) =>
 export const inviteMessage = (groupName, game) =>
   `⚽ Junta-te ao ${groupName} no PITCH! Jogamos ${game.date} às ${game.time} no ${game.venue}. Entra aqui: ${appUrl()}`;
 
+export const gameShareMessage = (game, url, spotsLeft) =>
+  `⚽ ${game.label} — ${game.date} às ${game.time} no ${game.venue}.` +
+  (spotsLeft > 0
+    ? ` Faltam ${spotsLeft} ${spotsLeft === 1 ? "vaga" : "vagas"}! Entra e confirma`
+    : " Equipa completa — entra para acompanhar") +
+  `: ${url}`;
+
 export const sharePostMessage = (authorNick, text) =>
   `⚽ Vê isto no PITCH — ${authorNick}: "${text}" ${appUrl()}`;
 

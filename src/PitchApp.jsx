@@ -14,7 +14,8 @@ import { useEffect, useState } from "react";
 import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
-import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime } from "./lib/helpers";
+import { ADMIN_EMAILS } from "./lib/supabase";
+import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist } from "./lib/helpers";
 import { useCloud } from "./hooks/useCloud";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
@@ -30,6 +31,8 @@ import SocialTab from "./components/SocialTab";
 import StatsTab from "./components/StatsTab";
 import GrupoTab from "./components/GrupoTab";
 import PerfilTab from "./components/PerfilTab";
+import AdminPanel from "./components/AdminPanel";
+import BtnPrimary from "./components/BtnPrimary";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 const DEFAULT_ATTRS = { rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 };
@@ -69,6 +72,7 @@ export default function PitchApp() {
   const [statMode, setStatMode] = useState("goals");
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   // ── Cloud (PR 2: auth + groups + invites + events) ─────
   const cloud = useCloud();
@@ -85,6 +89,15 @@ export default function PitchApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joinParam, cloud.user]);
 
+  // ?admin=1: reliable deep link to the owner panel. Consumed once into
+  // state; the panel itself explains access if the viewer isn't an admin.
+  const adminParam = new URLSearchParams(window.location.search).get("admin");
+  useEffect(() => {
+    if (!adminParam) return;
+    setAdminOpen(true);
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [adminParam]);
+
   // Cloud rows → the app's player shape.
   const baseGroup = cloudMode
     ? cloud.players.map((p) => {
@@ -96,6 +109,7 @@ export default function PitchApp() {
           position: p.position, foot: p.foot, attrs: p.attrs ?? DEFAULT_ATTRS,
           isOrganizerPlayer: p.is_organizer, isAssistant: p.is_assistant,
           status: att?.status ?? "pending", paid: att?.paid ?? false,
+          respondedAt: att?.responded_at ?? null,
           isMe: cloud.myPlayer?.id === p.id,
           // Season stats now live on the cloud player row (shared ranking).
           goals: p.goals || 0, assists: p.assists || 0, mvps: p.mvps || 0,
@@ -121,6 +135,13 @@ export default function PitchApp() {
     } else {
       setSettings(form);
     }
+  };
+
+  // Organizer adjusts how many players this game needs (default 10).
+  const setSpots = (n) => {
+    const v = Math.max(2, Math.min(22, n));
+    if (cloudMode) cloud.setSpots(v);
+    else setSettings((s) => ({ ...s, maxPlayers: v }));
   };
 
   const me = baseGroup.find((p) => p.isMe);
@@ -174,7 +195,7 @@ export default function PitchApp() {
       cloud.setMyStatus(newStatus, me.uuid, gameId);
       if (newStatus !== "confirmed" && me.paid) cloud.setPaid(false, me.uuid, gameId);
     } else {
-      setGroup((g) => g.map((p) => (p.isMe ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false } : p)));
+      setGroup((g) => g.map((p) => (p.isMe ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
     }
     setTeams(null); // roster changed → invalidate draw
   };
@@ -204,8 +225,9 @@ export default function PitchApp() {
   // position, then snake-deal across teams so each gets a fair spread.
   const drawTeams = (numTeams = 2) => {
     const n = Math.max(2, Math.min(6, numTeams));
-    const confirmed = baseGroup.filter((p) => p.status === "confirmed");
-    const shuffled = [...confirmed].sort(() => Math.random() - 0.5);
+    // Only those actually playing get drawn — the waiting line sits out.
+    const { playing } = splitWaitlist(baseGroup.filter((p) => p.status === "confirmed"), groupSettings.maxPlayers);
+    const shuffled = [...playing].sort(() => Math.random() - 0.5);
     const order = POSITIONS.flatMap((pos) => shuffled.filter((p) => p.position === pos));
     const newTeams = Array.from({ length: n }, (_, i) => ({
       id: `t${i + 1}`, name: TEAM_NAMES[i], color: TEAM_PALETTE[i], players: [],
@@ -292,7 +314,10 @@ export default function PitchApp() {
       mdMatches.push({ n: m.n, homeName: home?.name ?? "—", awayName: away?.name ?? "—", homeGoals: hg, awayGoals: ag });
     });
 
-    const confirmed = baseGroup.filter((p) => p.status === "confirmed");
+    // Waitlisted players didn't play — only the playing XI gets stats.
+    const { playing } = splitWaitlist(baseGroup.filter((p) => p.status === "confirmed"), groupSettings.maxPlayers);
+    const playingIds = new Set(playing.map((p) => p.id));
+    const confirmed = playing;
     const date = fmtDayMonth(isoDay(0));
     const keyOf = (p) => (cloudMode ? p.uuid : p.id);
 
@@ -313,7 +338,7 @@ export default function PitchApp() {
       const statsByUuid = {};
       baseGroup.forEach((p) => {
         const s = stats[p.id];
-        const played = p.status === "confirmed";
+        const played = playingIds.has(p.id);
         if (!s && !played) return;
         statsByUuid[p.uuid] = { goals: s?.goals ?? 0, assists: s?.assists ?? 0, cleanSheets: s?.cleanSheets ?? 0, wins: s?.wins ?? 0, played };
       });
@@ -321,7 +346,7 @@ export default function PitchApp() {
     } else {
       setGroup((g) => g.map((p) => {
         const s = stats[p.id];
-        const played = p.status === "confirmed";
+        const played = playingIds.has(p.id);
         if (!s && !played) return p;
         return { ...p, goals: p.goals + (s?.goals ?? 0), assists: p.assists + (s?.assists ?? 0), gamesPlayed: p.gamesPlayed + (played ? 1 : 0), wins: (p.wins || 0) + (s?.wins ?? 0) };
       }));
@@ -416,6 +441,49 @@ export default function PitchApp() {
     position: "Médio", foot: "Direito", attrs: { ...DEFAULT_ATTRS },
   };
 
+  // Owner-only admin overview of every group. Reachable from ANY logged-in
+  // state and via the ?admin=1 deep link. If the viewer isn't an admin, it
+  // says exactly why (demo mode / not logged in / wrong email) instead of
+  // silently showing nothing.
+  if (adminOpen) {
+    if (cloud.isAdmin) {
+      return shell(
+        <AdminPanel
+          fetchAdminData={cloud.fetchAdminData}
+          actions={{
+            updateGroup: cloud.adminUpdateGroup,
+            deleteGroup: cloud.adminDeleteGroup,
+            updatePlayer: cloud.adminUpdatePlayer,
+            deletePlayer: cloud.adminDeletePlayer,
+          }}
+          onBack={() => setAdminOpen(false)}
+        />
+      );
+    }
+    const reason = localMode
+      ? (cloud.status === "off"
+          ? "A app está em modo demonstração (sem chaves Supabase). O painel de admin precisa de modo cloud."
+          : "A ligação à cloud falhou — a app caiu para modo demonstração. Verifica o Supabase/base de dados. O painel precisa de modo cloud.")
+      : !cloud.user
+        ? "Não há sessão iniciada. Inicia sessão com a conta de administrador."
+        : `Sessão iniciada como ${cloud.user.email}, que não é uma conta de administrador.`;
+    return shell(
+      <div style={{ padding: "32px 20px", minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.accent }}>Painel de administrador</div>
+        <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.6 }}>{reason}</div>
+        <div style={{ fontSize: 11, color: C.text3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, lineHeight: 1.7 }}>
+          modo: <b style={{ color: C.text1 }}>{localMode ? "demo" : "cloud"}</b> · estado: <b style={{ color: C.text1 }}>{cloud.status}</b><br />
+          sessão: <b style={{ color: C.text1 }}>{cloud.user?.email || "—"}</b><br />
+          contas admin: <b style={{ color: C.text1 }}>{ADMIN_EMAILS.join(", ")}</b>
+        </div>
+        {!localMode && !cloud.user && (
+          <BtnPrimary onClick={() => { setAdminOpen(false); setAuthOpen(true); }} style={{ width: "100%" }}>Iniciar sessão</BtnPrimary>
+        )}
+        <button onClick={() => setAdminOpen(false)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 13, color: C.text2, cursor: "pointer" }}>Voltar</button>
+      </div>
+    );
+  }
+
   // ═══ CLOUD MODE GATING ═════════════════════════════════
   if (!localMode) {
     if (cloud.status === "loading") {
@@ -434,7 +502,7 @@ export default function PitchApp() {
 
     if (cloud.status === "needsProfile") {
       if (!pendingRole) {
-        return shell(<AuthLanding onPick={setPendingRole} onBack={logout} />);
+        return shell(<AuthLanding onPick={setPendingRole} onBack={logout} isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)} />);
       }
       if (pendingRole === "player") {
         return shell(
@@ -455,7 +523,7 @@ export default function PitchApp() {
     }
 
     if (cloud.status === "needsGroup") {
-      return shell(<JoinGroup onJoin={cloud.joinGroupByToken} onLogout={logout} />);
+      return shell(<JoinGroup onJoin={cloud.joinGroupByToken} onLogout={logout} isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)} />);
     }
     // status 'ready' → fall through to the app
   } else {
@@ -610,6 +678,7 @@ export default function PitchApp() {
             teams={teams} drawTeams={drawTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
             lastMatchday={lastMatchdayView}
+            inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
           />
         )}
         {tab === "clube" && (
@@ -637,6 +706,7 @@ export default function PitchApp() {
             updateProfile={updateProfile} backToMe={backToMe} resetDemo={resetDemo}
             isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} logout={logout}
             peerRatings={peerRatings} addPeerRating={addPeerRating}
+            isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)}
           />
         )}
       </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES, CLUBS } from "../data";
 import { ATTR_LABELS, fileToDataUrl, encodePayload, averageAttrs, computeOverall } from "../lib/helpers";
@@ -10,7 +10,7 @@ import BtnPrimary from "./BtnPrimary";
 
 const ATTR_NAMES = { rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating, isAdmin, onOpenAdmin }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -274,6 +274,19 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 700 }}>Definições do grupo</div>
             <div style={{ fontSize: 11, color: C.text2 }}>Campo, horário, mensalidade e vagas</div>
+          </div>
+        </button>
+      )}
+
+      {/* Owner-only: cross-group admin overview */}
+      {isOwn && isAdmin && (
+        <button onClick={onOpenAdmin} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1, border: `1px solid ${C.accentBorder}` }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <ShieldCheck size={18} color={C.accent} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Painel de administrador</div>
+            <div style={{ fontSize: 11, color: C.text2 }}>Ver todos os grupos, jogadores e jogos</div>
           </div>
         </button>
       )}
