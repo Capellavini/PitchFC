@@ -42,7 +42,6 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
           <SectionLabel style={{ color: C.text3, marginBottom: 10 }}>{section.label} ({section.items.length})</SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {section.items.map((p) => {
-              const reliability = Math.round((p.gamesPlayed / TOTAL_GAMES) * 100);
               const overall = computeOverall(p.position, p.attrs);
               return (
                 <button key={p.id} onClick={() => openProfile(p.id)} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", cursor: "pointer", textAlign: "left", width: "100%", color: C.text1 }}>
@@ -68,10 +67,6 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                   <div style={{ ...displayFont, fontSize: 15, color: tierColor(overall), minWidth: 26, textAlign: "center" }}>
                     {overall}
                     <div style={{ fontSize: 8, fontWeight: 700, fontStyle: "normal", letterSpacing: "0.05em", color: C.text3 }}>OVR</div>
-                  </div>
-                  <div style={{ textAlign: "right", minWidth: 44 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: reliability >= 80 ? C.green : reliability >= 60 ? C.orange : C.red }}>{reliability}%</div>
-                    <div style={{ fontSize: 10, color: C.text3 }}>fiável</div>
                   </div>
                   <ChevronRight size={15} color={C.text3} />
                 </button>
