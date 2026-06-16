@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES, CLUBS } from "../data";
+import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
 import { ATTR_LABELS, fileToDataUrl, encodePayload, averageAttrs, computeOverall } from "../lib/helpers";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
 import FutCard from "./FutCard";
@@ -105,7 +105,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           {field("Telemóvel (MB Way)", "phone", "tel")}
           {field("Idade", "age", "number")}
           {selectField("Nacionalidade", "nationality", NATIONALITIES)}
-          {selectField("Clube do coração", "club", CLUBS)}
+          {field("Clube do coração", "club")}
           {chips("Posição", "position", POSITIONS)}
           {chips("Pé dominante", "foot", FEET)}
         </div>

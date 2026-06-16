@@ -32,6 +32,7 @@ import StatsTab from "./components/StatsTab";
 import GrupoTab from "./components/GrupoTab";
 import PerfilTab from "./components/PerfilTab";
 import AdminPanel from "./components/AdminPanel";
+import NoGroupState from "./components/NoGroupState";
 import BtnPrimary from "./components/BtnPrimary";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
@@ -73,11 +74,15 @@ export default function PitchApp() {
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [noGroupOptIn, setNoGroupOptIn] = usePersistentState("noGroupOptIn", false);
 
   // ── Cloud (PR 2: auth + groups + invites + events) ─────
   const cloud = useCloud();
   const localMode = cloud.status === "off" || cloud.status === "failed";
   const cloudMode = cloud.status === "ready";
+  // Logged-in player who chose to explore without joining a group yet.
+  const noGroup = cloud.status === "needsGroup" && noGroupOptIn;
+  const cloudAuthed = cloudMode || noGroup; // user-level cloud features
 
   // ?join=<token>: attach the logged-in user to that group.
   const joinParam = new URLSearchParams(window.location.search).get("join");
@@ -98,9 +103,11 @@ export default function PitchApp() {
     window.history.replaceState({}, "", window.location.pathname);
   }, [adminParam]);
 
-  // Cloud rows → the app's player shape.
-  const baseGroup = cloudMode
-    ? cloud.players.map((p) => {
+  // Cloud rows → the app's player shape. With no group joined there's no
+  // roster, so we surface just the player's own card (keeps Perfil/Stats working).
+  const cloudRoster = cloudMode ? cloud.players : (noGroup && cloud.myPlayer ? [cloud.myPlayer] : null);
+  const baseGroup = cloudRoster
+    ? cloudRoster.map((p) => {
         const att = cloud.attendances.find((a) => a.player_id === p.id);
         const id = hashId(p.id);
         return {
@@ -126,7 +133,9 @@ export default function PitchApp() {
         recurring: cloud.groupRow.recurring ?? true,
         openWeekday: cloud.groupRow.open_weekday ?? 1, openTime: cloud.groupRow.open_time ?? "17:00",
       }
-    : settings;
+    : noGroup
+      ? { groupName: "", venue: "", weekday: 6, time: "20:00", monthlyPrice: 0, maxPlayers: 0, recurring: false, openWeekday: 1, openTime: "17:00" }
+      : settings;
 
   const saveSettings = (form) => {
     if (cloudMode) {
@@ -370,7 +379,7 @@ export default function PitchApp() {
   };
 
   // ── Club: events + bookings ────────────────────────────
-  const cloudEvents = cloudMode
+  const cloudEvents = cloudAuthed
     ? cloud.events.map((e) => ({
         id: e.id, emoji: e.emoji, title: e.title, date: e.day, time: e.event_time,
         desc: e.description, kind: e.kind, price: (e.price_cents || 0) / 100,
@@ -378,7 +387,7 @@ export default function PitchApp() {
       }))
     : events;
 
-  const cloudBookings = cloudMode
+  const cloudBookings = cloudAuthed
     ? cloud.bookings.map((b) => ({
         id: b.id, court: b.court, date: b.day, hour: b.hour,
         groupName: b.groups?.name ?? "Reservado", mine: b.group_id === cloud.groupRow?.id,
@@ -400,11 +409,11 @@ export default function PitchApp() {
   };
 
   const rsvpEvent = (id, cancel = false) => {
-    if (cloudMode) setEventStatus((s) => ({ ...s, [id]: cancel ? null : "going" }));
+    if (cloudAuthed) setEventStatus((s) => ({ ...s, [id]: cancel ? null : "going" }));
     else setEvents((es) => es.map((e) => (e.id === id ? { ...e, myStatus: cancel ? null : "going" } : e)));
   };
   const payEvent = (id) => {
-    if (cloudMode) setEventStatus((s) => ({ ...s, [id]: "paid" }));
+    if (cloudAuthed) setEventStatus((s) => ({ ...s, [id]: "paid" }));
     else setEvents((es) => es.map((e) => (e.id === id ? { ...e, myStatus: "paid" } : e)));
   };
 
@@ -420,6 +429,7 @@ export default function PitchApp() {
     setSession({ role: null, onboarded: false });
     setAuthOpen(false);
     setPendingRole(null);
+    setNoGroupOptIn(false);
   };
   const backToRolePick = () => setSession({ role: null, onboarded: false });
 
@@ -534,8 +544,8 @@ export default function PitchApp() {
       );
     }
 
-    if (cloud.status === "needsGroup") {
-      return shell(<JoinGroup onJoin={cloud.joinGroupByToken} onLogout={logout} isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)} />);
+    if (cloud.status === "needsGroup" && !noGroupOptIn) {
+      return shell(<JoinGroup onJoin={cloud.joinGroupByToken} onLogout={logout} onSkip={() => setNoGroupOptIn(true)} isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)} />);
     }
     // status 'ready' → fall through to the app
   } else {
@@ -628,7 +638,7 @@ export default function PitchApp() {
 
   // ── Social: normalized for SocialTab (cloud or local) ──
   let social;
-  if (cloudMode) {
+  if (cloudAuthed) {
     const myUuid = cloud.myPlayer?.id;
     const accepted = cloud.friendships.filter((f) => f.status === "accepted");
     const friendIds = accepted.map((f) => (f.requester_id === myUuid ? f.addressee_id : f.requester_id));
@@ -682,7 +692,9 @@ export default function PitchApp() {
         <img src={BRAND.logo} alt="PITCH Club" style={{ height: 24 }} />
       </div>
       <div style={{ paddingBottom: 80 }}>
-        {tab === "jogo" && (
+        {tab === "jogo" && (noGroup ? (
+          <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
+        ) : (
           <JogoTab
             group={displayGroup} game={game}
             togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
@@ -693,7 +705,7 @@ export default function PitchApp() {
             inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
             confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
           />
-        )}
+        ))}
         {tab === "clube" && (
           <ClubeTab
             bookings={cloudBookings} toggleBooking={toggleBooking}
@@ -711,7 +723,9 @@ export default function PitchApp() {
         {tab === "stats" && (
           <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} />
         )}
-        {tab === "grupo" && <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} canManageTeams={canManageTeams} />}
+        {tab === "grupo" && (noGroup
+          ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
+          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} canManageTeams={canManageTeams} />)}
         {tab === "perfil" && (
           <PerfilTab
             key={viewPlayerId ?? "me"}

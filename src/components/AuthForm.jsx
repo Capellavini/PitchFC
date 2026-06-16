@@ -62,7 +62,7 @@ export default function AuthForm({ onSignUp, onSignIn, onBack }) {
         </div>
 
         {isSignup && field(User, "Nome completo", "name", "text", "Como te chamas")}
-        {isSignup && field(Phone, "Telemóvel (MB Way)", "phone", "tel", "+351 9…")}
+        {isSignup && field(Phone, "Telemóvel", "phone", "tel", "+351 9…")}
         {field(Mail, "Email", "email", "email", "tu@email.com")}
         {field(Lock, "Palavra-passe", "password", "password", "mín. 6 caracteres")}
 

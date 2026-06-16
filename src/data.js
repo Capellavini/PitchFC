@@ -118,9 +118,46 @@ export const POSITIONS = ["Guarda-redes", "Defesa", "Médio", "Avançado"];
 export const FEET = ["Direito", "Esquerdo", "Ambos"];
 
 export const NATIONALITIES = [
+  // Portugal + lusófonos primeiro
   "🇵🇹 Portugal", "🇧🇷 Brasil", "🇦🇴 Angola", "🇨🇻 Cabo Verde", "🇲🇿 Moçambique",
-  "🇬🇼 Guiné-Bissau", "🇸🇹 São Tomé", "🇪🇸 Espanha", "🇫🇷 França", "🇮🇹 Itália",
-  "🇩🇪 Alemanha", "🇬🇧 Inglaterra", "🇦🇷 Argentina", "🇺🇾 Uruguai", "🇺🇦 Ucrânia", "🌍 Outro",
+  "🇬🇼 Guiné-Bissau", "🇸🇹 São Tomé e Príncipe", "🇹🇱 Timor-Leste", "🇬🇶 Guiné Equatorial",
+  // Resto do mundo (alfabético)
+  "🇦🇫 Afeganistão", "🇿🇦 África do Sul", "🇦🇱 Albânia", "🇩🇪 Alemanha", "🇦🇩 Andorra",
+  "🇦🇮 Anguila", "🇸🇦 Arábia Saudita", "🇩🇿 Argélia", "🇦🇷 Argentina", "🇦🇲 Arménia",
+  "🇦🇺 Austrália", "🇦🇹 Áustria", "🇦🇿 Azerbaijão", "🇧🇸 Bahamas", "🇧🇭 Barém",
+  "🇧🇩 Bangladesh", "🇧🇧 Barbados", "🇧🇪 Bélgica", "🇧🇿 Belize", "🇧🇯 Benim",
+  "🇧🇴 Bolívia", "🇧🇦 Bósnia e Herzegovina", "🇧🇼 Botsuana", "🇧🇬 Bulgária", "🇧🇫 Burquina Faso",
+  "🇧🇮 Burúndi", "🇧🇹 Butão", "🇰🇭 Camboja", "🇨🇲 Camarões", "🇨🇦 Canadá",
+  "🇶🇦 Catar", "🇰🇿 Cazaquistão", "🇹🇩 Chade", "🇨🇱 Chile", "🇨🇳 China",
+  "🇨🇾 Chipre", "🇨🇴 Colômbia", "🇰🇲 Comores", "🇨🇬 Congo", "🇨🇩 Congo (RD)",
+  "🇰🇷 Coreia do Sul", "🇰🇵 Coreia do Norte", "🇨🇮 Costa do Marfim", "🇨🇷 Costa Rica", "🇭🇷 Croácia",
+  "🇨🇺 Cuba", "🇩🇰 Dinamarca", "🇩🇲 Dominica", "🇪🇬 Egito", "🇸🇻 El Salvador",
+  "🇦🇪 Emirados Árabes Unidos", "🇪🇨 Equador", "🇪🇷 Eritreia", "🇸🇰 Eslováquia", "🇸🇮 Eslovénia",
+  "🇪🇸 Espanha", "🇺🇸 Estados Unidos", "🇪🇪 Estónia", "🇸🇿 Essuatíni", "🇪🇹 Etiópia",
+  "🇫🇯 Fiji", "🇵🇭 Filipinas", "🇫🇮 Finlândia", "🇫🇷 França", "🇬🇦 Gabão",
+  "🇬🇲 Gâmbia", "🇬🇭 Gana", "🇬🇪 Geórgia", "🇬🇷 Grécia", "🇬🇩 Granada",
+  "🇬🇹 Guatemala", "🇬🇳 Guiné", "🇬🇾 Guiana", "🇭🇹 Haiti", "🇳🇱 Holanda (Países Baixos)",
+  "🇭🇳 Honduras", "🇭🇺 Hungria", "🇾🇪 Iémen", "🇮🇳 Índia", "🇮🇩 Indonésia",
+  "🇬🇧 Inglaterra", "🇮🇷 Irão", "🇮🇶 Iraque", "🇮🇪 Irlanda", "🇮🇸 Islândia",
+  "🇮🇱 Israel", "🇮🇹 Itália", "🇯🇲 Jamaica", "🇯🇵 Japão", "🇯🇴 Jordânia",
+  "🇰🇼 Kuwait", "🇱🇦 Laos", "🇱🇸 Lesoto", "🇱🇻 Letónia", "🇱🇧 Líbano",
+  "🇱🇷 Libéria", "🇱🇾 Líbia", "🇱🇮 Listenstaine", "🇱🇹 Lituânia", "🇱🇺 Luxemburgo",
+  "🇲🇰 Macedónia do Norte", "🇲🇬 Madagáscar", "🇲🇾 Malásia", "🇲🇼 Maláui", "🇲🇻 Maldivas",
+  "🇲🇱 Mali", "🇲🇹 Malta", "🇲🇦 Marrocos", "🇲🇺 Maurícia", "🇲🇷 Mauritânia",
+  "🇲🇽 México", "🇲🇲 Mianmar", "🇫🇲 Micronésia", "🇲🇩 Moldávia", "🇲🇨 Mónaco",
+  "🇲🇳 Mongólia", "🇲🇪 Montenegro", "🇳🇦 Namíbia", "🇳🇵 Nepal", "🇳🇮 Nicarágua",
+  "🇳🇪 Níger", "🇳🇬 Nigéria", "🇳🇴 Noruega", "🇳🇿 Nova Zelândia", "🇴🇲 Omã",
+  "🇵🇰 Paquistão", "🇵🇼 Palau", "🇵🇸 Palestina", "🇵🇦 Panamá", "🇵🇬 Papua-Nova Guiné",
+  "🇵🇾 Paraguai", "🇵🇪 Peru", "🇵🇱 Polónia", "🇵🇷 Porto Rico", "🇰🇪 Quénia",
+  "🇰🇬 Quirguistão", "🇬🇧 Reino Unido", "🇨🇫 Rep. Centro-Africana", "🇩🇴 Rep. Dominicana", "🇨🇿 República Checa",
+  "🇷🇴 Roménia", "🇷🇼 Ruanda", "🇷🇺 Rússia", "🇼🇸 Samoa", "🇸🇲 São Marino",
+  "🇱🇨 Santa Lúcia", "🇸🇳 Senegal", "🇸🇱 Serra Leoa", "🇷🇸 Sérvia", "🇸🇨 Seicheles",
+  "🇸🇬 Singapura", "🇸🇾 Síria", "🇸🇴 Somália", "🇱🇰 Sri Lanka", "🇸🇩 Sudão",
+  "🇸🇸 Sudão do Sul", "🇸🇪 Suécia", "🇨🇭 Suíça", "🇸🇷 Suriname", "🇹🇭 Tailândia",
+  "🇹🇼 Taiwan", "🇹🇿 Tanzânia", "🇹🇯 Tajiquistão", "🇨🇿 Chéquia", "🇹🇬 Togo",
+  "🇹🇴 Tonga", "🇹🇹 Trindade e Tobago", "🇹🇳 Tunísia", "🇹🇲 Turquemenistão", "🇹🇷 Turquia",
+  "🇺🇦 Ucrânia", "🇺🇬 Uganda", "🇺🇾 Uruguai", "🇺🇿 Usbequistão", "🇻🇺 Vanuatu",
+  "🇻🇪 Venezuela", "🇻🇳 Vietname", "🇿🇲 Zâmbia", "🇿🇼 Zimbabué", "🌍 Outro",
 ];
 
 export const CLUBS = [

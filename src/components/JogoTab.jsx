@@ -39,7 +39,6 @@ export default function JogoTab({
   };
   const paidCount = playing.filter((p) => p.paid).length;
   const debtors   = playing.filter((p) => !p.paid);
-  const slots     = Array.from({ length: game.spots }, (_, i) => playing[i] ?? null);
   const price     = fmtEUR(game.priceEach);
 
   const resolveTeam = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
@@ -119,38 +118,39 @@ export default function JogoTab({
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 4, position: "relative" }}>
-          {slots.map((player, i) => {
-            const color = player ? playerColor(group, player) : null;
-            return player ? (
-              <div key={i} style={{ textAlign: "center" }}>
-                <div style={{
-                  width: "100%", aspectRatio: "1", borderRadius: 14,
-                  background: player.photo ? C.surface : player.isMe ? C.accentDim : `${color}18`,
-                  border: `2px solid ${player.isMe ? C.accent : color}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 13, fontWeight: 800, color: player.isMe ? C.accent : color,
-                  position: "relative", overflow: "visible",
-                }}>
-                  {player.photo
-                    ? <img src={player.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} />
-                    : ini(player.name)}
-                  {player.paid && (
-                    <div style={{ position: "absolute", bottom: -3, right: -3, width: 14, height: 14, borderRadius: 7, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.card}` }}>
-                      <Check size={7} strokeWidth={3} color={C.bg} />
-                    </div>
-                  )}
+        {playing.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "18px 0 6px", fontSize: 13, color: C.text2, position: "relative" }}>
+            Ainda ninguém confirmou — sê o primeiro! ⚽
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 4, position: "relative" }}>
+            {playing.map((player) => {
+              const color = playerColor(group, player);
+              return (
+                <div key={player.id} style={{ textAlign: "center" }}>
+                  <div style={{
+                    width: "100%", aspectRatio: "1", borderRadius: 14,
+                    background: player.photo ? C.surface : player.isMe ? C.accentDim : `${color}18`,
+                    border: `2px solid ${player.isMe ? C.accent : color}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 13, fontWeight: 800, color: player.isMe ? C.accent : color,
+                    position: "relative", overflow: "visible",
+                  }}>
+                    {player.photo
+                      ? <img src={player.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} />
+                      : ini(player.name)}
+                    {player.paid && (
+                      <div style={{ position: "absolute", bottom: -3, right: -3, width: 14, height: 14, borderRadius: 7, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.card}` }}>
+                        <Check size={7} strokeWidth={3} color={C.bg} />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 10, color: player.isMe ? C.accent : C.text2, marginTop: 5, fontWeight: player.isMe ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.nick}</div>
                 </div>
-                <div style={{ fontSize: 10, color: player.isMe ? C.accent : C.text2, marginTop: 5, fontWeight: player.isMe ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.nick}</div>
-              </div>
-            ) : (
-              <div key={i} style={{ textAlign: "center" }}>
-                <div style={{ width: "100%", aspectRatio: "1", borderRadius: 14, border: `2px dashed ${C.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: C.text3 }}>+</div>
-                <div style={{ fontSize: 10, color: C.text3, marginTop: 5 }}>livre</div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* INVITE CTA — prominent while the group is still small */}
@@ -307,7 +307,7 @@ export default function JogoTab({
         {teams && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {teams.map((t) => (
-              <div key={t.id} style={{ background: C.surface, borderRadius: 12, padding: 12 }}>
+              <div key={t.id} style={{ background: C.surface, borderRadius: 12, padding: 12, minWidth: 0, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 4, background: t.color, flexShrink: 0 }} />
                   {canManageTeams ? (
@@ -322,9 +322,9 @@ export default function JogoTab({
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                   {resolveTeam(t.players).map((p) => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: 3, background: t.color }} />
-                      <span style={{ fontSize: 12, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: 3, background: t.color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
                       {canManageTeams && teams.length > 1 ? (
                         <select
                           value={t.id}

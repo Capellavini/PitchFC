@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Camera, ChevronLeft } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { POSITIONS, FEET, NATIONALITIES, CLUBS } from "../data";
+import { POSITIONS, FEET, NATIONALITIES } from "../data";
 import { ATTR_LABELS, fileToDataUrl } from "../lib/helpers";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
@@ -97,10 +97,8 @@ export default function OnboardingPlayer({ me, onDone, onBack }) {
         </div>
         <div>
           <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>Clube do coração</div>
-          <select value={form.club} onChange={(e) => set("club", e.target.value)}
-            style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 8px", fontSize: 13, color: C.text1, outline: "none" }}>
-            {CLUBS.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <input type="text" value={form.club} onChange={(e) => set("club", e.target.value)} placeholder="ex.: FC Porto, Real Madrid, Flamengo…"
+            style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }} />
         </div>
       </div>
 

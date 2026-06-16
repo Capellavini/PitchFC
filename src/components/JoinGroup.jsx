@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Users, LogOut, ShieldCheck } from "lucide-react";
+import { Users, LogOut, ShieldCheck, ArrowRight } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
 import BtnPrimary from "./BtnPrimary";
 
 /** Logged-in player with no group yet: paste an invite code (or arrive
- *  via a ?join= link, handled upstream) to attach to a group. */
-export default function JoinGroup({ onJoin, onLogout, isAdmin, onOpenAdmin }) {
+ *  via a ?join= link, handled upstream) to attach to a group — or skip
+ *  and explore the app without one. */
+export default function JoinGroup({ onJoin, onLogout, onSkip, isAdmin, onOpenAdmin }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -44,6 +45,17 @@ export default function JoinGroup({ onJoin, onLogout, isAdmin, onOpenAdmin }) {
           {busy ? "A entrar…" : "Juntar-me ao grupo"}
         </BtnPrimary>
       </div>
+
+      {/* No group yet — explore the app anyway */}
+      {onSkip && (
+        <button onClick={onSkip} style={{ ...cardStyle, marginTop: 12, width: "100%", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left", color: C.text1 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Ainda não tenho grupo</div>
+            <div style={{ fontSize: 11, color: C.text2 }}>Explora a app na mesma — entras num grupo quando quiseres.</div>
+          </div>
+          <ArrowRight size={16} color={C.accent} />
+        </button>
+      )}
 
       {isAdmin && (
         <button onClick={onOpenAdmin} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "11px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", marginTop: 18, display: "flex", alignItems: "center", gap: 7, justifyContent: "center" }}>
