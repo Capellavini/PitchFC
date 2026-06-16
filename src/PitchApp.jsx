@@ -15,7 +15,7 @@ import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
-import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist } from "./lib/helpers";
+import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT } from "./lib/helpers";
 import { useCloud } from "./hooks/useCloud";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
@@ -123,6 +123,8 @@ export default function PitchApp() {
         groupName: cloud.groupRow.name, venue: cloud.groupRow.venue,
         weekday: cloud.groupRow.weekday, time: cloud.groupRow.game_time,
         monthlyPrice: cloud.groupRow.monthly_price_cents / 100, maxPlayers: cloud.groupRow.max_players,
+        recurring: cloud.groupRow.recurring ?? true,
+        openWeekday: cloud.groupRow.open_weekday ?? 1, openTime: cloud.groupRow.open_time ?? "17:00",
       }
     : settings;
 
@@ -131,6 +133,7 @@ export default function PitchApp() {
       cloud.updateGroupRow({
         name: form.groupName, venue: form.venue, weekday: form.weekday, game_time: form.time,
         monthly_price_cents: Math.round(form.monthlyPrice * 100), max_players: form.maxPlayers,
+        recurring: form.recurring, open_weekday: form.openWeekday, open_time: form.openTime,
       });
     } else {
       setSettings(form);
@@ -178,6 +181,15 @@ export default function PitchApp() {
     spots: groupSettings.maxPlayers,
     priceEach: groupSettings.maxPlayers > 0 ? groupSettings.monthlyPrice / groupSettings.maxPlayers : 0,
   };
+
+  // Recurring confirmation window (derived): before the weekly open moment,
+  // confirmations are closed for everyone.
+  const confWin = groupSettings.recurring
+    ? confirmationWindow(groupSettings.weekday, groupSettings.time, groupSettings.openWeekday ?? 1, groupSettings.openTime ?? "17:00")
+    : { isOpen: true };
+  const opensAtLabel = groupSettings.recurring
+    ? `${WEEKDAYS_PT[groupSettings.openWeekday ?? 1]} às ${groupSettings.openTime ?? "17:00"}`
+    : null;
 
   const togglePaid = (id) => {
     const player = baseGroup.find((p) => p.id === id);
@@ -679,6 +691,7 @@ export default function PitchApp() {
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
             lastMatchday={lastMatchdayView}
             inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
+            confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
           />
         )}
         {tab === "clube" && (

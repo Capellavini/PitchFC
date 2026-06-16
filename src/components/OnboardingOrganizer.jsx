@@ -60,6 +60,42 @@ export default function OnboardingOrganizer({ settings, onDone, onBack }) {
           style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
       </div>
 
+      {/* Recurring + confirmation-open window */}
+      <div style={{ ...cardStyle, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: form.recurring ? 14 : 0 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Jogo recorrente</div>
+            <div style={{ fontSize: 11, color: C.text2 }}>Abre a confirmação automaticamente todas as semanas</div>
+          </div>
+          <button onClick={() => set("recurring", !form.recurring)} aria-label="Alternar jogo recorrente"
+            style={{ width: 46, height: 26, borderRadius: 13, background: form.recurring ? C.accent : C.surface, border: `1px solid ${form.recurring ? C.accent : C.border}`, position: "relative", cursor: "pointer", flexShrink: 0, transition: "background 0.2s" }}>
+            <span style={{ position: "absolute", top: 2, left: form.recurring ? 22 : 2, width: 20, height: 20, borderRadius: 10, background: form.recurring ? C.bg : C.text3, transition: "left 0.2s" }} />
+          </button>
+        </div>
+
+        {form.recurring && (
+          <>
+            <div style={{ fontSize: 11, color: C.text2, marginBottom: 6 }}>As confirmações abrem em…</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+              {WEEKDAYS_PT.map((day, i) => {
+                const active = form.openWeekday === i;
+                return (
+                  <button key={day} onClick={() => set("openWeekday", i)} style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" }}>
+                    {day.slice(0, 3)}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>…a esta hora</div>
+            <input type="time" value={form.openTime} onChange={(e) => set("openTime", e.target.value)}
+              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark", marginBottom: 12 }} />
+            <div style={{ background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: 12, fontSize: 12, color: C.text2 }}>
+              📅 Todas as <b style={{ color: C.accent }}>{WEEKDAYS_PT[form.openWeekday]?.toLowerCase()}s às {form.openTime}</b> abre a confirmação para o jogo de <b style={{ color: C.text1 }}>{WEEKDAYS_PT[form.weekday]?.toLowerCase()}</b>.
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Price */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>

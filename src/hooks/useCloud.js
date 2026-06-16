@@ -250,7 +250,15 @@ export function useCloud() {
   };
   const updateGroupRow = async (fields) => {
     setData((d) => ({ ...d, groupRow: { ...d.groupRow, ...fields } }));
-    await supabase.from("groups").update(fields).eq("id", data.groupRow.id);
+    const r = await supabase.from("groups").update(fields).eq("id", data.groupRow.id);
+    if (r.error) {
+      // Likely the recurring columns (migration 6) aren't applied yet —
+      // retry with just the core columns so settings still save.
+      const { recurring, open_weekday, open_time, ...core } = fields;
+      if (recurring !== undefined || open_weekday !== undefined || open_time !== undefined) {
+        await supabase.from("groups").update(core).eq("id", data.groupRow.id);
+      }
+    }
   };
 
   /** Organizer changes the number of players for this game. Keeps the

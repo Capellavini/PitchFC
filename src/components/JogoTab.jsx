@@ -1,15 +1,16 @@
 import { useState } from "react";
 import {
   Clock, MapPin, Check, X, MessageCircle,
-  Shuffle, ClipboardList, CreditCard, Plus, Minus, Share2, Copy, ListOrdered,
+  Shuffle, ClipboardList, CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus,
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist } from "../lib/helpers";
-import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage } from "../lib/whatsapp";
+import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
+import Collapsible from "./Collapsible";
 import Matchday from "./Matchday";
 import MatchTimer from "./MatchTimer";
 import MatchSummary from "./MatchSummary";
@@ -18,7 +19,7 @@ export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
   teams, drawTeams, renameTeam, movePlayer, canManageTeams, matchdayProps, lastMatchday,
-  inviteUrl, canManageGame, onSetSpots,
+  inviteUrl, canManageGame, onSetSpots, confirmOpen = true, opensAtLabel,
 }) {
   const [newItem, setNewItem] = useState("");
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
@@ -152,8 +153,43 @@ export default function JogoTab({
         </div>
       </div>
 
-      {/* MY STATUS + PAYMENT */}
-      {me?.status === "confirmed" && myWaitPos > 0 ? (
+      {/* INVITE CTA — prominent while the group is still small */}
+      {canManageGame && group.length <= Math.max(6, Math.ceil(game.spots / 2)) && (
+        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}`, background: C.accentDim }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <UserPlus size={18} color={C.accent} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>Agora convida os jogadores 📣</div>
+              <div style={{ fontSize: 12, color: C.text2 }}>Partilha o link — quem abrir entra logo no grupo.</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => openWhatsApp(inviteUrl ? groupInviteMessage(game.groupName, shareUrl) : inviteMessage(game.groupName, game))}
+              style={{ flex: 1, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <MessageCircle size={14} /> Convidar
+            </button>
+            <button onClick={copyShare}
+              style={{ background: C.card, color: copied ? C.green : C.text1, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 10, padding: "11px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              {copied ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Link</>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MY STATUS + PAYMENT — gated by the recurring confirmation window */}
+      {!confirmOpen ? (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Lock size={18} color={C.text2} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>Confirmações ainda fechadas</div>
+              <div style={{ fontSize: 12, color: C.text2 }}>Abrem {opensAtLabel}. Vais poder confirmar num toque.</div>
+            </div>
+          </div>
+        </div>
+      ) : me?.status === "confirmed" && myWaitPos > 0 ? (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, ...displayFont, fontSize: 18, color: C.accent }}>
@@ -360,11 +396,7 @@ export default function JogoTab({
       )}
 
       {/* MATERIAL CHECKLIST */}
-      <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-          <ClipboardList size={15} color={C.text2} />
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Material do Jogo</div>
-        </div>
+      <Collapsible icon={<ClipboardList size={15} color={C.text2} />} title="Material do Jogo" badge={`${material.filter((m) => m.done).length}/${material.length}`}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {material.map((m) => (
             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -406,21 +438,15 @@ export default function JogoTab({
             <Plus size={16} />
           </button>
         </div>
-      </div>
+      </Collapsible>
 
       {/* PAYMENTS OVERVIEW */}
-      <div style={{ ...cardStyle, marginBottom: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>Pagamentos</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>{price}/jogador por mês · {fmtEUR(game.monthlyPrice)} total</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ ...displayFont, fontSize: 19, color: C.green }}>{fmtEUR(paidCount * game.priceEach)}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>de {fmtEUR(playing.length * game.priceEach)} recebidos</div>
-          </div>
-        </div>
-
+      <Collapsible
+        icon={<CreditCard size={15} color={C.text2} />}
+        title="Pagamentos"
+        subtitle={`${price}/jogador · ${fmtEUR(game.monthlyPrice)} total`}
+        badge={`${fmtEUR(paidCount * game.priceEach)} / ${fmtEUR(playing.length * game.priceEach)}`}
+      >
         <div style={{ height: 4, background: C.border, borderRadius: 2, marginBottom: 14 }}>
           <div style={{ height: "100%", borderRadius: 2, background: C.green, width: `${playing.length ? (paidCount / playing.length) * 100 : 0}%`, transition: "width 0.3s" }} />
         </div>
@@ -447,7 +473,7 @@ export default function JogoTab({
             <Check size={14} style={{ display: "inline", marginRight: 6 }} /> Todos pagaram!
           </div>
         )}
-      </div>
+      </Collapsible>
 
     </div>
   );

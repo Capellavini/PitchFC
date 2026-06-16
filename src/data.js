@@ -89,6 +89,9 @@ export const DEFAULT_SETTINGS = {
   time:         "20:00",
   monthlyPrice: 80,       // € per month for the whole group
   maxPlayers:   10,
+  recurring:    true,     // weekly recurring game
+  openWeekday:  1,        // 0=Domingo … 6=Sábado — when confirmations open
+  openTime:     "17:00",  // ...at this time, each week before the game
 };
 
 export const LAST_GAME = {

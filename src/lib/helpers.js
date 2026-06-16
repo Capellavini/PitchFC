@@ -36,6 +36,34 @@ export function nextGameDateLabel(weekday) {
   return `${WEEKDAYS_PT[weekday]}, ${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
 }
 
+/** Next occurrence of weekday (0=Sun) at HH:MM as a Date in the future. */
+export function nextGameDate(weekday, time = "20:00") {
+  const now = new Date();
+  const d = new Date(now);
+  d.setDate(now.getDate() + ((weekday - now.getDay() + 7) % 7));
+  const [h, m] = (time || "20:00").split(":").map(Number);
+  d.setHours(h, m, 0, 0);
+  if (d < now) d.setDate(d.getDate() + 7); // game time already passed today
+  return d;
+}
+
+/**
+ * Recurring confirmation window: confirmations open weekly at
+ * openWeekday/openTime, for the upcoming game on gameWeekday/gameTime
+ * (e.g. "toda segunda às 17h abre o jogo de domingo"). Returns whether
+ * they're open now plus the opening moment — derived, no backend needed.
+ */
+export function confirmationWindow(gameWeekday, gameTime, openWeekday, openTime) {
+  const gameDate = nextGameDate(gameWeekday, gameTime);
+  const opensAt = new Date(gameDate);
+  let back = (gameDate.getDay() - openWeekday + 7) % 7;
+  if (back === 0) back = 7; // same weekday as the game → a full week before
+  opensAt.setDate(gameDate.getDate() - back);
+  const [h, m] = (openTime || "17:00").split(":").map(Number);
+  opensAt.setHours(h, m, 0, 0);
+  return { opensAt, gameDate, isOpen: new Date() >= opensAt };
+}
+
 /** Local-timezone ISO day (YYYY-MM-DD), offset in days from today. */
 export function isoDay(offset = 0) {
   const d = new Date();
