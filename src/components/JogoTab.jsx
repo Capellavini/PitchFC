@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist } from "../lib/helpers";
-import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage } from "../lib/whatsapp";
+import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
@@ -208,14 +208,22 @@ export default function JogoTab({
             <ListOrdered size={15} color={C.accent} />
             <div style={{ fontSize: 13, fontWeight: 700 }}>Lista de espera ({waitlist.length})</div>
           </div>
-          <div style={{ fontSize: 11, color: C.text2, marginBottom: 12 }}>Por ordem de confirmação. Entra automaticamente quem está em 1º se um titular desistir.</div>
+          <div style={{ fontSize: 11, color: C.text2, marginBottom: 12 }}>Por ordem de confirmação. Entra automaticamente quem está em 1º se um titular desistir{canManageTeams ? " — avisa-os por WhatsApp para estarem a postos." : "."}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {waitlist.map((p, i) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ ...displayFont, fontSize: 15, color: i === 0 ? C.accent : C.text3, width: 22, textAlign: "center" }}>{i + 1}º</div>
                 <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} isMe={p.isMe} photo={p.photo} />
                 <span style={{ flex: 1, fontSize: 13, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1 }}>{p.nick}{p.isMe && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}> (tu)</span>}</span>
-                <span style={{ fontSize: 10, color: C.text3 }}>{p.position.slice(0, 3).toUpperCase()}</span>
+                {canManageTeams && !p.isMe ? (
+                  <button onClick={() => openWhatsApp(waitlistNudgeMessage(p, game, i + 1, shareUrl), p.phone)}
+                    title={`Avisar ${p.nick}`}
+                    style={{ background: i === 0 ? C.whatsapp : "none", color: i === 0 ? C.bg : C.whatsapp, border: `1px solid ${C.whatsapp}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                    <MessageCircle size={12} /> Avisar
+                  </button>
+                ) : (
+                  <span style={{ fontSize: 10, color: C.text3 }}>{p.position.slice(0, 3).toUpperCase()}</span>
+                )}
               </div>
             ))}
           </div>

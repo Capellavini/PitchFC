@@ -28,6 +28,9 @@ export const chargeMessage = (debtors, priceLabel, game, mbwayPhone) =>
 export const inviteMessage = (groupName, game) =>
   `⚽ Junta-te ao ${groupName} no PITCH! Jogamos ${game.date} às ${game.time} no ${game.venue}. Entra aqui: ${appUrl()}`;
 
+export const waitlistNudgeMessage = (player, game, pos, url) =>
+  `⚽ ${player.nick}! ${pos === 1 ? "És o PRÓXIMO a entrar" : `Estás em ${pos}º`} na lista de espera do ${game.label} (${game.date} às ${game.time}, ${game.venue}). Assim que abrir vaga entras logo — mantém-te disponível e confirma na app: ${url}`;
+
 export const gameShareMessage = (game, url, spotsLeft) =>
   `⚽ ${game.label} — ${game.date} às ${game.time} no ${game.venue}.` +
   (spotsLeft > 0
