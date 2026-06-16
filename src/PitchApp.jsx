@@ -706,7 +706,7 @@ export default function PitchApp() {
             confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
           />
         ))}
-        {tab === "clube" && (
+        {tab === "clube" && cloud.isAdmin && (
           <ClubeTab
             bookings={cloudBookings} toggleBooking={toggleBooking}
             events={cloudEvents} rsvpEvent={rsvpEvent} payEvent={payEvent}
@@ -738,7 +738,7 @@ export default function PitchApp() {
         )}
       </div>
 
-      <BottomNav tab={tab} onSelect={(id) => { setTab(id); if (id === "perfil") setViewPlayerId(null); }} />
+      <BottomNav tab={tab} showClube={cloud.isAdmin} onSelect={(id) => { setTab(id); if (id === "perfil") setViewPlayerId(null); }} />
     </>
   );
 }

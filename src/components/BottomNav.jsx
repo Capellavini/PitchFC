@@ -10,10 +10,13 @@ const NAV = [
   { id: "perfil", Icon: User,      label: "Perfil" },
 ];
 
-export default function BottomNav({ tab, onSelect }) {
+export default function BottomNav({ tab, onSelect, showClube = false }) {
+  // Clube ("em breve") is hidden from regular users during testing — only
+  // the admin sees it until it's ready for launch.
+  const items = NAV.filter((n) => n.id !== "clube" || showClube);
   return (
     <div style={{ position: "sticky", bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: "flex", paddingBottom: 14, paddingTop: 10 }}>
-      {NAV.map(({ id, Icon, label }) => {
+      {items.map(({ id, Icon, label }) => {
         const active = tab === id;
         return (
           <button key={id} onClick={() => onSelect(id)} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "2px 0" }}>
