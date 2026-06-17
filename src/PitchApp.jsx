@@ -15,7 +15,7 @@ import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
-import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT } from "./lib/helpers";
+import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl } from "./lib/helpers";
 import { useCloud } from "./hooks/useCloud";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
@@ -662,6 +662,7 @@ export default function PitchApp() {
       sentPending: cloud.friendships.filter((f) => f.status === "pending" && f.requester_id === myUuid).map((f) => f.addressee_id),
       candidates: cloud.allPlayers.filter((x) => x.id !== myUuid && !relatedIds.has(x.id)),
       friendshipIdOf: (otherId) => accepted.find((f) => f.requester_id === otherId || f.addressee_id === otherId)?.id,
+      uploadMedia: (file) => cloud.uploadMedia(file),
       onCreatePost: (post) => cloud.createPost(post),
       onDeletePost: (id) => cloud.deletePost(id),
       onToggleLike: (id, liked) => cloud.toggleLike(id, liked),
@@ -674,6 +675,7 @@ export default function PitchApp() {
     const meLocal = baseGroup.find((p) => p.isMe);
     social = {
       meId: meLocal?.id, myGroupId: "local",
+      uploadMedia: async (file) => ({ url: await fileToDataUrl(file) }),
       posts,
       friendIds: [], friends: [], requests: [], sentPending: [], candidates: [],
       friendshipIdOf: () => null,
