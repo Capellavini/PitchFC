@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
-import { ATTR_LABELS, fileToDataUrl, encodePayload, averageAttrs, computeOverall } from "../lib/helpers";
+import { ATTR_LABELS, encodePayload, averageAttrs, computeOverall } from "../lib/helpers";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
 import FutCard from "./FutCard";
 import SectionLabel from "./SectionLabel";
@@ -10,7 +10,7 @@ import BtnPrimary from "./BtnPrimary";
 
 const ATTR_NAMES = { rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating, isAdmin, onOpenAdmin }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating, isAdmin, onOpenAdmin, uploadMedia }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -19,6 +19,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
   const [codeOpen, setCodeOpen] = useState(false);
   const [codeDraft, setCodeDraft] = useState("");
   const [codeStatus, setCodeStatus] = useState(null); // 'ok' | 'error'
+  const [uploading, setUploading] = useState(false);
 
   // Edit mode works on the self-assessment, not the blended card attrs.
   const startEditing = () => { setForm({ ...player, attrs: player.selfAttrs ?? player.attrs }); setEditing(true); };
@@ -41,9 +42,12 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
 
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    const photo = await fileToDataUrl(file);
-    setForm((f) => ({ ...f, photo }));
+    setUploading(true);
+    const res = await uploadMedia(file);
+    setUploading(false);
+    if (res?.url) setForm((f) => ({ ...f, photo: res.url }));
   };
 
   const field = (label, key, type = "text") => (
@@ -93,7 +97,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Camera size={19} color={C.accent} />
           </div>
-          <div style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{form.photo ? "Trocar fotografia" : "Adicionar fotografia"}</div>
+          <div style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{uploading ? "A carregar…" : form.photo ? "Trocar fotografia" : "Adicionar fotografia"}</div>
           {form.photo && <img src={form.photo} alt="" style={{ width: 38, height: 38, borderRadius: 10, objectFit: "cover" }} />}
           <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: "none" }} />
         </label>
@@ -124,7 +128,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
         </div>
 
         <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          <BtnPrimary onClick={() => { updateProfile(form); setEditing(false); }} style={{ flex: 1 }}>Guardar</BtnPrimary>
+          <BtnPrimary onClick={() => { updateProfile(form); setEditing(false); }} disabled={uploading} style={{ flex: 1, opacity: uploading ? 0.6 : 1 }}>{uploading ? "A carregar…" : "Guardar"}</BtnPrimary>
           <button onClick={() => { setForm(player); setEditing(false); }} style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Cancelar</button>
         </div>
       </div>

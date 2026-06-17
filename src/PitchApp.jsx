@@ -84,6 +84,12 @@ export default function PitchApp() {
   const noGroup = cloud.status === "needsGroup" && noGroupOptIn;
   const cloudAuthed = cloudMode || noGroup; // user-level cloud features
 
+  // Media upload: Supabase Storage when logged in (incl. during onboarding),
+  // base64 fallback in local-demo. Used for social posts and profile photos.
+  const uploadMedia = cloud.user
+    ? (file) => cloud.uploadMedia(file)
+    : async (file) => ({ url: await fileToDataUrl(file) });
+
   // ?join=<token>: attach the logged-in user to that group.
   const joinParam = new URLSearchParams(window.location.search).get("join");
   useEffect(() => {
@@ -532,6 +538,7 @@ export default function PitchApp() {
             me={profileDefaults}
             onBack={() => setPendingRole(null)}
             onDone={(form) => cloud.createPlayerProfile(form)}
+            uploadMedia={uploadMedia}
           />
         );
       }
@@ -557,7 +564,7 @@ export default function PitchApp() {
     if (!session.onboarded) {
       return shell(
         session.role === "player" ? (
-          <OnboardingPlayer me={me} onBack={backToRolePick}
+          <OnboardingPlayer me={me} onBack={backToRolePick} uploadMedia={uploadMedia}
             onDone={(form) => { updateProfile(form); setSession((s) => ({ ...s, onboarded: true })); }} />
         ) : (
           <OnboardingOrganizer settings={settings} onBack={backToRolePick}
@@ -662,7 +669,7 @@ export default function PitchApp() {
       sentPending: cloud.friendships.filter((f) => f.status === "pending" && f.requester_id === myUuid).map((f) => f.addressee_id),
       candidates: cloud.allPlayers.filter((x) => x.id !== myUuid && !relatedIds.has(x.id)),
       friendshipIdOf: (otherId) => accepted.find((f) => f.requester_id === otherId || f.addressee_id === otherId)?.id,
-      uploadMedia: (file) => cloud.uploadMedia(file),
+      uploadMedia,
       onCreatePost: (post) => cloud.createPost(post),
       onDeletePost: (id) => cloud.deletePost(id),
       onToggleLike: (id, liked) => cloud.toggleLike(id, liked),
@@ -675,7 +682,7 @@ export default function PitchApp() {
     const meLocal = baseGroup.find((p) => p.isMe);
     social = {
       meId: meLocal?.id, myGroupId: "local",
-      uploadMedia: async (file) => ({ url: await fileToDataUrl(file) }),
+      uploadMedia,
       posts,
       friendIds: [], friends: [], requests: [], sentPending: [], candidates: [],
       friendshipIdOf: () => null,
@@ -736,6 +743,7 @@ export default function PitchApp() {
             isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} logout={logout}
             peerRatings={peerRatings} addPeerRating={addPeerRating}
             isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)}
+            uploadMedia={uploadMedia}
           />
         )}
       </div>

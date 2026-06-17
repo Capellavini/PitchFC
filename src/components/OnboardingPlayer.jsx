@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Camera, ChevronLeft } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
-import { ATTR_LABELS, fileToDataUrl } from "../lib/helpers";
+import { ATTR_LABELS } from "../lib/helpers";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
 
 const ATTR_NAMES = { rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
 
 /** Player onboarding — build your FUT card with a live preview. */
-export default function OnboardingPlayer({ me, onDone, onBack }) {
+export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     ...me,
     name: me.name ?? "", nick: me.nick ?? "", age: me.age ?? 25,
@@ -23,7 +24,12 @@ export default function OnboardingPlayer({ me, onDone, onBack }) {
 
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];
-    if (file) set("photo", await fileToDataUrl(file));
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    const res = await uploadMedia(file);
+    setUploading(false);
+    if (res?.url) set("photo", res.url);
   };
 
   const chips = (label, key, options) => (
@@ -66,7 +72,7 @@ export default function OnboardingPlayer({ me, onDone, onBack }) {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700 }}>{form.photo ? "Trocar fotografia" : "Adicionar fotografia"}</div>
-          <div style={{ fontSize: 11, color: C.text2 }}>Aparece no cartão e nos jogos</div>
+          <div style={{ fontSize: 11, color: C.text2 }}>{uploading ? "A carregar…" : "Aparece no cartão e nos jogos"}</div>
         </div>
         {form.photo && <img src={form.photo} alt="" style={{ width: 38, height: 38, borderRadius: 10, objectFit: "cover" }} />}
         <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: "none" }} />
@@ -123,8 +129,8 @@ export default function OnboardingPlayer({ me, onDone, onBack }) {
         ))}
       </div>
 
-      <BtnPrimary onClick={() => onDone(form)} style={{ width: "100%", fontSize: 15, padding: 14 }}>
-        Criar o meu cartão ⚽
+      <BtnPrimary onClick={() => onDone(form)} disabled={uploading} style={{ width: "100%", fontSize: 15, padding: 14, opacity: uploading ? 0.6 : 1 }}>
+        {uploading ? "A carregar foto…" : "Criar o meu cartão ⚽"}
       </BtnPrimary>
     </div>
   );

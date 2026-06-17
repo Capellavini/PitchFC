@@ -400,11 +400,14 @@ export function useCloud() {
   };
 
   // ── Social: posts, likes, comments ─────────────────────
-  /** Upload a photo/video to the public 'social' bucket; returns its URL. */
+  /** Upload a photo/video to the public 'social' bucket; returns its URL.
+   *  Keyed by the auth user id so it also works during onboarding, before
+   *  a player row exists (used for the profile photo too). */
   const uploadMedia = async (file) => {
-    if (!data.myPlayer) return { error: "Sem sessão." };
+    const uid = userRef.current?.id;
+    if (!uid) return { error: "Sem sessão." };
     const ext = (file.name?.split(".").pop() || "bin").toLowerCase();
-    const path = `${data.myPlayer.id}/${Date.now()}.${ext}`;
+    const path = `${uid}/${Date.now()}.${ext}`;
     const up = await supabase.storage.from("social").upload(path, file, { contentType: file.type, upsert: false });
     if (up.error) return { error: up.error.message };
     const { data: pub } = supabase.storage.from("social").getPublicUrl(path);
