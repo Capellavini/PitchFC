@@ -1,0 +1,38 @@
+name: Deploy Supabase migrations
+
+# Applies any new files in supabase/migrations/ to the linked Supabase
+# project. Runs on merges to main that touch migrations, or on demand.
+#
+# ⚠️ ONE-TIME BASELINE REQUIRED before this can run safely — the existing
+# migrations were applied by hand, so the remote doesn't yet know about
+# them. See supabase/DEPLOY.md ("First-time baseline"). Until that's done,
+# `db push` would try to re-run schema.sql and fail.
+#
+# Required GitHub repo secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_ACCESS_TOKEN  - personal access token (Supabase dashboard → Account → Access Tokens)
+#   SUPABASE_DB_PASSWORD   - the database password for the project
+#   SUPABASE_PROJECT_ID    - the project ref (zfjhdgvdvbqkycjaencz)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+  workflow_dispatch:
+
+jobs:
+  db-push:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link project
+        run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
+      - name: Push migrations
+        run: supabase db push
