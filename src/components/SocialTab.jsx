@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Users, Building2, UserPlus, MessageCircle, Send, ImagePlus, Trash2, Check, X } from "lucide-react";
+import { Users, Building2, UserPlus, MessageCircle, Send, ImagePlus, Video, Trash2, Check, X } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { fileToDataUrl, ini } from "../lib/helpers";
+import { ini } from "../lib/helpers";
 import { openWhatsApp, sharePostMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
@@ -22,7 +22,9 @@ const colorFor = (key = "") => PALETTE[[...String(key)].reduce((h, c) => (h + c.
 export default function SocialTab({ social }) {
   const [scope, setScope] = useState("clube");
   const [draft, setDraft] = useState("");
-  const [draftPhoto, setDraftPhoto] = useState(null);
+  const [draftMedia, setDraftMedia] = useState(null); // { url, kind: 'photo' | 'video' }
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState(null);
   const [openComments, setOpenComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
   const [addOpen, setAddOpen] = useState(false);
@@ -37,14 +39,19 @@ export default function SocialTab({ social }) {
 
   const publish = () => {
     const text = draft.trim();
-    if (!text && !draftPhoto) return;
-    social.onCreatePost({ type: draftPhoto ? "photo" : "text", body: text, media_url: draftPhoto });
-    setDraft(""); setDraftPhoto(null);
+    if (!text && !draftMedia) return;
+    social.onCreatePost({ type: draftMedia ? draftMedia.kind : "text", body: text, media_url: draftMedia?.url ?? null });
+    setDraft(""); setDraftMedia(null); setUploadErr(null);
   };
-  const pickPhoto = async (e) => {
+  const pickMedia = async (e, kind) => {
     const file = e.target.files?.[0];
-    if (file) setDraftPhoto(await fileToDataUrl(file, 720));
     e.target.value = "";
+    if (!file) return;
+    setUploadErr(null); setUploading(true);
+    const res = await social.uploadMedia(file);
+    setUploading(false);
+    if (res?.error) { setUploadErr(res.error); return; }
+    setDraftMedia({ url: res.url, kind });
   };
   const submitComment = (postId) => {
     const text = (commentDrafts[postId] ?? "").trim();
@@ -76,18 +83,28 @@ export default function SocialTab({ social }) {
       <div style={{ ...cardStyle, marginBottom: 14 }}>
         <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Partilha um momento, um golo, uma jogada…" rows={2}
           style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text1, outline: "none", resize: "none", fontFamily: "inherit" }} />
-        {draftPhoto && (
+        {draftMedia && (
           <div style={{ position: "relative", marginTop: 10 }}>
-            <img src={draftPhoto} alt="" style={{ width: "100%", borderRadius: 12, maxHeight: 240, objectFit: "cover" }} />
-            <button onClick={() => setDraftPhoto(null)} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.7)", color: C.text1, border: "none", borderRadius: 8, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>Remover</button>
+            {draftMedia.kind === "video"
+              ? <video src={draftMedia.url} controls playsInline style={{ width: "100%", borderRadius: 12, maxHeight: 280, background: "#000" }} />
+              : <img src={draftMedia.url} alt="" style={{ width: "100%", borderRadius: 12, maxHeight: 240, objectFit: "cover" }} />}
+            <button onClick={() => setDraftMedia(null)} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.7)", color: C.text1, border: "none", borderRadius: 8, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>Remover</button>
           </div>
         )}
+        {uploading && <div style={{ fontSize: 12, color: C.text2, marginTop: 10 }}>A carregar ficheiro…</div>}
+        {uploadErr && <div style={{ fontSize: 12, color: C.red, marginTop: 10 }}>Falha no upload: {uploadErr}</div>}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.text2, cursor: "pointer" }}>
-            <ImagePlus size={15} /> Foto
-            <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: "none" }} />
-          </label>
-          <button onClick={publish} disabled={!draft.trim() && !draftPhoto} style={{ background: draft.trim() || draftPhoto ? C.accent : C.accentDim, color: draft.trim() || draftPhoto ? C.bg : C.text3, border: "none", borderRadius: 10, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+          <div style={{ display: "flex", gap: 14 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: uploading ? C.text3 : C.text2, cursor: uploading ? "default" : "pointer" }}>
+              <ImagePlus size={15} /> Foto
+              <input type="file" accept="image/*" disabled={uploading} onChange={(e) => pickMedia(e, "photo")} style={{ display: "none" }} />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: uploading ? C.text3 : C.text2, cursor: uploading ? "default" : "pointer" }}>
+              <Video size={15} /> Vídeo
+              <input type="file" accept="video/*" disabled={uploading} onChange={(e) => pickMedia(e, "video")} style={{ display: "none" }} />
+            </label>
+          </div>
+          <button onClick={publish} disabled={uploading || (!draft.trim() && !draftMedia)} style={{ background: (draft.trim() || draftMedia) && !uploading ? C.accent : C.accentDim, color: (draft.trim() || draftMedia) && !uploading ? C.bg : C.text3, border: "none", borderRadius: 10, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: uploading ? "default" : "pointer" }}>
             Publicar
           </button>
         </div>
@@ -192,9 +209,12 @@ export default function SocialTab({ social }) {
                   )}
                 </div>
 
-                {post.text && <div style={{ fontSize: 14, lineHeight: 1.5, marginBottom: post.media ? 10 : 10 }}>{post.text}</div>}
+                {post.text && <div style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 10 }}>{post.text}</div>}
                 {post.type === "photo" && post.media && (
                   <img src={post.media} alt="" style={{ width: "100%", borderRadius: 12, maxHeight: 320, objectFit: "cover", marginBottom: 10 }} />
+                )}
+                {post.type === "video" && post.media && (
+                  <video src={post.media} controls playsInline style={{ width: "100%", borderRadius: 12, maxHeight: 360, background: "#000", marginBottom: 10 }} />
                 )}
 
                 <div style={{ display: "flex", gap: 8 }}>

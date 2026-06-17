@@ -400,6 +400,17 @@ export function useCloud() {
   };
 
   // ── Social: posts, likes, comments ─────────────────────
+  /** Upload a photo/video to the public 'social' bucket; returns its URL. */
+  const uploadMedia = async (file) => {
+    if (!data.myPlayer) return { error: "Sem sessão." };
+    const ext = (file.name?.split(".").pop() || "bin").toLowerCase();
+    const path = `${data.myPlayer.id}/${Date.now()}.${ext}`;
+    const up = await supabase.storage.from("social").upload(path, file, { contentType: file.type, upsert: false });
+    if (up.error) return { error: up.error.message };
+    const { data: pub } = supabase.storage.from("social").getPublicUrl(path);
+    return { url: pub.publicUrl };
+  };
+
   const createPost = async ({ type, body, media_url }) => {
     if (!data.myPlayer) return;
     await supabase.from("posts").insert({ author_id: data.myPlayer.id, type, body, media_url });
@@ -437,7 +448,7 @@ export function useCloud() {
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, closeMvp,
-    toggleAssistant, addManualPlayer, createPost, deletePost, toggleLike, addComment,
+    toggleAssistant, addManualPlayer, uploadMedia, createPost, deletePost, toggleLike, addComment,
     sendFriendRequest, respondFriend, removeFriend,
     refetch,
   };
