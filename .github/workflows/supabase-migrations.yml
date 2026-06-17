@@ -3,10 +3,11 @@ name: Deploy Supabase migrations
 # Applies any new files in supabase/migrations/ to the linked Supabase
 # project. Runs on merges to main that touch migrations, or on demand.
 #
-# ⚠️ ONE-TIME BASELINE REQUIRED before this can run safely — the existing
-# migrations were applied by hand, so the remote doesn't yet know about
-# them. See supabase/DEPLOY.md ("First-time baseline"). Until that's done,
-# `db push` would try to re-run schema.sql and fail.
+# Self-baselining: the migrations 20260101000000..000500 were applied by
+# hand before the CLI existed, so the "Baseline" step marks them as applied
+# (this only writes to the migration-tracking table and is safe to re-run).
+# After that, `db push` applies only what's genuinely new (currently the
+# pg_cron auto-reset, 20260101000600).
 #
 # Required GitHub repo secrets (Settings → Secrets and variables → Actions):
 #   SUPABASE_ACCESS_TOKEN  - personal access token (Supabase dashboard → Account → Access Tokens)
@@ -34,5 +35,10 @@ jobs:
           version: latest
       - name: Link project
         run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
-      - name: Push migrations
+      - name: Baseline already-applied migrations
+        run: |
+          supabase migration repair --status applied \
+            20260101000000 20260101000100 20260101000200 \
+            20260101000300 20260101000400 20260101000500
+      - name: Push new migrations
         run: supabase db push

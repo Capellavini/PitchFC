@@ -74,7 +74,7 @@ After this one-time step, CI can safely run `db push` on every merge.
 ## CI (GitHub Actions)
 
 - **`ci.yml`** — runs `npm run build` on PRs and pushes (catches broken builds before Vercel).
-- **`supabase-migrations.yml`** — runs `supabase db push` on merges to `main` that touch `supabase/migrations/`.
+- **`supabase-migrations.yml`** — on merges to `main` that touch `supabase/migrations/` (or manual run): links the project, **baselines** the already-applied migrations (`migration repair`, safe to re-run), then `supabase db push` for anything new. So you don't need to run the manual baseline above if you deploy through CI — the workflow does it for you.
 
 Add these repo secrets (Settings → Secrets and variables → Actions) before the
 migrations workflow can run:
