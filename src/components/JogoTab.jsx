@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist } from "../lib/helpers";
-import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage } from "../lib/whatsapp";
+import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage, magicConfirmUrl } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
@@ -373,7 +373,7 @@ export default function JogoTab({
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} photo={p.photo} />
                 <span style={{ flex: 1, fontSize: 13, color: C.text2 }}>{p.nick}</span>
-                <button onClick={() => openWhatsApp(reminderMessage(p, game), p.phone)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, cursor: "pointer" }}>Lembrar</button>
+                <button onClick={() => openWhatsApp(reminderMessage(p, game, p.magicToken ? magicConfirmUrl(p.magicToken) : undefined), p.phone)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, cursor: "pointer" }}>Lembrar</button>
               </div>
             ))}
           </div>
