@@ -17,6 +17,7 @@ import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl } from "./lib/helpers";
 import { useCloud } from "./hooks/useCloud";
+import { registerServiceWorker, subscribeToPush } from "./lib/push";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
 import JoinGroup from "./components/JoinGroup";
@@ -90,6 +91,16 @@ export default function PitchApp() {
   const uploadMedia = cloud.user
     ? (file) => cloud.uploadMedia(file)
     : async (file) => ({ url: await fileToDataUrl(file) });
+
+  // Register the push/PWA service worker once.
+  useEffect(() => { registerServiceWorker(); }, []);
+
+  // Opt in to push notifications: subscribe in the browser, then store it.
+  const enablePush = async () => {
+    const sub = await subscribeToPush();
+    if (sub.error) return sub;
+    return cloud.savePushSubscription(sub);
+  };
 
   // ?join=<token>: attach the logged-in user to that group.
   const joinParam = new URLSearchParams(window.location.search).get("join");
@@ -752,6 +763,7 @@ export default function PitchApp() {
             peerRatings={peerRatings} addPeerRating={addPeerRating}
             isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)}
             uploadMedia={uploadMedia}
+            enablePush={cloudAuthed ? enablePush : null}
           />
         )}
       </div>
