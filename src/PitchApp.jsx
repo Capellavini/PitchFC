@@ -21,6 +21,7 @@ import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
 import JoinGroup from "./components/JoinGroup";
 import RatePlayer from "./components/RatePlayer";
+import MagicConfirm from "./components/MagicConfirm";
 import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
@@ -121,6 +122,7 @@ export default function PitchApp() {
           photo: p.photo_url, age: p.age, nationality: p.nationality, club: p.club,
           position: p.position, foot: p.foot, attrs: p.attrs ?? DEFAULT_ATTRS,
           isOrganizerPlayer: p.is_organizer, isAssistant: p.is_assistant,
+          magicToken: p.magic_token,
           status: att?.status ?? "pending", paid: att?.paid ?? false,
           respondedAt: att?.responded_at ?? null,
           isMe: cloud.myPlayer?.id === p.id,
@@ -459,6 +461,12 @@ export default function PitchApp() {
   const rateParam = new URLSearchParams(window.location.search).get("rate");
   if (rateParam) {
     return shell(<RatePlayer payload={rateParam.replace(/ /g, "+")} />);
+  }
+
+  // ── Magic-link confirmation (?confirm=<magic_token>) — no login ───
+  const confirmParam = new URLSearchParams(window.location.search).get("confirm");
+  if (confirmParam) {
+    return shell(<MagicConfirm token={confirmParam.trim()} />);
   }
 
   // Default profile from the signed-up account's metadata.
