@@ -414,6 +414,15 @@ export function useCloud() {
     return { url: pub.publicUrl };
   };
 
+  /** Save a Web Push subscription for the current player. */
+  const savePushSubscription = async (sub) => {
+    if (!data.myPlayer) return { error: "Sem sessão." };
+    const r = await supabase.from("push_subscriptions").upsert(
+      { player_id: data.myPlayer.id, endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+      { onConflict: "endpoint" });
+    return r.error ? { error: r.error.message } : {};
+  };
+
   const createPost = async ({ type, body, media_url }) => {
     if (!data.myPlayer) return;
     await supabase.from("posts").insert({ author_id: data.myPlayer.id, type, body, media_url });
@@ -451,7 +460,7 @@ export function useCloud() {
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, closeMvp,
-    toggleAssistant, addManualPlayer, uploadMedia, createPost, deletePost, toggleLike, addComment,
+    toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment,
     sendFriendRequest, respondFriend, removeFriend,
     refetch,
   };

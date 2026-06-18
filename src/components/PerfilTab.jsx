@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
+import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
 import { ATTR_LABELS, encodePayload, averageAttrs, computeOverall } from "../lib/helpers";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
@@ -10,7 +11,7 @@ import BtnPrimary from "./BtnPrimary";
 
 const ATTR_NAMES = { rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating, isAdmin, onOpenAdmin, uploadMedia }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating, isAdmin, onOpenAdmin, uploadMedia, enablePush }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -20,6 +21,16 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
   const [codeDraft, setCodeDraft] = useState("");
   const [codeStatus, setCodeStatus] = useState(null); // 'ok' | 'error'
   const [uploading, setUploading] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMsg, setPushMsg] = useState(null); // { ok, text }
+
+  const handleEnablePush = async () => {
+    setPushBusy(true); setPushMsg(null);
+    const res = await enablePush();
+    setPushBusy(false);
+    setPushMsg(res?.error ? { ok: false, text: res.error } : { ok: true, text: "Notificações ativadas ✓" });
+  };
+  const pushOn = pushMsg?.ok || pushPermission() === "granted";
 
   // Edit mode works on the self-assessment, not the blended card attrs.
   const startEditing = () => { setForm({ ...player, attrs: player.selfAttrs ?? player.attrs }); setEditing(true); };
@@ -280,6 +291,27 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
             <div style={{ fontSize: 11, color: C.text2 }}>Campo, horário, mensalidade e vagas</div>
           </div>
         </button>
+      )}
+
+      {/* Push notifications opt-in (own profile, cloud, when configured) */}
+      {isOwn && enablePush && pushSupported() && pushConfigured() && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: pushOn ? C.greenDim : C.accentDim, border: `1px solid ${pushOn ? C.greenBorder : C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Bell size={18} color={pushOn ? C.green : C.accent} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>Notificações</div>
+              <div style={{ fontSize: 11, color: C.text2 }}>{pushOn ? "Ativadas ✓ — avisamos quando entras no jogo" : "Recebe aviso quando abrir vaga para ti"}</div>
+            </div>
+            {!pushOn && (
+              <button onClick={handleEnablePush} disabled={pushBusy} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: pushBusy ? 0.6 : 1 }}>
+                {pushBusy ? "…" : "Ativar"}
+              </button>
+            )}
+          </div>
+          {pushMsg && !pushMsg.ok && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{pushMsg.text}</div>}
+        </div>
       )}
 
       {/* Owner-only: cross-group admin overview */}
