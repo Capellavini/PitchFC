@@ -23,6 +23,7 @@ import AuthForm from "./components/AuthForm";
 import JoinGroup from "./components/JoinGroup";
 import RatePlayer from "./components/RatePlayer";
 import MagicConfirm from "./components/MagicConfirm";
+import LeaguePage from "./components/LeaguePage";
 import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
@@ -478,6 +479,12 @@ export default function PitchApp() {
   const confirmParam = new URLSearchParams(window.location.search).get("confirm");
   if (confirmParam) {
     return shell(<MagicConfirm token={confirmParam.trim()} />);
+  }
+
+  // ── PITCH League MVP marketing page (path /league) — full width, no shell ───
+  const path = window.location.pathname.replace(/\/+$/, "");
+  if (path === "/league") {
+    return <LeaguePage onEnterApp={() => { window.location.href = "/"; }} />;
   }
 
   // Default profile from the signed-up account's metadata.
