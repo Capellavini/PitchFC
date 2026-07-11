@@ -1,11 +1,11 @@
 import { useState } from "react";
 import {
   Clock, MapPin, Check, X, MessageCircle,
-  Shuffle, ClipboardList, CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus,
+  Shuffle, ClipboardList, CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil,
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
-import { ini, playerColor, fmtEUR, splitWaitlist } from "../lib/helpers";
-import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage, magicConfirmUrl } from "../lib/whatsapp";
+import { ini, playerColor, fmtEUR, splitWaitlist, WEEKDAYS_PT } from "../lib/helpers";
+import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage, magicConfirmUrl, lineupShareMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
@@ -19,11 +19,14 @@ export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
   teams, drawTeams, renameTeam, movePlayer, canManageTeams, matchdayProps, lastMatchday,
-  inviteUrl, canManageGame, onSetSpots, confirmOpen = true, opensAtLabel,
+  inviteUrl, canManageGame, onSetSpots, onReschedule, confirmOpen = true, opensAtLabel,
 }) {
   const [newItem, setNewItem] = useState("");
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const [copied, setCopied] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [draftDay, setDraftDay] = useState(game.weekday);
+  const [draftTime, setDraftTime] = useState(game.time);
 
   const confirmed = group.filter((p) => p.status === "confirmed");
   const pending   = group.filter((p) => p.status === "pending");
@@ -62,9 +65,16 @@ export default function JogoTab({
               <div style={{ fontSize: 10, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>RECORRENTE</div>
             </div>
             <div style={{ ...displayFont, fontSize: 24, marginBottom: 2 }}>{game.label}</div>
-            <div style={{ display: "flex", gap: 14, fontSize: 12, color: C.text2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: C.text2, flexWrap: "wrap" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {game.date} · {game.time}</span>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {game.venue}</span>
+              {canManageGame && onReschedule && (
+                <button onClick={() => { setDraftDay(game.weekday); setDraftTime(game.time); setRescheduling(!rescheduling); }}
+                  title="Alterar dia e hora do jogo"
+                  style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700 }}>
+                  <Pencil size={12} /> Alterar
+                </button>
+              )}
             </div>
           </div>
           <button onClick={copyShare} title="Copiar link do jogo"
@@ -73,6 +83,41 @@ export default function JogoTab({
           </button>
         </div>
       </div>
+
+      {/* RESCHEDULE — organizer moves the game to another day/time */}
+      {rescheduling && canManageGame && (
+        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}` }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Alterar dia e hora do jogo</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            {WEEKDAYS_PT.map((day, i) => {
+              const active = draftDay === i;
+              return (
+                <button key={day} onClick={() => setDraftDay(i)}
+                  style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" }}>
+                  {day.slice(0, 3)}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 11, color: C.text2 }}>Hora:</span>
+            <input type="time" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
+              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
+          </div>
+          <div style={{ fontSize: 11, color: C.text2, marginBottom: 12 }}>
+            O próximo jogo passa para <b style={{ color: C.accent }}>{WEEKDAYS_PT[draftDay]?.toLowerCase()} às {draftTime}</b>{game.recurring ? " — e as próximas semanas também." : "."}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <BtnPrimary onClick={() => { onReschedule(draftDay, draftTime); setRescheduling(false); }} style={{ flex: 1 }}>
+              Guardar
+            </BtnPrimary>
+            <button onClick={() => setRescheduling(false)}
+              style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* SLOT GRID — the pitch */}
       <div style={{
@@ -123,7 +168,7 @@ export default function JogoTab({
             Ainda ninguém confirmou — sê o primeiro! ⚽
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 4, position: "relative" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 12, position: "relative" }}>
             {playing.map((player) => {
               const color = playerColor(group, player);
               return (
@@ -150,6 +195,14 @@ export default function JogoTab({
               );
             })}
           </div>
+        )}
+
+        {/* Share the game sheet (confirmed list + venue/date/price) to the group chat */}
+        {playing.length > 0 && (
+          <button onClick={() => openWhatsApp(lineupShareMessage(game, playing, waitlist, price, shareUrl))}
+            style={{ width: "100%", background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, position: "relative" }}>
+            <MessageCircle size={15} /> Partilhar lista no WhatsApp
+          </button>
         )}
       </div>
 

@@ -20,6 +20,7 @@ import { useCloud } from "./hooks/useCloud";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
+import ResetPassword from "./components/ResetPassword";
 import JoinGroup from "./components/JoinGroup";
 import RatePlayer from "./components/RatePlayer";
 import MagicConfirm from "./components/MagicConfirm";
@@ -453,6 +454,19 @@ export default function PitchApp() {
   };
   const backToRolePick = () => setSession({ role: null, onboarded: false });
 
+  // Global sign-out (all devices): Supabase revokes every session; the
+  // auth listener then drops this one — just reset the local shell state.
+  const signOutEverywhere = async () => {
+    const res = await cloud.signOutEverywhere();
+    if (!res?.error) {
+      setSession({ role: null, onboarded: false });
+      setAuthOpen(false);
+      setPendingRole(null);
+      setNoGroupOptIn(false);
+    }
+    return res;
+  };
+
   // Local-demo role pick (no Supabase).
   const handlePickRole = (role) => setSession({ role, onboarded: false });
 
@@ -479,6 +493,11 @@ export default function PitchApp() {
   const confirmParam = new URLSearchParams(window.location.search).get("confirm");
   if (confirmParam) {
     return shell(<MagicConfirm token={confirmParam.trim()} />);
+  }
+
+  // ── Password recovery: landed from the reset email → set a new one ───
+  if (cloud.recovery) {
+    return shell(<ResetPassword onSubmit={cloud.updatePassword} onCancel={cloud.clearRecovery} />);
   }
 
   // ── PITCH League MVP marketing page (path /league) — full width, no shell ───
@@ -551,7 +570,7 @@ export default function PitchApp() {
 
     if (cloud.status === "anon") {
       if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} />;
-      return shell(<AuthForm onSignUp={cloud.signUp} onSignIn={cloud.signIn} onBack={() => setAuthOpen(false)} />);
+      return shell(<AuthForm onSignUp={cloud.signUp} onSignIn={cloud.signIn} onResetPassword={cloud.resetPassword} onBack={() => setAuthOpen(false)} />);
     }
 
     if (cloud.status === "needsProfile") {
@@ -738,6 +757,7 @@ export default function PitchApp() {
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
             lastMatchday={lastMatchdayView}
             inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
+            onReschedule={(weekday, time) => saveSettings({ ...groupSettings, weekday, time })}
             confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
           />
         ))}
@@ -771,6 +791,12 @@ export default function PitchApp() {
             isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)}
             uploadMedia={uploadMedia}
             enablePush={cloudAuthed ? enablePush : null}
+            security={cloud.user ? {
+              email: cloud.user.email,
+              updatePassword: cloud.updatePassword,
+              updateEmail: cloud.updateEmail,
+              signOutEverywhere,
+            } : null}
           />
         )}
       </div>

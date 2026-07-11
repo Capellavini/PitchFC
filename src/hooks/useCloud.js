@@ -23,6 +23,7 @@ function nextGameISO(weekday, time) {
   d.setDate(now.getDate() + ((weekday - now.getDay() + 7) % 7));
   const [h, m] = (time || "20:00").split(":").map(Number);
   d.setHours(h, m, 0, 0);
+  if (d < now) d.setDate(d.getDate() + 7); // game time already passed today
   return d.toISOString();
 }
 
@@ -36,6 +37,9 @@ const EMPTY = {
 export function useCloud() {
   const [status, setStatus] = useState(supabaseEnabled ? "loading" : "off");
   const [data, setData] = useState(EMPTY);
+  // True after landing from a "reset password" email link — the app shows
+  // the new-password screen until the user sets one (or dismisses it).
+  const [recovery, setRecovery] = useState(false);
   const userRef = useRef(null);
 
   // ── Load everything for the current auth user ──────────
@@ -50,6 +54,13 @@ export function useCloud() {
       const meq = await supabase.from("players").select("*").eq("user_id", user.id).limit(1);
       if (meq.error) throw meq.error;
       const myPlayer = meq.data[0] ?? null;
+
+      // Keep the player card's email in sync after an auth email change
+      // (confirmed via the link Supabase sends to the new address).
+      if (myPlayer && user.email && myPlayer.email !== user.email) {
+        myPlayer.email = user.email;
+        await supabase.from("players").update({ email: user.email }).eq("id", myPlayer.id);
+      }
 
       if (!myPlayer) { setData({ ...EMPTY, user, events }); setStatus("needsProfile"); return; }
       if (!myPlayer.group_id) { setData({ ...EMPTY, user, myPlayer, events }); setStatus("needsGroup"); return; }
@@ -113,7 +124,8 @@ export function useCloud() {
       userRef.current = session?.user ?? null;
       load(userRef.current);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
       userRef.current = session?.user ?? null;
       load(userRef.current);
     });
@@ -155,6 +167,37 @@ export function useCloud() {
   };
 
   const signOut = async () => { await supabase.auth.signOut(); };
+
+  // ── Account security (Supabase Auth built-ins) ─────────
+  /** "Forgot password": emails a recovery link back into the app. */
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    return error ? { error: error.message } : {};
+  };
+
+  /** Set a new password (recovery flow or logged-in change). */
+  const updatePassword = async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (!error) setRecovery(false);
+    return error ? { error: error.message } : {};
+  };
+
+  /** Change the account email — Supabase emails a confirmation link to
+   *  the new address; the change only applies after it's clicked. */
+  const updateEmail = async (email) => {
+    const { error } = await supabase.auth.updateUser({ email });
+    return error ? { error: error.message } : {};
+  };
+
+  /** Revoke every session on every device (incl. this one). */
+  const signOutEverywhere = async () => {
+    const { error } = await supabase.auth.signOut({ scope: "global" });
+    return error ? { error: error.message } : {};
+  };
+
+  const clearRecovery = () => setRecovery(false);
 
   // ── Profile / group creation ───────────────────────────
   const playerFields = (form, extra = {}) => ({
@@ -258,6 +301,16 @@ export function useCloud() {
       if (recurring !== undefined || open_weekday !== undefined || open_time !== undefined) {
         await supabase.from("groups").update(core).eq("id", data.groupRow.id);
       }
+    }
+    // Day/time/venue changed → move the current open game with it, so
+    // magic-link pages and the weekly cron see the right kickoff.
+    if (data.game && (fields.weekday !== undefined || fields.game_time !== undefined || fields.venue !== undefined)) {
+      const weekday = fields.weekday ?? data.groupRow.weekday;
+      const time = fields.game_time ?? data.groupRow.game_time;
+      const gamePatch = { scheduled_at: nextGameISO(weekday, time) };
+      if (fields.venue !== undefined) gamePatch.venue = fields.venue;
+      setData((d) => ({ ...d, game: d.game ? { ...d.game, ...gamePatch } : d.game }));
+      await supabase.from("games").update(gamePatch).eq("id", data.game.id);
     }
   };
 
@@ -455,6 +508,7 @@ export function useCloud() {
     status, ...data,
     isAdmin: isAdminEmail(data.user?.email),
     signUp, signIn, signOut,
+    recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, joinGroupByToken,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,

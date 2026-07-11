@@ -5,12 +5,22 @@ import BtnPrimary from "./BtnPrimary";
 
 /** Real account: email + password (+ name/phone on signup).
  *  Talks to Supabase Auth via the onSignUp / onSignIn callbacks. */
-export default function AuthForm({ onSignUp, onSignIn, onBack }) {
+export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }) {
   const [mode, setMode] = useState("signup"); // 'signup' | 'login'
   const [form, setForm] = useState({ name: "", phone: "", email: "", password: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
+
+  const forgotPassword = async () => {
+    setError(null); setInfo(null);
+    if (!form.email.trim()) return setError("Escreve o teu email primeiro — enviamos-te o link para lá.");
+    setBusy(true);
+    const res = await onResetPassword(form.email.trim());
+    setBusy(false);
+    if (res?.error) return setError(res.error);
+    setInfo("Enviámos-te um email com o link para criares uma nova palavra-passe. Vê também o spam.");
+  };
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const isSignup = mode === "signup";
@@ -65,6 +75,15 @@ export default function AuthForm({ onSignUp, onSignIn, onBack }) {
         {isSignup && field(Phone, "Telemóvel", "phone", "tel", "+351 9…")}
         {field(Mail, "Email", "email", "email", "tu@email.com")}
         {field(Lock, "Palavra-passe", "password", "password", "mín. 6 caracteres")}
+
+        {!isSignup && onResetPassword && (
+          <div style={{ textAlign: "right", marginTop: -4, marginBottom: 12 }}>
+            <button onClick={forgotPassword} disabled={busy}
+              style={{ background: "none", border: "none", color: C.text2, fontSize: 12, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+              Esqueceste-te da palavra-passe?
+            </button>
+          </div>
+        )}
 
         {error && <div style={{ fontSize: 12, color: C.red, marginBottom: 10 }}>{error}</div>}
         {info && <div style={{ fontSize: 12, color: C.green, marginBottom: 10 }}>{info}</div>}
