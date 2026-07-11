@@ -8,10 +8,11 @@ import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
 import FutCard from "./FutCard";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
+import SecuritySection from "./SecuritySection";
 
 const ATTR_NAMES = { rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating, isAdmin, onOpenAdmin, uploadMedia, enablePush }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -312,6 +313,16 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           </div>
           {pushMsg && !pushMsg.ok && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{pushMsg.text}</div>}
         </div>
+      )}
+
+      {/* Account security — cloud accounts only */}
+      {isOwn && security && (
+        <SecuritySection
+          email={security.email}
+          onUpdatePassword={security.updatePassword}
+          onUpdateEmail={security.updateEmail}
+          onSignOutEverywhere={security.signOutEverywhere}
+        />
       )}
 
       {/* Owner-only: cross-group admin overview */}
