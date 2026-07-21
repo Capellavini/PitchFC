@@ -253,6 +253,11 @@ export function useCloud() {
     if (!groupId) return { error: "Convite inválido ou expirado." };
 
     let player = data.myPlayer;
+    // Already a member of this group (e.g. opened the group's own share
+    // link from WhatsApp): nothing to change — above all, never touch the
+    // existing confirmation.
+    if (player?.group_id === groupId) return {};
+
     if (player) {
       await supabase.from("players").update({ group_id: groupId }).eq("id", player.id);
     } else {
@@ -264,12 +269,14 @@ export function useCloud() {
       }).select().single();
       player = ins.data;
     }
-    // Attendance for the group's current game.
+    // Attendance for the group's current game. ignoreDuplicates: if this
+    // player already answered for this game, keep their answer as is.
     const gm = await supabase.from("games").select("id").eq("group_id", groupId)
       .in("status", ["open", "full", "live"]).order("scheduled_at", { ascending: false }).limit(1);
     if (gm.data?.[0] && player) {
       await supabase.from("attendances")
-        .upsert({ game_id: gm.data[0].id, player_id: player.id, status: "pending" }, { onConflict: "game_id,player_id" });
+        .upsert({ game_id: gm.data[0].id, player_id: player.id, status: "pending" },
+          { onConflict: "game_id,player_id", ignoreDuplicates: true });
     }
     await refetch();
     return {};
