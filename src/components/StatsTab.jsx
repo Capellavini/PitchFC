@@ -1,6 +1,7 @@
 import { Star, Check, Shield } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
+import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
@@ -15,17 +16,17 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
     <div style={{ padding: "0 16px" }}>
       <div style={{ padding: "20px 0 16px" }}>
         <div style={{ ...displayFont, fontSize: 22 }}>Stats</div>
-        <div style={{ fontSize: 13, color: C.text2 }}>Temporada · {totalGames} {totalGames === 1 ? "jogo" : "jogos"}</div>
+        <div style={{ fontSize: 13, color: C.text2 }}>{t("Temporada")} · {totalGames} {totalGames === 1 ? t("jogo") : t("jogos")}</div>
       </div>
 
       {/* LAST MATCHDAY — games + per-player stats */}
       {lastMatchday && (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>ÚLTIMO DIA DE JOGO · {(lastMatchday.date || "").toUpperCase()}</SectionLabel>
+          <SectionLabel>{t("ÚLTIMO DIA DE JOGO")} · {(lastMatchday.date || "").toUpperCase()}</SectionLabel>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: lines.length ? 14 : 0 }}>
             {(lastMatchday.matches ?? []).map((m) => (
               <div key={m.n} style={{ background: C.surface, borderRadius: 12, padding: "10px 12px", textAlign: "center", flex: 1, minWidth: 110 }}>
-                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: 4 }}>JOGO {m.n}</div>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: 4 }}>{t("JOGO")} {m.n}</div>
                 <div style={{ ...displayFont, fontSize: 20 }}>
                   <span style={{ color: C.accent }}>{m.homeGoals}</span>
                   <span style={{ color: C.text3 }}> – </span>
@@ -63,11 +64,11 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <Star size={14} color={C.accent} />
-              <span style={{ fontSize: 12, fontWeight: 800, color: C.accent, letterSpacing: "0.06em" }}>VOTAÇÃO MVP</span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: C.accent, letterSpacing: "0.06em" }}>{t("VOTAÇÃO MVP")}</span>
             </div>
-            {mvp.tally && <span style={{ fontSize: 11, color: C.text2 }}>{Object.values(mvp.tally).reduce((a, b) => a + b, 0)} votos</span>}
+            {mvp.tally && <span style={{ fontSize: 11, color: C.text2 }}>{Object.values(mvp.tally).reduce((a, b) => a + b, 0)} {t("votos")}</span>}
           </div>
-          <div style={{ fontSize: 13, color: C.text2, marginBottom: 14 }}>Quem foi o melhor em campo?</div>
+          <div style={{ fontSize: 13, color: C.text2, marginBottom: 14 }}>{t("Quem foi o melhor em campo?")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
             {mvp.candidates.map((c) => {
               const selected = mvp.myVote === c.key;
@@ -76,22 +77,22 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
                 <button key={c.key} onClick={() => mvp.onVote(c.key)}
                   style={{ background: selected ? C.accentDim : C.surface, border: `1.5px solid ${selected ? C.accent : C.border}`, borderRadius: 12, padding: "10px 6px", cursor: "pointer", textAlign: "center", position: "relative" }}>
                   <div style={{ fontSize: 12, fontWeight: 800, color: selected ? C.accent : C.text1 }}>{c.nick}</div>
-                  <div style={{ fontSize: 9, color: C.text3, marginTop: 2 }}>{c.position}</div>
-                  {votes > 0 && <div style={{ fontSize: 10, color: C.accent, marginTop: 3, fontWeight: 700 }}>{votes} {votes === 1 ? "voto" : "votos"}</div>}
-                  {selected && <div style={{ fontSize: 10, color: C.accent, marginTop: 3 }}>✓ o teu voto</div>}
+                  <div style={{ fontSize: 9, color: C.text3, marginTop: 2 }}>{t(c.position)}</div>
+                  {votes > 0 && <div style={{ fontSize: 10, color: C.accent, marginTop: 3, fontWeight: 700 }}>{votes} {votes === 1 ? t("voto") : t("votos")}</div>}
+                  {selected && <div style={{ fontSize: 10, color: C.accent, marginTop: 3 }}>{t("✓ o teu voto")}</div>}
                 </button>
               );
             })}
           </div>
           {mvp.canClose && (
-            <BtnPrimary onClick={mvp.onClose} style={{ width: "100%", marginTop: 12 }}>Fechar votação e premiar MVP</BtnPrimary>
+            <BtnPrimary onClick={mvp.onClose} style={{ width: "100%", marginTop: 12 }}>{t("Fechar votação e premiar MVP")}</BtnPrimary>
           )}
         </div>
       ) : mvp.winnerNick ? (
         <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, marginBottom: 14, border: `1px solid ${C.gold}55`, background: `linear-gradient(135deg, ${C.card} 0%, ${C.goldDim} 100%)` }}>
           <Star size={20} color={C.gold} fill={C.gold} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: C.text2 }}>MVP do último dia</div>
+            <div style={{ fontSize: 11, color: C.text2 }}>{t("MVP do último dia")}</div>
             <div style={{ fontSize: 15, fontWeight: 800, color: C.gold }}>{mvp.winnerNick}</div>
           </div>
         </div>
@@ -99,7 +100,7 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
 
       {/* LEADERBOARD */}
       <div style={{ display: "flex", background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
-        {[["goals", "⚽ Golos"], ["assists", "🎯 Assists"], ["mvps", "⭐ MVPs"]].map(([m, label]) => {
+        {[["goals", t("⚽ Golos")], ["assists", "🎯 Assists"], ["mvps", "⭐ MVPs"]].map(([m, label]) => {
           const active = statMode === m;
           return (
             <button key={m} onClick={() => setStatMode(m)} style={{ flex: 1, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: "none", borderRadius: 10, padding: 9, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
@@ -130,7 +131,7 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
       </div>
 
       {/* HISTORY */}
-      <SectionLabel>HISTÓRICO DE JOGOS</SectionLabel>
+      <SectionLabel>{t("HISTÓRICO DE JOGOS")}</SectionLabel>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
         {history.map((g) => (
           <div key={g.id} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
@@ -140,16 +141,16 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
             </div>
             <div style={{ width: 1, height: 30, background: C.border }} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, color: C.text2 }}>{g.confirmed} jogadores{g.games ? ` · ${g.games} jogos` : ""}</div>
+              <div style={{ fontSize: 12, color: C.text2 }}>{g.confirmed} {t("jogadores")}{g.games ? ` · ${g.games} ${t("jogos")}` : ""}</div>
               {g.mvpNick ? (
                 <div style={{ fontSize: 12, marginTop: 1 }}>⭐ MVP: <span style={{ fontWeight: 700 }}>{g.mvpNick}</span></div>
               ) : (
-                <div style={{ fontSize: 12, marginTop: 1, color: C.text3 }}>⭐ MVP: votação a decorrer</div>
+                <div style={{ fontSize: 12, marginTop: 1, color: C.text3 }}>⭐ MVP: {t("votação a decorrer")}</div>
               )}
             </div>
             {typeof g.allPaid === "boolean" && (
               <div style={{ fontSize: 11 }}>
-                {g.allPaid ? <span style={{ color: C.green }}>Pago <Check size={10} style={{ display: "inline" }} /></span> : <span style={{ color: C.orange }}>Pendente</span>}
+                {g.allPaid ? <span style={{ color: C.green }}>{t("Pago")} <Check size={10} style={{ display: "inline" }} /></span> : <span style={{ color: C.orange }}>{t("Pendente")}</span>}
               </div>
             )}
           </div>

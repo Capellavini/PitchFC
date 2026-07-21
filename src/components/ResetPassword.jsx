@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Lock, KeyRound } from "lucide-react";
 import { C, cardStyle, BRAND, fieldBackdrop } from "../theme";
+import { t } from "../lib/i18n";
 import BtnPrimary from "./BtnPrimary";
 
 /** Shown after the user lands from the recovery email link:
@@ -14,8 +15,8 @@ export default function ResetPassword({ onSubmit, onCancel }) {
 
   const submit = async () => {
     setError(null);
-    if (password.length < 6) return setError("A palavra-passe precisa de pelo menos 6 caracteres.");
-    if (password !== confirm) return setError("As palavras-passe não coincidem.");
+    if (password.length < 6) return setError(t("A palavra-passe precisa de pelo menos 6 caracteres."));
+    if (password !== confirm) return setError(t("As palavras-passe não coincidem."));
     setBusy(true);
     const res = await onSubmit(password);
     setBusy(false);
@@ -47,34 +48,34 @@ export default function ResetPassword({ onSubmit, onCancel }) {
       <div style={{ ...cardStyle, padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <KeyRound size={18} color={C.accent} />
-          <div style={{ fontSize: 16, fontWeight: 800 }}>Nova palavra-passe</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>{t("Nova palavra-passe")}</div>
         </div>
 
         {done ? (
           <>
             <div style={{ fontSize: 13, color: C.green, fontWeight: 700, margin: "10px 0 16px" }}>
-              Palavra-passe alterada ✓ Já estás dentro.
+              {t("Palavra-passe alterada ✓ Já estás dentro.")}
             </div>
             <BtnPrimary onClick={onCancel} style={{ width: "100%", fontSize: 15, padding: 13 }}>
-              Ir para a app ⚽
+              {t("Ir para a app ⚽")}
             </BtnPrimary>
           </>
         ) : (
           <>
             <div style={{ fontSize: 12, color: C.text2, marginBottom: 16 }}>
-              Escolhe a nova palavra-passe da tua conta.
+              {t("Escolhe a nova palavra-passe da tua conta.")}
             </div>
-            {field("Nova palavra-passe", password, setPassword, "mín. 6 caracteres")}
-            {field("Confirmar palavra-passe", confirm, setConfirm, "repete a mesma")}
+            {field(t("Nova palavra-passe"), password, setPassword, t("mín. 6 caracteres"))}
+            {field(t("Confirmar palavra-passe"), confirm, setConfirm, t("repete a mesma"))}
 
             {error && <div style={{ fontSize: 12, color: C.red, marginBottom: 10 }}>{error}</div>}
 
             <BtnPrimary onClick={submit} disabled={busy} style={{ width: "100%", fontSize: 15, padding: 13, opacity: busy ? 0.6 : 1 }}>
-              {busy ? "Um momento…" : "Guardar nova palavra-passe"}
+              {busy ? t("Um momento…") : t("Guardar nova palavra-passe")}
             </BtnPrimary>
             <button onClick={onCancel}
               style={{ width: "100%", background: "none", border: "none", color: C.text2, fontSize: 12, cursor: "pointer", marginTop: 12 }}>
-              Cancelar
+              {t("Cancelar")}
             </button>
           </>
         )}

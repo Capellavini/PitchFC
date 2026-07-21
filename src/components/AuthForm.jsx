@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, Lock, User, Phone, ChevronLeft } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
+import { t } from "../lib/i18n";
 import BtnPrimary from "./BtnPrimary";
 
 /** Real account: email + password (+ name/phone on signup).
@@ -14,12 +15,12 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
 
   const forgotPassword = async () => {
     setError(null); setInfo(null);
-    if (!form.email.trim()) return setError("Escreve o teu email primeiro — enviamos-te o link para lá.");
+    if (!form.email.trim()) return setError(t("Escreve o teu email primeiro — enviamos-te o link para lá."));
     setBusy(true);
     const res = await onResetPassword(form.email.trim());
     setBusy(false);
     if (res?.error) return setError(res.error);
-    setInfo("Enviámos-te um email com o link para criares uma nova palavra-passe. Vê também o spam.");
+    setInfo(t("Enviámos-te um email com o link para criares uma nova palavra-passe. Vê também o spam."));
   };
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -27,16 +28,16 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
 
   const submit = async () => {
     setError(null); setInfo(null);
-    if (!form.email || !form.password) return setError("Preenche email e palavra-passe.");
-    if (form.password.length < 6) return setError("A palavra-passe precisa de pelo menos 6 caracteres.");
-    if (isSignup && !form.name.trim()) return setError("Diz-nos o teu nome.");
+    if (!form.email || !form.password) return setError(t("Preenche email e palavra-passe."));
+    if (form.password.length < 6) return setError(t("A palavra-passe precisa de pelo menos 6 caracteres."));
+    if (isSignup && !form.name.trim()) return setError(t("Diz-nos o teu nome."));
     setBusy(true);
     const res = isSignup
       ? await onSignUp(form.email.trim(), form.password, { name: form.name.trim(), phone: form.phone.trim() })
       : await onSignIn(form.email.trim(), form.password);
     setBusy(false);
     if (res?.error) return setError(res.error);
-    if (res?.needsConfirm) setInfo("Conta criada! Confirma no email que te enviámos e depois faz login.");
+    if (res?.needsConfirm) setInfo(t("Conta criada! Confirma no email que te enviámos e depois faz login."));
   };
 
   const field = (Icon, label, key, type = "text", placeholder = "") => (
@@ -63,7 +64,7 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
       <div style={{ ...cardStyle, padding: 20 }}>
         {/* tabs */}
         <div style={{ display: "flex", background: C.surface, borderRadius: 12, padding: 4, marginBottom: 18, gap: 4 }}>
-          {[["signup", "Criar conta"], ["login", "Entrar"]].map(([m, label]) => (
+          {[["signup", t("Criar conta")], ["login", t("Entrar")]].map(([m, label]) => (
             <button key={m} onClick={() => { setMode(m); setError(null); setInfo(null); }}
               style={{ flex: 1, background: mode === m ? C.accent : "transparent", color: mode === m ? C.bg : C.text2, border: "none", borderRadius: 9, padding: 10, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
               {label}
@@ -71,16 +72,16 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
           ))}
         </div>
 
-        {isSignup && field(User, "Nome completo", "name", "text", "Como te chamas")}
-        {isSignup && field(Phone, "Telemóvel", "phone", "tel", "+351 9…")}
-        {field(Mail, "Email", "email", "email", "tu@email.com")}
-        {field(Lock, "Palavra-passe", "password", "password", "mín. 6 caracteres")}
+        {isSignup && field(User, t("Nome completo"), "name", "text", t("Como te chamas"))}
+        {isSignup && field(Phone, t("Telemóvel"), "phone", "tel", "+351 9…")}
+        {field(Mail, "Email", "email", "email", t("tu@email.com"))}
+        {field(Lock, t("Palavra-passe"), "password", "password", t("mín. 6 caracteres"))}
 
         {!isSignup && onResetPassword && (
           <div style={{ textAlign: "right", marginTop: -4, marginBottom: 12 }}>
             <button onClick={forgotPassword} disabled={busy}
               style={{ background: "none", border: "none", color: C.text2, fontSize: 12, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
-              Esqueceste-te da palavra-passe?
+              {t("Esqueceste-te da palavra-passe?")}
             </button>
           </div>
         )}
@@ -89,21 +90,21 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
         {info && <div style={{ fontSize: 12, color: C.green, marginBottom: 10 }}>{info}</div>}
 
         <BtnPrimary onClick={submit} disabled={busy} style={{ width: "100%", fontSize: 15, padding: 13, opacity: busy ? 0.6 : 1 }}>
-          {busy ? "Um momento…" : isSignup ? "Criar conta ⚽" : "Entrar"}
+          {busy ? t("Um momento…") : isSignup ? t("Criar conta ⚽") : t("Entrar")}
         </BtnPrimary>
 
         <div style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: C.text2 }}>
-          {isSignup ? "Já tens conta? " : "Ainda não tens conta? "}
+          {isSignup ? t("Já tens conta? ") : t("Ainda não tens conta? ")}
           <button onClick={() => { setMode(isSignup ? "login" : "signup"); setError(null); setInfo(null); }}
             style={{ background: "none", border: "none", color: C.accent, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>
-            {isSignup ? "Entrar" : "Criar conta"}
+            {isSignup ? t("Entrar") : t("Criar conta")}
           </button>
         </div>
       </div>
 
       {onBack && (
         <button onClick={onBack} style={{ background: "none", border: "none", color: C.text2, fontSize: 13, cursor: "pointer", marginTop: 18, display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
-          <ChevronLeft size={15} /> Voltar
+          <ChevronLeft size={15} /> {t("Voltar")}
         </button>
       )}
     </div>

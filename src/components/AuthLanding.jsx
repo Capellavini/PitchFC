@@ -1,5 +1,6 @@
 import { User, Megaphone, ChevronRight, ShieldCheck } from "lucide-react";
 import { C, cardStyle, BRAND, fieldBackdrop } from "../theme";
+import { t } from "../lib/i18n";
 
 /** Entry screen — choose role. No backend yet, so "login" is a local
  *  role pick; magic-link auth replaces this when Supabase lands. */
@@ -12,7 +13,7 @@ export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin }) {
       <div style={{ textAlign: "center", marginBottom: 44 }}>
         <img src={BRAND.logo} alt="PITCH Club" style={{ width: "78%", maxWidth: 300 }} />
         <div style={{ fontSize: 14, color: C.text2, marginTop: 4 }}>
-          O teu jogo semanal, organizado. ⚽
+          {t("O teu jogo semanal, organizado. ⚽")}
         </div>
       </div>
 
@@ -22,8 +23,8 @@ export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin }) {
             <User size={22} color={C.accent} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Sou Jogador</div>
-            <div style={{ fontSize: 12, color: C.text2 }}>Cria o teu cartão FUT e entra no jogo</div>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>{t("Sou Jogador")}</div>
+            <div style={{ fontSize: 12, color: C.text2 }}>{t("Cria o teu cartão FUT e entra no jogo")}</div>
           </div>
           <ChevronRight size={18} color={C.text3} />
         </button>
@@ -33,8 +34,8 @@ export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin }) {
             <Megaphone size={22} color={C.blue} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Sou Organizador</div>
-            <div style={{ fontSize: 12, color: C.text2 }}>Define o campo, o horário e convida a malta</div>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>{t("Sou Organizador")}</div>
+            <div style={{ fontSize: 12, color: C.text2 }}>{t("Define o campo, o horário e convida a malta")}</div>
           </div>
           <ChevronRight size={18} color={C.text3} />
         </button>
@@ -42,17 +43,17 @@ export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin }) {
 
       {isAdmin && (
         <button onClick={onOpenAdmin} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "11px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", marginTop: 16, display: "flex", alignItems: "center", gap: 7, justifyContent: "center" }}>
-          <ShieldCheck size={15} /> Painel de administrador
+          <ShieldCheck size={15} /> {t("Painel de administrador")}
         </button>
       )}
 
       <div style={{ textAlign: "center", marginTop: 28, fontSize: 11, color: C.text3 }}>
-        Versão de demonstração — os dados ficam só neste dispositivo
+        {t("Versão de demonstração — os dados ficam só neste dispositivo")}
       </div>
 
       {onBack && (
         <button onClick={onBack} style={{ background: "none", border: "none", color: C.text2, fontSize: 13, cursor: "pointer", marginTop: 18, textDecoration: "underline" }}>
-          ← Voltar à página inicial
+          {t("← Voltar à página inicial")}
         </button>
       )}
     </div>

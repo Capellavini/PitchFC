@@ -1,4 +1,5 @@
 import { AVATAR_PALETTE } from "../theme";
+import { t, getLang } from "./i18n";
 
 export const ini = (n) =>
   n.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -33,7 +34,7 @@ export function nextGameDateLabel(weekday) {
   const now = new Date();
   const d = new Date(now);
   d.setDate(now.getDate() + ((weekday - now.getDay() + 7) % 7));
-  return `${WEEKDAYS_PT[weekday]}, ${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
+  return `${t(WEEKDAYS_PT[weekday])}, ${d.getDate()} ${t(MONTHS_PT[d.getMonth()])}`;
 }
 
 /** Next occurrence of weekday (0=Sun) at HH:MM as a Date in the future. */
@@ -76,33 +77,34 @@ const fromIso = (iso) => new Date(`${iso}T12:00:00`);
 /** "Sex 13" — short chip label for a day picker. */
 export const dayChipLabel = (iso) => {
   const d = fromIso(iso);
-  return `${WEEKDAYS_PT[d.getDay()].slice(0, 3)} ${d.getDate()}`;
+  return `${t(WEEKDAYS_PT[d.getDay()].slice(0, 3))} ${d.getDate()}`;
 };
 
 /** "13 Jun" */
 export const fmtDayMonth = (iso) => {
   const d = fromIso(iso);
-  return `${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
+  return `${d.getDate()} ${t(MONTHS_PT[d.getMonth()])}`;
 };
 
 /** "Sexta, 13 Jun" */
 export const fmtFullDay = (iso) => {
   const d = fromIso(iso);
-  return `${WEEKDAYS_PT[d.getDay()]}, ${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
+  return `${t(WEEKDAYS_PT[d.getDay()])}, ${d.getDate()} ${t(MONTHS_PT[d.getMonth()])}`;
 };
 
 /** "agora" / "há 5 min" / "há 3h" / "há 2 dias" / "13 Jun" */
 export function relativeTime(ts) {
+  const en = getLang() === "en";
   const then = new Date(ts).getTime();
   const mins = Math.floor((Date.now() - then) / 60000);
-  if (mins < 1) return "agora";
-  if (mins < 60) return `há ${mins} min`;
+  if (mins < 1) return t("agora");
+  if (mins < 60) return en ? `${mins} min ago` : `há ${mins} min`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `há ${hrs}h`;
+  if (hrs < 24) return en ? `${hrs}h ago` : `há ${hrs}h`;
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `há ${days} ${days === 1 ? "dia" : "dias"}`;
+  if (days < 7) return en ? `${days} ${days === 1 ? "day" : "days"} ago` : `há ${days} ${days === 1 ? "dia" : "dias"}`;
   const d = new Date(ts);
-  return `${d.getDate()} ${MONTHS_PT[d.getMonth()]}`;
+  return `${d.getDate()} ${t(MONTHS_PT[d.getMonth()])}`;
 }
 
 // ── FUT card overall ─────────────────────────────────────

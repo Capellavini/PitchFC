@@ -1,5 +1,6 @@
 import { Zap, Users, Trophy, User, Flame, Building2 } from "lucide-react";
 import { C } from "../theme";
+import { t } from "../lib/i18n";
 
 const NAV = [
   { id: "jogo",   Icon: Zap,       label: "Jogo"   },
@@ -21,7 +22,7 @@ export default function BottomNav({ tab, onSelect, showClube = false }) {
         return (
           <button key={id} onClick={() => onSelect(id)} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "2px 0" }}>
             <Icon size={21} strokeWidth={active ? 2.5 : 1.5} color={active ? C.accent : C.text2} />
-            <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? C.accent : C.text2 }}>{label}</span>
+            <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? C.accent : C.text2 }}>{t(label)}</span>
           </button>
         );
       })}

@@ -1,5 +1,6 @@
 import { C, displayFont } from "../theme";
 import { ini, computeOverall, POSITION_ABBR, ATTR_LABELS } from "../lib/helpers";
+import { t, getLang } from "../lib/i18n";
 
 // Tier tint fades into C.card so the cards sit on the navy palette.
 // "icon" (>= 86) is the FIFA-legend look: champagne gold, light rays,
@@ -86,7 +87,9 @@ export default function FutCard({ player, width = 260 }) {
           {player.nick}
         </div>
         <div style={{ fontSize: 10 * scale, color: C.text2 }}>
-          {player.club}{player.age ? ` · ${player.age} anos` : ""} · pé {(player.foot || "—").toLowerCase()}
+          {player.club}{player.age ? ` · ${player.age} ${t("anos")}` : ""} · {getLang() === "en"
+            ? `${t(player.foot || "—").toLowerCase()} foot`
+            : `pé ${(player.foot || "—").toLowerCase()}`}
         </div>
       </div>
 

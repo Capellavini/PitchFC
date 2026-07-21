@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Play, Pause, RotateCcw, Timer as TimerIcon, BellRing } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { usePersistentState } from "../lib/storage";
+import { t as tr } from "../lib/i18n";
 
 const PRESETS = [10, 15, 20, 30]; // minutes
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -75,10 +76,10 @@ export default function MatchTimer() {
     <div style={{ ...cardStyle, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <TimerIcon size={15} color={C.text2} />
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Cronómetro do jogo</span>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{tr("Cronómetro do jogo")}</span>
         {t.finished && (
           <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: C.red, display: "flex", alignItems: "center", gap: 4 }}>
-            <BellRing size={13} /> Fim do tempo!
+            <BellRing size={13} /> {tr("Fim do tempo!")}
           </span>
         )}
       </div>
@@ -115,15 +116,15 @@ export default function MatchTimer() {
       <div style={{ display: "flex", gap: 10 }}>
         {t.running ? (
           <button onClick={pause} style={{ flex: 1, background: C.orange, color: C.bg, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <Pause size={16} /> Pausar
+            <Pause size={16} /> {tr("Pausar")}
           </button>
         ) : (
           <button onClick={start} style={{ flex: 1, background: C.accent, color: C.bg, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <Play size={16} /> {remaining > 0 && remaining < t.durationSec ? "Retomar" : "Iniciar"}
+            <Play size={16} /> {remaining > 0 && remaining < t.durationSec ? tr("Retomar") : tr("Iniciar")}
           </button>
         )}
         <button onClick={reset} style={{ background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <RotateCcw size={15} /> Repor
+          <RotateCcw size={15} /> {tr("Repor")}
         </button>
       </div>
     </div>

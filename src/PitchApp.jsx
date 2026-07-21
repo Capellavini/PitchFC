@@ -16,6 +16,7 @@ import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSIT
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl } from "./lib/helpers";
+import { t, setLang } from "./lib/i18n";
 import { useCloud } from "./hooks/useCloud";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
 import LandingPage from "./components/LandingPage";
@@ -71,6 +72,7 @@ export default function PitchApp() {
   const [openMatches, setOpenMatches] = usePersistentState("openMatches", OPEN_MATCHES);
   const [ownPublished, setOwnPublished] = usePersistentState("ownPublished", false);
   const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
+  const [lang, setLangState]    = usePersistentState("lang", "pt");
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
@@ -79,6 +81,11 @@ export default function PitchApp() {
   const [editingGroup, setEditingGroup] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noGroupOptIn, setNoGroupOptIn] = usePersistentState("noGroupOptIn", false);
+
+  // Mirror the persisted language into the i18n module before anything
+  // renders, so every t() call below sees the current choice.
+  setLang(lang);
+  const changeLang = (l) => { setLang(l); setLangState(l); };
 
   // ── Cloud (PR 2: auth + groups + invites + events) ─────
   const cloud = useCloud();
@@ -218,7 +225,7 @@ export default function PitchApp() {
     ? confirmationWindow(groupSettings.weekday, groupSettings.time, groupSettings.openWeekday ?? 1, groupSettings.openTime ?? "17:00")
     : { isOpen: true };
   const opensAtLabel = groupSettings.recurring
-    ? `${WEEKDAYS_PT[groupSettings.openWeekday ?? 1]} às ${groupSettings.openTime ?? "17:00"}`
+    ? `${t(WEEKDAYS_PT[groupSettings.openWeekday ?? 1])} ${t("às")} ${groupSettings.openTime ?? "17:00"}`
     : null;
 
   const togglePaid = (id) => {
@@ -318,7 +325,7 @@ export default function PitchApp() {
 
   const endMatchday = () => {
     if (!matchday) return;
-    if (!window.confirm("Terminar o dia de jogo? As stats entram para a época e abre a votação MVP.")) return;
+    if (!window.confirm(t("Terminar o dia de jogo? As stats entram para a época e abre a votação MVP."))) return;
 
     const stats = {};
     const bump = (id, key) => {
@@ -471,7 +478,7 @@ export default function PitchApp() {
   const handlePickRole = (role) => setSession({ role, onboarded: false });
 
   const resetDemo = () => {
-    if (window.confirm("Repor os dados de demonstração? As alterações locais serão perdidas.")) {
+    if (window.confirm(t("Repor os dados de demonstração? As alterações locais serão perdidas."))) {
       clearAppStorage();
       window.location.reload();
     }
@@ -563,13 +570,13 @@ export default function PitchApp() {
       return shell(
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
           <img src={BRAND.logo} alt="PITCH Club" style={{ height: 30 }} />
-          <div style={{ fontSize: 13, color: C.text2 }}>A ligar ao clube…</div>
+          <div style={{ fontSize: 13, color: C.text2 }}>{t("A ligar ao clube…")}</div>
         </div>
       );
     }
 
     if (cloud.status === "anon") {
-      if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} />;
+      if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} lang={lang} onLang={changeLang} />;
       return shell(<AuthForm onSignUp={cloud.signUp} onSignIn={cloud.signIn} onResetPassword={cloud.resetPassword} onBack={() => setAuthOpen(false)} />);
     }
 
@@ -603,7 +610,7 @@ export default function PitchApp() {
   } else {
     // ═══ LOCAL DEMO GATING ═══════════════════════════════
     if (!session.role) {
-      if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} />;
+      if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} lang={lang} onLang={changeLang} />;
       return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} />);
     }
     if (!session.onboarded) {
@@ -797,6 +804,7 @@ export default function PitchApp() {
               updateEmail: cloud.updateEmail,
               signOutEverywhere,
             } : null}
+            lang={lang} onLang={changeLang}
           />
         )}
       </div>
