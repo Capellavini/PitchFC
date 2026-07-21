@@ -15,7 +15,7 @@ import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
-import { nextGameDateLabel, fmtEUR, decodePayload, blendAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl } from "./lib/helpers";
+import { nextGameDateLabel, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl } from "./lib/helpers";
 import { t, setLang } from "./lib/i18n";
 import { useCloud } from "./hooks/useCloud";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
@@ -142,6 +142,7 @@ export default function PitchApp() {
           photo: p.photo_url, age: p.age, nationality: p.nationality, club: p.club,
           position: p.position, foot: p.foot, attrs: p.attrs ?? DEFAULT_ATTRS,
           isOrganizerPlayer: p.is_organizer, isAssistant: p.is_assistant,
+          isGuest: !p.user_id,
           magicToken: p.magic_token,
           status: att?.status ?? "pending", paid: att?.paid ?? false,
           respondedAt: att?.responded_at ?? null,
@@ -196,12 +197,44 @@ export default function PitchApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Card attrs = 50/50 blend of self-assessment and friends' ratings.
-  const displayGroup = baseGroup.map((p) =>
-    p.isMe && peerRatings.length
-      ? { ...p, attrs: blendAttrs(p.attrs, peerRatings.map((r) => r.a)), selfAttrs: p.attrs }
-      : p
-  );
+  // Ratings: no self-assessment anymore — a player's card is purely the
+  // average of what teammates rate them, gated to 3+ ratings so a fresh
+  // card can't be "unlocked" by a single opinion (or your own).
+  // Cloud: any group member can rate any teammate, everyone's ratings
+  // fetched together. Local demo: only "me" has a rating mechanism (the
+  // WhatsApp-link + code-paste flow) — other seed players stay as-is.
+  const ratingsFor = (p) => {
+    if (cloudMode) {
+      const rows = (cloud.ratings || []).filter((r) => r.player_id === p.uuid);
+      return {
+        count: rows.length,
+        avgAttrs: rows.length ? averageAttrs(rows.map((r) => r.attrs)) : null,
+        raters: rows.map((r) => ({ id: r.rater_id, nick: baseGroup.find((x) => x.uuid === r.rater_id)?.nick || r.rater_name || "?" })),
+        myRatingAttrs: rows.find((r) => r.rater_id === me?.uuid)?.attrs ?? null,
+      };
+    }
+    if (p.isMe) {
+      return {
+        count: peerRatings.length,
+        avgAttrs: peerRatings.length ? averageAttrs(peerRatings.map((r) => r.a)) : null,
+        raters: peerRatings.map((r) => ({ id: null, nick: r.from || "Anónimo" })),
+        myRatingAttrs: null,
+      };
+    }
+    return null; // no gating info → renders unlocked, as before
+  };
+
+  const displayGroup = baseGroup.map((p) => {
+    const info = ratingsFor(p);
+    if (!info) return p;
+    return {
+      ...p,
+      ratingsCount: info.count,
+      raters: info.raters,
+      myRatingAttrs: info.myRatingAttrs,
+      attrs: info.count >= 3 ? info.avgAttrs : p.attrs,
+    };
+  });
 
   const addPeerRating = (codeStr) => {
     const rating = decodePayload(codeStr);
@@ -249,6 +282,28 @@ export default function PitchApp() {
     setTeams(null); // roster changed → invalidate draw
   };
 
+  // Organizer sets a guest player's status directly (they have no
+  // account to self-serve confirm/decline).
+  const setGuestStatus = (playerId, newStatus) => {
+    const player = baseGroup.find((p) => p.id === playerId);
+    if (!player) return;
+    if (cloudMode) cloud.setMyStatus(newStatus, player.uuid, gameId);
+    else setGroup((g) => g.map((p) => (p.id === playerId ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
+    setTeams(null);
+  };
+
+  // Organizer permanently removes a guest (no-account) player.
+  const removeGuestPlayer = (playerId, nick) => {
+    const player = baseGroup.find((p) => p.id === playerId);
+    if (!player) return;
+    if (!window.confirm(`${t("Apagar")} ${nick}${t("? Esta ação não pode ser desfeita — o jogador sai do grupo e perde o histórico.")}`)) return;
+    if (cloudMode) cloud.adminDeletePlayer(player.uuid).then(() => cloud.refetch());
+    else setGroup((g) => g.filter((p) => p.id !== playerId));
+    setTeams(null);
+  };
+
+  const clearTeams = () => setTeams(null);
+
   const toggleMaterial = (id) =>
     setMaterial((m) => m.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
   const assignMaterial = (id, playerId) =>
@@ -257,12 +312,15 @@ export default function PitchApp() {
     setMaterial((m) => [...m, { id: Date.now(), item, assignedTo: null, done: false }]);
 
   const updateProfile = (form) => {
-    const { selfAttrs: _ignored, ...rest } = form;
+    // Strip the derived rating fields (and attrs, no longer self-editable
+    // — only peer ratings set them) so they never get written back as if
+    // they were real profile data.
+    const { ratingsCount: _rc, raters: _rt, myRatingAttrs: _mra, attrs: _attrs, ...rest } = form;
     if (cloudMode && me) {
       cloud.updatePlayer(me.uuid, {
         name: rest.name, nick: rest.nick, email: rest.email, phone: rest.phone,
         age: rest.age, nationality: rest.nationality, club: rest.club,
-        position: rest.position, foot: rest.foot, attrs: rest.attrs,
+        position: rest.position, foot: rest.foot,
         photo_url: rest.photo ?? null,
       });
     } else {
@@ -309,7 +367,7 @@ export default function PitchApp() {
     if (cloudMode) {
       cloud.addManualPlayer({ name: clean, nick, position, attrs });
     } else {
-      setGroup((g) => [...g, { id: Date.now(), name: clean, nick, position, foot: "Direito", attrs, status: "confirmed", paid: false, goals: 0, assists: 0, mvps: 0, gamesPlayed: 0, wins: 0 }]);
+      setGroup((g) => [...g, { id: Date.now(), name: clean, nick, position, foot: "Direito", attrs, isGuest: true, status: "confirmed", paid: false, goals: 0, assists: 0, mvps: 0, gamesPlayed: 0, wins: 0 }]);
     }
   };
 
@@ -760,7 +818,7 @@ export default function PitchApp() {
             group={displayGroup} game={game}
             togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
             material={material} toggleMaterial={toggleMaterial} assignMaterial={assignMaterial} addMaterial={addMaterial}
-            teams={teams} drawTeams={drawTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
+            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEnd: endMatchday }}
             lastMatchday={lastMatchdayView}
             inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
@@ -787,14 +845,14 @@ export default function PitchApp() {
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
-          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} canManageTeams={canManageTeams} />)}
+          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetGuestStatus={setGuestStatus} onRemoveGuestPlayer={removeGuestPlayer} canManageTeams={canManageTeams} />)}
         {tab === "perfil" && (
           <PerfilTab
             key={viewPlayerId ?? "me"}
             group={displayGroup} viewPlayerId={viewPlayerId}
             updateProfile={updateProfile} backToMe={backToMe} resetDemo={resetDemo}
             isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} logout={logout}
-            peerRatings={peerRatings} addPeerRating={addPeerRating}
+            addPeerRating={addPeerRating} cloudMode={cloudMode} onSubmitRating={cloudMode ? cloud.submitRating : null}
             isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)}
             uploadMedia={uploadMedia}
             enablePush={cloudAuthed ? enablePush : null}

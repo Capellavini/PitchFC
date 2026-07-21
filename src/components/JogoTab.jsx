@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Clock, MapPin, Check, X, MessageCircle,
-  Shuffle, ClipboardList, CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil,
+  Shuffle, ClipboardList, CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil, RotateCcw, Undo2,
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist, WEEKDAYS_PT } from "../lib/helpers";
@@ -19,7 +19,7 @@ import MatchSummary from "./MatchSummary";
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
-  teams, drawTeams, renameTeam, movePlayer, canManageTeams, matchdayProps, lastMatchday,
+  teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, matchdayProps, lastMatchday,
   inviteUrl, canManageGame, onSetSpots, onReschedule, confirmOpen = true, opensAtLabel,
 }) {
   const [newItem, setNewItem] = useState("");
@@ -358,6 +358,13 @@ export default function JogoTab({
           </div>
         )}
 
+        {canManageTeams && teams && (
+          <button onClick={onClearTeams}
+            style={{ width: "100%", marginBottom: 12, background: "none", color: C.text2, border: `1px dashed ${C.border}`, borderRadius: 10, padding: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <RotateCcw size={13} /> {t("Limpar sorteio")}
+          </button>
+        )}
+
         {teams && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {teams.map((tm) => (
@@ -525,6 +532,24 @@ export default function JogoTab({
         ) : (
           <div style={{ textAlign: "center", padding: "8px 0", fontSize: 13, color: C.green, fontWeight: 700 }}>
             <Check size={14} style={{ display: "inline", marginRight: 6 }} /> {t("Todos pagaram!")}
+          </div>
+        )}
+
+        {/* Organizer-only: undo a payment marked by mistake */}
+        {canManageGame && paidCount > 0 && (
+          <div style={{ marginTop: debtors.length > 0 ? 16 : 12 }}>
+            <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>{t("JÁ PAGARAM")}</SectionLabel>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {playing.filter((p) => p.paid).map((p) => (
+                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} />
+                  <span style={{ flex: 1, fontSize: 13 }}>{p.nick}</span>
+                  <button onClick={() => togglePaid(p.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                    <Undo2 size={12} /> {t("Desfazer")}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Collapsible>

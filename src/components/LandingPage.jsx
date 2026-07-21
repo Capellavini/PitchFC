@@ -1,6 +1,5 @@
 import {
-  Zap, Wallet, CalendarCheck, Trophy, Flame, IdCard,
-  MapPin, Beer, Gamepad2, Users, PartyPopper, Clapperboard, ArrowRight,
+  Zap, Wallet, CalendarCheck, Trophy, Flame, IdCard, ArrowRight,
 } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
 import { t } from "../lib/i18n";
@@ -23,15 +22,6 @@ const APP_FEATURES = [
   { Icon: IdCard,        title: "O teu cartão",       text: "Estilo FUT: overall, atributos, posição e foto. O teu jogo, em cartão." },
   { Icon: Trophy,        title: "Ratings e stats",    text: "Golos, assistências, votação MVP e fiabilidade. A época toda fica registada." },
   { Icon: Flame,         title: "Social",             text: "Partilha highlights, vota no Golo da Semana e convive com jogadores de outros grupos." },
-];
-
-const VENUE_FEATURES = [
-  { Icon: MapPin,       title: "2 campos + campo 1v1", text: "Dois campos de 5 e uma arena 1v1 para resolver discussões à parte." },
-  { Icon: Beer,         title: "Bar & esplanada",      text: "A terceira parte do jogo: aquela bebida depois do apito final." },
-  { Icon: Gamepad2,     title: "Lounge",               text: "Videojogos e fut mesa para os que ficam à espera do próximo jogo." },
-  { Icon: Users,        title: "Clube social",         text: "Um espaço para a comunidade: convívio entre grupos, ligas internas." },
-  { Icon: PartyPopper,  title: "Eventos",              text: "Torneios, aniversários e eventos de empresa com o futebol ao centro." },
-  { Icon: Clapperboard, title: "Transmissão dos jogos", text: "Os teus jogos gravados e transmitidos — revê o golaço as vezes que quiseres." },
 ];
 
 const Section = ({ children, style }) => (
@@ -95,7 +85,7 @@ export default function LandingPage({ onEnter, lang, onLang }) {
               <span style={{ color: C.accent }}>{t("organizado.")}</span>
             </div>
             <div style={{ fontSize: 16, color: C.text2, lineHeight: 1.6, marginBottom: 28, maxWidth: 460 }}>
-              {t("O PITCH junta tudo o que o teu grupo precisa: confirmações, contas do campo, sorteio de equipas, stats e o teu cartão de jogador. E em breve, um clube para chamar casa.")}
+              {t("O PITCH junta tudo o que o teu grupo precisa: confirmações, contas do campo, sorteio de equipas, stats e o teu cartão de jogador.")}
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <BtnPrimary onClick={onEnter} style={{ padding: "14px 26px", fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
@@ -123,22 +113,6 @@ export default function LandingPage({ onEnter, lang, onLang }) {
           {APP_FEATURES.map((f) => <FeatureCard key={f.title} {...f} title={t(f.title)} text={t(f.text)} />)}
         </div>
       </Section>
-
-      {/* VENUE */}
-      <div style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
-        <Section style={{ padding: "72px 20px" }}>
-          <SectionTitle
-            eyebrow={t("EM BREVE · MATOSINHOS / PORTO")}
-            title={t("O Clube")}
-            sub={t("Mais do que campos alugados: um espaço pensado para quem vive o futebol — antes, durante e depois do jogo.")}
-          />
-          <div style={grid}>
-            {VENUE_FEATURES.map((f) => (
-              <FeatureCard key={f.title} {...f} title={t(f.title)} text={t(f.text)} iconColor={C.blue} iconBg={C.blueDim} iconBorder={C.blueBorder} />
-            ))}
-          </div>
-        </Section>
-      </div>
 
       {/* FINAL CTA */}
       <div style={{ ...fieldBackdrop(0.6, 0.92) }}>

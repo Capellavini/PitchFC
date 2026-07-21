@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Camera, ChevronLeft } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
-import { ATTR_LABELS } from "../lib/helpers";
-import { t, attrName } from "../lib/i18n";
+import { t } from "../lib/i18n";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
 
@@ -19,7 +18,6 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
   });
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
-  const setAttr = (key, value) => setForm((f) => ({ ...f, attrs: { ...f.attrs, [key]: value } }));
 
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];
@@ -61,9 +59,10 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
         {t("Estilo FUT — o cartão atualiza enquanto preenches.")}
       </div>
 
-      {/* Live preview */}
+      {/* Live preview — locked (0 ratings): a brand new card has no
+          stats yet, friends' ratings unlock the numbers later. */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
-        <FutCard player={form} width={250} />
+        <FutCard player={form} width={250} ratingsCount={0} />
       </div>
 
       {/* Photo */}
@@ -113,21 +112,6 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
       <div style={{ ...cardStyle, marginBottom: 14 }}>
         {chips(t("Posição"), "position", POSITIONS)}
         {chips(t("Pé dominante"), "foot", FEET)}
-      </div>
-
-      {/* Attributes */}
-      <div style={{ ...cardStyle, marginBottom: 18 }}>
-        <div style={{ fontSize: 11, color: C.text2, marginBottom: 12 }}>
-          {t("Atributos — sê honesto, a malta vai confirmar em campo 😄")}
-        </div>
-        {Object.keys(ATTR_LABELS).map((k) => (
-          <div key={k} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            <span style={{ width: 52, fontSize: 12, color: C.text2 }}>{attrName(k)}</span>
-            <input type="range" min="40" max="99" value={form.attrs[k]} onChange={(e) => setAttr(k, Number(e.target.value))}
-              style={{ flex: 1, accentColor: C.accent }} />
-            <span style={{ ...displayFont, width: 28, fontSize: 16, color: C.accent, textAlign: "right" }}>{form.attrs[k]}</span>
-          </div>
-        ))}
       </div>
 
       <BtnPrimary onClick={() => onDone(form)} disabled={uploading} style={{ width: "100%", fontSize: 15, padding: 14, opacity: uploading ? 0.6 : 1 }}>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck, UserPlus, X } from "lucide-react";
+import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2 } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES, POSITIONS } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
@@ -12,7 +12,7 @@ import BtnPrimary from "./BtnPrimary";
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, canManageTeams }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetGuestStatus, onRemoveGuestPlayer, canManageTeams }) {
   const [copied, setCopied] = useState(false);
   const [guestOpen, setGuestOpen] = useState(false);
   const [guest, setGuest] = useState(EMPTY_GUEST);
@@ -43,7 +43,8 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
           <SectionLabel style={{ color: C.text3, marginBottom: 10 }}>{t(section.label)} ({section.items.length})</SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {section.items.map((p) => {
-              const overall = computeOverall(p.position, p.attrs);
+              const locked = p.ratingsCount != null && p.ratingsCount < 3;
+              const overall = locked ? 0 : computeOverall(p.position, p.attrs);
               return (
                 <button key={p.id} onClick={() => openProfile(p.id)} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", cursor: "pointer", textAlign: "left", width: "100%", color: C.text1 }}>
                   <Avatar name={p.name} color={playerColor(group, p)} size={40} fontSize={13} isMe={p.isMe} photo={p.photo} />
@@ -55,7 +56,27 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                     </div>
                     <div style={{ fontSize: 11, color: C.text2 }}>{t(p.position)} · {p.gamesPlayed}/{TOTAL_GAMES} {t("jogos")}</div>
                   </div>
-                  {cloudMode && isOrganizer && !p.isMe && !p.isOrganizerPlayer && (
+                  {canManageTeams && p.isGuest && (
+                    <>
+                      <span
+                        role="button"
+                        title={p.status === "confirmed" ? t("Remover do jogo") : t("Confirmar")}
+                        onClick={(e) => { e.stopPropagation(); onSetGuestStatus(p.id, p.status === "confirmed" ? "declined" : "confirmed"); }}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: p.status === "confirmed" ? C.orangeDim : C.greenDim, border: `1px solid ${p.status === "confirmed" ? C.orange : C.greenBorder}55`, cursor: "pointer", flexShrink: 0 }}
+                      >
+                        {p.status === "confirmed" ? <UserX size={14} color={C.orange} /> : <UserCheck size={14} color={C.green} />}
+                      </span>
+                      <span
+                        role="button"
+                        title={t("Apagar jogador")}
+                        onClick={(e) => { e.stopPropagation(); onRemoveGuestPlayer(p.id, p.nick); }}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: C.redDim, border: `1px solid ${C.red}44`, cursor: "pointer", flexShrink: 0 }}
+                      >
+                        <Trash2 size={14} color={C.red} />
+                      </span>
+                    </>
+                  )}
+                  {cloudMode && isOrganizer && !p.isMe && !p.isOrganizerPlayer && !p.isGuest && (
                     <span
                       role="button"
                       title={p.isAssistant ? t("Remover auxiliar") : t("Tornar auxiliar")}
@@ -65,8 +86,8 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                       <ShieldCheck size={14} color={p.isAssistant ? C.green : C.text3} />
                     </span>
                   )}
-                  <div style={{ ...displayFont, fontSize: 15, color: tierColor(overall), minWidth: 26, textAlign: "center" }}>
-                    {overall}
+                  <div style={{ ...displayFont, fontSize: 15, color: locked ? C.text3 : tierColor(overall), minWidth: 26, textAlign: "center" }}>
+                    {locked ? "?" : overall}
                     <div style={{ fontSize: 8, fontWeight: 700, fontStyle: "normal", letterSpacing: "0.05em", color: C.text3 }}>OVR</div>
                   </div>
                   <ChevronRight size={15} color={C.text3} />

@@ -152,17 +152,6 @@ export function averageAttrs(list) {
   return out;
 }
 
-/** Public card attrs: 50/50 between self-assessment and friends' average. */
-export function blendAttrs(self, peerAttrsList) {
-  const avg = averageAttrs(peerAttrsList);
-  if (!avg) return self;
-  const out = {};
-  ATTR_KEYS.forEach((k) => {
-    out[k] = Math.round(((self?.[k] ?? 60) + avg[k]) / 2);
-  });
-  return out;
-}
-
 // ── Image upload → small base64 (fits localStorage) ─────
 export function fileToDataUrl(file, max = 320) {
   return new Promise((resolve, reject) => {
