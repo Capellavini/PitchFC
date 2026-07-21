@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 const digits = (phone) => (phone || "").replace(/\D/g, "");
 
 /**
@@ -45,20 +47,20 @@ export const gameShareMessage = (game, url, spotsLeft) =>
  *  venue, date/time and price per player. */
 export const lineupShareMessage = (game, playing, waitlist, priceLabel, url) => {
   const lines = [
-    `⚽ *${game.label}* — ${game.date} às ${game.time}`,
+    `⚽ *${game.label}* — ${game.date} ${t("às")} ${game.time}`,
     `📍 ${game.venue}`,
-    `💰 ${priceLabel}/jogador`,
+    `💰 ${priceLabel}${t("/jogador")}`,
     "",
-    `✅ *Confirmados (${playing.length}/${game.spots}):*`,
+    `✅ *${t("Confirmados")} (${playing.length}/${game.spots}):*`,
     ...playing.map((p, i) => `${i + 1}. ${p.nick}${p.paid ? " 💸" : ""}`),
   ];
   if (waitlist.length > 0) {
-    lines.push("", `⏳ Lista de espera: ${waitlist.map((p) => p.nick).join(", ")}`);
+    lines.push("", `⏳ ${t("Lista de espera")}: ${waitlist.map((p) => p.nick).join(", ")}`);
   }
   const left = game.spots - playing.length;
   lines.push("", left > 0
-    ? `Faltam ${left} ${left === 1 ? "jogador" : "jogadores"} — confirma aqui: ${url}`
-    : `Equipa completa! Vê tudo na app: ${url}`);
+    ? `${t("Faltam")} ${left} ${left === 1 ? t("jogador") : t("jogadores")} — ${t("confirma aqui:")} ${url}`
+    : `${t("Equipa completa! Vê tudo na app:")} ${url}`);
   return lines.join("\n");
 };
 

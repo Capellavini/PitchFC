@@ -1,6 +1,7 @@
 import { Trophy, Target, Sparkles } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
+import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 
 const MEDAL = ["#E8C547", "#C0C8D0", "#C9824F"]; // gold / silver / bronze
@@ -16,8 +17,8 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
   if (!source) {
     return (
       <div style={{ ...cardStyle, marginBottom: 14, textAlign: "center", padding: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Resumo das partidas</div>
-        <div style={{ fontSize: 12, color: C.text3 }}>Inicia um dia de jogo para ver o resumo. ⚽</div>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{t("Resumo das partidas")}</div>
+        <div style={{ fontSize: 12, color: C.text3 }}>{t("Inicia um dia de jogo para ver o resumo. ⚽")}</div>
       </div>
     );
   }
@@ -65,13 +66,13 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
   return (
     <div style={{ ...cardStyle, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-        <div style={{ fontSize: 13, fontWeight: 700 }}>Resumo das partidas</div>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Resumo das partidas")}</div>
         <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 800, color: live ? C.red : C.text3 }}>
-          {live ? `${nGames} ${nGames === 1 ? "jogo" : "jogos"} · ao vivo` : `último dia${lastMatchday.date ? ` · ${lastMatchday.date}` : ""}`}
+          {live ? `${nGames} ${nGames === 1 ? t("jogo") : t("jogos")} · ${t("ao vivo")}` : `${t("último dia")}${lastMatchday.date ? ` · ${lastMatchday.date}` : ""}`}
         </span>
       </div>
       <div style={{ fontSize: 11, color: C.text2, marginBottom: 14 }}>
-        {source.mode === "campeonato" ? "Campeonato" : live ? "Avulsa" : "Resultado do último dia de jogo"}
+        {source.mode === "campeonato" ? t("Campeonato") : live ? t("Avulsa") : t("Resultado do último dia de jogo")}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
@@ -79,7 +80,7 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
         <div style={{ background: C.surface, borderRadius: 12, padding: "10px 8px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center", marginBottom: 10 }}>
             <Trophy size={12} color={C.gold} />
-            <span style={{ fontSize: 10, fontWeight: 800, color: C.text2 }}>Vitórias</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: C.text2 }}>{t("Vitórias")}</span>
           </div>
           {teamWins.length === 0 ? (
             <div style={{ textAlign: "center", fontSize: 11, color: C.text3, padding: "8px 0" }}>—</div>
@@ -101,7 +102,7 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
           <div key={label} style={{ background: C.surface, borderRadius: 12, padding: "10px 8px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center", marginBottom: 10 }}>
               <Icon size={12} color={color} />
-              <span style={{ fontSize: 10, fontWeight: 800, color: C.text2 }}>{label}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, color: C.text2 }}>{t(label)}</span>
             </div>
             {rows.length === 0 ? (
               <div style={{ textAlign: "center", fontSize: 11, color: C.text3, padding: "8px 0" }}>—</div>

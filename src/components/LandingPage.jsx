@@ -3,6 +3,7 @@ import {
   MapPin, Beer, Gamepad2, Users, PartyPopper, Clapperboard, ArrowRight,
 } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
+import { t } from "../lib/i18n";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
 
@@ -56,7 +57,7 @@ const FeatureCard = ({ Icon, title, text, iconColor = C.accent, iconBg = C.accen
 );
 
 /** Public marketing page — the entry point before login/signup. */
-export default function LandingPage({ onEnter }) {
+export default function LandingPage({ onEnter, lang, onLang }) {
   const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 };
 
   return (
@@ -66,11 +67,21 @@ export default function LandingPage({ onEnter }) {
       <div style={{ position: "sticky", top: 0, zIndex: 10, background: `${C.bg}E6`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.border}` }}>
         <Section style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px" }}>
           <img src={BRAND.logo} alt="PITCH Club" style={{ height: 26 }} />
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {onLang && (
+              <div style={{ display: "flex", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 2, gap: 2 }}>
+                {[["pt", "PT"], ["en", "EN"]].map(([l, label]) => (
+                  <button key={l} onClick={() => onLang(l)}
+                    style={{ background: lang === l ? C.accent : "transparent", color: lang === l ? C.bg : C.text2, border: "none", borderRadius: 8, padding: "5px 9px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <button onClick={onEnter} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: C.text1, cursor: "pointer" }}>
-              Entrar
+              {t("Entrar")}
             </button>
-            <BtnPrimary onClick={onEnter} style={{ padding: "8px 16px", fontSize: 13 }}>Criar conta</BtnPrimary>
+            <BtnPrimary onClick={onEnter} style={{ padding: "8px 16px", fontSize: 13 }}>{t("Criar conta")}</BtnPrimary>
           </div>
         </Section>
       </div>
@@ -80,19 +91,18 @@ export default function LandingPage({ onEnter }) {
         <Section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 40, padding: "72px 20px" }}>
           <div style={{ flex: "1 1 340px" }}>
             <div style={{ ...displayFont, fontSize: "clamp(34px, 5.5vw, 54px)", lineHeight: 1.05, marginBottom: 16 }}>
-              O teu jogo semanal,<br />
-              <span style={{ color: C.accent }}>organizado.</span>
+              {t("O teu jogo semanal,")}<br />
+              <span style={{ color: C.accent }}>{t("organizado.")}</span>
             </div>
             <div style={{ fontSize: 16, color: C.text2, lineHeight: 1.6, marginBottom: 28, maxWidth: 460 }}>
-              O PITCH junta tudo o que o teu grupo precisa: confirmações, contas do campo,
-              sorteio de equipas, stats e o teu cartão de jogador. E em breve, um clube para chamar casa.
+              {t("O PITCH junta tudo o que o teu grupo precisa: confirmações, contas do campo, sorteio de equipas, stats e o teu cartão de jogador. E em breve, um clube para chamar casa.")}
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <BtnPrimary onClick={onEnter} style={{ padding: "14px 26px", fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
-                Criar conta grátis <ArrowRight size={17} />
+                {t("Criar conta grátis")} <ArrowRight size={17} />
               </BtnPrimary>
               <button onClick={onEnter} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 26px", fontSize: 15, fontWeight: 700, color: C.text1, cursor: "pointer" }}>
-                Já tenho conta
+                {t("Já tenho conta")}
               </button>
             </div>
           </div>
@@ -105,12 +115,12 @@ export default function LandingPage({ onEnter }) {
       {/* APP */}
       <Section style={{ padding: "72px 20px" }}>
         <SectionTitle
-          eyebrow="A APP"
-          title="Tudo o que o grupo precisa, numa app"
-          sub="Do «quem joga sábado?» ao golo da semana — sem stress para o organizador, sem desculpas para os atrasados."
+          eyebrow={t("A APP")}
+          title={t("Tudo o que o grupo precisa, numa app")}
+          sub={t("Do «quem joga sábado?» ao golo da semana — sem stress para o organizador, sem desculpas para os atrasados.")}
         />
         <div style={grid}>
-          {APP_FEATURES.map((f) => <FeatureCard key={f.title} {...f} />)}
+          {APP_FEATURES.map((f) => <FeatureCard key={f.title} {...f} title={t(f.title)} text={t(f.text)} />)}
         </div>
       </Section>
 
@@ -118,13 +128,13 @@ export default function LandingPage({ onEnter }) {
       <div style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
         <Section style={{ padding: "72px 20px" }}>
           <SectionTitle
-            eyebrow="EM BREVE · MATOSINHOS / PORTO"
-            title="O Clube"
-            sub="Mais do que campos alugados: um espaço pensado para quem vive o futebol — antes, durante e depois do jogo."
+            eyebrow={t("EM BREVE · MATOSINHOS / PORTO")}
+            title={t("O Clube")}
+            sub={t("Mais do que campos alugados: um espaço pensado para quem vive o futebol — antes, durante e depois do jogo.")}
           />
           <div style={grid}>
             {VENUE_FEATURES.map((f) => (
-              <FeatureCard key={f.title} {...f} iconColor={C.blue} iconBg={C.blueDim} iconBorder={C.blueBorder} />
+              <FeatureCard key={f.title} {...f} title={t(f.title)} text={t(f.text)} iconColor={C.blue} iconBg={C.blueDim} iconBorder={C.blueBorder} />
             ))}
           </div>
         </Section>
@@ -134,13 +144,13 @@ export default function LandingPage({ onEnter }) {
       <div style={{ ...fieldBackdrop(0.6, 0.92) }}>
         <Section style={{ textAlign: "center", padding: "80px 20px" }}>
           <div style={{ ...displayFont, fontSize: "clamp(28px, 4.5vw, 42px)", marginBottom: 10 }}>
-            Pronto para o próximo jogo?
+            {t("Pronto para o próximo jogo?")}
           </div>
           <div style={{ fontSize: 15, color: C.text2, marginBottom: 28 }}>
-            Cria a tua conta, monta o teu cartão e entra em campo.
+            {t("Cria a tua conta, monta o teu cartão e entra em campo.")}
           </div>
           <BtnPrimary onClick={onEnter} style={{ padding: "15px 32px", fontSize: 16, display: "inline-flex", alignItems: "center", gap: 8 }}>
-            Criar conta na app <ArrowRight size={18} />
+            {t("Criar conta na app")} <ArrowRight size={18} />
           </BtnPrimary>
         </Section>
       </div>
@@ -150,7 +160,7 @@ export default function LandingPage({ onEnter }) {
         <Section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "24px 20px" }}>
           <img src={BRAND.logo} alt="PITCH Club" style={{ height: 20, opacity: 0.7 }} />
           <div style={{ fontSize: 12, color: C.text3 }}>
-            PITCH Club · Matosinhos — Porto · versão beta
+            {t("PITCH Club · Matosinhos — Porto · versão beta")}
           </div>
         </Section>
       </div>

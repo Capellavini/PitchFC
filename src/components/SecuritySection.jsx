@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Shield, Lock, Mail, LogOut, ChevronDown, ChevronUp } from "lucide-react";
 import { C, cardStyle } from "../theme";
+import { t } from "../lib/i18n";
 import SectionLabel from "./SectionLabel";
 
 /** Account security (cloud only): change password, change email,
@@ -17,30 +18,30 @@ export default function SecuritySection({ email, onUpdatePassword, onUpdateEmail
 
   const savePassword = async () => {
     setMsg(null);
-    if (pw.length < 6) return setMsg({ ok: false, text: "A palavra-passe precisa de pelo menos 6 caracteres." });
-    if (pw !== pw2) return setMsg({ ok: false, text: "As palavras-passe não coincidem." });
+    if (pw.length < 6) return setMsg({ ok: false, text: t("A palavra-passe precisa de pelo menos 6 caracteres.") });
+    if (pw !== pw2) return setMsg({ ok: false, text: t("As palavras-passe não coincidem.") });
     setBusy(true);
     const res = await onUpdatePassword(pw);
     setBusy(false);
     if (res?.error) return setMsg({ ok: false, text: res.error });
     setPw(""); setPw2(""); setOpen(null);
-    setMsg({ ok: true, text: "Palavra-passe alterada ✓" });
+    setMsg({ ok: true, text: t("Palavra-passe alterada ✓") });
   };
 
   const saveEmail = async () => {
     setMsg(null);
     const clean = newEmail.trim();
-    if (!clean || !clean.includes("@")) return setMsg({ ok: false, text: "Escreve um email válido." });
+    if (!clean || !clean.includes("@")) return setMsg({ ok: false, text: t("Escreve um email válido.") });
     setBusy(true);
     const res = await onUpdateEmail(clean);
     setBusy(false);
     if (res?.error) return setMsg({ ok: false, text: res.error });
     setNewEmail(""); setOpen(null);
-    setMsg({ ok: true, text: `Enviámos um link de confirmação para ${clean} — o email só muda depois de o abrires.` });
+    setMsg({ ok: true, text: `${t("Enviámos um link de confirmação para")} ${clean}${t(" — o email só muda depois de o abrires.")}` });
   };
 
   const signOutAll = async () => {
-    if (!window.confirm("Terminar sessão em todos os dispositivos? Vais ter de voltar a entrar em todos, incluindo este.")) return;
+    if (!window.confirm(t("Terminar sessão em todos os dispositivos? Vais ter de voltar a entrar em todos, incluindo este."))) return;
     setBusy(true);
     const res = await onSignOutEverywhere();
     setBusy(false);
@@ -71,7 +72,7 @@ export default function SecuritySection({ email, onUpdatePassword, onUpdateEmail
   const actionBtn = (label, onClick) => (
     <button onClick={onClick} disabled={busy}
       style={{ width: "100%", background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
-      {busy ? "Um momento…" : label}
+      {busy ? t("Um momento…") : label}
     </button>
   );
 
@@ -79,25 +80,25 @@ export default function SecuritySection({ email, onUpdatePassword, onUpdateEmail
     <div style={{ ...cardStyle, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Shield size={14} color={C.text2} />
-        <SectionLabel style={{ marginBottom: 0 }}>SEGURANÇA</SectionLabel>
+        <SectionLabel style={{ marginBottom: 0 }}>{t("SEGURANÇA")}</SectionLabel>
       </div>
 
-      {row("password", Lock, "Alterar palavra-passe", "Define uma nova palavra-passe")}
+      {row("password", Lock, t("Alterar palavra-passe"), t("Define uma nova palavra-passe"))}
       {open === "password" && (
         <div style={{ paddingBottom: 12 }}>
-          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Nova palavra-passe (mín. 6)" style={inputStyle} />
-          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="Confirmar palavra-passe"
+          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={t("Nova palavra-passe (mín. 6)")} style={inputStyle} />
+          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder={t("Confirmar palavra-passe")}
             onKeyDown={(e) => e.key === "Enter" && savePassword()} style={inputStyle} />
-          {actionBtn("Guardar palavra-passe", savePassword)}
+          {actionBtn(t("Guardar palavra-passe"), savePassword)}
         </div>
       )}
 
-      {row("email", Mail, "Trocar email", email ? `Atual: ${email}` : "Muda o email da conta")}
+      {row("email", Mail, t("Trocar email"), email ? `${t("Atual:")} ${email}` : t("Muda o email da conta"))}
       {open === "email" && (
         <div style={{ paddingBottom: 12 }}>
-          <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="novo@email.com"
+          <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder={t("novo@email.com")}
             onKeyDown={(e) => e.key === "Enter" && saveEmail()} style={inputStyle} />
-          {actionBtn("Enviar confirmação", saveEmail)}
+          {actionBtn(t("Enviar confirmação"), saveEmail)}
         </div>
       )}
 
@@ -107,8 +108,8 @@ export default function SecuritySection({ email, onUpdatePassword, onUpdateEmail
           <LogOut size={16} color={C.red} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.red }}>Sair de todos os dispositivos</div>
-          <div style={{ fontSize: 11, color: C.text2 }}>Termina a sessão em todo o lado (incluindo aqui)</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.red }}>{t("Sair de todos os dispositivos")}</div>
+          <div style={{ fontSize: 11, color: C.text2 }}>{t("Termina a sessão em todo o lado (incluindo aqui)")}</div>
         </div>
       </button>
 

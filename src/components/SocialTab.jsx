@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Users, Building2, UserPlus, MessageCircle, Send, ImagePlus, Video, Trash2, Check, X } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { ini } from "../lib/helpers";
+import { t } from "../lib/i18n";
 import { openWhatsApp, sharePostMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
@@ -64,7 +65,7 @@ export default function SocialTab({ social }) {
     <div style={{ padding: "0 16px" }}>
       <div style={{ padding: "20px 0 16px" }}>
         <div style={{ ...displayFont, fontSize: 22 }}>Social ⚽</div>
-        <div style={{ fontSize: 13, color: C.text2 }}>A comunidade de futebol do PITCH</div>
+        <div style={{ fontSize: 13, color: C.text2 }}>{t("A comunidade de futebol do PITCH")}</div>
       </div>
 
       {/* scope tabs */}
@@ -73,7 +74,7 @@ export default function SocialTab({ social }) {
           const active = scope === id;
           return (
             <button key={id} onClick={() => setScope(id)} style={{ flex: 1, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: "none", borderRadius: 10, padding: "9px 4px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-              <Icon size={13} /> {label}
+              <Icon size={13} /> {t(label)}
             </button>
           );
         })}
@@ -81,31 +82,31 @@ export default function SocialTab({ social }) {
 
       {/* composer */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Partilha um momento, um golo, uma jogada…" rows={2}
+        <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("Partilha um momento, um golo, uma jogada…")} rows={2}
           style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text1, outline: "none", resize: "none", fontFamily: "inherit" }} />
         {draftMedia && (
           <div style={{ position: "relative", marginTop: 10 }}>
             {draftMedia.kind === "video"
               ? <video src={draftMedia.url} controls playsInline style={{ width: "100%", borderRadius: 12, maxHeight: 280, background: "#000" }} />
               : <img src={draftMedia.url} alt="" style={{ width: "100%", borderRadius: 12, maxHeight: 240, objectFit: "cover" }} />}
-            <button onClick={() => setDraftMedia(null)} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.7)", color: C.text1, border: "none", borderRadius: 8, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>Remover</button>
+            <button onClick={() => setDraftMedia(null)} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.7)", color: C.text1, border: "none", borderRadius: 8, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>{t("Remover")}</button>
           </div>
         )}
-        {uploading && <div style={{ fontSize: 12, color: C.text2, marginTop: 10 }}>A carregar ficheiro…</div>}
-        {uploadErr && <div style={{ fontSize: 12, color: C.red, marginTop: 10 }}>Falha no upload: {uploadErr}</div>}
+        {uploading && <div style={{ fontSize: 12, color: C.text2, marginTop: 10 }}>{t("A carregar ficheiro…")}</div>}
+        {uploadErr && <div style={{ fontSize: 12, color: C.red, marginTop: 10 }}>{t("Falha no upload:")} {uploadErr}</div>}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
           <div style={{ display: "flex", gap: 14 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: uploading ? C.text3 : C.text2, cursor: uploading ? "default" : "pointer" }}>
-              <ImagePlus size={15} /> Foto
+              <ImagePlus size={15} /> {t("Foto")}
               <input type="file" accept="image/*" disabled={uploading} onChange={(e) => pickMedia(e, "photo")} style={{ display: "none" }} />
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: uploading ? C.text3 : C.text2, cursor: uploading ? "default" : "pointer" }}>
-              <Video size={15} /> Vídeo
+              <Video size={15} /> {t("Vídeo")}
               <input type="file" accept="video/*" disabled={uploading} onChange={(e) => pickMedia(e, "video")} style={{ display: "none" }} />
             </label>
           </div>
           <button onClick={publish} disabled={uploading || (!draft.trim() && !draftMedia)} style={{ background: (draft.trim() || draftMedia) && !uploading ? C.accent : C.accentDim, color: (draft.trim() || draftMedia) && !uploading ? C.bg : C.text3, border: "none", borderRadius: 10, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: uploading ? "default" : "pointer" }}>
-            Publicar
+            {t("Publicar")}
           </button>
         </div>
       </div>
@@ -114,22 +115,22 @@ export default function SocialTab({ social }) {
       {scope === "amigos" && (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: requests.length || addOpen || friends.length ? 12 : 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>Amigos {friends.length > 0 && <span style={{ color: C.text3, fontWeight: 400 }}>({friends.length})</span>}</span>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{t("Amigos")} {friends.length > 0 && <span style={{ color: C.text3, fontWeight: 400 }}>({friends.length})</span>}</span>
             <button onClick={() => setAddOpen((v) => !v)} style={{ background: addOpen ? C.surface : C.accentDim, color: addOpen ? C.text2 : C.accent, border: `1px solid ${addOpen ? C.border : C.accentBorder}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-              <UserPlus size={13} /> Adicionar amigo
+              <UserPlus size={13} /> {t("Adicionar amigo")}
             </button>
           </div>
 
           {/* incoming requests */}
           {requests.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <SectionLabel style={{ marginBottom: 8 }}>PEDIDOS</SectionLabel>
+              <SectionLabel style={{ marginBottom: 8 }}>{t("PEDIDOS")}</SectionLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {requests.map((r) => (
                   <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <Avatar name={r.player.name} color={colorFor(r.player.id)} size={32} fontSize={11} photo={r.player.photo_url} />
                     <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{r.player.nick}</span>
-                    <button onClick={() => social.onRespondFriend(r.id, true)} style={{ background: C.greenDim, color: C.green, border: `1px solid ${C.greenBorder}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Check size={12} /> Aceitar</button>
+                    <button onClick={() => social.onRespondFriend(r.id, true)} style={{ background: C.greenDim, color: C.green, border: `1px solid ${C.greenBorder}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Check size={12} /> {t("Aceitar")}</button>
                     <button onClick={() => social.onRespondFriend(r.id, false)} style={{ background: "none", color: C.text3, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 8px", fontSize: 11, cursor: "pointer", display: "flex" }}><X size={12} /></button>
                   </div>
                 ))}
@@ -140,9 +141,9 @@ export default function SocialTab({ social }) {
           {/* add-friend candidate list */}
           {addOpen && (
             <div style={{ marginBottom: 12 }}>
-              <SectionLabel style={{ marginBottom: 8 }}>MEMBROS DO CLUBE</SectionLabel>
+              <SectionLabel style={{ marginBottom: 8 }}>{t("MEMBROS DO CLUBE")}</SectionLabel>
               {candidates.length === 0 ? (
-                <div style={{ fontSize: 12, color: C.text3 }}>Sem ninguém para adicionar por agora.</div>
+                <div style={{ fontSize: 12, color: C.text3 }}>{t("Sem ninguém para adicionar por agora.")}</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 240, overflowY: "auto" }}>
                   {candidates.map((c) => {
@@ -152,10 +153,10 @@ export default function SocialTab({ social }) {
                         <Avatar name={c.name} color={colorFor(c.id)} size={32} fontSize={11} photo={c.photo_url} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600 }}>{c.nick}</div>
-                          <div style={{ fontSize: 10, color: C.text3 }}>{c.groups?.name ?? "Sem grupo"}</div>
+                          <div style={{ fontSize: 10, color: C.text3 }}>{c.groups?.name ?? t("Sem grupo")}</div>
                         </div>
                         <button onClick={() => !sent && social.onSendFriend(c.id)} disabled={sent} style={{ background: sent ? C.surface : C.accentDim, color: sent ? C.text3 : C.accent, border: `1px solid ${sent ? C.border : C.accentBorder}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: sent ? "default" : "pointer" }}>
-                          {sent ? "Pedido enviado" : "Adicionar"}
+                          {sent ? t("Pedido enviado") : t("Adicionar")}
                         </button>
                       </div>
                     );
@@ -172,23 +173,23 @@ export default function SocialTab({ social }) {
                 <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <Avatar name={f.name} color={colorFor(f.id)} size={30} fontSize={11} photo={f.photo_url} />
                   <span style={{ flex: 1, fontSize: 13 }}>{f.nick}</span>
-                  <button onClick={() => social.onRemoveFriend(friendshipIdOf(f.id))} style={{ background: "none", color: C.text3, border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Remover</button>
+                  <button onClick={() => social.onRemoveFriend(friendshipIdOf(f.id))} style={{ background: "none", color: C.text3, border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>{t("Remover")}</button>
                 </div>
               ))}
             </div>
           )}
 
           {friends.length === 0 && requests.length === 0 && !addOpen && (
-            <div style={{ fontSize: 12, color: C.text3, marginTop: 10 }}>Ainda não tens amigos por aqui. Toca em "Adicionar amigo" para começar. 🤝</div>
+            <div style={{ fontSize: 12, color: C.text3, marginTop: 10 }}>{t("Ainda não tens amigos por aqui. Toca em \"Adicionar amigo\" para começar. 🤝")}</div>
           )}
         </div>
       )}
 
       {/* feed */}
-      <SectionLabel>{scope === "grupo" ? "DO TEU GRUPO" : scope === "amigos" ? "DOS TEUS AMIGOS" : "FEED DO CLUBE"}</SectionLabel>
+      <SectionLabel>{scope === "grupo" ? t("DO TEU GRUPO") : scope === "amigos" ? t("DOS TEUS AMIGOS") : t("FEED DO CLUBE")}</SectionLabel>
       {visible.length === 0 ? (
         <div style={{ ...cardStyle, textAlign: "center", padding: "28px 20px", color: C.text3, fontSize: 13, marginBottom: 24 }}>
-          {scope === "amigos" ? "Sem publicações de amigos ainda." : scope === "grupo" ? "O teu grupo ainda não publicou nada." : "Ainda não há publicações. Sê o primeiro! ⚽"}
+          {scope === "amigos" ? t("Sem publicações de amigos ainda.") : scope === "grupo" ? t("O teu grupo ainda não publicou nada.") : t("Ainda não há publicações. Sê o primeiro! ⚽")}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
@@ -201,11 +202,11 @@ export default function SocialTab({ social }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <Avatar name={post.author.name || post.author.nick} color={color} size={36} fontSize={12} isMe={post.mine} photo={post.author.photo} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{post.author.nick}{post.mine && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}> · tu</span>}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{post.author.nick}{post.mine && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}> {t("· tu")}</span>}</div>
                     <div style={{ fontSize: 11, color: C.text2 }}>{post.time}</div>
                   </div>
                   {post.mine && (
-                    <button onClick={() => window.confirm("Apagar publicação?") && social.onDeletePost(post.id)} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", padding: 4 }}><Trash2 size={15} /></button>
+                    <button onClick={() => window.confirm(t("Apagar publicação?")) && social.onDeletePost(post.id)} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", padding: 4 }}><Trash2 size={15} /></button>
                   )}
                 </div>
 
@@ -222,7 +223,7 @@ export default function SocialTab({ social }) {
                     ⚽ Golaço {post.likes.length > 0 && post.likes.length}
                   </button>
                   <button onClick={() => setOpenComments((o) => ({ ...o, [post.id]: !o[post.id] }))} style={{ background: "transparent", color: C.text2, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                    <MessageCircle size={13} /> {post.comments.length || "Comentar"}
+                    <MessageCircle size={13} /> {post.comments.length || t("Comentar")}
                   </button>
                   <button onClick={() => openWhatsApp(sharePostMessage(post.author.nick, post.text || "uma publicação"))} style={{ background: "transparent", color: C.text2, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 10px", fontSize: 12, cursor: "pointer", marginLeft: "auto" }}>↗</button>
                 </div>
@@ -243,7 +244,7 @@ export default function SocialTab({ social }) {
                       ))}
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <input value={commentDrafts[post.id] ?? ""} onChange={(e) => setCommentDrafts((d) => ({ ...d, [post.id]: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && submitComment(post.id)} placeholder="Escreve um comentário…"
+                      <input value={commentDrafts[post.id] ?? ""} onChange={(e) => setCommentDrafts((d) => ({ ...d, [post.id]: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && submitComment(post.id)} placeholder={t("Escreve um comentário…")}
                         style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, color: C.text1, outline: "none" }} />
                       <button onClick={() => submitComment(post.id)} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "0 12px", cursor: "pointer", display: "flex", alignItems: "center" }}><Send size={14} /></button>
                     </div>
