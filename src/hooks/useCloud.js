@@ -30,7 +30,7 @@ function nextGameISO(weekday, time) {
 const EMPTY = {
   user: null, myPlayer: null, groupRow: null,
   players: [], game: null, attendances: [], events: [], bookings: [],
-  matchdays: [], mvpVotes: [],
+  matchdays: [], mvpVotes: [], ratings: [],
   posts: [], friendships: [], allPlayers: [],
 };
 
@@ -94,6 +94,12 @@ export function useCloud() {
         }
       }
 
+      // Peer ratings for everyone in the roster — averaged into each
+      // player's card (gated to 3+ ratings) and listed as "who rated you".
+      let ratings = [];
+      const rtq = await supabase.from("peer_ratings").select("*").in("player_id", (p.data ?? []).map((x) => x.id));
+      if (!rtq.error) ratings = rtq.data ?? [];
+
       // Social: cloud feed (author + likes + comments), my friend graph,
       // and the club-wide roster (for "add friend").
       let posts = [], friendships = [], allPlayers = [];
@@ -107,7 +113,7 @@ export function useCloud() {
       const apq = await supabase.from("players").select("id,nick,name,photo_url,group_id,groups(name)").order("nick");
       if (!apq.error) allPlayers = apq.data ?? [];
 
-      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, posts, friendships, allPlayers });
+      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -147,6 +153,7 @@ export function useCloud() {
       .on("postgres_changes", { event: "*", schema: "public", table: "post_likes" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "post_comments" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "peer_ratings" }, refetch)
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [refetch]);
@@ -440,6 +447,19 @@ export function useCloud() {
     await refetch();
   };
 
+  /** Rate a teammate's stats — one rating per rater per player; a second
+   *  submission updates the first instead of duplicating it. */
+  const submitRating = async (playerId, attrs) => {
+    if (!data.myPlayer) return { error: "Sem sessão." };
+    if (playerId === data.myPlayer.id) return { error: "Não podes avaliar-te a ti próprio." };
+    const r = await supabase.from("peer_ratings").upsert(
+      { player_id: playerId, rater_id: data.myPlayer.id, attrs, rater_name: data.myPlayer.nick },
+      { onConflict: "player_id,rater_id" });
+    if (r.error) return { error: r.error.message };
+    await refetch();
+    return {};
+  };
+
   // ── Permissions (organizer grants the assistant role) ──
   const toggleAssistant = async (playerId, value) => {
     setData((d) => ({ ...d, players: d.players.map((p) => (p.id === playerId ? { ...p, is_assistant: value } : p)) }));
@@ -520,7 +540,7 @@ export function useCloud() {
     setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     createEvent, deleteEvent, addBooking, removeBooking,
-    commitMatchday, castMvpVote, closeMvp,
+    commitMatchday, castMvpVote, closeMvp, submitRating,
     toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment,
     sendFriendRequest, respondFriend, removeFriend,
     refetch,

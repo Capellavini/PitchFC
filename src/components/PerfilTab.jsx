@@ -3,15 +3,16 @@ import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, Shie
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
-import { ATTR_LABELS, encodePayload, averageAttrs, computeOverall } from "../lib/helpers";
-import { t, attrName } from "../lib/i18n";
+import { encodePayload } from "../lib/helpers";
+import { t } from "../lib/i18n";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
 import FutCard from "./FutCard";
+import RatingForm from "./RatingForm";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, peerRatings = [], addPeerRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -32,8 +33,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
   };
   const pushOn = pushMsg?.ok || pushPermission() === "granted";
 
-  // Edit mode works on the self-assessment, not the blended card attrs.
-  const startEditing = () => { setForm({ ...player, attrs: player.selfAttrs ?? player.attrs }); setEditing(true); };
+  const startEditing = () => { setForm({ ...player }); setEditing(true); };
 
   const requestRating = () => {
     const payload = encodePayload({
@@ -125,19 +125,6 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           {chips(t("Pé dominante"), "foot", FEET)}
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>{t("ATRIBUTOS")}</SectionLabel>
-          {Object.keys(ATTR_LABELS).map((k) => (
-            <div key={k} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              <span style={{ width: 52, fontSize: 12, color: C.text2 }}>{attrName(k)}</span>
-              <input type="range" min="40" max="99" value={form.attrs?.[k] ?? 60}
-                onChange={(e) => setForm((f) => ({ ...f, attrs: { ...f.attrs, [k]: Number(e.target.value) } }))}
-                style={{ flex: 1, accentColor: C.accent }} />
-              <span style={{ ...displayFont, width: 28, fontSize: 16, color: C.accent, textAlign: "right" }}>{form.attrs?.[k] ?? 60}</span>
-            </div>
-          ))}
-        </div>
-
         <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
           <BtnPrimary onClick={() => { updateProfile(form); setEditing(false); }} disabled={uploading} style={{ flex: 1, opacity: uploading ? 0.6 : 1 }}>{uploading ? t("A carregar…") : t("Guardar")}</BtnPrimary>
           <button onClick={() => { setForm(player); setEditing(false); }} style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>{t("Cancelar")}</button>
@@ -163,67 +150,73 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
 
       {/* FUT card — the hero of the profile */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-        <FutCard player={player} width={280} />
+        <FutCard player={player} width={280} ratingsCount={player.ratingsCount} />
       </div>
       <div style={{ textAlign: "center", fontSize: 12, color: C.text2, marginBottom: 16 }}>
         {player.name} · @{player.nick.toLowerCase()}
       </div>
 
-      {/* Peer rating (own profile only) */}
-      {isOwn && (
+      {/* Ratings: own profile shows status + who's rated you; someone
+          else's profile (cloud) lets you rate them right here. */}
+      {isOwn ? (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
           <SectionLabel>{t("AVALIAÇÃO DOS AMIGOS")}</SectionLabel>
-          {peerRatings.length > 0 ? (() => {
-            const friendsAvg = averageAttrs(peerRatings.map((r) => r.a));
-            const friendsOvr = computeOverall(player.position, friendsAvg);
-            const selfOvr = computeOverall(player.position, player.selfAttrs ?? player.attrs);
-            const names = peerRatings.map((r) => r.from).filter((n) => n && n !== "Anónimo");
-            return (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                  {[{ label: t("Amigos"), value: friendsOvr, color: C.gold }, { label: t("Auto"), value: selfOvr, color: C.text2 }, { label: t("Cartão"), value: computeOverall(player.position, player.attrs), color: C.accent }].map((s) => (
-                    <div key={s.label} style={{ flex: 1, background: C.surface, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
-                      <div style={{ ...displayFont, fontSize: 20, color: s.color }}>{s.value}</div>
-                      <div style={{ fontSize: 10, color: C.text2, marginTop: 2 }}>{s.label}</div>
-                    </div>
-                  ))}
+          <div style={{ fontSize: 12, color: C.text2, marginBottom: 14 }}>
+            {(player.ratingsCount ?? 0) >= 3
+              ? t("O cartão mostra a média das avaliações que recebeste.")
+              : `${t("Faltam")} ${Math.max(0, 3 - (player.ratingsCount ?? 0))} ${t("avaliações para desbloquear o teu cartão.")}`}
+          </div>
+
+          <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>{t("QUEM JÁ TE AVALIOU")}</SectionLabel>
+          {player.raters?.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: cloudMode ? 0 : 14 }}>
+              {player.raters.map((r, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <Star size={12} color={C.gold} /> {r.nick}
                 </div>
-                <div style={{ fontSize: 11, color: C.text2 }}>
-                  {peerRatings.length} {peerRatings.length === 1 ? t("avaliação recebida") : t("avaliações recebidas")}
-                  {names.length > 0 && ` — ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}`}.
-                  {" "}{t("O cartão mostra a média entre a tua auto-avaliação e a dos amigos.")}
-                </div>
-              </div>
-            );
-          })() : (
-            <div style={{ fontSize: 12, color: C.text2, marginBottom: 14 }}>
-              {t("Ainda ninguém te avaliou — o cartão mostra só a tua auto-avaliação. Pede aos teus amigos para dizerem como jogas de verdade 👀")}
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: C.text3, marginBottom: cloudMode ? 0 : 14 }}>
+              {t("Ainda ninguém te avaliou.")}
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={requestRating} style={{ flex: 1.4, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 11, fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <MessageCircle size={14} /> {t("Pedir avaliação")}
-            </button>
-            <button onClick={() => { setCodeOpen(!codeOpen); setCodeStatus(null); }} style={{ flex: 1, background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <Star size={14} /> {t("Inserir código")}
-            </button>
-          </div>
-
-          {codeOpen && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input value={codeDraft} onChange={(e) => { setCodeDraft(e.target.value); setCodeStatus(null); }} placeholder={t("Cola aqui o código recebido…")}
-                  style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 12, color: C.text1, outline: "none", fontFamily: "monospace" }} />
-                <button onClick={submitCode} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "0 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
-                  {t("Adicionar")}
+          {!cloudMode && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={requestRating} style={{ flex: 1.4, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 11, fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <MessageCircle size={14} /> {t("Pedir avaliação")}
+                </button>
+                <button onClick={() => { setCodeOpen(!codeOpen); setCodeStatus(null); }} style={{ flex: 1, background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <Star size={14} /> {t("Inserir código")}
                 </button>
               </div>
-              {codeStatus === "ok" && <div style={{ fontSize: 11, color: C.green, marginTop: 6 }}>{t("Avaliação adicionada — o teu cartão já reflete a opinião ✓")}</div>}
-              {codeStatus === "error" && <div style={{ fontSize: 11, color: C.red, marginTop: 6 }}>{t("Código inválido — confirma que copiaste tudo.")}</div>}
+
+              {codeOpen && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input value={codeDraft} onChange={(e) => { setCodeDraft(e.target.value); setCodeStatus(null); }} placeholder={t("Cola aqui o código recebido…")}
+                      style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 12, color: C.text1, outline: "none", fontFamily: "monospace" }} />
+                    <button onClick={submitCode} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "0 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                      {t("Adicionar")}
+                    </button>
+                  </div>
+                  {codeStatus === "ok" && <div style={{ fontSize: 11, color: C.green, marginTop: 6 }}>{t("Avaliação adicionada — o teu cartão já reflete a opinião ✓")}</div>}
+                  {codeStatus === "error" && <div style={{ fontSize: 11, color: C.red, marginTop: 6 }}>{t("Código inválido — confirma que copiaste tudo.")}</div>}
+                </div>
+              )}
             </div>
           )}
         </div>
+      ) : (
+        cloudMode && onSubmitRating && (
+          <RatingForm
+            nick={player.nick}
+            existing={player.myRatingAttrs}
+            onSubmit={(attrs) => onSubmitRating(player.uuid, attrs)}
+          />
+        )
       )}
 
       {/* Contact (own profile only) */}

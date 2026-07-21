@@ -58,8 +58,8 @@ const EN = {
   // ── LandingPage ────────────────────────────────────────
   "O teu jogo semanal,": "Your weekly game,",
   "organizado.": "organized.",
-  "O PITCH junta tudo o que o teu grupo precisa: confirmações, contas do campo, sorteio de equipas, stats e o teu cartão de jogador. E em breve, um clube para chamar casa.":
-    "PITCH brings together everything your group needs: confirmations, pitch finances, team draws, stats and your player card. And soon, a club to call home.",
+  "O PITCH junta tudo o que o teu grupo precisa: confirmações, contas do campo, sorteio de equipas, stats e o teu cartão de jogador.":
+    "PITCH brings together everything your group needs: confirmations, pitch finances, team draws, stats and your player card.",
   "Criar conta grátis": "Create free account",
   "Já tenho conta": "I already have an account",
   "A APP": "THE APP",
@@ -83,27 +83,7 @@ const EN = {
     "Goals, assists, MVP voting and reliability. The whole season on record.",
   "Partilha highlights, vota no Golo da Semana e convive com jogadores de outros grupos.":
     "Share highlights, vote for Goal of the Week and hang out with players from other groups.",
-  "EM BREVE · MATOSINHOS / PORTO": "COMING SOON · MATOSINHOS / PORTO",
-  "O Clube": "The Club",
-  "Mais do que campos alugados: um espaço pensado para quem vive o futebol — antes, durante e depois do jogo.":
-    "More than rented pitches: a space designed for people who live football — before, during and after the game.",
-  "2 campos + campo 1v1": "2 pitches + 1v1 arena",
-  "Dois campos de 5 e uma arena 1v1 para resolver discussões à parte.":
-    "Two 5-a-side pitches and a 1v1 arena to settle arguments on the side.",
-  "Bar & esplanada": "Bar & terrace",
-  "A terceira parte do jogo: aquela bebida depois do apito final.":
-    "The third half: that drink after the final whistle.",
-  "Videojogos e fut mesa para os que ficam à espera do próximo jogo.":
-    "Video games and foosball for those waiting for the next game.",
-  "Clube social": "Social club",
-  "Um espaço para a comunidade: convívio entre grupos, ligas internas.":
-    "A space for the community: mingling between groups, internal leagues.",
   "Eventos": "Events",
-  "Torneios, aniversários e eventos de empresa com o futebol ao centro.":
-    "Tournaments, birthdays and corporate events with football at the centre.",
-  "Transmissão dos jogos": "Game broadcasts",
-  "Os teus jogos gravados e transmitidos — revê o golaço as vezes que quiseres.":
-    "Your games recorded and streamed — rewatch that screamer as many times as you like.",
   "Pronto para o próximo jogo?": "Ready for the next game?",
   "Cria a tua conta, monta o teu cartão e entra em campo.":
     "Create your account, build your card and step onto the pitch.",
@@ -168,8 +148,6 @@ const EN = {
   "Idade": "Age", "Nacionalidade": "Nationality", "Clube do coração": "Favourite club",
   "ex.: FC Porto, Real Madrid, Flamengo…": "e.g. FC Porto, Real Madrid, Flamengo…",
   "Posição": "Position", "Pé dominante": "Preferred foot",
-  "Atributos — sê honesto, a malta vai confirmar em campo 😄":
-    "Attributes — be honest, the lads will check on the pitch 😄",
   "A carregar foto…": "Uploading photo…", "Criar o meu cartão ⚽": "Create my card ⚽",
   "O teu grupo": "Your group",
   "Define o jogo semanal — depois é só convidar a malta.":
@@ -237,6 +215,8 @@ const EN = {
   "Material do Jogo": "Match Kit", "Adicionar item…": "Add item…", "atribuir…": "assign…",
   "Pagamentos": "Payments", "/jogador": "/player", "total": "total",
   "DEVEM PAGAR": "TO PAY", "Pago ✓": "Paid ✓",
+  "JÁ PAGARAM": "ALREADY PAID", "Desfazer": "Undo",
+  "Limpar sorteio": "Clear draw",
   "Confirmados": "Confirmed", "Faltam": "Still need",
   "confirma aqui:": "confirm here:",
   "Equipa completa! Vê tudo na app:": "Full squad! See everything in the app:",
@@ -273,6 +253,10 @@ const EN = {
   "CONFIRMADOS": "CONFIRMED", "SEM RESPOSTA": "NO REPLY",
   "AUXILIAR": "ASSISTANT",
   "Remover auxiliar": "Remove assistant", "Tornar auxiliar": "Make assistant",
+  "Remover do jogo": "Remove from game", "Confirmar": "Confirm", "Apagar jogador": "Delete player",
+  "Apagar": "Delete",
+  "? Esta ação não pode ser desfeita — o jogador sai do grupo e perde o histórico.":
+    "? This can't be undone — the player leaves the group and loses their history.",
   "Jogador avulso": "Guest player", "Nome do jogador": "Player name",
   "(opcional)": "(optional)", "ex.: 75": "e.g. 75",
   "Adicionar jogador": "Add player",
@@ -318,18 +302,21 @@ const EN = {
   "O Meu Cartão": "My Card", "Editar": "Edit", "Ver o meu": "View mine",
   "Editar Perfil": "Edit Profile",
   "Telemóvel (MB Way)": "Phone (MB Way)",
-  "ATRIBUTOS": "ATTRIBUTES",
   "AVALIAÇÃO DOS AMIGOS": "FRIENDS' RATINGS",
-  "Auto": "Self", "Cartão": "Card",
-  "avaliação recebida": "rating received", "avaliações recebidas": "ratings received",
-  "O cartão mostra a média entre a tua auto-avaliação e a dos amigos.":
-    "The card shows the average of your self-rating and your friends'.",
-  "Ainda ninguém te avaliou — o cartão mostra só a tua auto-avaliação. Pede aos teus amigos para dizerem como jogas de verdade 👀":
-    "No one's rated you yet — the card shows only your self-rating. Ask your friends to say how you really play 👀",
+  "avaliações": "ratings",
+  "O cartão mostra a média das avaliações que recebeste.": "The card shows the average of the ratings you've received.",
+  "Faltam": "Still need", "avaliações para desbloquear o teu cartão.": "ratings to unlock your card.",
+  "QUEM JÁ TE AVALIOU": "WHO'S RATED YOU",
+  "Ainda ninguém te avaliou.": "No one's rated you yet.",
   "Pedir avaliação": "Request rating", "Inserir código": "Enter code",
   "Cola aqui o código recebido…": "Paste the code you received…",
   "Avaliação adicionada — o teu cartão já reflete a opinião ✓": "Rating added — your card now reflects it ✓",
   "Código inválido — confirma que copiaste tudo.": "Invalid code — make sure you copied everything.",
+  "A tua avaliação de": "Your rating of", "Avaliar": "Rate",
+  "Sê justo — a média com as avaliações dos outros amigos forma o cartão dele.":
+    "Be fair — averaged with other friends' ratings, this forms their card.",
+  "Atualizar avaliação": "Update rating", "Enviar avaliação": "Submit rating",
+  "Avaliação enviada ✓": "Rating submitted ✓",
   "CONTACTO": "CONTACT",
   "TEMPORADA": "SEASON",
   "Jogos": "Games", "Golos": "Goals", "Presença": "Attendance", "G+A / jogo": "G+A / game",

@@ -15,10 +15,14 @@ const TIERS = {
 const tierFor = (overall) =>
   overall >= 86 ? TIERS.icon : overall >= 80 ? TIERS.gold : overall >= 70 ? TIERS.silver : TIERS.bronze;
 
-/** FIFA/FUT-style player card. `player` needs attrs/position/club/nationality. */
-export default function FutCard({ player, width = 260 }) {
-  const overall = computeOverall(player.position, player.attrs);
-  const tier = tierFor(overall);
+/** FIFA/FUT-style player card. `player` needs attrs/position/club/nationality.
+ *  `ratingsCount`, when passed, gates the numbers: below 3 real peer
+ *  ratings the card stays visible but the overall/attributes show "?"/"–"
+ *  instead of numbers (nothing to compute them from yet — no self-rating). */
+export default function FutCard({ player, width = 260, ratingsCount }) {
+  const locked = ratingsCount != null && ratingsCount < 3;
+  const overall = locked ? 0 : computeOverall(player.position, player.attrs);
+  const tier = locked ? TIERS.bronze : tierFor(overall);
   const isIcon = tier === TIERS.icon;
   const flag = (player.nationality || "🌍").split(" ")[0];
   const scale = width / 260;
@@ -49,7 +53,7 @@ export default function FutCard({ player, width = 260 }) {
       <div style={{ display: "flex", gap: 12 * scale, position: "relative" }}>
         {/* Left column: overall + position + flag + club */}
         <div style={{ textAlign: "center", minWidth: 52 * scale }}>
-          <div style={{ ...displayFont, fontSize: 40 * scale, color: tier.color, lineHeight: 1, textShadow: isIcon ? `0 0 ${14 * scale}px ${tier.color}66` : "none" }}>{overall}</div>
+          <div style={{ ...displayFont, fontSize: 40 * scale, color: tier.color, lineHeight: 1, textShadow: isIcon ? `0 0 ${14 * scale}px ${tier.color}66` : "none" }}>{locked ? "?" : overall}</div>
           <div style={{ fontSize: 13 * scale, fontWeight: 800, color: C.text1, letterSpacing: "0.06em" }}>
             {POSITION_ABBR[player.position] ?? "MED"}
           </div>
@@ -99,11 +103,20 @@ export default function FutCard({ player, width = 260 }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 * scale, position: "relative" }}>
         {Object.keys(ATTR_LABELS).map((k) => (
           <div key={k} style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 * scale }}>
-            <span style={{ ...displayFont, fontSize: 17 * scale, color: tier.color }}>{player.attrs?.[k] ?? 60}</span>
+            <span style={{ ...displayFont, fontSize: 17 * scale, color: tier.color }}>{locked ? "–" : (player.attrs?.[k] ?? 60)}</span>
             <span style={{ fontSize: 9 * scale, fontWeight: 700, color: C.text2, letterSpacing: "0.05em" }}>{ATTR_LABELS[k]}</span>
           </div>
         ))}
       </div>
+
+      {/* Locked caption — how many ratings still needed */}
+      {locked && (
+        <div style={{ textAlign: "center", marginTop: 8 * scale, position: "relative" }}>
+          <span style={{ fontSize: 9 * scale, fontWeight: 700, color: C.text3 }}>
+            {ratingsCount}/3 {t("avaliações")}
+          </span>
+        </div>
+      )}
 
       {/* Legend ribbon */}
       {isIcon && (
