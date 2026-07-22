@@ -169,11 +169,11 @@ export default function JogoTab({
             {t("Ainda ninguém confirmou — sê o primeiro! ⚽")}
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 12, position: "relative" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10, marginBottom: 12, position: "relative" }}>
             {playing.map((player) => {
               const color = playerColor(group, player);
               return (
-                <div key={player.id} style={{ textAlign: "center" }}>
+                <div key={player.id} style={{ textAlign: "center", minWidth: 0 }}>
                   <div style={{
                     width: "100%", aspectRatio: "1", borderRadius: 14,
                     background: player.photo ? C.surface : player.isMe ? C.accentDim : `${color}18`,
