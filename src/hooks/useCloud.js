@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase, supabaseEnabled, isAdminEmail } from "../lib/supabase";
+import { supabase, supabaseEnabled, isAdminEmail, canAccessFantasy } from "../lib/supabase";
 import { computeRoundPoints, mvpBonus, DEFAULT_FANTASY_WEIGHTS } from "../lib/fantasy";
 
 /**
@@ -664,6 +664,7 @@ export function useCloud() {
   return {
     status, ...data,
     isAdmin: isAdminEmail(data.user?.email),
+    canSeeFantasy: canAccessFantasy(data.user?.email),
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, joinGroupByToken,

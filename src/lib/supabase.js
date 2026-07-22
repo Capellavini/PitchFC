@@ -23,3 +23,12 @@ export const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || "capella.vinic
 
 export const isAdminEmail = (email) =>
   Boolean(email) && ADMIN_EMAILS.includes(email.toLowerCase());
+
+// Fantasy League beta testers: separate from admin — grants only the
+// Fantasy tab, none of the other admin-only surfaces (Clube events,
+// admin panel). Comma-separated in VITE_FANTASY_EMAILS.
+export const FANTASY_EMAILS = (import.meta.env.VITE_FANTASY_EMAILS || "")
+  .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+
+export const canAccessFantasy = (email) =>
+  isAdminEmail(email) || (Boolean(email) && FANTASY_EMAILS.includes(email.toLowerCase()));

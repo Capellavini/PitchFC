@@ -886,7 +886,7 @@ export default function PitchApp() {
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
           : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} canManageTeams={canManageTeams} />)}
-        {tab === "fantasy" && cloud.isAdmin && (
+        {tab === "fantasy" && cloud.canSeeFantasy && (
           <FantasyTab
             group={displayGroup} me={me} canManageTeams={canManageTeams} kickoffAt={game.kickoffAt}
             fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
@@ -915,7 +915,7 @@ export default function PitchApp() {
         )}
       </div>
 
-      <BottomNav tab={tab} showClube={cloud.isAdmin} showFantasy={cloud.isAdmin} onSelect={(id) => { setTab(id); if (id === "perfil") setViewPlayerId(null); }} />
+      <BottomNav tab={tab} showClube={cloud.isAdmin} showFantasy={cloud.canSeeFantasy} onSelect={(id) => { setTab(id); if (id === "perfil") setViewPlayerId(null); }} />
     </>
   );
 }
