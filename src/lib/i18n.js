@@ -378,6 +378,7 @@ const EN = {
   "Todos começam a $": "Everyone starts at $", "Com este orçamento dá para": "This budget affords",
   "jogadores de início.": "players to start.",
   "Escalação de": "Squad picked by", "Arrasta um jogador para trocar de posição": "Drag a player to swap spots",
+  "Falta": "You're short", "tira alguém ou troca por um mais barato.": "drop someone or swap for a cheaper pick.",
   "PRÓXIMA TEMPORADA": "NEXT SEASON",
   "Liga terminada — consulta a classificação final abaixo.": "League ended — check the final standings below.",
   "Escalação trancada — falta menos de 8h para o jogo.": "Squad locked — less than 8h to kickoff.",

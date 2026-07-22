@@ -1,22 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { Crown } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
-import { ini, playerColor } from "../lib/helpers";
+import { ini, playerColor, computeOverall } from "../lib/helpers";
 import { computeRoundPoints } from "../lib/fantasy";
 import { t } from "../lib/i18n";
 
-// Fixed layouts for the common squad sizes (GR at the back, forwards up
-// front); anything outside 4–8 falls back to a plain wrapping grid so an
+// field.jpg is a landscape pitch photo (touchlines top/bottom, goals at
+// each end) — the layout runs left→right to match it: GR near the left
+// edge, forwards toward the right. Fixed tables for the common squad
+// sizes; anything outside 4–8 falls back to a plain wrapping grid so an
 // unusual squad_size still renders instead of breaking.
 const LAYOUTS = {
-  4: [[50, 88], [30, 62], [70, 62], [50, 32]],
-  5: [[50, 88], [25, 64], [75, 64], [50, 42], [50, 20]],
-  6: [[50, 88], [25, 66], [75, 66], [30, 42], [70, 42], [50, 18]],
-  7: [[50, 88], [20, 68], [50, 68], [80, 68], [30, 42], [70, 42], [50, 18]],
-  8: [[50, 88], [20, 68], [50, 68], [80, 68], [25, 44], [50, 44], [75, 44], [50, 18]],
+  4: [[12, 50], [40, 25], [40, 75], [85, 50]],
+  5: [[10, 50], [32, 25], [32, 75], [60, 50], [88, 50]],
+  6: [[10, 50], [30, 25], [30, 75], [62, 25], [62, 75], [88, 50]],
+  7: [[8, 50], [28, 20], [28, 50], [28, 80], [58, 30], [58, 70], [88, 50]],
+  8: [[8, 50], [26, 18], [26, 50], [26, 82], [56, 25], [56, 50], [56, 75], [86, 50]],
 };
 const slotsFor = (n) => LAYOUTS[n] || Array.from({ length: n }, (_, i) => [
-  20 + (i % 3) * 30, 20 + Math.floor(i / 3) * 26,
+  20 + Math.floor(i / 3) * 30, 20 + (i % 3) * 26,
 ]);
 
 /** The confirmed squad laid out on the pitch — drag an icon onto another
@@ -55,7 +57,13 @@ export default function FantasyPitch({ group, playerIds, formationOrder, captain
   };
   const pointerUp = (e) => {
     if (dragIdx === null) return;
+    // The dragged icon is visually on top of (and hit-tests over) whatever
+    // it's hovering — hide it from elementFromPoint for a moment so it
+    // finds the slot underneath instead of itself.
+    const draggedEl = e.currentTarget;
+    draggedEl.style.pointerEvents = "none";
     const target = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-slot-idx]");
+    draggedEl.style.pointerEvents = "";
     const targetIdx = target ? Number(target.getAttribute("data-slot-idx")) : null;
     if (targetIdx !== null && targetIdx !== dragIdx) {
       const next = [...order];
@@ -70,7 +78,7 @@ export default function FantasyPitch({ group, playerIds, formationOrder, captain
   return (
     <div ref={containerRef} style={{
       ...cardStyle, ...fieldBackdrop(0.15, 0.55), position: "relative",
-      aspectRatio: "3/4", padding: 0, overflow: "hidden", marginBottom: 14,
+      aspectRatio: "4/3", padding: 0, overflow: "hidden", marginBottom: 14,
       border: `1px solid ${C.blueBorder}`,
     }}>
       {order.map((uuid, idx) => {
@@ -105,6 +113,9 @@ export default function FantasyPitch({ group, playerIds, formationOrder, captain
                   <Crown size={9} color={C.gold} />
                 </span>
               )}
+              <span style={{ position: "absolute", bottom: -5, left: -5, fontSize: 8, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 6, padding: "0 4px", border: `1px solid ${C.card}` }}>
+                {computeOverall(p.position, p.attrs)}
+              </span>
             </div>
             <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.9)", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
             {pts !== null && (

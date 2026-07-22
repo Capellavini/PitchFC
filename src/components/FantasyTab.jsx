@@ -216,6 +216,11 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
             {ended ? t("Liga terminada — consulta a classificação final abaixo.") : t("Escalação trancada — falta menos de 8h para o jogo.")}
           </div>
         )}
+        {!locked && overBudget && (
+          <div style={{ fontSize: 11, color: C.red, background: `${C.red}18`, border: `1px solid ${C.red}44`, borderRadius: 10, padding: "8px 10px", marginBottom: 12, fontWeight: 700 }}>
+            {t("Falta")} ${total - league.budget} — {t("tira alguém ou troca por um mais barato.")}
+          </div>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {group.map((p) => {
