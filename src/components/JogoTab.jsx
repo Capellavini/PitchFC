@@ -190,6 +190,12 @@ export default function JogoTab({
                         <Check size={7} strokeWidth={3} color={C.bg} />
                       </div>
                     )}
+                    {canManageTeams && !player.isMe && (
+                      <button onClick={() => onSetPlayerStatus(player.id, "declined")} title={t("Remover do jogo")}
+                        style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 9, background: C.red, border: `2px solid ${C.card}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+                        <X size={9} strokeWidth={3} color="#fff" />
+                      </button>
+                    )}
                   </div>
                   <div style={{ fontSize: 10, color: player.isMe ? C.accent : C.text2, marginTop: 5, fontWeight: player.isMe ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.nick}</div>
                 </div>
