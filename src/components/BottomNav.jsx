@@ -1,20 +1,21 @@
-import { Zap, Users, Trophy, User, Flame, Building2 } from "lucide-react";
+import { Zap, Users, Trophy, User, Flame, Building2, Crown } from "lucide-react";
 import { C } from "../theme";
 import { t } from "../lib/i18n";
 
 const NAV = [
-  { id: "jogo",   Icon: Zap,       label: "Jogo"   },
-  { id: "clube",  Icon: Building2, label: "Clube"  },
-  { id: "social", Icon: Flame,     label: "Social" },
-  { id: "stats",  Icon: Trophy,    label: "Stats"  },
-  { id: "grupo",  Icon: Users,     label: "Grupo"  },
-  { id: "perfil", Icon: User,      label: "Perfil" },
+  { id: "jogo",    Icon: Zap,       label: "Jogo"    },
+  { id: "clube",   Icon: Building2, label: "Clube"   },
+  { id: "social",  Icon: Flame,     label: "Social"  },
+  { id: "stats",   Icon: Trophy,    label: "Stats"   },
+  { id: "grupo",   Icon: Users,     label: "Grupo"   },
+  { id: "fantasy", Icon: Crown,     label: "Fantasy" },
+  { id: "perfil",  Icon: User,      label: "Perfil"  },
 ];
 
-export default function BottomNav({ tab, onSelect, showClube = false }) {
-  // Clube ("em breve") is hidden from regular users during testing — only
-  // the admin sees it until it's ready for launch.
-  const items = NAV.filter((n) => n.id !== "clube" || showClube);
+export default function BottomNav({ tab, onSelect, showClube = false, showFantasy = false }) {
+  // Clube ("em breve") and Fantasy (admin-only beta) are hidden from
+  // regular users during testing — only the admin sees them for now.
+  const items = NAV.filter((n) => (n.id !== "clube" || showClube) && (n.id !== "fantasy" || showFantasy));
   return (
     <div style={{ position: "sticky", bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: "flex", paddingBottom: 14, paddingTop: 10 }}>
       {items.map(({ id, Icon, label }) => {

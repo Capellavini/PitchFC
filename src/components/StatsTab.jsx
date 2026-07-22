@@ -6,11 +6,26 @@ import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 
+const RANKS = [
+  { n: 1, label: "1º lugar", color: C.gold },
+  { n: 2, label: "2º lugar", color: C.silver },
+  { n: 3, label: "3º lugar", color: C.bronze },
+];
+
 export default function StatsTab({ group, history, lastMatchday, mvp, statMode, setStatMode }) {
   const fields = { goals: "goals", assists: "assists", mvps: "mvps" };
   const list = [...group].sort((a, b) => (b[fields[statMode]] || 0) - (a[fields[statMode]] || 0)).slice(0, 8);
   const totalGames = history.reduce((s, h) => s + (h.games || 1), 0);
   const lines = lastMatchday?.lines ?? [];
+
+  // Assigning a candidate to a rank they already hold elsewhere moves
+  // them (the DB rejects the same candidate at two ranks for one voter).
+  const pickForRank = async (rank, key) => {
+    if (mvp.myVotes[rank] === key) { await mvp.onClear(rank); return; }
+    const otherRank = [1, 2, 3].find((r) => r !== rank && mvp.myVotes[r] === key);
+    if (otherRank) await mvp.onClear(otherRank);
+    await mvp.onVote(rank, key);
+  };
 
   return (
     <div style={{ padding: "0 16px" }}>
@@ -58,42 +73,53 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
         </div>
       )}
 
-      {/* MVP VOTING */}
+      {/* MVP VOTING — ranked top-3 ballot, feeds Fantasy League bonuses */}
       {mvp && (mvp.open ? (
         <div style={{ background: `linear-gradient(135deg, ${C.card} 0%, rgba(200,255,0,0.05) 100%)`, border: `1px solid ${C.accentBorder}`, borderRadius: 20, padding: 18, marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <Star size={14} color={C.accent} />
-              <span style={{ fontSize: 12, fontWeight: 800, color: C.accent, letterSpacing: "0.06em" }}>{t("VOTAÇÃO MVP")}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <Star size={14} color={C.accent} />
+            <span style={{ fontSize: 12, fontWeight: 800, color: C.accent, letterSpacing: "0.06em" }}>{t("VOTAÇÃO MVP")}</span>
+          </div>
+          <div style={{ fontSize: 13, color: C.text2, marginBottom: 14 }}>{t("Quem foram os 3 melhores em campo?")}</div>
+
+          {RANKS.map(({ n: rank, label, color }) => (
+            <div key={rank} style={{ marginBottom: rank < 3 ? 14 : 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color, marginBottom: 6 }}>{t(label)}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {mvp.candidates.map((c) => {
+                  const selected = mvp.myVotes[rank] === c.key;
+                  const usedElsewhere = RANKS.some(({ n: r }) => r !== rank && mvp.myVotes[r] === c.key);
+                  const votes = mvp.tally?.[c.key];
+                  return (
+                    <button key={c.key} onClick={() => pickForRank(rank, c.key)} disabled={usedElsewhere}
+                      style={{ background: selected ? `${color}22` : C.surface, border: `1.5px solid ${selected ? color : C.border}`, borderRadius: 12, padding: "10px 6px", cursor: usedElsewhere ? "default" : "pointer", textAlign: "center", opacity: usedElsewhere ? 0.35 : 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: selected ? color : C.text1 }}>{c.nick}</div>
+                      <div style={{ fontSize: 9, color: C.text3, marginTop: 2 }}>{t(c.position)}</div>
+                      {votes > 0 && <div style={{ fontSize: 10, color: C.text2, marginTop: 3, fontWeight: 700 }}>{votes} {t("pts")}</div>}
+                      {selected && <div style={{ fontSize: 10, color, marginTop: 3 }}>{t("✓ o teu voto")}</div>}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            {mvp.tally && <span style={{ fontSize: 11, color: C.text2 }}>{Object.values(mvp.tally).reduce((a, b) => a + b, 0)} {t("votos")}</span>}
-          </div>
-          <div style={{ fontSize: 13, color: C.text2, marginBottom: 14 }}>{t("Quem foi o melhor em campo?")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-            {mvp.candidates.map((c) => {
-              const selected = mvp.myVote === c.key;
-              const votes = mvp.tally?.[c.key];
-              return (
-                <button key={c.key} onClick={() => mvp.onVote(c.key)}
-                  style={{ background: selected ? C.accentDim : C.surface, border: `1.5px solid ${selected ? C.accent : C.border}`, borderRadius: 12, padding: "10px 6px", cursor: "pointer", textAlign: "center", position: "relative" }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: selected ? C.accent : C.text1 }}>{c.nick}</div>
-                  <div style={{ fontSize: 9, color: C.text3, marginTop: 2 }}>{t(c.position)}</div>
-                  {votes > 0 && <div style={{ fontSize: 10, color: C.accent, marginTop: 3, fontWeight: 700 }}>{votes} {votes === 1 ? t("voto") : t("votos")}</div>}
-                  {selected && <div style={{ fontSize: 10, color: C.accent, marginTop: 3 }}>{t("✓ o teu voto")}</div>}
-                </button>
-              );
-            })}
-          </div>
+          ))}
+
           {mvp.canClose && (
-            <BtnPrimary onClick={mvp.onClose} style={{ width: "100%", marginTop: 12 }}>{t("Fechar votação e premiar MVP")}</BtnPrimary>
+            <BtnPrimary onClick={mvp.onClose} style={{ width: "100%", marginTop: 2 }}>{t("Fechar votação e revelar o pódio")}</BtnPrimary>
           )}
         </div>
-      ) : mvp.winnerNick ? (
-        <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, marginBottom: 14, border: `1px solid ${C.gold}55`, background: `linear-gradient(135deg, ${C.card} 0%, ${C.goldDim} 100%)` }}>
-          <Star size={20} color={C.gold} fill={C.gold} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: C.text2 }}>{t("MVP do último dia")}</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: C.gold }}>{mvp.winnerNick}</div>
+      ) : mvp.podium?.first ? (
+        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.gold}55`, background: `linear-gradient(135deg, ${C.card} 0%, ${C.goldDim} 100%)` }}>
+          <div style={{ fontSize: 11, color: C.text2, marginBottom: 10 }}>{t("Pódio do último dia")}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[["🥇", C.gold, mvp.podium.first], ["🥈", C.silver, mvp.podium.second], ["🥉", C.bronze, mvp.podium.third]]
+              .filter(([, , nick]) => nick)
+              .map(([medal, color, nick]) => (
+                <div key={medal} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>{medal}</span>
+                  <span style={{ fontSize: 15, fontWeight: 800, color }}>{nick}</span>
+                </div>
+              ))}
           </div>
         </div>
       ) : null)}

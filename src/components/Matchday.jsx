@@ -12,7 +12,7 @@ const MODES = [
  *  between two chosen teams; you pick the scorer + assist per goal.
  *  'campeonato' adds a points/goal-difference standings table.
  *  Ending the matchday feeds season stats, history and MVP voting. */
-export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onEnd }) {
+export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onSetGoalkeeper, onEnd }) {
   const [pending, setPending] = useState(null);   // { matchId, teamId, scorerId? }
   const [mode, setMode] = useState("avulsa");
   const [composing, setComposing] = useState(null); // { homeId, awayId } when picking a new game
@@ -133,6 +133,20 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
             <div key={m.id} style={{ background: C.surface, borderRadius: 14, padding: 14 }}>
               <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: 8 }}>{t("JOGO")} {m.n}</div>
 
+              {/* goalkeeper picker — rotates match to match, so it's
+                  never assumed from the fixed position field */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Shield size={12} color={C.text3} style={{ flexShrink: 0 }} />
+                {[["homeGkId", m.homeId], ["awayGkId", m.awayId]].map(([side, teamId]) => (
+                  <select key={side} value={m[side] ?? ""}
+                    onChange={(e) => onSetGoalkeeper(m.id, side, e.target.value ? Number(e.target.value) : null)}
+                    style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 6px", fontSize: 11, color: m[side] ? C.text1 : C.text3, outline: "none" }}>
+                    <option value="">{t("GR?")}</option>
+                    {teamPlayers(teamId).map((p) => <option key={p.id} value={p.id}>{p.nick}</option>)}
+                  </select>
+                ))}
+              </div>
+
               {/* score row */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 10 }}>
                 <span style={{ flex: 1, textAlign: "right", fontSize: 11, fontWeight: 800, color: teamColor(m.homeId), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{teamName(m.homeId)}</span>
@@ -229,7 +243,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 10, color: C.text3 }}>
-        <Shield size={11} /> {t("Clean sheets de GR e Defesas contam ao terminar o dia.")}
+        <Shield size={11} /> {t("Clean sheets do GR escolhido e das Defesas contam ao terminar o dia.")}
       </div>
     </div>
   );
