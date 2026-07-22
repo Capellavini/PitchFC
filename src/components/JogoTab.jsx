@@ -20,7 +20,7 @@ export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
   material, toggleMaterial, assignMaterial, addMaterial,
   teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, matchdayProps, lastMatchday,
-  inviteUrl, canManageGame, onSetSpots, onReschedule, confirmOpen = true, opensAtLabel,
+  inviteUrl, canManageGame, onSetSpots, onReschedule, confirmOpen = true, opensAtLabel, onSetPlayerStatus,
 }) {
   const [newItem, setNewItem] = useState("");
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
@@ -434,6 +434,11 @@ export default function JogoTab({
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} photo={p.photo} />
                 <span style={{ flex: 1, fontSize: 13, color: C.text2 }}>{p.nick}</span>
+                {canManageTeams && (
+                  <button onClick={() => onSetPlayerStatus(p.id, "confirmed")} style={{ background: C.greenDim, border: `1px solid ${C.greenBorder}55`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.green, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                    <Check size={12} /> {t("Confirmar")}
+                  </button>
+                )}
                 <button onClick={() => openWhatsApp(reminderMessage(p, game, p.magicToken ? magicConfirmUrl(p.magicToken) : undefined), p.phone)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, cursor: "pointer" }}>{t("Lembrar")}</button>
               </div>
             ))}
@@ -447,7 +452,9 @@ export default function JogoTab({
           <SectionLabel style={{ marginBottom: 8 }}>{t("NÃO PODEM")} ({declined.length})</SectionLabel>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {declined.map((p) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 10px" }}>
+              <div key={p.id} onClick={canManageTeams ? () => onSetPlayerStatus(p.id, "confirmed") : undefined}
+                title={canManageTeams ? t("Confirmar") : undefined}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 10px", cursor: canManageTeams ? "pointer" : "default" }}>
                 <X size={12} color={C.red} />
                 <span style={{ fontSize: 12, color: C.text2 }}>{p.nick}</span>
               </div>

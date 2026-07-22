@@ -311,11 +311,25 @@ export function useCloud() {
   };
 
   // ── In-app mutations (optimistic patch + write) ────────
+  // Upsert, not update: a player without an attendances row yet (e.g. a
+  // guest/manual player added straight into the DB, or added via
+  // addManualPlayer for a future game) would otherwise silently no-op —
+  // an update matches zero rows instead of erroring.
   const setMyStatus = async (status_, playerId, gameId) => {
     const respondedAt = new Date().toISOString();
-    setData((d) => ({ ...d, attendances: d.attendances.map((a) => (a.player_id === playerId ? { ...a, status: status_, responded_at: respondedAt } : a)) }));
-    await supabase.from("attendances").update({ status: status_, responded_at: respondedAt })
-      .eq("game_id", gameId).eq("player_id", playerId);
+    setData((d) => {
+      const exists = d.attendances.some((a) => a.player_id === playerId);
+      return {
+        ...d,
+        attendances: exists
+          ? d.attendances.map((a) => (a.player_id === playerId ? { ...a, status: status_, responded_at: respondedAt } : a))
+          : [...d.attendances, { game_id: gameId, player_id: playerId, status: status_, responded_at: respondedAt, paid: false }],
+      };
+    });
+    await supabase.from("attendances").upsert(
+      { game_id: gameId, player_id: playerId, status: status_, responded_at: respondedAt },
+      { onConflict: "game_id,player_id" }
+    );
   };
   const setPaid = async (paid, playerId, gameId) => {
     setData((d) => ({ ...d, attendances: d.attendances.map((a) => (a.player_id === playerId ? { ...a, paid } : a)) }));

@@ -858,7 +858,7 @@ export default function PitchApp() {
             group={displayGroup} game={game}
             togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
             material={material} toggleMaterial={toggleMaterial} assignMaterial={assignMaterial} addMaterial={addMaterial}
-            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
+            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams} onSetPlayerStatus={setPlayerStatus}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday }}
             lastMatchday={lastMatchdayView}
             inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
