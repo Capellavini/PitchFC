@@ -10,9 +10,17 @@
 
 alter table public.peer_ratings add column if not exists rater_id uuid references public.players(id) on delete cascade;
 
+-- Existence check instead of catching an exception: adding a UNIQUE
+-- constraint creates a backing index, and Postgres raises that specific
+-- collision as `duplicate_table` (42P07), not `duplicate_object` — easy
+-- to miss, so just check pg_constraint directly and skip if it's already there.
 do $$ begin
-  alter table public.peer_ratings add constraint peer_ratings_target_rater_unique unique (player_id, rater_id);
-exception when duplicate_object then null; end $$;
+  if not exists (
+    select 1 from pg_constraint where conname = 'peer_ratings_target_rater_unique'
+  ) then
+    alter table public.peer_ratings add constraint peer_ratings_target_rater_unique unique (player_id, rater_id);
+  end if;
+end $$;
 
 -- Reads stay open to authenticated users (needed to compute averages and
 -- show "who rated me" across the group); writes scoped to the rater, and
