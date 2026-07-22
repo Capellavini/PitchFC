@@ -36,7 +36,7 @@ begin
       select constraint_name from information_schema.key_column_usage
       where table_name = 'matchday_votes'
       group by constraint_name
-      having array_agg(column_name order by column_name) = array['matchday_id', 'voter_id']
+      having array_agg(column_name::text order by column_name) = array['matchday_id', 'voter_id']
     )
   limit 1;
   if old_conname is not null then
