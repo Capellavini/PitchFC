@@ -10,21 +10,18 @@ export const DEFAULT_FANTASY_WEIGHTS = {
   capitaoMultiplier: 2, priceBase: 20, priceScale: 1.5,
 };
 
-/** A player's fantasy price, derived from their season averages — no
- *  stored/fluctuating market, just a deterministic read of stats that
- *  already live on the player row (players.goals/assists/clean_sheets/
- *  mvps/games_played, exposed on the app's player shape in camelCase).
- *  Players with no games yet cost the base price. */
-export function fantasyPrice(player, weights = DEFAULT_FANTASY_WEIGHTS) {
-  const played = player.gamesPlayed || 0;
-  if (!played) return weights.priceBase;
-  const avgPts =
-    (weights.golo * (player.goals || 0) +
-      weights.assistencia * (player.assists || 0) +
-      weights.cleanSheet * (player.cleanSheets || 0) +
-      weights.mvp * (player.mvps || 0) +
-      weights.participou * played) / played;
-  return Math.round(weights.priceBase + avgPts * weights.priceScale);
+/** A player's fantasy price — every player starts at the flat base price
+ *  (weights.priceBase) when a league begins, then drifts with their
+ *  average fantasy points *since that league started* (not lifetime
+ *  season stats — a league always opens with everyone at the same
+ *  price). `roundsSinceStart` is the group's matchdays already filtered
+ *  to `created_at >= league.starts_at` (see FantasyTab). No stored/
+ *  fluctuating market — deterministic from those rounds' summary.lines. */
+export function fantasyPrice(playerUuid, roundsSinceStart, weights = DEFAULT_FANTASY_WEIGHTS) {
+  const rounds = (roundsSinceStart || []).filter((md) => (md.summary?.lines || []).some((l) => l.key === playerUuid));
+  if (!rounds.length) return weights.priceBase;
+  const total = rounds.reduce((sum, md) => sum + computeRoundPoints([playerUuid], null, md.summary.lines, weights), 0);
+  return Math.round(weights.priceBase + (total / rounds.length) * weights.priceScale);
 }
 
 /** Fantasy points a squad earns for one round, from that round's

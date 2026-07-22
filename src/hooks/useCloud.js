@@ -565,6 +565,18 @@ export function useCloud() {
     return {};
   };
 
+  /** Rearranging the pitch layout doesn't touch who's picked or the
+   *  budget, so it stays editable even after the 8h squad lock. */
+  const saveFantasyFormation = async (leagueId, formationOrder) => {
+    if (!data.myPlayer) return { error: "Sem sessão." };
+    const r = await supabase.from("fantasy_squads")
+      .update({ formation_order: formationOrder })
+      .eq("league_id", leagueId).eq("participant_id", data.myPlayer.id);
+    if (r.error) return { error: r.error.message };
+    await refetch();
+    return {};
+  };
+
   /** Rate a teammate's stats — one rating per rater per player; a second
    *  submission updates the first instead of duplicating it. */
   const submitRating = async (playerId, attrs) => {
@@ -661,7 +673,7 @@ export function useCloud() {
     commitMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,
     toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment,
     sendFriendRequest, respondFriend, removeFriend,
-    createFantasyLeague, saveFantasySquad,
+    createFantasyLeague, saveFantasySquad, saveFantasyFormation,
     refetch,
   };
 }

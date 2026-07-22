@@ -891,7 +891,7 @@ export default function PitchApp() {
             group={displayGroup} me={me} canManageTeams={canManageTeams} kickoffAt={game.kickoffAt}
             fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
             matchdays={cloud.matchdays}
-            onCreateLeague={cloud.createFantasyLeague} onSaveSquad={cloud.saveFantasySquad}
+            onCreateLeague={cloud.createFantasyLeague} onSaveSquad={cloud.saveFantasySquad} onSaveFormation={cloud.saveFantasyFormation}
           />
         )}
         {tab === "perfil" && (
