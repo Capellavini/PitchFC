@@ -287,9 +287,11 @@ export default function PitchApp() {
     setTeams(null); // roster changed → invalidate draw
   };
 
-  // Organizer sets a guest player's status directly (they have no
-  // account to self-serve confirm/decline).
-  const setGuestStatus = (playerId, newStatus) => {
+  // Organizer/assistant sets any player's status directly — guests have
+  // no account to self-serve with, and this also lets the organizer
+  // confirm/remove a registered player who answered outside the app
+  // (WhatsApp, in person) instead of waiting for them to tap it themselves.
+  const setPlayerStatus = (playerId, newStatus) => {
     const player = baseGroup.find((p) => p.id === playerId);
     if (!player) return;
     if (cloudMode) cloud.setMyStatus(newStatus, player.uuid, gameId);
@@ -883,7 +885,7 @@ export default function PitchApp() {
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
-          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetGuestStatus={setGuestStatus} onRemoveGuestPlayer={removeGuestPlayer} canManageTeams={canManageTeams} />)}
+          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} canManageTeams={canManageTeams} />)}
         {tab === "fantasy" && cloud.isAdmin && (
           <FantasyTab
             group={displayGroup} me={me} canManageTeams={canManageTeams} kickoffAt={game.kickoffAt}

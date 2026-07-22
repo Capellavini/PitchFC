@@ -12,7 +12,7 @@ import BtnPrimary from "./BtnPrimary";
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetGuestStatus, onRemoveGuestPlayer, canManageTeams }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, canManageTeams }) {
   const [copied, setCopied] = useState(false);
   const [guestOpen, setGuestOpen] = useState(false);
   const [guest, setGuest] = useState(EMPTY_GUEST);
@@ -56,24 +56,26 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                     </div>
                     <div style={{ fontSize: 11, color: C.text2 }}>{t(p.position)} · {p.gamesPlayed}/{TOTAL_GAMES} {t("jogos")}</div>
                   </div>
-                  {canManageTeams && p.isGuest && (
+                  {canManageTeams && !p.isMe && (
                     <>
                       <span
                         role="button"
                         title={p.status === "confirmed" ? t("Remover do jogo") : t("Confirmar")}
-                        onClick={(e) => { e.stopPropagation(); onSetGuestStatus(p.id, p.status === "confirmed" ? "declined" : "confirmed"); }}
+                        onClick={(e) => { e.stopPropagation(); onSetPlayerStatus(p.id, p.status === "confirmed" ? "declined" : "confirmed"); }}
                         style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: p.status === "confirmed" ? C.orangeDim : C.greenDim, border: `1px solid ${p.status === "confirmed" ? C.orange : C.greenBorder}55`, cursor: "pointer", flexShrink: 0 }}
                       >
                         {p.status === "confirmed" ? <UserX size={14} color={C.orange} /> : <UserCheck size={14} color={C.green} />}
                       </span>
-                      <span
-                        role="button"
-                        title={t("Apagar jogador")}
-                        onClick={(e) => { e.stopPropagation(); onRemoveGuestPlayer(p.id, p.nick); }}
-                        style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: C.redDim, border: `1px solid ${C.red}44`, cursor: "pointer", flexShrink: 0 }}
-                      >
-                        <Trash2 size={14} color={C.red} />
-                      </span>
+                      {p.isGuest && (
+                        <span
+                          role="button"
+                          title={t("Apagar jogador")}
+                          onClick={(e) => { e.stopPropagation(); onRemoveGuestPlayer(p.id, p.nick); }}
+                          style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: C.redDim, border: `1px solid ${C.red}44`, cursor: "pointer", flexShrink: 0 }}
+                        >
+                          <Trash2 size={14} color={C.red} />
+                        </span>
+                      )}
                     </>
                   )}
                   {cloudMode && isOrganizer && !p.isMe && !p.isOrganizerPlayer && !p.isGuest && (
