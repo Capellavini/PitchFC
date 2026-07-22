@@ -16,10 +16,15 @@ exception when duplicate_object then null; end $$;
 
 -- Reads stay open to authenticated users (needed to compute averages and
 -- show "who rated me" across the group); writes scoped to the rater, and
--- a player can never rate themselves.
+-- a player can never rate themselves. Idempotent: dropping both the old
+-- phase-1 baseline policy names and this migration's own names means a
+-- re-run (e.g. CI retrying after a manual apply) doesn't error out.
 drop policy if exists "auth insert" on public.peer_ratings;
 drop policy if exists "auth update" on public.peer_ratings;
 drop policy if exists "auth delete" on public.peer_ratings;
+drop policy if exists "rating insert" on public.peer_ratings;
+drop policy if exists "rating update" on public.peer_ratings;
+drop policy if exists "rating delete" on public.peer_ratings;
 create policy "rating insert" on public.peer_ratings for insert
   with check (rater_id = public.my_player_id() and rater_id <> player_id);
 create policy "rating update" on public.peer_ratings for update
