@@ -419,6 +419,20 @@ export function useCloud() {
     };
   };
 
+  /** Owner-only: every Pitch Manager league across every group, with every
+   *  participant's current squad — who's playing and what they picked. */
+  const fetchFantasyAdminData = async () => {
+    const [fl, fs, pl] = await Promise.all([
+      supabase.from("fantasy_leagues").select("*, groups(name)").order("created_at", { ascending: false }),
+      supabase.from("fantasy_squads").select("*"),
+      supabase.from("players").select("id,nick,name,email,group_id"),
+    ]);
+    return {
+      leagues: fl.data ?? [], squads: fs.data ?? [], players: pl.data ?? [],
+      error: fl.error?.message || fs.error?.message || pl.error?.message || null,
+    };
+  };
+
   // ── Club events (admin) + bookings ─────────────────────
   const createEvent = async (ev) => {
     await supabase.from("events").insert({
@@ -762,12 +776,17 @@ export function useCloud() {
   return {
     status, ...data,
     isAdmin: isAdminEmail(data.user?.email),
+    // Fantasy admin panel: narrower than the general isAdmin group — only
+    // Vini's own login, per his explicit request, not the other admin
+    // email (vinicius.capella@ziarimoveis.com.br).
+    isFantasyAdmin: (data.user?.email || "").toLowerCase() === "capella.vinicius@gmail.com",
     canSeeFantasy: Boolean(data.user),
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, joinGroupByToken,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
+    fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,
     toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment,

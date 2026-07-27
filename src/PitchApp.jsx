@@ -675,6 +675,8 @@ export default function PitchApp() {
             updatePlayer: cloud.adminUpdatePlayer,
             deletePlayer: cloud.adminDeletePlayer,
           }}
+          isFantasyAdmin={cloud.isFantasyAdmin}
+          fetchFantasyAdminData={cloud.fetchFantasyAdminData}
           onBack={() => setAdminOpen(false)}
         />
       );

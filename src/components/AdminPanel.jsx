@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ChevronLeft, ChevronRight, RefreshCw, Copy, Check, Users, Calendar,
-  ShieldCheck, Trash2, Save, UserMinus, Crown,
+  ShieldCheck, Trash2, Save, UserMinus, Crown, Trophy, ArmchairIcon,
 } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { WEEKDAYS_PT, fmtEUR } from "../lib/helpers";
@@ -14,13 +14,29 @@ const ATT_COLOR = { confirmed: C.green, pending: C.orange, declined: C.red };
  * groups (permissive RLS) and can edit/delete groups and manage players.
  * `actions` = { updateGroup, deleteGroup, updatePlayer, deletePlayer }.
  */
-export default function AdminPanel({ fetchAdminData, actions = {}, onBack }) {
+export default function AdminPanel({ fetchAdminData, actions = {}, isFantasyAdmin, fetchFantasyAdminData, onBack }) {
   const [state, setState] = useState({ loading: true, error: null, data: null });
   const [copied, setCopied] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [form, setForm] = useState(null);     // group settings edit form
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);       // { ok, text }
+  const [view, setView] = useState("groups"); // 'groups' | 'fantasy'
+  const [fantasyState, setFantasyState] = useState({ loading: false, error: null, data: null });
+
+  const loadFantasy = async () => {
+    setFantasyState((s) => ({ ...s, loading: true }));
+    try {
+      const data = await fetchFantasyAdminData();
+      setFantasyState({ loading: false, error: data.error, data });
+    } catch (err) {
+      setFantasyState({ loading: false, error: err.message || "Falha ao carregar", data: null });
+    }
+  };
+  const switchView = (v) => {
+    setView(v);
+    if (v === "fantasy" && !fantasyState.data && !fantasyState.loading) loadFantasy();
+  };
 
   const load = async () => {
     setState((s) => ({ ...s, loading: true }));
@@ -226,12 +242,30 @@ export default function AdminPanel({ fetchAdminData, actions = {}, onBack }) {
         <button onClick={onBack} style={{ background: "none", border: "none", color: C.text2, cursor: "pointer", padding: 4, display: "flex" }}>
           <ChevronLeft size={20} />
         </button>
-        <div style={{ ...displayFont, fontSize: 22, flex: 1 }}>Admin · Grupos</div>
-        <button onClick={load} title="Atualizar" style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+        <div style={{ ...displayFont, fontSize: 22, flex: 1 }}>Admin · {view === "fantasy" ? "Fantasy" : "Grupos"}</div>
+        <button onClick={view === "fantasy" ? loadFantasy : load} title="Atualizar" style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
           <RefreshCw size={13} /> Atualizar
         </button>
       </div>
 
+      {isFantasyAdmin && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          {[["groups", "Grupos"], ["fantasy", "Fantasy"]].map(([id, label]) => {
+            const active = view === id;
+            return (
+              <button key={id} onClick={() => switchView(id)}
+                style={{ flex: 1, background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 10, padding: "8px 6px", fontSize: 12, fontWeight: active ? 800 : 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                {id === "fantasy" && <Trophy size={13} />} {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {view === "fantasy" ? (
+        <FantasyAdminView state={fantasyState} />
+      ) : (
+      <>
       {!loading && !error && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
           {[
@@ -292,6 +326,82 @@ export default function AdminPanel({ fetchAdminData, actions = {}, onBack }) {
           );
         })}
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+/** Owner-only: every Pitch Manager league across every group, with each
+ *  participant's current squad — who's using it and what they picked. */
+function FantasyAdminView({ state }) {
+  const { loading, error, data } = state;
+  const leagues = data?.leagues ?? [];
+  const squads = data?.squads ?? [];
+  const players = data?.players ?? [];
+  const nameOf = (id) => players.find((p) => p.id === id)?.nick ?? "?";
+
+  if (loading) return <div style={{ fontSize: 13, color: C.text2, padding: "20px 0", textAlign: "center" }}>A carregar…</div>;
+  if (error) return <div style={{ fontSize: 13, color: C.red, padding: "12px 0" }}>Erro: {error}</div>;
+  if (leagues.length === 0) return <div style={{ fontSize: 13, color: C.text2, padding: "20px 0", textAlign: "center" }}>Ainda não há nenhuma liga Pitch Manager criada.</div>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {leagues.map((lg) => {
+        const squadsOf = squads.filter((s) => s.league_id === lg.id);
+        return (
+          <div key={lg.id} style={cardStyle}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+              <div style={{ ...displayFont, fontSize: 17 }}>{lg.groups?.name ?? "?"}</div>
+              <span style={{ fontSize: 11, color: C.text3 }}>${lg.budget}M · {lg.squad_size} jogadores</span>
+            </div>
+            <div style={{ fontSize: 12, color: C.text2, marginBottom: 12 }}>
+              {lg.name} · criada {new Date(lg.created_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })}
+            </div>
+
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.05em", color: C.text3, marginBottom: 8 }}>
+              {squadsOf.length} {squadsOf.length === 1 ? "PARTICIPANTE" : "PARTICIPANTES"}
+            </div>
+            {squadsOf.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.text3 }}>Ninguém escalou ainda.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {squadsOf.map((s) => {
+                  const owner = players.find((p) => p.id === s.participant_id);
+                  return (
+                    <div key={s.id} style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+                        {owner?.nick ?? "?"} {owner?.email && <span style={{ fontSize: 10, color: C.text3, fontWeight: 400 }}>({owner.email})</span>}
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {(s.player_ids || []).map((pid) => {
+                          const isCaptain = pid === s.captain_id;
+                          const isReserve = pid === s.reserve_id;
+                          return (
+                            <span key={pid} style={{
+                              display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600,
+                              background: isCaptain ? C.goldDim : isReserve ? C.orangeDim : C.surface,
+                              border: `1px solid ${isCaptain ? C.gold : isReserve ? C.orange : C.border}`,
+                              borderRadius: 20, padding: "3px 8px", color: isCaptain ? C.gold : isReserve ? C.orange : C.text1,
+                            }}>
+                              {isCaptain && <Crown size={10} />}
+                              {isReserve && <ArmchairIcon size={10} />}
+                              {nameOf(pid)}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {s.budget_adjustment ? (
+                        <div style={{ fontSize: 10, color: C.text3, marginTop: 4 }}>Ajuste de caixa (trocas): ${s.budget_adjustment}M</div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
