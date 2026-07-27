@@ -136,8 +136,8 @@ export default function JogoTab({
                 <Minus size={14} />
               </button>
               <span style={{ ...displayFont, fontSize: 20, minWidth: 26, textAlign: "center" }}>{game.spots}</span>
-              <button onClick={() => onSetSpots(game.spots + 1)} disabled={game.spots >= 22}
-                style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, color: game.spots >= 22 ? C.text3 : C.text1, border: `1px solid ${C.border}`, cursor: game.spots >= 22 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: game.spots >= 22 ? 0.4 : 1 }}>
+              <button onClick={() => onSetSpots(game.spots + 1)} disabled={game.spots >= 35}
+                style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, color: game.spots >= 35 ? C.text3 : C.text1, border: `1px solid ${C.border}`, cursor: game.spots >= 35 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: game.spots >= 35 ? 0.4 : 1 }}>
                 <Plus size={14} />
               </button>
             </div>

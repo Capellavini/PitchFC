@@ -110,7 +110,7 @@ export default function OnboardingOrganizer({ settings, onDone, onBack }) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
           {input(t("Preço mensal do campo (€)"), "monthlyPrice", "number", { min: 0 })}
-          {input(t("Nº de jogadores por jogo"), "maxPlayers", "number", { min: 2, max: 22 })}
+          {input(t("Nº de jogadores por jogo"), "maxPlayers", "number", { min: 2, max: 35 })}
         </div>
         <div style={{ background: C.greenDim, border: `1px solid ${C.greenBorder}`, borderRadius: 12, padding: 14, textAlign: "center" }}>
           <div style={{ ...displayFont, fontSize: 28, color: C.green }}>{fmtEUR(perPlayer)}</div>

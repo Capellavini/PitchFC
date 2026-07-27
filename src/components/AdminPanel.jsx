@@ -158,7 +158,7 @@ export default function AdminPanel({ fetchAdminData, actions = {}, isFantasyAdmi
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             {inp("Hora", "game_time", "time")}
             {inp("€/mês", "monthlyPrice", "number", { min: 0 })}
-            {inp("Vagas", "max_players", "number", { min: 2, max: 22 })}
+            {inp("Vagas", "max_players", "number", { min: 2, max: 35 })}
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button onClick={saveSettings} disabled={busy} style={{ flex: 1, background: C.accent, color: C.bg, border: "none", borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 800, cursor: busy ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: busy ? 0.6 : 1 }}>

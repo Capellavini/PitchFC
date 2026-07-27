@@ -183,7 +183,7 @@ export default function PitchApp() {
 
   // Organizer adjusts how many players this game needs (default 10).
   const setSpots = (n) => {
-    const v = Math.max(2, Math.min(22, n));
+    const v = Math.max(2, Math.min(35, n));
     if (cloudMode) cloud.setSpots(v);
     else setSettings((s) => ({ ...s, maxPlayers: v }));
   };
