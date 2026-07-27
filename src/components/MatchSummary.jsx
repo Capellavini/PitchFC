@@ -72,7 +72,7 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
         </span>
       </div>
       <div style={{ fontSize: 11, color: C.text2, marginBottom: 14 }}>
-        {source.mode === "campeonato" ? t("Campeonato") : live ? t("Avulsa") : t("Resultado do último dia de jogo")}
+        {source.mode === "campeonato" ? t("Campeonato") : source.mode === "personalizado" ? t("Personalizado") : live ? t("Avulsa") : t("Resultado do último dia de jogo")}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>

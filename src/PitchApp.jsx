@@ -17,6 +17,7 @@ import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl } from "./lib/helpers";
 import { t, setLang } from "./lib/i18n";
+import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
 import LandingPage from "./components/LandingPage";
@@ -388,9 +389,23 @@ export default function PitchApp() {
     const gks = (team?.players || []).map((id) => baseGroup.find((p) => p.id === id)).filter((p) => p?.position === "Guarda-redes");
     return gks.length === 1 ? gks[0].id : null;
   };
-  const startMatchday = (mode = "avulsa") => {
+  // "Personalizado": generates every group-stage fixture upfront (round-
+  // robin, single or double-legged) instead of the organizer creating
+  // one match at a time.
+  const startMatchday = (mode = "avulsa", config) => {
     if (!teams || teams.length < 2) return;
-    setMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, homeId: teams[0].id, awayId: teams[1].id, homeGkId: defaultGkFor(teams[0].id), awayGkId: defaultGkFor(teams[1].id), events: [] }] });
+    if (mode === "personalizado" && config) {
+      const teamIds = teams.map((tm) => tm.id);
+      const fixtures = roundRobinFixtures(teamIds, config.confrontos === "idaEVolta");
+      const matches = fixtures.map((f, i) => ({
+        id: Date.now() + i, n: i + 1, homeId: f.homeId, awayId: f.awayId,
+        homeGkId: defaultGkFor(f.homeId), awayGkId: defaultGkFor(f.awayId),
+        events: [], stage: "grupo",
+      }));
+      setMatchday({ startedAt: Date.now(), mode, config, matches });
+    } else {
+      setMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, homeId: teams[0].id, awayId: teams[1].id, homeGkId: defaultGkFor(teams[0].id), awayGkId: defaultGkFor(teams[1].id), events: [] }] });
+    }
   };
   const addMatch = (homeId, awayId) =>
     setMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, homeId, awayId, homeGkId: defaultGkFor(homeId), awayGkId: defaultGkFor(awayId), events: [] }] }));
@@ -398,6 +413,44 @@ export default function PitchApp() {
     setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
   const setGoalkeeper = (matchId, side, playerId) =>
     setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, [side]: playerId } : m)) }));
+  const setPenaltyWinner = (matchId, teamId) =>
+    setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, penaltyWinnerId: teamId } : m)) }));
+
+  // Group stage → play-off (Personalizado only). Seeds the first
+  // knockout round from group standings the first time; subsequent
+  // clicks progress from the last playoff round's winners. No-ops
+  // (silently) if the current round isn't fully decided yet, or if a
+  // champion has already been reached.
+  const advancePlayoff = () => {
+    setMatchday((md) => {
+      if (!md || md.mode !== "personalizado" || !md.config?.faseFinal) return md;
+      const goalsOf = (m, teamId) => m.events.filter((e) => e.teamId === teamId).length;
+      const playoffRoundNums = md.matches.filter((m) => m.stage === "playoff").map((m) => m.round);
+      const currentRound = playoffRoundNums.length ? Math.max(...playoffRoundNums) : 0;
+      let pairs, round;
+      if (currentRound === 0) {
+        const groupMatches = md.matches.filter((m) => m.stage === "grupo");
+        const standings = computeStandings(teams.map((tm) => tm.id), groupMatches);
+        const qualifiers = standings.slice(0, md.config.finalistas).map((s) => s.id);
+        pairs = buildKnockoutRound1(qualifiers, md.config.byePrimeiro);
+        round = 1;
+      } else {
+        const roundMatches = md.matches.filter((m) => m.stage === "playoff" && m.round === currentRound);
+        const winners = roundMatches.map((m) => (m.isBye ? m.homeId : matchWinner(m, goalsOf(m, m.homeId), goalsOf(m, m.awayId))));
+        if (winners.some((w) => !w) || winners.length <= 1) return md;
+        pairs = nextKnockoutRound(winners);
+        round = currentRound + 1;
+      }
+      let n = md.matches.length;
+      const newMatches = pairs.map(([home, away]) => {
+        n++;
+        return away === null
+          ? { id: Date.now() + n, n, homeId: home, awayId: null, events: [], stage: "playoff", round, isBye: true }
+          : { id: Date.now() + n, n, homeId: home, awayId: away, homeGkId: defaultGkFor(home), awayGkId: defaultGkFor(away), events: [], stage: "playoff", round, isBye: false, penaltyWinnerId: null };
+      });
+      return { ...md, matches: [...md.matches, ...newMatches] };
+    });
+  };
 
   const endMatchday = () => {
     if (!matchday) return;
@@ -870,7 +923,7 @@ export default function PitchApp() {
           <MatchdayTab
             group={displayGroup} game={game}
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday }}
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner }}
             lastMatchday={lastMatchdayView}
           />
         ))}
