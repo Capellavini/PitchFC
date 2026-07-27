@@ -9,7 +9,7 @@ const NAV = [
   { id: "social",   Icon: Flame,     label: "Social"   },
   { id: "stats",    Icon: Trophy,    label: "Stats"    },
   { id: "grupo",    Icon: Users,     label: "Grupo"    },
-  { id: "fantasy",  Icon: Crown,     label: "Fantasy"  },
+  { id: "fantasy",  Icon: Crown,     label: "Pitch Manager" },
   { id: "perfil",   Icon: User,      label: "Perfil"   },
 ];
 

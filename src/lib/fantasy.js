@@ -10,6 +10,16 @@ export const DEFAULT_FANTASY_WEIGHTS = {
   capitaoMultiplier: 2, priceBase: 20, priceScale: 1.5,
 };
 
+/** Money display for Pitch Manager — everything in millions, FPL-style
+ *  ("$120.0M"). Purely cosmetic: the underlying numbers (budget 120,
+ *  priceBase 20, …) don't change, they just render with the M suffix. */
+export const fmtM = (n) => `$${(Number(n) || 0).toFixed(1)}M`;
+
+/** A real player can be picked by at most this many Pitch Manager
+ *  participants at once — past that, the only way in is trading with
+ *  one of the current owners. */
+export const OWNERSHIP_CAP = 6;
+
 /** A player's fantasy price — every player starts at the flat base price
  *  (weights.priceBase) when a league begins, then drifts with their
  *  average fantasy points *since that league started* (not lifetime
@@ -29,10 +39,12 @@ export function fantasyPrice(playerUuid, roundsSinceStart, weights = DEFAULT_FAN
  *  until the 24h vote closes, after the round already locked (see
  *  useCloud.js closeMvp, which adds it separately once decided).
  *  Players who didn't play that round (absent from summaryLines)
- *  contribute 0. The captain's total is doubled (capitaoMultiplier). */
-export function computeRoundPoints(playerIds, captainId, summaryLines, weights = DEFAULT_FANTASY_WEIGHTS) {
+ *  contribute 0. The captain's total is doubled (capitaoMultiplier).
+ *  The reserve (bench) never scores, regardless of how they played. */
+export function computeRoundPoints(playerIds, captainId, summaryLines, weights = DEFAULT_FANTASY_WEIGHTS, reserveId = null) {
   const lines = summaryLines || [];
   return (playerIds || []).reduce((total, id) => {
+    if (id === reserveId) return total;
     const line = lines.find((l) => l.key === id);
     if (!line) return total;
     let pts = weights.participou
@@ -48,10 +60,10 @@ export function computeRoundPoints(playerIds, captainId, summaryLines, weights =
  *  (1st/2nd/3rd — see matchdays.mvp_id/runner_up_id/third_id). A squad
  *  only ever collects one of the three (a player can't finish 1st AND
  *  2nd), so the first match wins. Returns 0 if none of the podium is
- *  in this squad. */
-export function mvpBonus(playerIds, captainId, podium, weights = DEFAULT_FANTASY_WEIGHTS) {
+ *  in this squad, or if the only podium finisher in the squad is benched. */
+export function mvpBonus(playerIds, captainId, podium, weights = DEFAULT_FANTASY_WEIGHTS, reserveId = null) {
   const { mvpId, runnerUpId, thirdId } = podium || {};
-  const ids = playerIds || [];
+  const ids = (playerIds || []).filter((id) => id !== reserveId);
   const placementWeight = mvpId && ids.includes(mvpId) ? weights.mvp
     : runnerUpId && ids.includes(runnerUpId) ? weights.mvp2
     : thirdId && ids.includes(thirdId) ? weights.mvp3

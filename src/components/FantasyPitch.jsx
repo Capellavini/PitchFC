@@ -1,135 +1,149 @@
-import { useEffect, useRef, useState } from "react";
-import { Crown } from "lucide-react";
-import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
+import { Crown, ArmchairIcon } from "lucide-react";
+import { C, cardStyle, displayFont } from "../theme";
 import { ini, playerColor, computeOverall } from "../lib/helpers";
 import { computeRoundPoints } from "../lib/fantasy";
 import { t } from "../lib/i18n";
 
-// field.jpg is a landscape pitch photo (touchlines top/bottom, goals at
-// each end) — the layout runs left→right to match it: GR near the left
-// edge, forwards toward the right. Fixed tables for the common squad
-// sizes; anything outside 4–8 falls back to a plain wrapping grid so an
-// unusual squad_size still renders instead of breaking.
-const LAYOUTS = {
-  4: [[12, 50], [40, 25], [40, 75], [85, 50]],
-  5: [[10, 50], [32, 25], [32, 75], [60, 50], [88, 50]],
-  6: [[10, 50], [30, 25], [30, 75], [62, 25], [62, 75], [88, 50]],
-  7: [[8, 50], [28, 20], [28, 50], [28, 80], [58, 30], [58, 70], [88, 50]],
-  8: [[8, 50], [26, 18], [26, 50], [26, 82], [56, 25], [56, 50], [56, 75], [86, 50]],
-};
-const slotsFor = (n) => LAYOUTS[n] || Array.from({ length: n }, (_, i) => [
-  20 + Math.floor(i / 3) * 30, 20 + (i % 3) * 26,
-]);
+const ROW_ORDER = ["Avançado", "Médio", "Defesa", "Guarda-redes"]; // top → bottom, like FPL
 
-/** The confirmed squad laid out on the pitch — drag an icon onto another
- *  to swap their spots (Pointer Events, so it works with touch and mouse
- *  alike; no dnd library). Purely cosmetic ordering, saved separately
- *  from the squad itself so it never touches the budget/lock rules.
- *  readOnly renders another participant's squad (from the leaderboard)
- *  without the drag handlers. lastRoundLines, if given, overlays each
- *  player's points from that round. */
-export default function FantasyPitch({ group, playerIds, formationOrder, captainId, weights, lastRoundLines, readOnly, onSaveFormation }) {
-  const initialOrder = formationOrder?.length === playerIds.length ? formationOrder : playerIds;
-  const [order, setOrder] = useState(initialOrder);
-  const [dragIdx, setDragIdx] = useState(null);
-  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
-  const startRef = useRef({ x: 0, y: 0 });
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    setOrder(formationOrder?.length === playerIds.length ? formationOrder : playerIds);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerIds.join(","), formationOrder?.join(",")]);
-
+/** The squad laid out on a drawn pitch (green + white lines, no photo —
+ *  closer to fantasy.premierleague.com than a real field photo), rows
+ *  grouped by each player's actual position. The reserve sits apart in
+ *  a "Banco" strip below and never scores. Tap the bench icon on any
+ *  player to make them the reserve (swaps automatically with whoever
+ *  was benched); tap the crown to captain (only non-bench players can
+ *  be captain). readOnly renders another participant's squad (from the
+ *  leaderboard) with no tap actions. lastRoundLines, if given, overlays
+ *  each player's points from that round. */
+export default function FantasyPitch({ group, playerIds, captainId, reserveId, weights, lastRoundLines, readOnly, onSetCaptain, onSetReserve }) {
   const byId = (uuid) => group.find((p) => p.uuid === uuid);
-  const slots = slotsFor(order.length);
+  const starters = playerIds.filter((id) => id !== reserveId);
+  const reserve = reserveId && playerIds.includes(reserveId) ? byId(reserveId) : null;
 
-  const pointerDown = (e, idx) => {
-    if (readOnly) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    startRef.current = { x: e.clientX, y: e.clientY };
-    setDragIdx(idx);
-    setDragPos({ x: 0, y: 0 });
-  };
-  const pointerMove = (e) => {
-    if (dragIdx === null) return;
-    setDragPos({ x: e.clientX - startRef.current.x, y: e.clientY - startRef.current.y });
-  };
-  const pointerUp = (e) => {
-    if (dragIdx === null) return;
-    // The dragged icon is visually on top of (and hit-tests over) whatever
-    // it's hovering — hide it from elementFromPoint for a moment so it
-    // finds the slot underneath instead of itself.
-    const draggedEl = e.currentTarget;
-    draggedEl.style.pointerEvents = "none";
-    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-slot-idx]");
-    draggedEl.style.pointerEvents = "";
-    const targetIdx = target ? Number(target.getAttribute("data-slot-idx")) : null;
-    if (targetIdx !== null && targetIdx !== dragIdx) {
-      const next = [...order];
-      [next[dragIdx], next[targetIdx]] = [next[targetIdx], next[dragIdx]];
-      setOrder(next);
-      onSaveFormation?.(next);
-    }
-    setDragIdx(null);
-    setDragPos({ x: 0, y: 0 });
+  const rows = ROW_ORDER.map((pos) => ({
+    pos,
+    players: starters.map(byId).filter((p) => p && p.position === pos),
+  })).filter((r) => r.players.length > 0);
+  // Anyone whose position isn't one of the 4 known ones (shouldn't
+  // happen, but keeps the layout from silently dropping a pick).
+  const unmatched = starters.map(byId).filter((p) => p && !ROW_ORDER.includes(p.position));
+  if (unmatched.length) rows.push({ pos: null, players: unmatched });
+
+  const pointsFor = (uuid) => (lastRoundLines ? computeRoundPoints([uuid], captainId, lastRoundLines, weights, reserveId) : null);
+
+  const renderIcon = (p, { bench } = {}) => {
+    const isCaptain = p.uuid === captainId;
+    const pts = pointsFor(p.uuid);
+    const line = lastRoundLines?.find((l) => l.key === p.uuid);
+    return (
+      <div key={p.uuid} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, width: 58, opacity: bench ? 0.75 : 1 }}>
+        <div style={{
+          width: 42, height: 42, borderRadius: 21, flexShrink: 0,
+          background: p.photo ? C.surface : `${playerColor(group, p)}22`,
+          border: `2px solid ${isCaptain ? C.gold : playerColor(group, p)}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 13, fontWeight: 800, color: playerColor(group, p),
+          boxShadow: "0 2px 6px rgba(0,0,0,0.35)", position: "relative", overflow: "visible",
+        }}>
+          {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 19 }} /> : ini(p.name)}
+          {isCaptain && (
+            <span style={{ position: "absolute", top: -6, right: -6, width: 16, height: 16, borderRadius: 8, background: C.goldDim, border: `1px solid ${C.gold}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Crown size={9} color={C.gold} />
+            </span>
+          )}
+          <span style={{ position: "absolute", bottom: -5, left: -5, fontSize: 8, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 6, padding: "0 4px", border: `1px solid ${C.card}` }}>
+            {computeOverall(p.position, p.attrs)}
+          </span>
+        </div>
+        <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.9)", maxWidth: 58, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+        {pts !== null && (
+          <span style={{ fontSize: 10, fontWeight: 800, color: bench ? C.text3 : (line?.goals || line?.assists) ? C.accent : C.text2, background: "rgba(10,15,24,0.75)", borderRadius: 8, padding: "1px 6px" }}>
+            {bench ? t("banco") : `${pts > 0 ? "+" : ""}${Math.round(pts)}`}
+          </span>
+        )}
+        {!readOnly && (
+          <div style={{ display: "flex", gap: 4 }}>
+            {!bench && (
+              <button onClick={() => onSetCaptain(p.uuid)} title={t("Capitão")}
+                style={{ width: 20, height: 20, borderRadius: 10, background: isCaptain ? C.goldDim : C.card, border: `1px solid ${isCaptain ? C.gold : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+                <Crown size={10} color={isCaptain ? C.gold : C.text3} />
+              </button>
+            )}
+            <button onClick={() => onSetReserve(p.uuid)} title={bench ? t("Tornar titular") : t("Enviar para o banco")}
+              style={{ width: 20, height: 20, borderRadius: 10, background: bench ? C.orangeDim : C.card, border: `1px solid ${bench ? C.orange : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+              <ArmchairIcon size={10} color={bench ? C.orange : C.text3} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div ref={containerRef} style={{
-      ...cardStyle, ...fieldBackdrop(0.15, 0.55), position: "relative",
-      aspectRatio: "4/3", padding: 0, overflow: "hidden", marginBottom: 14,
-      border: `1px solid ${C.blueBorder}`,
+    <div style={{
+      ...cardStyle, position: "relative", padding: 0, overflow: "hidden", marginBottom: 10,
+      background: "linear-gradient(180deg, #1D7A46 0%, #16603A 100%)", border: `1px solid ${C.border}`,
     }}>
-      {order.map((uuid, idx) => {
-        const p = byId(uuid);
-        if (!p) return null;
-        const [x, y] = slots[idx] || [50, 50];
-        const isCaptain = uuid === captainId;
-        const dragging = dragIdx === idx;
-        const line = lastRoundLines?.find((l) => l.key === uuid);
-        const pts = lastRoundLines ? computeRoundPoints([uuid], captainId, lastRoundLines, weights) : null;
-        return (
-          <div key={uuid} data-slot-idx={idx}
-            onPointerDown={(e) => pointerDown(e, idx)} onPointerMove={pointerMove} onPointerUp={pointerUp}
-            style={{
-              position: "absolute", left: `${x}%`, top: `${y}%`,
-              transform: `translate(-50%, -50%) translate(${dragging ? dragPos.x : 0}px, ${dragging ? dragPos.y : 0}px)`,
-              zIndex: dragging ? 5 : 1, touchAction: "none", cursor: readOnly ? "default" : "grab",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 3, width: 56,
-            }}>
-            <div style={{
-              width: 42, height: 42, borderRadius: 21, flexShrink: 0,
-              background: p.photo ? C.surface : `${playerColor(group, p)}22`,
-              border: `2px solid ${isCaptain ? C.gold : playerColor(group, p)}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 13, fontWeight: 800, color: playerColor(group, p),
-              boxShadow: dragging ? "0 8px 20px rgba(0,0,0,0.5)" : "0 2px 6px rgba(0,0,0,0.35)",
-              position: "relative", overflow: "visible",
-            }}>
-              {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 19 }} /> : ini(p.name)}
-              {isCaptain && (
-                <span style={{ position: "absolute", top: -6, right: -6, width: 16, height: 16, borderRadius: 8, background: C.goldDim, border: `1px solid ${C.gold}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Crown size={9} color={C.gold} />
-                </span>
-              )}
-              <span style={{ position: "absolute", bottom: -5, left: -5, fontSize: 8, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 6, padding: "0 4px", border: `1px solid ${C.card}` }}>
-                {computeOverall(p.position, p.attrs)}
-              </span>
-            </div>
-            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.9)", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
-            {pts !== null && (
-              <span style={{ fontSize: 10, fontWeight: 800, color: (line?.goals || line?.assists) ? C.accent : C.text2, background: "rgba(10,15,24,0.75)", borderRadius: 8, padding: "1px 6px" }}>
-                {pts > 0 ? "+" : ""}{Math.round(pts)}
-              </span>
-            )}
+      {/* pitch line markings */}
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 36px, transparent 36px, transparent 72px)" }} />
+      <div style={{ position: "absolute", top: "50%", left: 10, right: 10, height: 1, background: "rgba(255,255,255,0.35)" }} />
+      <div style={{ position: "absolute", top: "50%", left: "50%", width: 76, height: 76, marginTop: -38, marginLeft: -38, border: "1px solid rgba(255,255,255,0.35)", borderRadius: "50%" }} />
+      <div style={{ position: "absolute", top: 0, left: "50%", width: 120, height: 36, marginLeft: -60, border: "1px solid rgba(255,255,255,0.3)", borderTop: "none" }} />
+      <div style={{ position: "absolute", bottom: 0, left: "50%", width: 120, height: 36, marginLeft: -60, border: "1px solid rgba(255,255,255,0.3)", borderBottom: "none" }} />
+
+      <div style={{ position: "relative", padding: "18px 10px 14px" }}>
+        {rows.map(({ pos, players }) => (
+          <div key={pos ?? "outros"} style={{ display: "flex", justifyContent: "space-evenly", marginBottom: 18 }}>
+            {players.map((p) => renderIcon(p))}
           </div>
-        );
-      })}
-      {!readOnly && (
-        <div style={{ position: "absolute", bottom: 6, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "rgba(255,255,255,0.5)" }}>
-          {t("Arrasta um jogador para trocar de posição")}
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The bench strip, rendered as a separate card below FantasyPitch —
+ *  kept out of the green pitch so it visually reads as "not playing",
+ *  matching FPL's bench-below-the-pitch layout. */
+export function FantasyBench({ group, reserveId, captainId, weights, lastRoundLines, readOnly, onSetReserve }) {
+  const p = group.find((x) => x.uuid === reserveId);
+  return (
+    <div style={{ ...cardStyle, marginBottom: 14, background: C.surface }}>
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: p ? 10 : 0 }}>{t("BANCO")}</div>
+      {p ? (
+        <div style={{ display: "flex" }}>
+          <BenchIcon p={p} group={group} captainId={captainId} weights={weights} lastRoundLines={lastRoundLines} readOnly={readOnly} onSetReserve={onSetReserve} />
         </div>
+      ) : (
+        <div style={{ fontSize: 11, color: C.text3 }}>{t("Sem suplente definido.")}</div>
+      )}
+    </div>
+  );
+}
+
+function BenchIcon({ p, group, captainId, weights, lastRoundLines, readOnly, onSetReserve }) {
+  const pts = lastRoundLines ? computeRoundPoints([p.uuid], captainId, lastRoundLines, weights, p.uuid) : null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, width: 58, opacity: 0.75 }}>
+      <div style={{
+        width: 42, height: 42, borderRadius: 21, flexShrink: 0,
+        background: p.photo ? C.surface : `${playerColor(group, p)}22`,
+        border: `2px solid ${playerColor(group, p)}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 13, fontWeight: 800, color: playerColor(group, p), position: "relative",
+      }}>
+        {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 19 }} /> : ini(p.name)}
+        <span style={{ position: "absolute", bottom: -5, left: -5, fontSize: 8, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 6, padding: "0 4px", border: `1px solid ${C.card}` }}>
+          {computeOverall(p.position, p.attrs)}
+        </span>
+      </div>
+      <span style={{ fontSize: 9, fontWeight: 700, color: C.text1, maxWidth: 58, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+      {pts !== null && <span style={{ fontSize: 10, fontWeight: 700, color: C.text3 }}>{t("não pontua")}</span>}
+      {!readOnly && (
+        <button onClick={() => onSetReserve(p.uuid)} title={t("Tornar titular")}
+          style={{ width: 20, height: 20, borderRadius: 10, background: C.orangeDim, border: `1px solid ${C.orange}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+          <ArmchairIcon size={10} color={C.orange} />
+        </button>
       )}
     </div>
   );

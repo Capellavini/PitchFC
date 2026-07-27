@@ -33,7 +33,7 @@ const EMPTY = {
   players: [], game: null, attendances: [], events: [], bookings: [],
   matchdays: [], mvpVotes: [], ratings: [],
   posts: [], friendships: [], allPlayers: [],
-  fantasyLeague: null, fantasySquads: [], fantasyScores: [],
+  fantasyLeague: null, fantasySquads: [], fantasyScores: [], fantasyTradeOffers: [],
 };
 
 export function useCloud() {
@@ -115,23 +115,26 @@ export function useCloud() {
       const apq = await supabase.from("players").select("id,nick,name,photo_url,group_id,groups(name)").order("nick");
       if (!apq.error) allPlayers = apq.data ?? [];
 
-      // Fantasy League (admin-only beta): the group's one active league
-      // (if any), everyone's current squads, and the locked per-round
-      // score history. Tolerate the table not existing yet (pre-migration).
-      let fantasyLeague = null, fantasySquads = [], fantasyScores = [];
+      // Pitch Manager (admin-only beta, née "Fantasy League"): the
+      // group's one active league (if any), everyone's current squads,
+      // the locked per-round score history, and pending trade offers.
+      // Tolerate the tables not existing yet (pre-migration).
+      let fantasyLeague = null, fantasySquads = [], fantasyScores = [], fantasyTradeOffers = [];
       const flq = await supabase.from("fantasy_leagues").select("*").eq("group_id", gid)
         .order("created_at", { ascending: false }).limit(1);
       if (!flq.error && flq.data?.[0]) {
         fantasyLeague = flq.data[0];
-        const [fsq, fscq] = await Promise.all([
+        const [fsq, fscq, ftoq] = await Promise.all([
           supabase.from("fantasy_squads").select("*").eq("league_id", fantasyLeague.id),
           supabase.from("fantasy_scores").select("*").eq("league_id", fantasyLeague.id),
+          supabase.from("fantasy_trade_offers").select("*").eq("league_id", fantasyLeague.id).eq("status", "pending"),
         ]);
         fantasySquads = fsq.data ?? [];
         fantasyScores = fscq.data ?? [];
+        fantasyTradeOffers = ftoq.data ?? [];
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, fantasyLeague, fantasySquads, fantasyScores });
+      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -175,6 +178,7 @@ export function useCloud() {
       .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_leagues" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_squads" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_scores" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_trade_offers" }, refetch)
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [refetch]);
@@ -465,8 +469,8 @@ export function useCloud() {
         .filter((s) => s.player_ids?.length)
         .map((s) => ({
           league_id: data.fantasyLeague.id, matchday_id: md.data.id, participant_id: s.participant_id,
-          player_ids: s.player_ids, captain_id: s.captain_id,
-          points: computeRoundPoints(s.player_ids, s.captain_id, summary.lines, weights),
+          player_ids: s.player_ids, captain_id: s.captain_id, reserve_id: s.reserve_id,
+          points: computeRoundPoints(s.player_ids, s.captain_id, summary.lines, weights, s.reserve_id),
         }));
       if (rows.length) await supabase.from("fantasy_scores").insert(rows);
     }
@@ -526,7 +530,7 @@ export function useCloud() {
         && s.player_ids?.some((id) => id === winnerId || id === runnerUpId || id === thirdId));
       await Promise.all(rows.map((s) =>
         supabase.from("fantasy_scores")
-          .update({ points: s.points + mvpBonus(s.player_ids, s.captain_id, podium, weights) })
+          .update({ points: s.points + mvpBonus(s.player_ids, s.captain_id, podium, weights, s.reserve_id) })
           .eq("id", s.id)
       ));
     }
@@ -551,28 +555,72 @@ export function useCloud() {
    *  participant, freely editable up to 8h before the next kickoff (see
    *  FantasyTab, which hides the editor once locked — this is a second,
    *  server-side check against the same game.scheduled_at). */
-  const saveFantasySquad = async (leagueId, playerIds, captainId) => {
+  const saveFantasySquad = async (leagueId, playerIds, captainId, reserveId) => {
     if (!data.myPlayer) return { error: "Sem sessão." };
     if (data.game?.scheduled_at) {
       const lockAt = new Date(data.game.scheduled_at).getTime() - 8 * 3600 * 1000;
       if (Date.now() > lockAt) return { error: "Escalação trancada — falta menos de 8h para o jogo." };
     }
     const r = await supabase.from("fantasy_squads").upsert(
-      { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, updated_at: new Date().toISOString() },
+      { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, reserve_id: reserveId ?? null, updated_at: new Date().toISOString() },
       { onConflict: "league_id,participant_id" });
     if (r.error) return { error: r.error.message };
     await refetch();
     return {};
   };
 
-  /** Rearranging the pitch layout doesn't touch who's picked or the
-   *  budget, so it stays editable even after the 8h squad lock. */
-  const saveFantasyFormation = async (leagueId, formationOrder) => {
+  // ── Player trading (Pitch Manager) ─────────────────────
+  /** Propose acquiring `targetPlayerId` (owned by someone else) either
+   *  for cash (drops `givePlayerId` from your own squad, no replacement
+   *  — it just returns to the pool; the seller banks the cash via
+   *  budget_adjustment) or as a straight swap (seller receives
+   *  `givePlayerId` in return for `targetPlayerId`). The current owner
+   *  must accept (respondTradeOffer) before anything changes hands. */
+  const createTradeOffer = async (leagueId, toParticipantId, targetPlayerId, givePlayerId, offerType, offerCash) => {
     if (!data.myPlayer) return { error: "Sem sessão." };
-    const r = await supabase.from("fantasy_squads")
-      .update({ formation_order: formationOrder })
-      .eq("league_id", leagueId).eq("participant_id", data.myPlayer.id);
+    const r = await supabase.from("fantasy_trade_offers").insert({
+      league_id: leagueId, from_participant_id: data.myPlayer.id, to_participant_id: toParticipantId,
+      target_player_id: targetPlayerId, give_player_id: givePlayerId,
+      offer_type: offerType, offer_cash: offerType === "cash" ? offerCash : null,
+    });
     if (r.error) return { error: r.error.message };
+    await refetch();
+    return {};
+  };
+
+  const cancelTradeOffer = async (offerId) => {
+    await supabase.from("fantasy_trade_offers").update({ status: "cancelled", resolved_at: new Date().toISOString() }).eq("id", offerId);
+    await refetch();
+  };
+
+  /** Accept or decline an incoming offer. On accept, applies the roster
+   *  change to both squads (+ the cash ledger for a 'cash' offer) in one
+   *  go — validated so neither side ends up over budget first. */
+  const respondTradeOffer = async (offer, accept) => {
+    if (!accept) {
+      await supabase.from("fantasy_trade_offers").update({ status: "declined", resolved_at: new Date().toISOString() }).eq("id", offer.id);
+      await refetch();
+      return {};
+    }
+    const buyerSquad = data.fantasySquads.find((s) => s.participant_id === offer.from_participant_id);
+    const sellerSquad = data.fantasySquads.find((s) => s.participant_id === offer.to_participant_id);
+    if (!buyerSquad || !sellerSquad) return { error: "Escalação não encontrada." };
+
+    const buyerNewIds = buyerSquad.player_ids.filter((id) => id !== offer.give_player_id).concat(offer.target_player_id);
+    const sellerNewIds = offer.offer_type === "swap"
+      ? sellerSquad.player_ids.filter((id) => id !== offer.target_player_id).concat(offer.give_player_id)
+      : sellerSquad.player_ids.filter((id) => id !== offer.target_player_id);
+
+    const buyerAdjustment = (buyerSquad.budget_adjustment || 0) - (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
+    const sellerAdjustment = (sellerSquad.budget_adjustment || 0) + (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
+
+    const [buyerRes, sellerRes] = await Promise.all([
+      supabase.from("fantasy_squads").update({ player_ids: buyerNewIds, budget_adjustment: buyerAdjustment }).eq("id", buyerSquad.id),
+      supabase.from("fantasy_squads").update({ player_ids: sellerNewIds, budget_adjustment: sellerAdjustment }).eq("id", sellerSquad.id),
+    ]);
+    if (buyerRes.error || sellerRes.error) return { error: buyerRes.error?.message || sellerRes.error?.message };
+
+    await supabase.from("fantasy_trade_offers").update({ status: "accepted", resolved_at: new Date().toISOString() }).eq("id", offer.id);
     await refetch();
     return {};
   };
@@ -674,7 +722,7 @@ export function useCloud() {
     commitMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,
     toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment,
     sendFriendRequest, respondFriend, removeFriend,
-    createFantasyLeague, saveFantasySquad, saveFantasyFormation,
+    createFantasyLeague, saveFantasySquad, createTradeOffer, cancelTradeOffer, respondTradeOffer,
     refetch,
   };
 }
