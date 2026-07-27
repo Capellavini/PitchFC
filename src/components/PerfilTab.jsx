@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -12,7 +12,7 @@ import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -152,9 +152,23 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
         <FutCard player={player} width={280} ratingsCount={player.ratingsCount} />
       </div>
-      <div style={{ textAlign: "center", fontSize: 12, color: C.text2, marginBottom: 16 }}>
+      <div style={{ textAlign: "center", fontSize: 12, color: C.text2, marginBottom: isOwn ? 10 : 16 }}>
         {player.name} · @{player.nick.toLowerCase()}
       </div>
+
+      {isOwn && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <button onClick={() => onToggleInjured(!player.injured)}
+            style={{
+              background: player.injured ? C.redDim : C.surface, color: player.injured ? C.red : C.text2,
+              border: `1px solid ${player.injured ? C.red : C.border}`, borderRadius: 12,
+              padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6,
+            }}>
+            <Cross size={13} /> {player.injured ? t("Remover lesão") : t("Marcar como lesionado")}
+          </button>
+        </div>
+      )}
 
       {/* Ratings: own profile shows status + who's rated you; someone
           else's profile (cloud) lets you rate them right here. */}

@@ -321,6 +321,7 @@ const EN = {
 
   // ── PerfilTab / SecuritySection ────────────────────────
   "O Meu Cartão": "My Card", "Editar": "Edit", "Ver o meu": "View mine",
+  "Lesionado": "Injured", "Marcar como lesionado": "Mark as injured", "Remover lesão": "Remove injury",
   "Editar Perfil": "Edit Profile",
   "Telemóvel (MB Way)": "Phone (MB Way)",
   "AVALIAÇÃO DOS AMIGOS": "FRIENDS' RATINGS",
@@ -428,6 +429,12 @@ const EN = {
   "PRÓXIMA TEMPORADA": "NEXT SEASON",
   "Liga terminada — consulta a classificação final abaixo.": "League ended — check the final standings below.",
   "Escalação trancada — falta menos de 8h para o jogo.": "Squad locked — less than 8h to kickoff.",
+  "Por posição": "By position", "Por pontuação": "By points",
+  "Todos os jogadores": "All players",
+  "Não tens banco suficiente para esta oferta.": "You don't have enough bank for this offer.",
+  "O teu banco": "Your bank", "Custo desta troca": "This trade's cost",
+  "Banco insuficiente": "Not enough bank",
+  "PREÇO": "PRICE", "PTS NA LIGA": "LEAGUE PTS", "DONOS": "OWNERS",
 
   // ── Matchday (goalkeeper picker) ────────────────────────
   "GR?": "GK?",

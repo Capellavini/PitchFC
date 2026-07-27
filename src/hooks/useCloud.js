@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, supabaseEnabled, isAdminEmail, canAccessFantasy } from "../lib/supabase";
-import { computeRoundPoints, mvpBonus, DEFAULT_FANTASY_WEIGHTS } from "../lib/fantasy";
+import { computeRoundPoints, mvpBonus, fantasyPrice, DEFAULT_FANTASY_WEIGHTS } from "../lib/fantasy";
 
 /**
  * PR 2 of the Supabase migration: real accounts (email + password),
@@ -551,6 +551,17 @@ export function useCloud() {
     return {};
   };
 
+  // Shared pricing snapshot for Pitch Manager budget checks (mirrors the
+  // client-side calc in FantasyTab — fantasyPrice over rounds played
+  // since the league started), so squad saves and trades can't be used
+  // to spend past what the budget + past trade cash actually allows.
+  const fantasyPriceOf = () => {
+    const league = data.fantasyLeague;
+    const weights = league?.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
+    const rounds = data.matchdays.filter((md) => new Date(md.created_at) >= new Date(league?.starts_at || league?.created_at));
+    return (uuid) => fantasyPrice(uuid, rounds, weights);
+  };
+
   /** Save/update the current player's fantasy squad — one row per
    *  participant, freely editable up to 8h before the next kickoff (see
    *  FantasyTab, which hides the editor once locked — this is a second,
@@ -560,6 +571,13 @@ export function useCloud() {
     if (data.game?.scheduled_at) {
       const lockAt = new Date(data.game.scheduled_at).getTime() - 8 * 3600 * 1000;
       if (Date.now() > lockAt) return { error: "Escalação trancada — falta menos de 8h para o jogo." };
+    }
+    if (data.fantasyLeague) {
+      const priceOf = fantasyPriceOf();
+      const existing = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
+      const effectiveBudget = data.fantasyLeague.budget + (existing?.budget_adjustment || 0);
+      const total = playerIds.reduce((s, id) => s + priceOf(id), 0);
+      if (total > effectiveBudget) return { error: "Orçamento insuficiente para esta escalação." };
     }
     const r = await supabase.from("fantasy_squads").upsert(
       { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, reserve_id: reserveId ?? null, updated_at: new Date().toISOString() },
@@ -578,6 +596,14 @@ export function useCloud() {
    *  must accept (respondTradeOffer) before anything changes hands. */
   const createTradeOffer = async (leagueId, toParticipantId, targetPlayerId, givePlayerId, offerType, offerCash) => {
     if (!data.myPlayer) return { error: "Sem sessão." };
+    if (data.fantasyLeague) {
+      const priceOf = fantasyPriceOf();
+      const mySquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
+      const myBank = data.fantasyLeague.budget + (mySquad?.budget_adjustment || 0)
+        - (mySquad?.player_ids || []).reduce((s, id) => s + priceOf(id), 0);
+      const netCost = (priceOf(targetPlayerId) - priceOf(givePlayerId)) + (offerType === "cash" ? Number(offerCash) || 0 : 0);
+      if (netCost > myBank) return { error: "Banco insuficiente para esta oferta." };
+    }
     const r = await supabase.from("fantasy_trade_offers").insert({
       league_id: leagueId, from_participant_id: data.myPlayer.id, to_participant_id: toParticipantId,
       target_player_id: targetPlayerId, give_player_id: givePlayerId,
@@ -613,6 +639,14 @@ export function useCloud() {
 
     const buyerAdjustment = (buyerSquad.budget_adjustment || 0) - (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
     const sellerAdjustment = (sellerSquad.budget_adjustment || 0) + (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
+
+    if (data.fantasyLeague) {
+      const priceOf = fantasyPriceOf();
+      const buyerBankAfter = data.fantasyLeague.budget + buyerAdjustment - buyerNewIds.reduce((s, id) => s + priceOf(id), 0);
+      const sellerBankAfter = data.fantasyLeague.budget + sellerAdjustment - sellerNewIds.reduce((s, id) => s + priceOf(id), 0);
+      if (buyerBankAfter < 0) return { error: "O comprador não tem banco suficiente para esta troca." };
+      if (sellerBankAfter < 0) return { error: "Isto deixaria o teu banco negativo." };
+    }
 
     const [buyerRes, sellerRes] = await Promise.all([
       supabase.from("fantasy_squads").update({ player_ids: buyerNewIds, budget_adjustment: buyerAdjustment }).eq("id", buyerSquad.id),

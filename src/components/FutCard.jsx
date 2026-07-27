@@ -1,3 +1,4 @@
+import { Cross } from "lucide-react";
 import { C, displayFont } from "../theme";
 import { ini, computeOverall, POSITION_ABBR, ATTR_LABELS } from "../lib/helpers";
 import { t, getLang } from "../lib/i18n";
@@ -49,6 +50,19 @@ export default function FutCard({ player, width = 260, ratingsCount }) {
         <circle cx="130" cy="80" r="50" fill="none" stroke={tier.color} strokeWidth="1.5" />
         <line x1="130" y1="0" x2="130" y2="160" stroke={tier.color} strokeWidth="1.5" />
       </svg>
+
+      {/* Injured badge — self-reported, see PerfilTab */}
+      {player.injured && (
+        <div title={t("Lesionado")} style={{
+          position: "absolute", top: 10 * scale, right: 10 * scale, zIndex: 1,
+          width: 26 * scale, height: 26 * scale, borderRadius: 13 * scale,
+          background: C.red, border: `2px solid ${C.bg}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+        }}>
+          <Cross size={14 * scale} color="#fff" strokeWidth={2.5} />
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 12 * scale, position: "relative" }}>
         {/* Left column: overall + position + flag + club */}

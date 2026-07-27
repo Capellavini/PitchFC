@@ -145,7 +145,7 @@ export default function PitchApp() {
           photo: p.photo_url, age: p.age, nationality: p.nationality, club: p.club,
           position: p.position, foot: p.foot, attrs: p.attrs ?? DEFAULT_ATTRS,
           isOrganizerPlayer: p.is_organizer, isAssistant: p.is_assistant,
-          isGuest: !p.user_id,
+          isGuest: !p.user_id, injured: p.injured,
           magicToken: p.magic_token,
           status: att?.status ?? "pending", paid: att?.paid ?? false,
           respondedAt: att?.responded_at ?? null,
@@ -335,6 +335,11 @@ export default function PitchApp() {
     } else {
       setGroup((g) => g.map((p) => (p.isMe ? { ...p, ...rest } : p)));
     }
+  };
+
+  const toggleInjured = (value) => {
+    if (cloudMode && me) cloud.updatePlayer(me.uuid, { injured: value });
+    else setGroup((g) => g.map((p) => (p.isMe ? { ...p, injured: value } : p)));
   };
 
   // Position-balanced team draw into N (2–6) teams: shuffle, order by
@@ -949,7 +954,7 @@ export default function PitchApp() {
           : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} canManageTeams={canManageTeams} />)}
         {tab === "fantasy" && cloud.canSeeFantasy && (
           <FantasyTab
-            group={displayGroup} me={me} canManageTeams={canManageTeams} kickoffAt={game.kickoffAt}
+            group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
             fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
             fantasyTradeOffers={cloud.fantasyTradeOffers} matchdays={cloud.matchdays}
             onCreateLeague={cloud.createFantasyLeague} onSaveSquad={cloud.saveFantasySquad}
@@ -964,7 +969,7 @@ export default function PitchApp() {
             isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} logout={logout}
             addPeerRating={addPeerRating} cloudMode={cloudMode} onSubmitRating={cloudMode ? cloud.submitRating : null}
             isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)}
-            uploadMedia={uploadMedia}
+            uploadMedia={uploadMedia} onToggleInjured={toggleInjured}
             enablePush={cloudAuthed ? enablePush : null}
             security={cloud.user ? {
               email: cloud.user.email,

@@ -36,42 +36,43 @@ export default function FantasyPitch({ group, playerIds, captainId, reserveId, w
     const pts = pointsFor(p.uuid);
     const line = lastRoundLines?.find((l) => l.key === p.uuid);
     return (
-      <div key={p.uuid} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, width: 58, opacity: bench ? 0.75 : 1 }}>
+      <div key={p.uuid} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, width: 72, opacity: bench ? 0.75 : 1 }}>
         <div style={{
-          width: 42, height: 42, borderRadius: 21, flexShrink: 0,
+          width: 54, height: 54, borderRadius: 27, flexShrink: 0,
           background: p.photo ? C.surface : `${playerColor(group, p)}22`,
-          border: `2px solid ${isCaptain ? C.gold : playerColor(group, p)}`,
+          border: `2.5px solid ${isCaptain ? C.gold : playerColor(group, p)}`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 13, fontWeight: 800, color: playerColor(group, p),
-          boxShadow: "0 2px 6px rgba(0,0,0,0.35)", position: "relative", overflow: "visible",
+          fontSize: 16, fontWeight: 800, color: playerColor(group, p),
+          boxShadow: isCaptain ? `0 0 0 3px ${C.goldDim}, 0 2px 6px rgba(0,0,0,0.35)` : "0 2px 6px rgba(0,0,0,0.35)",
+          position: "relative", overflow: "visible",
         }}>
-          {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 19 }} /> : ini(p.name)}
+          {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 24 }} /> : ini(p.name)}
           {isCaptain && (
-            <span style={{ position: "absolute", top: -6, right: -6, width: 16, height: 16, borderRadius: 8, background: C.goldDim, border: `1px solid ${C.gold}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Crown size={9} color={C.gold} />
+            <span style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: 11, background: C.gold, border: `2px solid ${C.bg}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+              <Crown size={13} color={C.bg} fill={C.bg} />
             </span>
           )}
-          <span style={{ position: "absolute", bottom: -5, left: -5, fontSize: 8, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 6, padding: "0 4px", border: `1px solid ${C.card}` }}>
+          <span style={{ position: "absolute", bottom: -6, left: -6, fontSize: 9, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 7, padding: "1px 5px", border: `1px solid ${C.card}` }}>
             {computeOverall(p.position, p.attrs)}
           </span>
         </div>
-        <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.9)", maxWidth: 58, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.9)", maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
         {pts !== null && (
-          <span style={{ fontSize: 10, fontWeight: 800, color: bench ? C.text3 : (line?.goals || line?.assists) ? C.accent : C.text2, background: "rgba(10,15,24,0.75)", borderRadius: 8, padding: "1px 6px" }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: bench ? C.text3 : (line?.goals || line?.assists) ? C.accent : C.text2, background: "rgba(10,15,24,0.75)", borderRadius: 8, padding: "1px 7px" }}>
             {bench ? t("banco") : `${pts > 0 ? "+" : ""}${Math.round(pts)}`}
           </span>
         )}
         {!readOnly && (
-          <div style={{ display: "flex", gap: 4 }}>
+          <div style={{ display: "flex", gap: 6 }}>
             {!bench && (
               <button onClick={() => onSetCaptain(p.uuid)} title={t("Capitão")}
-                style={{ width: 20, height: 20, borderRadius: 10, background: isCaptain ? C.goldDim : C.card, border: `1px solid ${isCaptain ? C.gold : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-                <Crown size={10} color={isCaptain ? C.gold : C.text3} />
+                style={{ width: 28, height: 28, borderRadius: 14, background: isCaptain ? C.gold : C.card, border: `1px solid ${isCaptain ? C.gold : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+                <Crown size={14} color={isCaptain ? C.bg : C.text3} fill={isCaptain ? C.bg : "none"} />
               </button>
             )}
             <button onClick={() => onSetReserve(p.uuid)} title={bench ? t("Tornar titular") : t("Enviar para o banco")}
-              style={{ width: 20, height: 20, borderRadius: 10, background: bench ? C.orangeDim : C.card, border: `1px solid ${bench ? C.orange : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-              <ArmchairIcon size={10} color={bench ? C.orange : C.text3} />
+              style={{ width: 28, height: 28, borderRadius: 14, background: bench ? C.orangeDim : C.card, border: `1px solid ${bench ? C.orange : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+              <ArmchairIcon size={14} color={bench ? C.orange : C.text3} />
             </button>
           </div>
         )}
@@ -91,9 +92,9 @@ export default function FantasyPitch({ group, playerIds, captainId, reserveId, w
       <div style={{ position: "absolute", top: 0, left: "50%", width: 120, height: 36, marginLeft: -60, border: "1px solid rgba(255,255,255,0.3)", borderTop: "none" }} />
       <div style={{ position: "absolute", bottom: 0, left: "50%", width: 120, height: 36, marginLeft: -60, border: "1px solid rgba(255,255,255,0.3)", borderBottom: "none" }} />
 
-      <div style={{ position: "relative", padding: "18px 10px 14px" }}>
+      <div style={{ position: "relative", padding: "22px 10px 16px" }}>
         {rows.map(({ pos, players }) => (
-          <div key={pos ?? "outros"} style={{ display: "flex", justifyContent: "space-evenly", marginBottom: 18 }}>
+          <div key={pos ?? "outros"} style={{ display: "flex", justifyContent: "space-evenly", marginBottom: 22 }}>
             {players.map((p) => renderIcon(p))}
           </div>
         ))}
@@ -124,25 +125,25 @@ export function FantasyBench({ group, reserveId, captainId, weights, lastRoundLi
 function BenchIcon({ p, group, captainId, weights, lastRoundLines, readOnly, onSetReserve }) {
   const pts = lastRoundLines ? computeRoundPoints([p.uuid], captainId, lastRoundLines, weights, p.uuid) : null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, width: 58, opacity: 0.75 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, width: 72, opacity: 0.75 }}>
       <div style={{
-        width: 42, height: 42, borderRadius: 21, flexShrink: 0,
+        width: 54, height: 54, borderRadius: 27, flexShrink: 0,
         background: p.photo ? C.surface : `${playerColor(group, p)}22`,
-        border: `2px solid ${playerColor(group, p)}`,
+        border: `2.5px solid ${playerColor(group, p)}`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 13, fontWeight: 800, color: playerColor(group, p), position: "relative",
+        fontSize: 16, fontWeight: 800, color: playerColor(group, p), position: "relative",
       }}>
-        {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 19 }} /> : ini(p.name)}
-        <span style={{ position: "absolute", bottom: -5, left: -5, fontSize: 8, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 6, padding: "0 4px", border: `1px solid ${C.card}` }}>
+        {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 24 }} /> : ini(p.name)}
+        <span style={{ position: "absolute", bottom: -6, left: -6, fontSize: 9, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 7, padding: "1px 5px", border: `1px solid ${C.card}` }}>
           {computeOverall(p.position, p.attrs)}
         </span>
       </div>
-      <span style={{ fontSize: 9, fontWeight: 700, color: C.text1, maxWidth: 58, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
-      {pts !== null && <span style={{ fontSize: 10, fontWeight: 700, color: C.text3 }}>{t("não pontua")}</span>}
+      <span style={{ fontSize: 10, fontWeight: 700, color: C.text1, maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+      {pts !== null && <span style={{ fontSize: 11, fontWeight: 700, color: C.text3 }}>{t("não pontua")}</span>}
       {!readOnly && (
         <button onClick={() => onSetReserve(p.uuid)} title={t("Tornar titular")}
-          style={{ width: 20, height: 20, borderRadius: 10, background: C.orangeDim, border: `1px solid ${C.orange}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-          <ArmchairIcon size={10} color={C.orange} />
+          style={{ width: 28, height: 28, borderRadius: 14, background: C.orangeDim, border: `1px solid ${C.orange}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+          <ArmchairIcon size={14} color={C.orange} />
         </button>
       )}
     </div>

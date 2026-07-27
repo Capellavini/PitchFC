@@ -2,13 +2,14 @@ import { useState, useMemo } from "react";
 import { Pencil, X, Search, Check, ArrowRightLeft } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall } from "../lib/helpers";
-import { fantasyPrice, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM } from "../lib/fantasy";
+import { fantasyPrice, computeRoundPoints, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM } from "../lib/fantasy";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import Collapsible from "./Collapsible";
 import FantasyPitch, { FantasyBench } from "./FantasyPitch";
+import FutCard from "./FutCard";
 
 const inputStyle = {
   width: "100%", boxSizing: "border-box", background: C.surface, color: C.text1,
@@ -31,9 +32,9 @@ const leagueEndsAt = (league) => {
  *  past that, the only way in is proposing a trade to a current owner.
  *  Each league runs for a fixed duration (organizer-set, min 1 month);
  *  squads are editable until 8h before the next kickoff. */
-export default function FantasyTab({ group, me, canManageTeams, kickoffAt, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, matchdays, onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer }) {
+export default function FantasyTab({ group, me, isOrganizer, kickoffAt, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, matchdays, onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer }) {
   if (!fantasyLeague) {
-    return <CreateLeague canManageTeams={canManageTeams} onCreateLeague={onCreateLeague} />;
+    return <CreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} />;
   }
   const ended = Date.now() > leagueEndsAt(fantasyLeague).getTime();
   return (
@@ -45,19 +46,19 @@ export default function FantasyTab({ group, me, canManageTeams, kickoffAt, fanta
         onCancelTradeOffer={onCancelTradeOffer} onRespondTradeOffer={onRespondTradeOffer}
       />
       {ended && (
-        <CreateLeague canManageTeams={canManageTeams} onCreateLeague={onCreateLeague} nextSeason />
+        <CreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} nextSeason />
       )}
     </>
   );
 }
 
-function CreateLeague({ canManageTeams, onCreateLeague, nextSeason }) {
+function CreateLeague({ isOrganizer, onCreateLeague, nextSeason }) {
   const [form, setForm] = useState({ name: "Pitch Manager", budget: 120, squadSize: 6, durationMonths: 1 });
   const [creating, setCreating] = useState(false);
   const startPrice = DEFAULT_FANTASY_WEIGHTS.priceBase;
   const affordable = Math.floor((Number(form.budget) || 0) / startPrice);
 
-  if (!canManageTeams) {
+  if (!isOrganizer) {
     return nextSeason ? null : (
       <div style={{ padding: 16 }}>
         <div style={cardStyle}>
@@ -123,6 +124,8 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
   const [editing, setEditing] = useState(!complete);
   const [viewingId, setViewingId] = useState(null);
   const [tradeTarget, setTradeTarget] = useState(null); // { playerId, ownerSquad }
+  const [sortMode, setSortMode] = useState("pos"); // 'pos' | 'points' — "todos os jogadores por pontuação"
+  const [viewingPlayerId, setViewingPlayerId] = useState(null); // player card modal in the market list
   const lastRoundLines = matchdays[0]?.summary?.lines || null;
 
   const lockAt = kickoffAt ? new Date(new Date(kickoffAt).getTime() - 8 * 3600 * 1000) : null;
@@ -138,6 +141,16 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
     () => Object.fromEntries(group.map((p) => [p.uuid, fantasyPrice(p.uuid, roundsSinceStart, weights)])),
     [group, roundsSinceStart, weights]
   );
+  // Raw fantasy points each real player has produced across rounds played
+  // since the league started (no captain bonus — this is the player's own
+  // output, not any one participant's squad), so anyone can compare who's
+  // worth buying/trading for regardless of who currently owns them.
+  const totalPoints = useMemo(
+    () => Object.fromEntries(group.map((p) => [
+      p.uuid, roundsSinceStart.reduce((sum, md) => sum + computeRoundPoints([p.uuid], null, md.summary?.lines, weights), 0),
+    ])),
+    [group, roundsSinceStart, weights]
+  );
   // Ownership: how many participants currently hold each real player.
   const ownership = useMemo(() => {
     const counts = {};
@@ -145,9 +158,16 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
     return counts;
   }, [squads]);
   const ownersOf = (uuid) => squads.filter((s) => s.player_ids?.includes(uuid));
+  // A squad's real spending power isn't just league.budget — completed
+  // trades move cash in/out via budget_adjustment (see useCloud.js
+  // respondTradeOffer). Ignoring it here would let someone keep spending
+  // through the squad editor past what they actually have left.
+  const squadSpend = (squad) => (squad?.player_ids || []).reduce((s, id) => s + (prices[id] || 0), 0);
+  const squadBank = (squad) => league.budget + (squad?.budget_adjustment || 0) - squadSpend(squad);
+  const effectiveBudget = league.budget + (mySquad?.budget_adjustment || 0);
 
   const total = selected.reduce((s, id) => s + (prices[id] || 0), 0);
-  const overBudget = total > league.budget;
+  const overBudget = total > effectiveBudget;
   const canSave = !locked && selected.length === league.squad_size && !overBudget;
 
   const toggle = (id) => {
@@ -176,6 +196,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
 
   const filteredGroup = group.filter((p) => p.nick.toLowerCase().includes(search.trim().toLowerCase()));
   const byPosition = POSITION_ORDER.map((pos) => ({ pos, players: filteredGroup.filter((p) => p.position === pos) }));
+  const byPoints = filteredGroup.slice().sort((a, b) => (totalPoints[b.uuid] || 0) - (totalPoints[a.uuid] || 0));
 
   // Leaderboard: sum every locked round's points per participant.
   const leaderboard = useMemo(() => {
@@ -198,7 +219,6 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
 
   const myOffers = offers.filter((o) => o.from_participant_id === me?.uuid);
   const incomingOffers = offers.filter((o) => o.to_participant_id === me?.uuid);
-  const bank = league.budget - total;
 
   return (
     <div style={{ padding: 16 }}>
@@ -206,7 +226,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
 
       {complete && !editing ? (
         <>
-          <TopBar total={total} budget={league.budget} count={selected.length} squadSize={league.squad_size} overBudget={false} />
+          <TopBar total={total} budget={effectiveBudget} count={selected.length} squadSize={league.squad_size} overBudget={false} />
           {!locked && (
             <button onClick={() => setEditing(true)} style={{ background: C.surface, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, marginBottom: 10 }}>
             <Pencil size={11} /> {t("Editar escalação")}
@@ -228,11 +248,23 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
         </>
       ) : (
       <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <TopBar total={total} budget={league.budget} count={selected.length} squadSize={league.squad_size} overBudget={overBudget} />
+        <TopBar total={total} budget={effectiveBudget} count={selected.length} squadSize={league.squad_size} overBudget={overBudget} />
         <div style={{ position: "relative", marginBottom: 10 }}>
           <Search size={14} color={C.text3} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Pesquisar por nome…")}
             style={{ ...inputStyle, marginTop: 0, paddingLeft: 30 }} />
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {[["pos", "Por posição"], ["points", "Por pontuação"]].map(([id, label]) => {
+            const active = sortMode === id;
+            return (
+              <button key={id} onClick={() => setSortMode(id)}
+                style={{ flex: 1, background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 10, padding: "7px 6px", fontSize: 12, fontWeight: active ? 800 : 500, cursor: "pointer" }}>
+                {t(label)}
+              </button>
+            );
+          })}
         </div>
 
         {locked && (
@@ -242,50 +274,73 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
         )}
         {!locked && overBudget && (
           <div style={{ fontSize: 11, color: C.red, background: `${C.red}18`, border: `1px solid ${C.red}44`, borderRadius: 10, padding: "8px 10px", marginBottom: 12, fontWeight: 700 }}>
-            {t("Falta")} {fmtM(total - league.budget)} — {t("tira alguém ou troca por um mais barato.")}
+            {t("Falta")} {fmtM(total - effectiveBudget)} — {t("tira alguém ou troca por um mais barato.")}
           </div>
         )}
 
-        {byPosition.map(({ pos, players }) => players.length > 0 && (
-          <div key={pos} style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.text3, marginBottom: 6 }}>{t(pos).toUpperCase()}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {players.map((p) => {
-                const picked = selected.includes(p.uuid);
-                const count = ownership[p.uuid] || 0;
-                const atCap = count >= OWNERSHIP_CAP && !picked;
-                const owners = ownersOf(p.uuid).filter((s) => s.participant_id !== me?.uuid);
-                return (
-                  <div key={p.uuid}
-                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10,
-                      background: picked ? C.accentDim : "transparent", border: `1px solid ${picked ? C.accentBorder : C.border}`, opacity: locked ? 0.6 : 1 }}>
-                    <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} isMe={p.isMe} photo={p.photo} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</div>
-                      <div style={{ fontSize: 10, color: atCap ? C.red : C.text2 }}>{count}/{OWNERSHIP_CAP} {t("disponível")}</div>
+        {(() => {
+          const renderRow = (p) => {
+            const picked = selected.includes(p.uuid);
+            const count = ownership[p.uuid] || 0;
+            const atCap = count >= OWNERSHIP_CAP && !picked;
+            const owners = ownersOf(p.uuid).filter((s) => s.participant_id !== me?.uuid);
+            return (
+              <div key={p.uuid}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10,
+                  background: picked ? C.accentDim : "transparent", border: `1px solid ${picked ? C.accentBorder : C.border}`, opacity: locked ? 0.6 : 1 }}>
+                <button onClick={() => setViewingPlayerId(p.uuid)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
+                  <Avatar name={p.name} color={playerColor(group, p)} size={38} fontSize={13} isMe={p.isMe} photo={p.photo} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.text1 }}>{p.nick}</div>
+                    <div style={{ fontSize: 10, color: atCap ? C.red : C.text2 }}>
+                      {sortMode === "points" ? `${t(p.position)} · ` : ""}{count}/{OWNERSHIP_CAP} {t("disponível")}
                     </div>
-                    <div style={{ textAlign: "center", minWidth: 26 }}>
-                      <div style={{ ...displayFont, fontSize: 13, color: C.text1 }}>{computeOverall(p.position, p.attrs)}</div>
-                      <div style={{ fontSize: 7, fontWeight: 700, color: C.text3 }}>OVR</div>
-                    </div>
-                    <div style={{ ...displayFont, fontSize: 12, color: C.accent, minWidth: 44, textAlign: "right" }}>{fmtM(prices[p.uuid])}</div>
-                    {locked ? null : atCap ? (
-                      <button onClick={() => setTradeTarget({ playerId: p.uuid, owners })} disabled={!owners.length}
-                        style={{ background: C.orangeDim, color: C.orange, border: `1px solid ${C.orange}55`, borderRadius: 8, padding: "5px 8px", fontSize: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                        <ArrowRightLeft size={11} /> {t("Oferta")}
-                      </button>
-                    ) : (
-                      <button onClick={() => toggle(p.uuid)}
-                        style={{ width: 28, height: 28, borderRadius: 14, flexShrink: 0, background: picked ? C.redDim : C.greenDim, color: picked ? C.red : C.green, border: `1px solid ${picked ? C.red : C.greenBorder}`, cursor: "pointer", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {picked ? "×" : "+"}
-                      </button>
-                    )}
                   </div>
-                );
-              })}
+                </button>
+                <div style={{ textAlign: "center", minWidth: 26 }}>
+                  <div style={{ ...displayFont, fontSize: 13, color: C.text1 }}>{computeOverall(p.position, p.attrs)}</div>
+                  <div style={{ fontSize: 7, fontWeight: 700, color: C.text3 }}>OVR</div>
+                </div>
+                <div style={{ textAlign: "center", minWidth: 26 }}>
+                  <div style={{ ...displayFont, fontSize: 13, color: C.accent }}>{Math.round(totalPoints[p.uuid] || 0)}</div>
+                  <div style={{ fontSize: 7, fontWeight: 700, color: C.text3 }}>PTS</div>
+                </div>
+                <div style={{ ...displayFont, fontSize: 12, color: C.accent, minWidth: 44, textAlign: "right" }}>{fmtM(prices[p.uuid])}</div>
+                {locked ? null : atCap ? (
+                  <button onClick={() => setTradeTarget({ playerId: p.uuid, owners })} disabled={!owners.length}
+                    style={{ background: C.orangeDim, color: C.orange, border: `1px solid ${C.orange}55`, borderRadius: 8, padding: "5px 8px", fontSize: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    <ArrowRightLeft size={11} /> {t("Oferta")}
+                  </button>
+                ) : (
+                  <button onClick={() => toggle(p.uuid)}
+                    style={{ width: 28, height: 28, borderRadius: 14, flexShrink: 0, background: picked ? C.redDim : C.greenDim, color: picked ? C.red : C.green, border: `1px solid ${picked ? C.red : C.greenBorder}`, cursor: "pointer", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {picked ? "×" : "+"}
+                  </button>
+                )}
+              </div>
+            );
+          };
+
+          if (sortMode === "points") {
+            return (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.text3, marginBottom: 6 }}>{t("Todos os jogadores").toUpperCase()}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {byPoints.map(renderRow)}
+                </div>
+              </div>
+            );
+          }
+          return byPosition.map(({ pos, players }) => players.length > 0 && (
+            <div key={pos} style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.text3, marginBottom: 6 }}>{t(pos).toUpperCase()}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {players.map(renderRow)}
+              </div>
             </div>
-          </div>
-        ))}
+          ));
+        })()}
 
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
           {complete && (
@@ -306,7 +361,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
 
       {tradeTarget && (
         <TradeOfferPanel
-          group={group} me={me} mySquad={mySquad} league={league} prices={prices}
+          group={group} me={me} mySquad={mySquad} league={league} prices={prices} myBank={squadBank(mySquad)}
           target={tradeTarget} onClose={() => setTradeTarget(null)}
           onSubmit={async (payload) => {
             const res = await onCreateTradeOffer(league.id, payload.toParticipantId, tradeTarget.playerId, payload.givePlayerId, payload.offerType, payload.offerCash);
@@ -395,6 +450,67 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
           </div>
         </Collapsible>
       )}
+
+      {viewingPlayerId && (() => {
+        const p = group.find((x) => x.uuid === viewingPlayerId);
+        if (!p) return null;
+        return (
+          <PlayerCardModal
+            player={p} price={prices[p.uuid]} points={totalPoints[p.uuid]}
+            ownership={ownership[p.uuid] || 0} onClose={() => setViewingPlayerId(null)}
+          />
+        );
+      })()}
+    </div>
+  );
+}
+
+/** Tapping a player in the market shows their FUT card (attributes) plus
+ *  season totals and this league's fantasy output, so anyone can decide
+ *  who's worth buying/trading for without leaving the list. */
+function PlayerCardModal({ player, price, points, ownership, onClose }) {
+  const stats = [
+    ["⚽", t("Golos"), player.goals || 0],
+    ["🎯", t("Assistências"), player.assists || 0],
+    ["⭐", t("MVPs"), player.mvps || 0],
+    ["🧤", t("Jogos"), player.gamesPlayed || 0],
+  ];
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, background: "rgba(10,15,24,0.75)", zIndex: 50,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 320, width: "100%" }}>
+        <button onClick={onClose} style={{ alignSelf: "flex-end", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginBottom: 10 }}>
+          <X size={16} color={C.text2} />
+        </button>
+        <FutCard player={player} width={260} ratingsCount={player.ratingsCount} />
+        <div style={{ ...cardStyle, width: "100%", marginTop: 12, boxSizing: "border-box" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
+            {stats.map(([emoji, label, value]) => (
+              <div key={label} style={{ textAlign: "center" }}>
+                <div style={{ ...displayFont, fontSize: 16, color: C.text1 }}>{emoji} {value}</div>
+                <div style={{ fontSize: 8, fontWeight: 700, color: C.text3, marginTop: 2 }}>{label.toUpperCase()}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ height: 1, background: C.border, marginBottom: 12 }} />
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ ...displayFont, fontSize: 15, color: C.accent }}>{fmtM(price)}</div>
+              <div style={{ fontSize: 8, fontWeight: 700, color: C.text3, marginTop: 2 }}>{t("PREÇO")}</div>
+            </div>
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ ...displayFont, fontSize: 15, color: C.accent }}>{Math.round(points || 0)}</div>
+              <div style={{ fontSize: 8, fontWeight: 700, color: C.text3, marginTop: 2 }}>{t("PTS NA LIGA")}</div>
+            </div>
+            <div style={{ textAlign: "center", flex: 1 }}>
+              <div style={{ ...displayFont, fontSize: 15, color: C.text1 }}>{ownership}/{OWNERSHIP_CAP}</div>
+              <div style={{ fontSize: 8, fontWeight: 700, color: C.text3, marginTop: 2 }}>{t("DONOS")}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -420,18 +536,26 @@ function TopBar({ total, budget, count, squadSize, overBudget }) {
  *  more other participants (`target.owners`). Always asks which of the
  *  buyer's own picks gets released to make room — for a swap that IS
  *  the offered player; for cash it just returns to the pool. */
-function TradeOfferPanel({ group, me, mySquad, prices, target, onClose, onSubmit }) {
+function TradeOfferPanel({ group, me, mySquad, prices, target, myBank, onClose, onSubmit }) {
   const [toParticipantId, setToParticipantId] = useState(target.owners[0]?.participant_id || "");
   const [givePlayerId, setGivePlayerId] = useState(mySquad?.player_ids?.[0] || "");
   const [offerType, setOfferType] = useState("swap");
-  const [offerCash, setOfferCash] = useState(20);
+  const [offerCash, setOfferCash] = useState(0);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
 
   const targetPlayer = group.find((p) => p.uuid === target.playerId);
   const mine = (mySquad?.player_ids || []).map((id) => group.find((p) => p.uuid === id)).filter(Boolean);
 
+  // What this trade actually costs you: the target's price minus what
+  // you free up by releasing your own player, plus any cash on top —
+  // can't exceed what you actually have left in the bank.
+  const priceDelta = (prices[target.playerId] || 0) - (prices[givePlayerId] || 0);
+  const netCost = priceDelta + (offerType === "cash" ? Number(offerCash) || 0 : 0);
+  const overBank = netCost > myBank;
+
   const submit = async () => {
+    if (overBank) { setError(t("Não tens banco suficiente para esta oferta.")); return; }
     setSending(true);
     setError(null);
     const res = await onSubmit({ toParticipantId, givePlayerId, offerType, offerCash: Number(offerCash) || 0 });
@@ -477,8 +601,17 @@ function TradeOfferPanel({ group, me, mySquad, prices, target, onClose, onSubmit
         </>
       )}
 
-      <BtnPrimary onClick={submit} disabled={sending || !toParticipantId || !givePlayerId} style={{ width: "100%", marginTop: 14, opacity: sending ? 0.6 : 1 }}>
-        {sending ? t("Um momento…") : t("Enviar oferta")}
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.text2, marginTop: 12 }}>
+        <span>{t("O teu banco")}</span>
+        <span style={{ fontWeight: 700, color: C.text1 }}>{fmtM(myBank)}</span>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.text2, marginTop: 4 }}>
+        <span>{t("Custo desta troca")}</span>
+        <span style={{ fontWeight: 700, color: overBank ? C.red : C.text1 }}>{fmtM(netCost)}</span>
+      </div>
+
+      <BtnPrimary onClick={submit} disabled={sending || !toParticipantId || !givePlayerId || overBank} style={{ width: "100%", marginTop: 10, opacity: (sending || overBank) ? 0.6 : 1 }}>
+        {sending ? t("Um momento…") : overBank ? t("Banco insuficiente") : t("Enviar oferta")}
       </BtnPrimary>
       {error && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{error}</div>}
     </div>
