@@ -322,6 +322,8 @@ const EN = {
   // ── PerfilTab / SecuritySection ────────────────────────
   "O Meu Cartão": "My Card", "Editar": "Edit", "Ver o meu": "View mine",
   "Lesionado": "Injured", "Marcar como lesionado": "Mark as injured", "Remover lesão": "Remove injury",
+  "Não podes escalar um jogador lesionado.": "You can't field an injured player.",
+  "Esse jogador está lesionado — a troca não pode ser aceite.": "That player is injured — the trade can't be accepted.",
   "Editar Perfil": "Edit Profile",
   "Telemóvel (MB Way)": "Phone (MB Way)",
   "AVALIAÇÃO DOS AMIGOS": "FRIENDS' RATINGS",

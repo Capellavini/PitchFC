@@ -573,8 +573,16 @@ export function useCloud() {
       if (Date.now() > lockAt) return { error: "Escalação trancada — falta menos de 8h para o jogo." };
     }
     if (data.fantasyLeague) {
-      const priceOf = fantasyPriceOf();
       const existing = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
+      // Injured players can be *kept* if they were already on the squad
+      // (e.g. hurt after being picked, or you're just re-saving a captain
+      // change) — only block newly adding one that's already flagged.
+      const previousIds = new Set(existing?.player_ids || []);
+      const newlyAdded = playerIds.filter((id) => !previousIds.has(id));
+      const injuredAdd = newlyAdded.find((id) => data.players.find((p) => p.id === id)?.injured);
+      if (injuredAdd) return { error: "Não podes escalar um jogador lesionado." };
+
+      const priceOf = fantasyPriceOf();
       const effectiveBudget = data.fantasyLeague.budget + (existing?.budget_adjustment || 0);
       const total = playerIds.reduce((s, id) => s + priceOf(id), 0);
       if (total > effectiveBudget) return { error: "Orçamento insuficiente para esta escalação." };
@@ -596,6 +604,9 @@ export function useCloud() {
    *  must accept (respondTradeOffer) before anything changes hands. */
   const createTradeOffer = async (leagueId, toParticipantId, targetPlayerId, givePlayerId, offerType, offerCash) => {
     if (!data.myPlayer) return { error: "Sem sessão." };
+    if (data.players.find((p) => p.id === targetPlayerId)?.injured) {
+      return { error: "Não podes escalar um jogador lesionado." };
+    }
     if (data.fantasyLeague) {
       const priceOf = fantasyPriceOf();
       const mySquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
@@ -627,6 +638,11 @@ export function useCloud() {
       await supabase.from("fantasy_trade_offers").update({ status: "declined", resolved_at: new Date().toISOString() }).eq("id", offer.id);
       await refetch();
       return {};
+    }
+    // Re-check injury status at accept time, not just creation time — a
+    // player can get flagged injured while the offer was sitting pending.
+    if (data.players.find((p) => p.id === offer.target_player_id)?.injured) {
+      return { error: "Esse jogador está lesionado — a troca não pode ser aceite." };
     }
     const buyerSquad = data.fantasySquads.find((s) => s.participant_id === offer.from_participant_id);
     const sellerSquad = data.fantasySquads.find((s) => s.participant_id === offer.to_participant_id);

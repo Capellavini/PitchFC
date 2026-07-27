@@ -1,4 +1,4 @@
-import { Crown, ArmchairIcon } from "lucide-react";
+import { Crown, ArmchairIcon, Cross } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { ini, playerColor, computeOverall } from "../lib/helpers";
 import { computeRoundPoints } from "../lib/fantasy";
@@ -50,6 +50,11 @@ export default function FantasyPitch({ group, playerIds, captainId, reserveId, w
           {isCaptain && (
             <span style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: 11, background: C.gold, border: `2px solid ${C.bg}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
               <Crown size={13} color={C.bg} fill={C.bg} />
+            </span>
+          )}
+          {p.injured && (
+            <span title={t("Lesionado")} style={{ position: "absolute", top: -8, left: -8, width: 22, height: 22, borderRadius: 11, background: C.red, border: `2px solid ${C.bg}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+              <Cross size={13} color="#fff" strokeWidth={2.5} />
             </span>
           )}
           <span style={{ position: "absolute", bottom: -6, left: -6, fontSize: 9, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 7, padding: "1px 5px", border: `1px solid ${C.card}` }}>
@@ -134,6 +139,11 @@ function BenchIcon({ p, group, captainId, weights, lastRoundLines, readOnly, onS
         fontSize: 16, fontWeight: 800, color: playerColor(group, p), position: "relative",
       }}>
         {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 24 }} /> : ini(p.name)}
+        {p.injured && (
+          <span title={t("Lesionado")} style={{ position: "absolute", top: -8, left: -8, width: 22, height: 22, borderRadius: 11, background: C.red, border: `2px solid ${C.bg}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+            <Cross size={13} color="#fff" strokeWidth={2.5} />
+          </span>
+        )}
         <span style={{ position: "absolute", bottom: -6, left: -6, fontSize: 9, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 7, padding: "1px 5px", border: `1px solid ${C.card}` }}>
           {computeOverall(p.position, p.attrs)}
         </span>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Clock, MapPin, Check, X, MessageCircle,
-  CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil, Undo2,
+  CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil, Undo2, Cross,
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist, WEEKDAYS_PT } from "../lib/helpers";
@@ -174,6 +174,11 @@ export default function JogoTab({
                         <Check size={7} strokeWidth={3} color={C.bg} />
                       </div>
                     )}
+                    {player.injured && (
+                      <div title={t("Lesionado")} style={{ position: "absolute", top: -6, left: -6, width: 16, height: 16, borderRadius: 8, background: C.red, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.card}` }}>
+                        <Cross size={9} strokeWidth={3} color="#fff" />
+                      </div>
+                    )}
                     {canManageTeams && !player.isMe && (
                       <button onClick={() => onSetPlayerStatus(player.id, "declined")} title={t("Remover do jogo")}
                         style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 9, background: C.red, border: `2px solid ${C.card}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
@@ -293,7 +298,7 @@ export default function JogoTab({
             {waitlist.map((p, i) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ ...displayFont, fontSize: 15, color: i === 0 ? C.accent : C.text3, width: 22, textAlign: "center" }}>{i + 1}º</div>
-                <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} isMe={p.isMe} photo={p.photo} />
+                <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} isMe={p.isMe} photo={p.photo} injured={p.injured} />
                 <span style={{ flex: 1, fontSize: 13, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1 }}>{p.nick}{p.isMe && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}> {t("(tu)")}</span>}</span>
                 {canManageTeams && !p.isMe ? (
                   <button onClick={() => openWhatsApp(waitlistNudgeMessage(p, game, i + 1, shareUrl), p.phone)}
@@ -325,7 +330,7 @@ export default function JogoTab({
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {pending.map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} photo={p.photo} />
+                <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} photo={p.photo} injured={p.injured} />
                 <span style={{ flex: 1, fontSize: 13, color: C.text2 }}>{p.nick}</span>
                 {canManageTeams && (
                   <button onClick={() => onSetPlayerStatus(p.id, "confirmed")} style={{ background: C.greenDim, border: `1px solid ${C.greenBorder}55`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.green, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
@@ -373,7 +378,7 @@ export default function JogoTab({
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
               {debtors.map((p) => (
                 <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} />
+                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} injured={p.injured} />
                   <span style={{ flex: 1, fontSize: 13 }}>{p.nick}</span>
                   <span style={{ fontSize: 13, color: C.orange, fontWeight: 700 }}>{price}</span>
                   <button onClick={() => togglePaid(p.id)} style={{ background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.accent, fontWeight: 700, cursor: "pointer" }}>{t("Pago ✓")}</button>
@@ -397,7 +402,7 @@ export default function JogoTab({
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {playing.filter((p) => p.paid).map((p) => (
                 <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} />
+                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} injured={p.injured} />
                   <span style={{ flex: 1, fontSize: 13 }}>{p.nick}</span>
                   <button onClick={() => togglePaid(p.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
                     <Undo2 size={12} /> {t("Desfazer")}

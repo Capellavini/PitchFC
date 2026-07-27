@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Pencil, X, Search, Check, ArrowRightLeft } from "lucide-react";
+import { Pencil, X, Search, Check, ArrowRightLeft, Cross } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall } from "../lib/helpers";
 import { fantasyPrice, computeRoundPoints, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM } from "../lib/fantasy";
@@ -176,6 +176,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
     setSelected((sel) => {
       if (sel.includes(id)) return sel.filter((x) => x !== id);
       if (sel.length >= league.squad_size) return sel;
+      if (group.find((p) => p.uuid === id)?.injured) return sel; // injured — can't be escalated
       const count = ownership[id] || 0;
       if (count >= OWNERSHIP_CAP) return sel; // full — trade instead
       return [...sel, id];
@@ -290,7 +291,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
                   background: picked ? C.accentDim : "transparent", border: `1px solid ${picked ? C.accentBorder : C.border}`, opacity: locked ? 0.6 : 1 }}>
                 <button onClick={() => setViewingPlayerId(p.uuid)}
                   style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
-                  <Avatar name={p.name} color={playerColor(group, p)} size={38} fontSize={13} isMe={p.isMe} photo={p.photo} />
+                  <Avatar name={p.name} color={playerColor(group, p)} size={38} fontSize={13} isMe={p.isMe} photo={p.photo} injured={p.injured} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.text1 }}>{p.nick}</div>
                     <div style={{ fontSize: 10, color: atCap ? C.red : C.text2 }}>
@@ -307,7 +308,11 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
                   <div style={{ fontSize: 7, fontWeight: 700, color: C.text3 }}>PTS</div>
                 </div>
                 <div style={{ ...displayFont, fontSize: 12, color: C.accent, minWidth: 44, textAlign: "right" }}>{fmtM(prices[p.uuid])}</div>
-                {locked ? null : atCap ? (
+                {locked ? null : (p.injured && !picked) ? (
+                  <span style={{ background: C.redDim, color: C.red, border: `1px solid ${C.red}55`, borderRadius: 8, padding: "5px 8px", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    <Cross size={11} /> {t("Lesionado")}
+                  </span>
+                ) : atCap ? (
                   <button onClick={() => setTradeTarget({ playerId: p.uuid, owners })} disabled={!owners.length}
                     style={{ background: C.orangeDim, color: C.orange, border: `1px solid ${C.orange}55`, borderRadius: 8, padding: "5px 8px", fontSize: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                     <ArrowRightLeft size={11} /> {t("Oferta")}
@@ -406,7 +411,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
               <div key={row.pid} onClick={() => rivalSquad && setViewingId((v) => (v === row.pid ? null : row.pid))}
                 style={{ display: "flex", alignItems: "center", gap: 10, cursor: rivalSquad ? "pointer" : "default" }}>
                 <div style={{ ...displayFont, width: 20, fontSize: 13, color: C.text3 }}>{i + 1}</div>
-                <Avatar name={row.player?.name || "?"} color={row.player ? playerColor(group, row.player) : C.text3} size={28} fontSize={10} isMe={row.player?.isMe} photo={row.player?.photo} />
+                <Avatar name={row.player?.name || "?"} color={row.player ? playerColor(group, row.player) : C.text3} size={28} fontSize={10} isMe={row.player?.isMe} photo={row.player?.photo} injured={row.player?.injured} />
                 <div style={{ flex: 1, fontSize: 13, fontWeight: row.player?.isMe ? 800 : 600 }}>{row.player?.nick || "?"}</div>
                 <div style={{ fontSize: 10, color: C.text2 }}>{row.rounds} {t("jornadas")}</div>
                 <div style={{ ...displayFont, fontSize: 15, color: C.accent, minWidth: 36, textAlign: "right" }}>{Math.round(row.points)}</div>
@@ -441,7 +446,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
               const p = group.find((x) => x.uuid === s.participant_id);
               return (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={p?.name || "?"} color={p ? playerColor(group, p) : C.text3} size={26} fontSize={10} isMe={p?.isMe} photo={p?.photo} />
+                  <Avatar name={p?.name || "?"} color={p ? playerColor(group, p) : C.text3} size={26} fontSize={10} isMe={p?.isMe} photo={p?.photo} injured={p?.injured} />
                   <div style={{ flex: 1, fontSize: 12 }}>{p?.nick || "?"}</div>
                   <div style={{ ...displayFont, fontSize: 13, color: C.accent }}>{Math.round(s.points)}</div>
                 </div>
