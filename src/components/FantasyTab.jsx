@@ -126,7 +126,6 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
   const [tradeTarget, setTradeTarget] = useState(null); // { playerId, ownerSquad }
   const [sortMode, setSortMode] = useState("pos"); // 'pos' | 'points' — "todos os jogadores por pontuação"
   const [viewingPlayerId, setViewingPlayerId] = useState(null); // player card modal in the market list
-  const lastRoundLines = matchdays[0]?.summary?.lines || null;
 
   const lockAt = kickoffAt ? new Date(new Date(kickoffAt).getTime() - 8 * 3600 * 1000) : null;
   const locked = ended || (lockAt && Date.now() > lockAt.getTime());
@@ -137,6 +136,11 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
     () => matchdays.filter((md) => new Date(md.created_at) >= new Date(league.starts_at || league.created_at)),
     [matchdays, league.starts_at, league.created_at]
   );
+  // The pitch view's live "+N" badges must only reflect a round played
+  // since THIS league started — matchdays[0] alone ignores league.starts_at
+  // and would show points from a game played before the league existed
+  // (e.g. a fresh league right after a matchday, before any round locks).
+  const lastRoundLines = roundsSinceStart[0]?.summary?.lines || null;
   const prices = useMemo(
     () => Object.fromEntries(group.map((p) => [p.uuid, fantasyPrice(p.uuid, roundsSinceStart, weights)])),
     [group, roundsSinceStart, weights]
