@@ -1,15 +1,16 @@
-import { Zap, Users, Trophy, User, Flame, Building2, Crown } from "lucide-react";
+import { Zap, Users, Trophy, User, Flame, Building2, Crown, Swords } from "lucide-react";
 import { C } from "../theme";
 import { t } from "../lib/i18n";
 
 const NAV = [
-  { id: "jogo",    Icon: Zap,       label: "Jogo"    },
-  { id: "clube",   Icon: Building2, label: "Clube"   },
-  { id: "social",  Icon: Flame,     label: "Social"  },
-  { id: "stats",   Icon: Trophy,    label: "Stats"   },
-  { id: "grupo",   Icon: Users,     label: "Grupo"   },
-  { id: "fantasy", Icon: Crown,     label: "Fantasy" },
-  { id: "perfil",  Icon: User,      label: "Perfil"  },
+  { id: "jogo",     Icon: Zap,       label: "Jogo"     },
+  { id: "matchday", Icon: Swords,    label: "Matchday" },
+  { id: "clube",    Icon: Building2, label: "Clube"    },
+  { id: "social",   Icon: Flame,     label: "Social"   },
+  { id: "stats",    Icon: Trophy,    label: "Stats"    },
+  { id: "grupo",    Icon: Users,     label: "Grupo"    },
+  { id: "fantasy",  Icon: Crown,     label: "Fantasy"  },
+  { id: "perfil",   Icon: User,      label: "Perfil"   },
 ];
 
 export default function BottomNav({ tab, onSelect, showClube = false, showFantasy = false, showSocial = false }) {

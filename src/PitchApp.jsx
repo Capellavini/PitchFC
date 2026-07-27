@@ -31,6 +31,7 @@ import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
 import BottomNav from "./components/BottomNav";
 import JogoTab from "./components/JogoTab";
+import MatchdayTab from "./components/MatchdayTab";
 import ClubeTab from "./components/ClubeTab";
 import SocialTab from "./components/SocialTab";
 import StatsTab from "./components/StatsTab";
@@ -857,12 +858,20 @@ export default function PitchApp() {
           <JogoTab
             group={displayGroup} game={game}
             togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
-            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams} onSetPlayerStatus={setPlayerStatus}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday }}
-            lastMatchday={lastMatchdayView}
+            canManageTeams={canManageTeams} onSetPlayerStatus={setPlayerStatus}
             inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
             onReschedule={(weekday, time) => saveSettings({ ...groupSettings, weekday, time })}
             confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
+          />
+        ))}
+        {tab === "matchday" && (noGroup ? (
+          <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
+        ) : (
+          <MatchdayTab
+            group={displayGroup} game={game}
+            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday }}
+            lastMatchday={lastMatchdayView}
           />
         ))}
         {tab === "clube" && cloud.isAdmin && (

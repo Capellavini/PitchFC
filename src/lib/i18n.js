@@ -357,6 +357,8 @@ const EN = {
 
   // ── FantasyTab (admin-only beta) ───────────────────────
   "Fantasy": "Fantasy",
+  "Matchday": "Matchday",
+  "Sorteio, cronómetro e marcação ao vivo.": "Team draw, timer and live scoring.",
   "Ainda não há Liga Fantasy neste grupo.": "There's no Fantasy League in this group yet.",
   "Criar Liga Fantasy": "Create Fantasy League",
   "Escala os teus colegas a cada jornada e pontua com o desempenho real deles em campo.":
