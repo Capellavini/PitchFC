@@ -241,6 +241,7 @@ const EN = {
   "Criar jogo": "Create game", "Novo jogo": "New game", "Terminar dia": "End matchday",
   "Clean sheets do GR escolhido e das Defesas contam ao terminar o dia.": "Clean sheets for the picked GK and the defenders count when the day ends.",
   "Cronómetro do jogo": "Match timer", "Fim do tempo!": "Time's up!",
+  "Tirar 1 minuto": "Remove 1 minute", "Adicionar 1 minuto": "Add 1 minute",
   "Pausar": "Pause", "Retomar": "Resume", "Iniciar": "Start", "Repor": "Reset",
   "Resumo das partidas": "Match summary",
   "Inicia um dia de jogo para ver o resumo. ⚽": "Start a matchday to see the summary. ⚽",

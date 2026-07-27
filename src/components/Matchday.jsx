@@ -126,11 +126,11 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
 
       {/* matches */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 14 }}>
-        {matchday.matches.map((m) => {
+        {matchday.matches.map((m, idx) => {
           const isPending = pending?.matchId === m.id;
           const sides = [m.homeId, m.awayId];
           return (
-            <div key={m.id} style={{ background: C.surface, borderRadius: 14, padding: 14 }}>
+            <div key={m.id} style={{ background: idx % 2 === 0 ? C.surface : C.card, borderRadius: 14, padding: 14 }}>
               <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: 8 }}>{t("JOGO")} {m.n}</div>
 
               {/* goalkeeper picker — rotates match to match, so it's

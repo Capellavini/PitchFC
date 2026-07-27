@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, Timer as TimerIcon, BellRing } from "lucide-react";
+import { Play, Pause, RotateCcw, Timer as TimerIcon, BellRing, Minus, Plus } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { usePersistentState } from "../lib/storage";
 import { t as tr } from "../lib/i18n";
@@ -69,6 +69,17 @@ export default function MatchTimer() {
   const reset = () => setT((s) => ({ ...s, running: false, finished: false, remainingSec: s.durationSec, endsAt: null }));
   const setDuration = (min) => setT((s) => ({ ...s, durationSec: min * 60, remainingSec: min * 60, running: false, endsAt: null, finished: false }));
 
+  // Nudge the clock without stopping it — for when someone forgot to
+  // start it on time and needs to add/remove a minute to compensate.
+  const adjustMinutes = (deltaMin) => {
+    const deltaSec = deltaMin * 60;
+    setT((s) => {
+      if (s.running) return { ...s, endsAt: s.endsAt + deltaSec * 1000, finished: false };
+      const remainingSec = Math.max(0, s.remainingSec + deltaSec);
+      return { ...s, remainingSec, durationSec: Math.max(60, s.durationSec + deltaSec), finished: false };
+    });
+  };
+
   const low = t.running && remaining <= 60;
   const numColor = t.finished ? C.red : low ? C.orange : C.accent;
 
@@ -84,12 +95,23 @@ export default function MatchTimer() {
         )}
       </div>
 
-      {/* big countdown */}
-      <div style={{ textAlign: "center", marginBottom: 14 }}>
-        <div style={{ ...displayFont, fontSize: 56, lineHeight: 1, color: numColor, fontVariantNumeric: "tabular-nums", animation: low ? "tpulse 1s infinite" : "none" }}>
-          {fmt(remaining)}
+      {/* big countdown, with +/- 1 min nudges that work even while running
+          (e.g. forgot to start it on time) */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 14 }}>
+        <button onClick={() => adjustMinutes(-1)} title={tr("Tirar 1 minuto")}
+          style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0, background: C.surface, color: C.text2, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Minus size={15} />
+        </button>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ ...displayFont, fontSize: 56, lineHeight: 1, color: numColor, fontVariantNumeric: "tabular-nums", animation: low ? "tpulse 1s infinite" : "none" }}>
+            {fmt(remaining)}
+          </div>
+          <style>{`@keyframes tpulse { 0%,100% { opacity: 1 } 50% { opacity: 0.45 } }`}</style>
         </div>
-        <style>{`@keyframes tpulse { 0%,100% { opacity: 1 } 50% { opacity: 0.45 } }`}</style>
+        <button onClick={() => adjustMinutes(1)} title={tr("Adicionar 1 minuto")}
+          style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0, background: C.surface, color: C.text2, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Plus size={15} />
+        </button>
       </div>
 
       {/* presets (hidden while running to avoid mistaps) */}

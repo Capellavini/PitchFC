@@ -75,9 +75,9 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
         {source.mode === "campeonato" ? t("Campeonato") : live ? t("Avulsa") : t("Resultado do último dia de jogo")}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
         {/* Vitórias por equipa */}
-        <div style={{ background: C.surface, borderRadius: 12, padding: "10px 8px" }}>
+        <div style={{ background: C.surface, borderRadius: 12, padding: "10px 8px", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center", marginBottom: 10 }}>
             <Trophy size={12} color={C.gold} />
             <span style={{ fontSize: 10, fontWeight: 800, color: C.text2 }}>{t("Vitórias")}</span>
@@ -87,7 +87,7 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {teamWins.map((t, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 4, background: t.color, flexShrink: 0 }} />
                   <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
                   <span style={{ ...displayFont, fontSize: 14, color: t.color }}>{t.wins}</span>
@@ -99,7 +99,7 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
 
         {/* Artilheiros + Assistências */}
         {playerColumns.map(({ label, Icon, color, rows }) => (
-          <div key={label} style={{ background: C.surface, borderRadius: 12, padding: "10px 8px" }}>
+          <div key={label} style={{ background: C.surface, borderRadius: 12, padding: "10px 8px", minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center", marginBottom: 10 }}>
               <Icon size={12} color={color} />
               <span style={{ fontSize: 10, fontWeight: 800, color: C.text2 }}>{t(label)}</span>
@@ -109,8 +109,8 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {rows.map((r, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ ...displayFont, fontSize: 12, width: 10, color: MEDAL[i] || C.text3 }}>{i + 1}</span>
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                    <span style={{ ...displayFont, fontSize: 12, width: 10, flexShrink: 0, color: MEDAL[i] || C.text3 }}>{i + 1}</span>
                     <Avatar name={r.nick} color={r.color || C.text2} size={22} fontSize={8} isMe={r.isMe} photo={r.photo} />
                     <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: r.isMe ? 800 : 500, color: r.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nick}</span>
                     <span style={{ ...displayFont, fontSize: 13, color }}>{r.v}</span>

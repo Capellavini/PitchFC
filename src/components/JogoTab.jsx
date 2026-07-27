@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Clock, MapPin, Check, X, MessageCircle,
-  Shuffle, ClipboardList, CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil, RotateCcw, Undo2,
+  Shuffle, CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil, RotateCcw, Undo2,
 } from "lucide-react";
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist, WEEKDAYS_PT } from "../lib/helpers";
@@ -18,11 +18,9 @@ import MatchSummary from "./MatchSummary";
 
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine,
-  material, toggleMaterial, assignMaterial, addMaterial,
   teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, matchdayProps, lastMatchday,
   inviteUrl, canManageGame, onSetSpots, onReschedule, confirmOpen = true, opensAtLabel, onSetPlayerStatus,
 }) {
-  const [newItem, setNewItem] = useState("");
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const [copied, setCopied] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
@@ -46,13 +44,6 @@ export default function JogoTab({
   const price     = fmtEUR(game.priceEach);
 
   const resolveTeam = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
-
-  const submitNewItem = () => {
-    const item = newItem.trim();
-    if (!item) return;
-    addMaterial(item);
-    setNewItem("");
-  };
 
   return (
     <div style={{ padding: "0 16px" }}>
@@ -468,51 +459,6 @@ export default function JogoTab({
           </div>
         </div>
       )}
-
-      {/* MATERIAL CHECKLIST */}
-      <Collapsible icon={<ClipboardList size={15} color={C.text2} />} title={t("Material do Jogo")} badge={`${material.filter((m) => m.done).length}/${material.length}`}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {material.map((m) => (
-            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <button onClick={() => toggleMaterial(m.id)} style={{
-                width: 22, height: 22, borderRadius: 7, flexShrink: 0,
-                background: m.done ? C.green : "transparent",
-                border: `1.5px solid ${m.done ? C.green : C.border}`,
-                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-              }}>
-                {m.done && <Check size={13} strokeWidth={3} color={C.bg} />}
-              </button>
-              <span style={{ flex: 1, fontSize: 13, textDecoration: m.done ? "line-through" : "none", color: m.done ? C.text3 : C.text1 }}>{m.item}</span>
-              <select
-                value={m.assignedTo ?? ""}
-                onChange={(e) => assignMaterial(m.id, e.target.value ? Number(e.target.value) : null)}
-                style={{
-                  background: C.surface, borderRadius: 8, padding: "4px 8px", fontSize: 11,
-                  border: m.assignedTo ? `1px solid ${C.border}` : `1px dashed ${C.border}`,
-                  color: m.assignedTo ? C.text2 : C.text3, cursor: "pointer", outline: "none",
-                }}
-              >
-                <option value="">{t("atribuir…")}</option>
-                {group.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nick}</option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-          <input
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submitNewItem()}
-            placeholder={t("Adicionar item…")}
-            style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 13, color: C.text1, outline: "none" }}
-          />
-          <button onClick={submitNewItem} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "0 12px", cursor: "pointer", display: "flex", alignItems: "center" }}>
-            <Plus size={16} />
-          </button>
-        </div>
-      </Collapsible>
 
       {/* PAYMENTS OVERVIEW */}
       <Collapsible

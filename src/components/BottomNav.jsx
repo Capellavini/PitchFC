@@ -12,10 +12,14 @@ const NAV = [
   { id: "perfil",  Icon: User,      label: "Perfil"  },
 ];
 
-export default function BottomNav({ tab, onSelect, showClube = false, showFantasy = false }) {
+export default function BottomNav({ tab, onSelect, showClube = false, showFantasy = false, showSocial = false }) {
   // Clube ("em breve") and Fantasy (admin-only beta) are hidden from
   // regular users during testing — only the admin sees them for now.
-  const items = NAV.filter((n) => (n.id !== "clube" || showClube) && (n.id !== "fantasy" || showFantasy));
+  // Social is parked for now (feedback: photo/video sharing won't beat
+  // dedicated apps) — code stays, just not linked from the nav.
+  const items = NAV.filter((n) =>
+    (n.id !== "clube" || showClube) && (n.id !== "fantasy" || showFantasy) && (n.id !== "social" || showSocial)
+  );
   return (
     <div style={{ position: "sticky", bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: "flex", paddingBottom: 14, paddingTop: 10 }}>
       {items.map(({ id, Icon, label }) => {
