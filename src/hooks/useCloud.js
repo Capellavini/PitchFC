@@ -252,7 +252,7 @@ export function useCloud() {
   const createGroupAsOrganizer = async (groupForm, profileForm) => {
     const user = userRef.current;
     const grp = await supabase.from("groups").insert({
-      name: groupForm.groupName, venue: groupForm.venue, weekday: groupForm.weekday,
+      name: groupForm.groupName, venue: groupForm.venue, city: groupForm.city, weekday: groupForm.weekday,
       game_time: groupForm.time, monthly_price_cents: Math.round(groupForm.monthlyPrice * 100),
       max_players: groupForm.maxPlayers,
     }).select().single();

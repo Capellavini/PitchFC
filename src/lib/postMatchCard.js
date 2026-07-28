@@ -30,20 +30,58 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+/** Shrinks the font size (from `startPx` down to `minPx`) until `text`
+ *  measures within `maxW` at the given weight/family — needed because a
+ *  night can have anywhere from 1 to 8+ games, so a fixed score font
+ *  would overflow a narrow chip and bleed into its neighbour. */
+function fitFont(ctx, text, maxW, { startPx, minPx, weight, family }) {
+  let px = startPx;
+  while (px > minPx) {
+    ctx.font = `${weight} ${px}px ${family}`;
+    if (ctx.measureText(text).width <= maxW) break;
+    px -= 2;
+  }
+  return px;
+}
+
 /** player: { name, nick, photo, position, attrs, uuid|id }
  *  matches: lastMatchday.matches (each optionally carrying `lines`, the
  *  per-game breakdown added in PitchApp.jsx's endMatchday)
  *  myKey: the same key used in lines/matches[].lines (uuid in cloud
  *  mode, numeric id locally) — resolves this player's own contribution. */
 export async function renderPostMatchCard({ player, myKey, color, isMVP, groupName, dateLabel, matches = [], aggGoals = 0, aggAssists = 0 }) {
+  const pad = 46;
+
+  // ── score chips layout: wrap into rows instead of squeezing every
+  // game into one line — a full night can easily run 6-8+ short games,
+  // and cramming them side by side made adjacent scores overlap. ──
+  const n = Math.max(1, matches.length);
+  const minChipW = 156;
+  const gap = 16;
+  const availW = W - pad * 2;
+  const maxCols = Math.max(1, Math.floor((availW + gap) / (minChipW + gap)));
+  const cols = Math.min(n, maxCols, 4);
+  const rows = Math.ceil(n / cols);
+  const chipW = (availW - gap * (cols - 1)) / cols;
+  const chipH = 138;
+  const rowGap = 14;
+  const chipsBlockH = rows * chipH + (rows - 1) * rowGap;
+
+  const chipY = pad + 120;
+  const cx0 = W / 2;
+  const cy0 = chipY + chipsBlockH + 200;
+  const r = 118;
+  const statY = cy0 + r + 140;
+  const footerY = statY + 96 + 90;
+  const H_dyn = Math.max(H, footerY + 60);
+
   const canvas = document.createElement("canvas");
-  canvas.width = W; canvas.height = H;
+  canvas.width = W; canvas.height = H_dyn;
   const ctx = canvas.getContext("2d");
 
   ctx.fillStyle = "#0A0F18";
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, H_dyn);
 
-  const pad = 46;
   const [logo, photo] = await Promise.all([
     loadImage("/brand/logo.png").catch(() => null),
     player.photo ? loadImage(player.photo).catch(() => null) : Promise.resolve(null),
@@ -65,46 +103,39 @@ export async function renderPostMatchCard({ player, myKey, color, isMVP, groupNa
   ctx.fillStyle = "#8A94A8";
   ctx.fillText(`${groupName}  ·  ${dateLabel}`, pad, pad + 56);
 
-  // ── score chips, one per game that night ──
-  const chipY = pad + 120;
-  const chipH = 156;
-  const gap = 18;
-  const n = Math.max(1, matches.length);
-  const chipW = (W - pad * 2 - gap * (n - 1)) / n;
   matches.forEach((m, i) => {
-    const x = pad + i * (chipW + gap);
-    roundRect(ctx, x, chipY, chipW, chipH, 20);
+    const col = i % cols, row = Math.floor(i / cols);
+    const x = pad + col * (chipW + gap);
+    const y = chipY + row * (chipH + rowGap);
+    roundRect(ctx, x, y, chipW, chipH, 18);
     ctx.fillStyle = "#121A27"; ctx.fill();
     ctx.lineWidth = 1.5; ctx.strokeStyle = "#262E3D"; ctx.stroke();
 
     ctx.textAlign = "center";
-    ctx.font = "800 15px -apple-system, sans-serif";
+    ctx.font = "800 14px -apple-system, sans-serif";
     ctx.fillStyle = "#3D4659";
-    ctx.fillText(`JOGO ${m.n}`, x + chipW / 2, chipY + 18);
+    ctx.fillText(`JOGO ${m.n}`, x + chipW / 2, y + 16);
 
-    ctx.font = "italic 900 40px -apple-system, sans-serif";
     const homeStr = String(m.homeGoals), awayStr = String(m.awayGoals);
+    const scoreStr = `${homeStr} – ${awayStr}`;
+    const scorePx = fitFont(ctx, scoreStr, chipW - 24, { startPx: 38, minPx: 20, weight: "italic 900", family: "-apple-system, sans-serif" });
     const wHome = ctx.measureText(homeStr).width;
     const wSep = ctx.measureText(" – ").width;
     const wAway = ctx.measureText(awayStr).width;
     let cx = x + chipW / 2 - (wHome + wSep + wAway) / 2;
     ctx.textAlign = "left";
-    ctx.fillStyle = "#C8FF00"; ctx.fillText(homeStr, cx, chipY + 46); cx += wHome;
-    ctx.fillStyle = "#3D4659"; ctx.fillText(" – ", cx, chipY + 46); cx += wSep;
-    ctx.fillStyle = "#4895FF"; ctx.fillText(awayStr, cx, chipY + 46);
+    ctx.font = `italic 900 ${scorePx}px -apple-system, sans-serif`;
+    ctx.fillStyle = "#C8FF00"; ctx.fillText(homeStr, cx, y + 42); cx += wHome;
+    ctx.fillStyle = "#3D4659"; ctx.fillText(" – ", cx, y + 42); cx += wSep;
+    ctx.fillStyle = "#4895FF"; ctx.fillText(awayStr, cx, y + 42);
 
     const mine = (m.lines || []).find((l) => l.key === myKey);
     ctx.textAlign = "center";
-    ctx.font = "700 18px -apple-system, sans-serif";
+    ctx.font = "700 15px -apple-system, sans-serif";
     ctx.fillStyle = (mine?.goals || mine?.assists) ? "#C8FF00" : "#5D6579";
-    ctx.fillText(`⚽ ${mine?.goals || 0}    🎯 ${mine?.assists || 0}`, x + chipW / 2, chipY + chipH - 40);
+    ctx.fillText(`⚽${mine?.goals || 0}  🎯${mine?.assists || 0}`, x + chipW / 2, y + chipH - 34);
   });
   ctx.textAlign = "left";
-
-  // ── player spotlight ──
-  const cx0 = W / 2;
-  const cy0 = chipY + chipH + 210;
-  const r = 118;
   ctx.save();
   ctx.beginPath(); ctx.arc(cx0, cy0, r, 0, Math.PI * 2); ctx.closePath();
   if (photo) {
@@ -162,7 +193,6 @@ export async function renderPostMatchCard({ player, myKey, color, isMVP, groupNa
   ctx.fillText(player.position || "", cx0, cy0 + r + 90);
 
   // aggregate stat row
-  const statY = cy0 + r + 140;
   const stats = [["GOLOS", aggGoals], ["ASSIST.", aggAssists]];
   const statChipW = 180, statGap = 20;
   const statsTotalW = stats.length * statChipW + (stats.length - 1) * statGap;
@@ -185,7 +215,7 @@ export async function renderPostMatchCard({ player, myKey, color, isMVP, groupNa
   ctx.font = "600 18px -apple-system, sans-serif";
   ctx.fillStyle = "#3D4659";
   ctx.textAlign = "center";
-  ctx.fillText("pitch-fc.vercel.app", cx0, H - 56);
+  ctx.fillText("pitch-fc.vercel.app", cx0, H_dyn - 56);
 
   return canvas.toDataURL("image/png");
 }

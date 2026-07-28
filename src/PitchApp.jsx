@@ -159,20 +159,20 @@ export default function PitchApp() {
 
   const groupSettings = cloudMode
     ? {
-        groupName: cloud.groupRow.name, venue: cloud.groupRow.venue,
+        groupName: cloud.groupRow.name, venue: cloud.groupRow.venue, city: cloud.groupRow.city ?? "",
         weekday: cloud.groupRow.weekday, time: cloud.groupRow.game_time,
         monthlyPrice: cloud.groupRow.monthly_price_cents / 100, maxPlayers: cloud.groupRow.max_players,
         recurring: cloud.groupRow.recurring ?? true,
         openWeekday: cloud.groupRow.open_weekday ?? 1, openTime: cloud.groupRow.open_time ?? "17:00",
       }
     : noGroup
-      ? { groupName: "", venue: "", weekday: 6, time: "20:00", monthlyPrice: 0, maxPlayers: 0, recurring: false, openWeekday: 1, openTime: "17:00" }
+      ? { groupName: "", venue: "", city: "", weekday: 6, time: "20:00", monthlyPrice: 0, maxPlayers: 0, recurring: false, openWeekday: 1, openTime: "17:00" }
       : settings;
 
   const saveSettings = (form) => {
     if (cloudMode) {
       cloud.updateGroupRow({
-        name: form.groupName, venue: form.venue, weekday: form.weekday, game_time: form.time,
+        name: form.groupName, venue: form.venue, city: form.city, weekday: form.weekday, game_time: form.time,
         monthly_price_cents: Math.round(form.monthlyPrice * 100), max_players: form.maxPlayers,
         recurring: form.recurring, open_weekday: form.openWeekday, open_time: form.openTime,
       });

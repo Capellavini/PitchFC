@@ -59,18 +59,20 @@ async function geocodeOne(query) {
   return hits.find((h) => h.country_code === "PT") || hits[0] || null;
 }
 
-/** Resolves a free-text venue to { lat, lon }, cached in localStorage so
- *  it's a one-time lookup per venue string, not a request per render. */
-async function geocodeVenue(venue) {
-  if (!venue) return null;
-  const cacheKey = geocodeCacheKey(venue);
+/** Resolves free text to { lat, lon }, cached in localStorage so it's a
+ *  one-time lookup per string, not a request per render. `candidates`
+ *  lets callers offer fallback queries to try in order (e.g. the part
+ *  of a venue string after the last comma, then the raw string). */
+async function geocodeCached(text, candidates = [text]) {
+  if (!text) return null;
+  const cacheKey = geocodeCacheKey(text);
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) return JSON.parse(cached);
   } catch { /* ignore storage errors */ }
 
   try {
-    for (const candidate of cityCandidates(venue)) {
+    for (const candidate of candidates) {
       const hit = await geocodeOne(candidate);
       if (hit) {
         const coords = { lat: hit.latitude, lon: hit.longitude };
@@ -106,13 +108,19 @@ async function fetchDailyForecast(lat, lon, dateISO) {
 }
 
 /** Combines geocoding + forecast for a game's venue + kickoff date.
- *  Returns null (silently) if the venue can't be resolved, the date is
- *  out of forecast range, or the network call fails — the caller just
- *  doesn't render the widget rather than showing an error. */
-export async function fetchGameWeather(venue, kickoffDate) {
-  if (!venue || !kickoffDate) return null;
-  const coords = await geocodeVenue(venue);
-  if (!coords) return null;
+ *  `city`, if the organizer set one in group settings, is used directly
+ *  (reliable — it's an actual place name) instead of guessing from the
+ *  free-text venue, which is often just a court/field name that the
+ *  geocoder can't resolve at all (e.g. "CCD 5v5"). Returns null
+ *  (silently) if nothing can be resolved, the date is out of forecast
+ *  range, or the network call fails — the caller just doesn't render
+ *  the widget rather than showing an error. */
+export async function fetchGameWeather(venue, kickoffDate, city) {
+  if (!kickoffDate) return null;
+  const resolved = city
+    ? await geocodeCached(city, [city])
+    : (venue ? await geocodeCached(venue, cityCandidates(venue)) : null);
+  if (!resolved) return null;
   const dateISO = kickoffDate.toISOString().slice(0, 10);
-  return fetchDailyForecast(coords.lat, coords.lon, dateISO);
+  return fetchDailyForecast(resolved.lat, resolved.lon, dateISO);
 }

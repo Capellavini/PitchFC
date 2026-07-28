@@ -31,12 +31,12 @@ export default function JogoTab({
   useEffect(() => {
     let cancelled = false;
     setWeather(null);
-    if (game.venue && game.kickoffAt) {
-      fetchGameWeather(game.venue, game.kickoffAt).then((w) => { if (!cancelled) setWeather(w); });
+    if ((game.city || game.venue) && game.kickoffAt) {
+      fetchGameWeather(game.venue, game.kickoffAt, game.city).then((w) => { if (!cancelled) setWeather(w); });
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game.venue, kickoffTime]);
+  }, [game.venue, game.city, kickoffTime]);
 
   const confirmed = group.filter((p) => p.status === "confirmed");
   const pending   = group.filter((p) => p.status === "pending");

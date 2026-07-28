@@ -42,6 +42,7 @@ export default function OnboardingOrganizer({ settings, onDone, onBack }) {
         </div>
         {input(t("Nome do grupo"), "groupName")}
         {input(t("Campo / recinto"), "venue")}
+        {input(t("Cidade (para a previsão do tempo)"), "city")}
       </div>
 
       {/* Schedule */}

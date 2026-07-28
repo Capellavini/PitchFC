@@ -85,6 +85,7 @@ export const INITIAL_GROUP = [
 export const DEFAULT_SETTINGS = {
   groupName:    "FC Amigos",
   venue:        "PITCH Club — Campo 1",
+  city:         "",       // for weather lookup only — venue names rarely geocode
   weekday:      6,        // 0=Domingo … 6=Sábado
   time:         "20:00",
   monthlyPrice: 80,       // € per month for the whole group
