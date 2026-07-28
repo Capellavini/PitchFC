@@ -710,7 +710,7 @@ export default function PitchApp() {
     if (cloud.status === "loading") {
       return shell(
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
-          <img src={BRAND.logo} alt="PITCH Club" style={{ height: 30 }} />
+          <img src={BRAND.logo} alt="PITCH App" style={{ height: 30 }} />
           <div style={{ fontSize: 13, color: C.text2 }}>{t("A ligar ao clube…")}</div>
         </div>
       );
@@ -909,7 +909,7 @@ export default function PitchApp() {
   return shell(
     <>
       <div style={{ display: "flex", alignItems: "center", padding: "14px 16px 0" }}>
-        <img src={BRAND.logo} alt="PITCH Club" style={{ height: 24 }} />
+        <img src={BRAND.logo} alt="PITCH App" style={{ height: 24 }} />
       </div>
       <div style={{ paddingBottom: 80 }}>
         {tab === "jogo" && (noGroup ? (

@@ -11,7 +11,7 @@ export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin }) {
       padding: "32px 20px", ...fieldBackdrop(0.45, 0.92),
     }}>
       <div style={{ textAlign: "center", marginBottom: 44 }}>
-        <img src={BRAND.logo} alt="PITCH Club" style={{ width: "78%", maxWidth: 300 }} />
+        <img src={BRAND.logo} alt="PITCH App" style={{ width: "78%", maxWidth: 300 }} />
         <div style={{ fontSize: 14, color: C.text2, marginTop: 4 }}>
           {t("O teu jogo semanal, organizado. ⚽")}
         </div>

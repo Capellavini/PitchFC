@@ -46,7 +46,7 @@ export default function RatePlayer({ payload }) {
   if (code) {
     return (
       <div style={{ padding: "40px 16px", textAlign: "center" }}>
-        <img src={BRAND.logo} alt="PITCH Club" style={{ height: 26, marginBottom: 24 }} />
+        <img src={BRAND.logo} alt="PITCH App" style={{ height: 26, marginBottom: 24 }} />
         <div style={{ ...displayFont, fontSize: 24, marginBottom: 6 }}>Avaliação feita! ⚽</div>
         <div style={{ fontSize: 13, color: C.text2, marginBottom: 20 }}>
           Agora envia o código a <strong style={{ color: C.text1 }}>{player.nick}</strong> — ele cola-o na app e o cartão atualiza.
@@ -76,7 +76,7 @@ export default function RatePlayer({ payload }) {
   return (
     <div style={{ padding: "32px 16px 40px" }}>
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <img src={BRAND.logo} alt="PITCH Club" style={{ height: 26, marginBottom: 18 }} />
+        <img src={BRAND.logo} alt="PITCH App" style={{ height: 26, marginBottom: 18 }} />
         <div style={{ ...displayFont, fontSize: 24 }}>Avalia o {player.nick}</div>
         <div style={{ fontSize: 13, color: C.text2, marginTop: 4 }}>
           Sê justo — o cartão dele vai refletir a tua opinião 👀

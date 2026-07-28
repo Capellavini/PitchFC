@@ -56,7 +56,7 @@ export default function LandingPage({ onEnter, lang, onLang }) {
       {/* NAV */}
       <div style={{ position: "sticky", top: 0, zIndex: 10, background: `${C.bg}E6`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.border}` }}>
         <Section style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px" }}>
-          <img src={BRAND.logo} alt="PITCH Club" style={{ height: 26 }} />
+          <img src={BRAND.logo} alt="PITCH App" style={{ height: 26 }} />
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {onLang && (
               <div style={{ display: "flex", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 2, gap: 2 }}>
@@ -132,7 +132,7 @@ export default function LandingPage({ onEnter, lang, onLang }) {
       {/* FOOTER */}
       <div style={{ borderTop: `1px solid ${C.border}` }}>
         <Section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "24px 20px" }}>
-          <img src={BRAND.logo} alt="PITCH Club" style={{ height: 20, opacity: 0.7 }} />
+          <img src={BRAND.logo} alt="PITCH App" style={{ height: 20, opacity: 0.7 }} />
           <div style={{ fontSize: 12, color: C.text3 }}>
             {t("PITCH Club · Matosinhos — Porto · versão beta")}
           </div>

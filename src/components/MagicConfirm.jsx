@@ -40,7 +40,7 @@ export default function MagicConfirm({ token }) {
   const wrap = (children) => (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 20px", ...fieldBackdrop(0.5, 0.94) }}>
       <div style={{ textAlign: "center", marginBottom: 22 }}>
-        <img src={BRAND.logo} alt="PITCH Club" style={{ width: "58%", maxWidth: 210 }} />
+        <img src={BRAND.logo} alt="PITCH App" style={{ width: "58%", maxWidth: 210 }} />
       </div>
       {children}
     </div>

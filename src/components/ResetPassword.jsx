@@ -42,7 +42,7 @@ export default function ResetPassword({ onSubmit, onCancel }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 20px", ...fieldBackdrop(0.5, 0.94) }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <img src={BRAND.logo} alt="PITCH Club" style={{ width: "62%", maxWidth: 230 }} />
+        <img src={BRAND.logo} alt="PITCH App" style={{ width: "62%", maxWidth: 230 }} />
       </div>
 
       <div style={{ ...cardStyle, padding: 20 }}>

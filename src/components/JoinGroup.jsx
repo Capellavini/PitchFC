@@ -24,7 +24,7 @@ export default function JoinGroup({ onJoin, onLogout, onSkip, isAdmin, onOpenAdm
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 20px", ...fieldBackdrop(0.5, 0.94) }}>
       <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <img src={BRAND.logo} alt="PITCH Club" style={{ width: "58%", maxWidth: 210 }} />
+        <img src={BRAND.logo} alt="PITCH App" style={{ width: "58%", maxWidth: 210 }} />
       </div>
 
       <div style={{ ...cardStyle, padding: 22, textAlign: "center" }}>
