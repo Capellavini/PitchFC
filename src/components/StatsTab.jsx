@@ -1,10 +1,12 @@
-import { Star, Check, Shield } from "lucide-react";
+import { useState } from "react";
+import { Star, Check, Shield, Share2 } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
+import PostMatchCardModal from "./PostMatchCard";
 
 const RANKS = [
   { n: 1, label: "1º lugar", color: C.gold },
@@ -12,11 +14,17 @@ const RANKS = [
   { n: 3, label: "3º lugar", color: C.bronze },
 ];
 
-export default function StatsTab({ group, history, lastMatchday, mvp, statMode, setStatMode }) {
+export default function StatsTab({ group, history, lastMatchday, mvp, statMode, setStatMode, groupName }) {
   const fields = { goals: "goals", assists: "assists", mvps: "mvps" };
   const list = [...group].sort((a, b) => (b[fields[statMode]] || 0) - (a[fields[statMode]] || 0)).slice(0, 8);
   const totalGames = history.reduce((s, h) => s + (h.games || 1), 0);
   const lines = lastMatchday?.lines ?? [];
+  const [showCard, setShowCard] = useState(false);
+
+  const me = group.find((p) => p.isMe);
+  const myKey = me ? (me.uuid ?? me.id) : null;
+  const iPlayed = Boolean(me) && (lastMatchday?.candidates ?? []).some((c) => c.key === myKey);
+  const isMVP = Boolean(me) && mvp?.podium?.first === me.nick;
 
   // Assigning a candidate to a rank they already hold elsewhere moves
   // them (the DB rejects the same candidate at two ranks for one voter).
@@ -70,7 +78,17 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
               ))}
             </div>
           )}
+          {iPlayed && (
+            <button onClick={() => setShowCard(true)}
+              style={{ width: "100%", marginTop: 14, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Share2 size={15} /> {t("Gerar o meu card")}
+            </button>
+          )}
         </div>
+      )}
+
+      {showCard && me && (
+        <PostMatchCardModal player={me} group={group} matchday={lastMatchday} groupName={groupName} isMVP={isMVP} onClose={() => setShowCard(false)} />
       )}
 
       {/* MVP VOTING — ranked top-3 ballot, feeds Fantasy League bonuses */}

@@ -437,6 +437,8 @@ const EN = {
   "O teu banco": "Your bank", "Custo desta troca": "This trade's cost",
   "Banco insuficiente": "Not enough bank",
   "PREÇO": "PRICE", "PTS NA LIGA": "LEAGUE PTS", "DONOS": "OWNERS",
+  "Gerar o meu card": "Create my card", "A gerar o teu card…": "Creating your card…",
+  "Falha ao gerar o card.": "Couldn't create the card.", "Descarregar": "Download",
 
   // ── Matchday (goalkeeper picker) ────────────────────────
   "GR?": "GK?",

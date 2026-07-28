@@ -474,6 +474,7 @@ export default function PitchApp() {
     const winsById = Object.fromEntries(teamResults.map((t) => [t.id, t]));
     const mdMatches = [];
     let totalGoals = 0;
+    const keyOf = (p) => (cloudMode ? p.uuid : p.id);
 
     matchday.matches.forEach((m) => {
       const hg = m.events.filter((e) => e.teamId === m.homeId).length;
@@ -499,7 +500,21 @@ export default function PitchApp() {
         if (winsById[winId]) winsById[winId].wins += 1;
         (teamsById[winId]?.players || []).forEach((id) => bump(id, "wins"));
       }
-      mdMatches.push({ n: m.n, homeName: home?.name ?? "—", awayName: away?.name ?? "—", homeGoals: hg, awayGoals: ag });
+      // Per-match breakdown (who scored/assisted in THIS game, not just the
+      // night's total) — feeds the post-match share card, which shows each
+      // game's score alongside what the player themself did in it.
+      const matchStats = {};
+      const bumpMatch = (id, key) => {
+        if (!id) return;
+        matchStats[id] = matchStats[id] ?? { goals: 0, assists: 0 };
+        matchStats[id][key] += 1;
+      };
+      m.events.forEach((e) => { bumpMatch(e.scorerId, "goals"); bumpMatch(e.assistId, "assists"); });
+      const matchLines = Object.entries(matchStats).map(([pid, s]) => {
+        const p = baseGroup.find((x) => x.id === Number(pid));
+        return p ? { key: keyOf(p), goals: s.goals, assists: s.assists } : null;
+      }).filter(Boolean);
+      mdMatches.push({ n: m.n, homeName: home?.name ?? "—", awayName: away?.name ?? "—", homeGoals: hg, awayGoals: ag, lines: matchLines });
     });
 
     // Waitlisted players didn't play — only the playing XI gets stats.
@@ -507,7 +522,6 @@ export default function PitchApp() {
     const playingIds = new Set(playing.map((p) => p.id));
     const confirmed = playing;
     const date = fmtDayMonth(isoDay(0));
-    const keyOf = (p) => (cloudMode ? p.uuid : p.id);
 
     // Display-ready per-player lines (who did what today), sorted.
     const lines = Object.entries(stats)
@@ -949,7 +963,7 @@ export default function PitchApp() {
         )}
         {tab === "social" && <SocialTab social={social} />}
         {tab === "stats" && (
-          <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} />
+          <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} groupName={game.groupName} />
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />

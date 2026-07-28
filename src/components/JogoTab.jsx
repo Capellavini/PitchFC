@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Clock, MapPin, Check, X, MessageCircle,
   CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil, Undo2, Cross,
@@ -6,6 +6,7 @@ import {
 import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist, WEEKDAYS_PT } from "../lib/helpers";
 import { t } from "../lib/i18n";
+import { fetchGameWeather, weatherIconFor } from "../lib/weather";
 import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage, magicConfirmUrl, lineupShareMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
@@ -21,6 +22,21 @@ export default function JogoTab({
   const [rescheduling, setRescheduling] = useState(false);
   const [draftDay, setDraftDay] = useState(game.weekday);
   const [draftTime, setDraftTime] = useState(game.time);
+  const [weather, setWeather] = useState(null);
+
+  // Passive weather info next to date/venue — no reschedule suggestion,
+  // just "preciso de casaco?" at a glance. Silently absent if the venue
+  // can't be geocoded or the game is outside the forecast window.
+  const kickoffTime = game.kickoffAt?.getTime();
+  useEffect(() => {
+    let cancelled = false;
+    setWeather(null);
+    if (game.venue && game.kickoffAt) {
+      fetchGameWeather(game.venue, game.kickoffAt).then((w) => { if (!cancelled) setWeather(w); });
+    }
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.venue, kickoffTime]);
 
   const confirmed = group.filter((p) => p.status === "confirmed");
   const pending   = group.filter((p) => p.status === "pending");
@@ -53,6 +69,14 @@ export default function JogoTab({
             <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: C.text2, flexWrap: "wrap" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {game.date} · {game.time}</span>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {game.venue}</span>
+              {weather && (() => {
+                const { Icon, label } = weatherIconFor(weather.code);
+                return (
+                  <span title={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <Icon size={12} /> {weather.tMax}° <span style={{ color: C.text3 }}>/ {weather.tMin}°</span>
+                  </span>
+                );
+              })()}
               {canManageGame && onReschedule && (
                 <button onClick={() => { setDraftDay(game.weekday); setDraftTime(game.time); setRescheduling(!rescheduling); }}
                   title={t("Alterar dia e hora do jogo")}
