@@ -303,7 +303,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
       {/* Language picker */}
       {isOwn && onLang && (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Globe size={18} color={C.text2} />
             </div>
@@ -311,14 +311,13 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
               <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Idioma")}</div>
               <div style={{ fontSize: 11, color: C.text2 }}>Português · Português (BR) · English · Italiano</div>
             </div>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 3, gap: 3 }}>
-            {[["pt", "🇵🇹 PT"], ["pt-br", "🇧🇷 PT-BR"], ["en", "🇬🇧 EN"], ["it", "🇮🇹 IT"]].map(([l, label]) => (
-              <button key={l} onClick={() => onLang(l)}
-                style={{ flex: "1 1 auto", minWidth: 68, background: lang === l ? C.accent : "transparent", color: lang === l ? C.bg : C.text2, border: "none", borderRadius: 8, padding: "7px 8px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
-                {label}
-              </button>
-            ))}
+            <select value={lang} onChange={(e) => onLang(e.target.value)}
+              style={{ background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 10px", fontSize: 12, fontWeight: 700, outline: "none", cursor: "pointer", colorScheme: "dark" }}>
+              <option value="pt">🇵🇹 PT</option>
+              <option value="pt-br">🇧🇷 PT-BR</option>
+              <option value="en">🇬🇧 EN</option>
+              <option value="it">🇮🇹 IT</option>
+            </select>
           </div>
         </div>
       )}

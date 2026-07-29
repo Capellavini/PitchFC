@@ -59,14 +59,13 @@ export default function LandingPage({ onEnter, lang, onLang }) {
           <img src={BRAND.logo} alt="PITCH App" style={{ height: 26 }} />
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {onLang && (
-              <div style={{ display: "flex", flexWrap: "wrap", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 2, gap: 2 }}>
-                {[["pt", "PT"], ["pt-br", "PT-BR"], ["en", "EN"], ["it", "IT"]].map(([l, label]) => (
-                  <button key={l} onClick={() => onLang(l)}
-                    style={{ background: lang === l ? C.accent : "transparent", color: lang === l ? C.bg : C.text2, border: "none", borderRadius: 8, padding: "5px 9px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <select value={lang} onChange={(e) => onLang(e.target.value)}
+                style={{ background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 8px", fontSize: 12, fontWeight: 700, outline: "none", cursor: "pointer", colorScheme: "dark" }}>
+                <option value="pt">🇵🇹 PT</option>
+                <option value="pt-br">🇧🇷 PT-BR</option>
+                <option value="en">🇬🇧 EN</option>
+                <option value="it">🇮🇹 IT</option>
+              </select>
             )}
             <button onClick={onEnter} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: C.text1, cursor: "pointer" }}>
               {t("Entrar")}
