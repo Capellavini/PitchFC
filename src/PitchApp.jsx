@@ -786,6 +786,7 @@ export default function PitchApp() {
     return shell(
       <OnboardingOrganizer
         settings={groupSettings}
+        isEditing
         onBack={() => setEditingGroup(false)}
         onDone={(form) => { saveSettings(form); setEditingGroup(false); }}
       />

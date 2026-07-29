@@ -5,8 +5,14 @@ import { WEEKDAYS_PT, fmtEUR } from "../lib/helpers";
 import { t, getLang } from "../lib/i18n";
 import BtnPrimary from "./BtnPrimary";
 
-/** Organizer onboarding — group, venue, schedule and price split. */
-export default function OnboardingOrganizer({ settings, onDone, onBack }) {
+/** Organizer onboarding — group, venue, schedule and price split. Also
+ *  reused to EDIT an existing group's settings (`isEditing`) — in that
+ *  case it only ever calls onDone with the updated fields (a plain
+ *  update, nothing is recreated or re-invited), but the button/copy
+ *  still said "Criar grupo e convidar" either way, which read as if it
+ *  might wipe or re-invite the group. Now it's explicit about which
+ *  mode this is. */
+export default function OnboardingOrganizer({ settings, onDone, onBack, isEditing = false }) {
   const [form, setForm] = useState({ ...settings });
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -28,10 +34,10 @@ export default function OnboardingOrganizer({ settings, onDone, onBack }) {
         <button onClick={onBack} style={{ background: "none", border: "none", color: C.text2, cursor: "pointer", padding: 4, display: "flex" }}>
           <ChevronLeft size={20} />
         </button>
-        <div style={{ ...displayFont, fontSize: 22 }}>{t("O teu grupo")}</div>
+        <div style={{ ...displayFont, fontSize: 22 }}>{isEditing ? t("Editar grupo") : t("O teu grupo")}</div>
       </div>
       <div style={{ fontSize: 13, color: C.text2, marginBottom: 16, paddingLeft: 34 }}>
-        {t("Define o jogo semanal — depois é só convidar a malta.")}
+        {isEditing ? t("Atualiza as definições do jogo — nada mais é apagado ou reenviado.") : t("Define o jogo semanal — depois é só convidar a malta.")}
       </div>
 
       {/* Group + venue */}
@@ -121,23 +127,25 @@ export default function OnboardingOrganizer({ settings, onDone, onBack }) {
         </div>
       </div>
 
-      {/* What you get */}
-      <div style={{ ...cardStyle, marginBottom: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-          <Users size={15} color={C.blue} />
-          <span style={{ fontSize: 13, fontWeight: 700 }}>{t("O PITCH trata do resto")}</span>
+      {/* What you get — only relevant when actually onboarding a new group */}
+      {!isEditing && (
+        <div style={{ ...cardStyle, marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <Users size={15} color={C.blue} />
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{t("O PITCH trata do resto")}</span>
+          </div>
+          <div style={{ fontSize: 12, color: C.text2, lineHeight: 1.8 }}>
+            ✓ {t("Convites e lembretes por WhatsApp")}<br />
+            ✓ {t("Confirmações com grelha de vagas em direto")}<br />
+            ✓ {t("Controlo de pagamentos por jogador")}<br />
+            ✓ {t("Sorteio de equipas equilibrado por posição")}<br />
+            ✓ {t("Stats, MVP e histórico de jogos")}
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: C.text2, lineHeight: 1.8 }}>
-          ✓ {t("Convites e lembretes por WhatsApp")}<br />
-          ✓ {t("Confirmações com grelha de vagas em direto")}<br />
-          ✓ {t("Controlo de pagamentos por jogador")}<br />
-          ✓ {t("Sorteio de equipas equilibrado por posição")}<br />
-          ✓ {t("Stats, MVP e histórico de jogos")}
-        </div>
-      </div>
+      )}
 
       <BtnPrimary onClick={() => onDone(form)} style={{ width: "100%", fontSize: 15, padding: 14 }}>
-        {t("Criar grupo e convidar 📣")}
+        {isEditing ? t("Guardar alterações") : t("Criar grupo e convidar 📣")}
       </BtnPrimary>
     </div>
   );

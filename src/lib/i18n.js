@@ -152,6 +152,11 @@ const EN = {
   "O teu grupo": "Your group",
   "Define o jogo semanal — depois é só convidar a malta.":
     "Set up the weekly game — then just invite the crew.",
+  "Editar grupo": "Edit group",
+  "Atualiza as definições do jogo — nada mais é apagado ou reenviado.":
+    "Updates the game's settings — nothing else gets deleted or resent.",
+  "Guardar alterações": "Save changes",
+  "Cidade (para a previsão do tempo)": "City (for the weather forecast)",
   "Grupo e campo": "Group & pitch", "Nome do grupo": "Group name", "Campo / recinto": "Pitch / venue",
   "Dia e hora do jogo": "Game day & time", "Hora de início": "Start time",
   "Jogo recorrente": "Recurring game",
