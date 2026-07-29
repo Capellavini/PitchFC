@@ -14,13 +14,32 @@
 const LANG_KEY = "pitch.v2.lang";
 const SUPPORTED = ["pt", "pt-br", "en", "it"];
 
+/** Maps the browser's own language preference (navigator.language, no
+ *  permission needed, no geolocation) to one of our 4 dictionaries —
+ *  used only as the FIRST-VISIT default, before anyone's picked a
+ *  language explicitly. "pt-BR" → pt-br; any other "pt-*" → pt-PT
+ *  (the app's source language); unmatched locales fall back to "en"
+ *  as the most broadly understood option. */
+export function detectLang() {
+  try {
+    const langs = navigator.languages?.length ? navigator.languages : [navigator.language];
+    for (const raw of langs) {
+      const l = (raw || "").toLowerCase();
+      if (l.startsWith("pt-br")) return "pt-br";
+      if (l.startsWith("pt")) return "pt";
+      if (l.startsWith("it")) return "it";
+      if (l.startsWith("en")) return "en";
+    }
+  } catch { /* navigator unavailable — ignore, fall through */ }
+  return "en";
+}
+
 let current = (() => {
   try {
     const stored = JSON.parse(localStorage.getItem(LANG_KEY));
-    return SUPPORTED.includes(stored) ? stored : "pt";
-  } catch {
-    return "pt";
-  }
+    if (SUPPORTED.includes(stored)) return stored;
+  } catch { /* no stored preference yet */ }
+  return detectLang();
 })();
 
 export const getLang = () => current;

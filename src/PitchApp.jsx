@@ -16,7 +16,7 @@ import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSIT
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl } from "./lib/helpers";
-import { t, setLang } from "./lib/i18n";
+import { t, setLang, detectLang } from "./lib/i18n";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
@@ -75,7 +75,7 @@ export default function PitchApp() {
   const [openMatches, setOpenMatches] = usePersistentState("openMatches", OPEN_MATCHES);
   const [ownPublished, setOwnPublished] = usePersistentState("ownPublished", false);
   const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
-  const [lang, setLangState]    = usePersistentState("lang", "pt");
+  const [lang, setLangState]    = usePersistentState("lang", detectLang());
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
