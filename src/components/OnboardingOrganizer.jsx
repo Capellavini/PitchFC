@@ -17,7 +17,7 @@ export default function OnboardingOrganizer({ settings, onDone, onBack, isEditin
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
   const perPlayer = form.maxPlayers > 0 ? form.monthlyPrice / form.maxPlayers : 0;
-  const en = getLang() === "en";
+  const lang = getLang();
 
   const input = (label, key, type = "text", extra = {}) => (
     <div style={{ marginBottom: 12 }}>
@@ -99,8 +99,10 @@ export default function OnboardingOrganizer({ settings, onDone, onBack, isEditin
             <input type="time" value={form.openTime} onChange={(e) => set("openTime", e.target.value)}
               style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark", marginBottom: 12 }} />
             <div style={{ background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: 12, fontSize: 12, color: C.text2 }}>
-              {en ? (
+              {lang === "en" ? (
                 <>📅 Every <b style={{ color: C.accent }}>{t(WEEKDAYS_PT[form.openWeekday])} at {form.openTime}</b> confirmations open for the <b style={{ color: C.text1 }}>{t(WEEKDAYS_PT[form.weekday])}</b> game.</>
+              ) : lang === "it" ? (
+                <>📅 Ogni <b style={{ color: C.accent }}>{t(WEEKDAYS_PT[form.openWeekday]).toLowerCase()} alle {form.openTime}</b> apre la conferma per la partita di <b style={{ color: C.text1 }}>{t(WEEKDAYS_PT[form.weekday]).toLowerCase()}</b>.</>
               ) : (
                 <>📅 Todas as <b style={{ color: C.accent }}>{WEEKDAYS_PT[form.openWeekday]?.toLowerCase()}s às {form.openTime}</b> abre a confirmação para o jogo de <b style={{ color: C.text1 }}>{WEEKDAYS_PT[form.weekday]?.toLowerCase()}</b>.</>
               )}

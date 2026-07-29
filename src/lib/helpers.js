@@ -94,15 +94,27 @@ export const fmtFullDay = (iso) => {
 
 /** "agora" / "há 5 min" / "há 3h" / "há 2 dias" / "13 Jun" */
 export function relativeTime(ts) {
-  const en = getLang() === "en";
+  const lang = getLang();
   const then = new Date(ts).getTime();
   const mins = Math.floor((Date.now() - then) / 60000);
   if (mins < 1) return t("agora");
-  if (mins < 60) return en ? `${mins} min ago` : `há ${mins} min`;
+  if (mins < 60) {
+    if (lang === "en") return `${mins} min ago`;
+    if (lang === "it") return `${mins} min fa`;
+    return `há ${mins} min`;
+  }
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return en ? `${hrs}h ago` : `há ${hrs}h`;
+  if (hrs < 24) {
+    if (lang === "en") return `${hrs}h ago`;
+    if (lang === "it") return `${hrs}h fa`;
+    return `há ${hrs}h`;
+  }
   const days = Math.floor(hrs / 24);
-  if (days < 7) return en ? `${days} ${days === 1 ? "day" : "days"} ago` : `há ${days} ${days === 1 ? "dia" : "dias"}`;
+  if (days < 7) {
+    if (lang === "en") return `${days} ${days === 1 ? "day" : "days"} ago`;
+    if (lang === "it") return `${days} ${days === 1 ? "giorno" : "giorni"} fa`;
+    return `há ${days} ${days === 1 ? "dia" : "dias"}`;
+  }
   const d = new Date(ts);
   return `${d.getDate()} ${t(MONTHS_PT[d.getMonth()])}`;
 }

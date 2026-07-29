@@ -59,8 +59,8 @@ export default function LandingPage({ onEnter, lang, onLang }) {
           <img src={BRAND.logo} alt="PITCH App" style={{ height: 26 }} />
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {onLang && (
-              <div style={{ display: "flex", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 2, gap: 2 }}>
-                {[["pt", "PT"], ["en", "EN"]].map(([l, label]) => (
+              <div style={{ display: "flex", flexWrap: "wrap", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 2, gap: 2 }}>
+                {[["pt", "PT"], ["pt-br", "PT-BR"], ["en", "EN"], ["it", "IT"]].map(([l, label]) => (
                   <button key={l} onClick={() => onLang(l)}
                     style={{ background: lang === l ? C.accent : "transparent", color: lang === l ? C.bg : C.text2, border: "none", borderRadius: 8, padding: "5px 9px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
                     {label}
