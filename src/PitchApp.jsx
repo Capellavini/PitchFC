@@ -82,6 +82,7 @@ export default function PitchApp() {
   const [statMode, setStatMode] = useState("goals");
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
+  const [creatingGroup, setCreatingGroup] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noGroupOptIn, setNoGroupOptIn] = usePersistentState("noGroupOptIn", false);
 
@@ -793,6 +794,23 @@ export default function PitchApp() {
     );
   }
 
+  // A player with no group yet starting their own from the Perfil tab —
+  // reuses their existing player row, doesn't sign up again. Only reachable
+  // while noGroup (see the button's gating in PerfilTab): someone already
+  // in a group can't get here, so there's no group to leave/switch from.
+  if (creatingGroup) {
+    return shell(
+      <OnboardingOrganizer
+        settings={DEFAULT_SETTINGS}
+        onBack={() => setCreatingGroup(false)}
+        onDone={async (form) => {
+          await cloud.becomeOrganizer(form);
+          setCreatingGroup(false);
+        }}
+      />
+    );
+  }
+
   const isOrganizer = cloudMode ? Boolean(me?.isOrganizerPlayer) : session.role === "organizer";
   const inviteUrl = cloudMode && cloud.groupRow?.invite_token
     ? `${window.location.origin}?join=${cloud.groupRow.invite_token}`
@@ -991,7 +1009,7 @@ export default function PitchApp() {
             key={viewPlayerId ?? "me"}
             group={displayGroup} viewPlayerId={viewPlayerId}
             updateProfile={updateProfile} backToMe={backToMe} resetDemo={resetDemo}
-            isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} logout={logout}
+            isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} onCreateGroup={noGroup ? () => setCreatingGroup(true) : null} logout={logout}
             addPeerRating={addPeerRating} cloudMode={cloudMode} onSubmitRating={cloudMode ? cloud.submitRating : null}
             isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)}
             uploadMedia={uploadMedia} onToggleInjured={toggleInjured}

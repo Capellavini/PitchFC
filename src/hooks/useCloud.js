@@ -277,6 +277,38 @@ export function useCloud() {
     return { inviteToken: grp.data.invite_token };
   };
 
+  /** An existing player (no group yet, or already in someone else's)
+   *  spins up their own new group and becomes its organizer — reuses
+   *  their player row (same idea as switching groups via an invite),
+   *  never inserts a duplicate row for the same user. */
+  const becomeOrganizer = async (groupForm) => {
+    const player = data.myPlayer;
+    if (!player) return { error: "Sem sessão." };
+
+    const grp = await supabase.from("groups").insert({
+      name: groupForm.groupName, venue: groupForm.venue, city: groupForm.city, weekday: groupForm.weekday,
+      game_time: groupForm.time, monthly_price_cents: Math.round(groupForm.monthlyPrice * 100),
+      max_players: groupForm.maxPlayers,
+    }).select().single();
+    if (grp.error) return { error: grp.error.message };
+    const groupId = grp.data.id;
+
+    await supabase.from("players").update({ group_id: groupId, is_organizer: true, is_assistant: false }).eq("id", player.id);
+
+    const game = await supabase.from("games").insert({
+      group_id: groupId, scheduled_at: nextGameISO(groupForm.weekday, groupForm.time),
+      venue: groupForm.venue, spots: groupForm.maxPlayers,
+      total_cost_cents: Math.round(groupForm.monthlyPrice * 100),
+      status: "open", recurring_rule: `weekly_${groupForm.weekday}_${groupForm.time}`,
+    }).select().single();
+
+    if (game.data) {
+      await supabase.from("attendances").insert({ game_id: game.data.id, player_id: player.id, status: "pending" });
+    }
+    await refetch();
+    return { inviteToken: grp.data.invite_token };
+  };
+
   /** Logged-in player joins a group via its invite token. */
   const joinGroupByToken = async (token) => {
     const user = userRef.current;
@@ -783,7 +815,7 @@ export function useCloud() {
     canSeeFantasy: Boolean(data.user),
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
-    createPlayerProfile, createGroupAsOrganizer, joinGroupByToken,
+    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchFantasyAdminData,

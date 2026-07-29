@@ -489,6 +489,9 @@ const EN = {
   "Herói da Vitória": "Match Hero", "MVP da noite com 2+ golos": "MVP of the night with 2+ goals",
   "Liderança": "Leadership", "Foi organizador ou auxiliar do grupo": "Was organizer or assistant of the group",
   "Bem-visto": "Well Liked", "Cartão com overall 80+ (avaliação dos colegas)": "Card with 80+ overall (peer-rated)",
+
+  // ── Create group from Perfil ────────────────────────────
+  "Criar grupo": "Create group", "Torna-te organizador do teu próprio jogo semanal": "Become the organizer of your own weekly game",
 };
 
 const PT_BR = {
@@ -1164,6 +1167,9 @@ const IT = {
   "Herói da Vitória": "Eroe della Vittoria", "MVP da noite com 2+ golos": "MVP della serata con 2+ gol",
   "Liderança": "Leadership", "Foi organizador ou auxiliar do grupo": "È stato organizzatore o assistente del gruppo",
   "Bem-visto": "Ben Voluto", "Cartão com overall 80+ (avaliação dos colegas)": "Card con overall 80+ (valutazione dei compagni)",
+
+  // ── Create group from Perfil ────────────────────────────
+  "Criar grupo": "Crea gruppo", "Torna-te organizador do teu próprio jogo semanal": "Diventa l'organizzatore della tua partita settimanale",
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR, it: IT };

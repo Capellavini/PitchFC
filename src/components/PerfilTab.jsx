@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -13,7 +13,7 @@ import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
 import AchievementsSection from "./AchievementsSection";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured, achievementMatchdays }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured, achievementMatchdays }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -310,6 +310,22 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Definições do grupo")}</div>
             <div style={{ fontSize: 11, color: C.text2 }}>{t("Campo, horário, mensalidade e vagas")}</div>
+          </div>
+        </button>
+      )}
+
+      {/* Player with no group at all yet (skipped joining one): start
+          their own from here instead of being stuck with only "join via
+          invite". Not shown once already in a group — one group per
+          account for now, no switching from Perfil. */}
+      {isOwn && onCreateGroup && (
+        <button onClick={onCreateGroup} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1, border: `1px solid ${C.accentBorder}` }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <PlusCircle size={18} color={C.accent} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Criar grupo")}</div>
+            <div style={{ fontSize: 11, color: C.text2 }}>{t("Torna-te organizador do teu próprio jogo semanal")}</div>
           </div>
         </button>
       )}
