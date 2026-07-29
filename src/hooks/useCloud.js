@@ -43,6 +43,7 @@ export function useCloud() {
   // the new-password screen until the user sets one (or dismisses it).
   const [recovery, setRecovery] = useState(false);
   const userRef = useRef(null);
+  const touchedLastSeenRef = useRef(false);
 
   // ── Load everything for the current auth user ──────────
   const load = useCallback(async (user) => {
@@ -56,6 +57,14 @@ export function useCloud() {
       const meq = await supabase.from("players").select("*").eq("user_id", user.id).limit(1);
       if (meq.error) throw meq.error;
       const myPlayer = meq.data[0] ?? null;
+
+      // Best-effort "active player" ping for the admin dashboard — once
+      // per page load is enough granularity for a 4-day activity window.
+      // Fire-and-forget: never blocks or fails the actual data load.
+      if (myPlayer && !touchedLastSeenRef.current) {
+        touchedLastSeenRef.current = true;
+        supabase.from("players").update({ last_seen_at: new Date().toISOString() }).eq("id", myPlayer.id);
+      }
 
       // Keep the player card's email in sync after an auth email change
       // (confirmed via the link Supabase sends to the new address).
@@ -449,17 +458,33 @@ export function useCloud() {
   /** Owner-only: snapshot of every group for the admin overview. RLS is
    *  permissive (open read v1), so the anon key can read across groups. */
   const fetchAdminData = async () => {
-    const [g, p, gm, at] = await Promise.all([
+    const [g, p, gm, at, md] = await Promise.all([
       supabase.from("groups").select("*").order("created_at"),
       supabase.from("players").select("*"),
       supabase.from("games").select("id,group_id,scheduled_at,status,spots").order("scheduled_at", { ascending: false }),
       supabase.from("attendances").select("game_id,player_id,status,paid"),
+      supabase.from("matchdays").select("id,group_id,played_on,created_at").order("created_at", { ascending: false }),
     ]);
     return {
       groups: g.data ?? [], players: p.data ?? [],
-      games: gm.data ?? [], attendances: at.data ?? [],
-      error: g.error?.message || p.error?.message || gm.error?.message || at.error?.message || null,
+      games: gm.data ?? [], attendances: at.data ?? [], matchdays: md.data ?? [],
+      error: g.error?.message || p.error?.message || gm.error?.message || at.error?.message || md.error?.message || null,
     };
+  };
+
+  /** Owner-only: every generated post-match card across every group
+   *  (migration 25), for the "cards per week" MVP metric. */
+  const fetchCardGenerations = async () => {
+    const r = await supabase.from("card_generations").select("id,player_id,group_id,created_at").order("created_at", { ascending: false });
+    return r.error ? { error: r.error.message, rows: [] } : { rows: r.data ?? [] };
+  };
+
+  /** Fire-and-forget log of a post-match card being generated — feeds the
+   *  "cards per week" MVP metric. Best-effort: never blocks the download/
+   *  share flow on the caller's side. */
+  const logCardGenerated = () => {
+    if (!data.myPlayer) return;
+    supabase.from("card_generations").insert({ player_id: data.myPlayer.id, group_id: data.myPlayer.group_id });
   };
 
   /** Owner-only: every Pitch Manager league across every group, with every
@@ -829,7 +854,7 @@ export function useCloud() {
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
-    fetchLeads, adminDeleteLead,
+    fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,
     fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,

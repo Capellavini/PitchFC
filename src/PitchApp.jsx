@@ -997,7 +997,7 @@ export default function PitchApp() {
         )}
         {tab === "social" && <SocialTab social={social} />}
         {tab === "stats" && (
-          <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} groupName={game.groupName} />
+          <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} groupName={game.groupName} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} />
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />

@@ -9,7 +9,7 @@ import { renderPostMatchCard, dataUrlToFile } from "../lib/postMatchCard";
  *  goals/assists per game that night, OVR, MVP crown only if they
  *  actually won the vote) and offers Partilhar (Web Share API, so
  *  WhatsApp gets the image itself, not just a link) or Descarregar. */
-export default function PostMatchCardModal({ player, group, matchday, groupName, isMVP, onClose }) {
+export default function PostMatchCardModal({ player, group, matchday, groupName, isMVP, onClose, onGenerated }) {
   const [state, setState] = useState({ loading: true, url: null, error: null });
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function PostMatchCardModal({ player, group, matchday, groupName,
       matches: matchday.matches || [],
       aggGoals: myLine?.goals || 0, aggAssists: myLine?.assists || 0,
     })
-      .then((url) => { if (!cancelled) setState({ loading: false, url, error: null }); })
+      .then((url) => { if (!cancelled) { setState({ loading: false, url, error: null }); onGenerated?.(); } })
       .catch((err) => { if (!cancelled) setState({ loading: false, url: null, error: err.message || t("Falha ao gerar o card.") }); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

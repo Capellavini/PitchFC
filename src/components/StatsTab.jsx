@@ -14,7 +14,7 @@ const RANKS = [
   { n: 3, label: "3º lugar", color: C.bronze },
 ];
 
-export default function StatsTab({ group, history, lastMatchday, mvp, statMode, setStatMode, groupName }) {
+export default function StatsTab({ group, history, lastMatchday, mvp, statMode, setStatMode, groupName, onCardGenerated }) {
   const fields = { goals: "goals", assists: "assists", mvps: "mvps" };
   const list = [...group].sort((a, b) => (b[fields[statMode]] || 0) - (a[fields[statMode]] || 0)).slice(0, 8);
   const totalGames = history.reduce((s, h) => s + (h.games || 1), 0);
@@ -88,7 +88,7 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
       )}
 
       {showCard && me && (
-        <PostMatchCardModal player={me} group={group} matchday={lastMatchday} groupName={groupName} isMVP={isMVP} onClose={() => setShowCard(false)} />
+        <PostMatchCardModal player={me} group={group} matchday={lastMatchday} groupName={groupName} isMVP={isMVP} onClose={() => setShowCard(false)} onGenerated={onCardGenerated} />
       )}
 
       {/* MVP VOTING — ranked top-3 ballot, feeds Fantasy League bonuses */}

@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Users2, UsersRound, LogOut, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Users2, UsersRound, Target, Trophy, LogOut, RefreshCw } from "lucide-react";
 import { C, BRAND, displayFont } from "../../theme";
 import AdminOverviewTab from "./AdminOverviewTab";
 import AdminGroupsTab from "./AdminGroupsTab";
 import AdminUsersTab from "./AdminUsersTab";
+import AdminMvpTab from "./AdminMvpTab";
+import AdminFantasyTab from "./AdminFantasyTab";
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 const NAV = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
+  { id: "mvp", label: "MVP", icon: Target },
   { id: "groups", label: "Grupos", icon: Users2 },
   { id: "users", label: "Utilizadores", icon: UsersRound },
+  { id: "fantasy", label: "Pitch Manager", icon: Trophy },
 ];
 
 /** Standalone desktop admin dashboard at /admin — separate from the
@@ -23,22 +27,34 @@ export default function AdminDashboardPage({ cloud, localMode }) {
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState(null);
 
-  const [snapshot, setSnapshot] = useState({ loading: true, error: null, groups: [], players: [], games: [], attendances: [] });
+  const [snapshot, setSnapshot] = useState({ loading: true, error: null, groups: [], players: [], games: [], attendances: [], matchdays: [] });
   const [leads, setLeads] = useState({ loading: true, error: null, rows: [] });
+  const [fantasy, setFantasy] = useState({ loading: true, error: null, leagues: [], squads: [], players: [] });
+  const [cards, setCards] = useState({ loading: true, error: null, rows: [] });
 
   const canLoad = Boolean(cloud.user) && cloud.isAdmin;
 
   const loadSnapshot = async () => {
     setSnapshot((s) => ({ ...s, loading: true }));
     const data = await cloud.fetchAdminData();
-    setSnapshot({ loading: false, error: data.error ?? null, groups: data.groups ?? [], players: data.players ?? [], games: data.games ?? [], attendances: data.attendances ?? [] });
+    setSnapshot({ loading: false, error: data.error ?? null, groups: data.groups ?? [], players: data.players ?? [], games: data.games ?? [], attendances: data.attendances ?? [], matchdays: data.matchdays ?? [] });
   };
   const loadLeads = async () => {
     setLeads((s) => ({ ...s, loading: true }));
     const data = await cloud.fetchLeads();
     setLeads({ loading: false, error: data.error ?? null, rows: data.leads ?? [] });
   };
-  const refetchAll = () => { loadSnapshot(); loadLeads(); };
+  const loadFantasy = async () => {
+    setFantasy((s) => ({ ...s, loading: true }));
+    const data = await cloud.fetchFantasyAdminData();
+    setFantasy({ loading: false, error: data.error ?? null, leagues: data.leagues ?? [], squads: data.squads ?? [], players: data.players ?? [] });
+  };
+  const loadCards = async () => {
+    setCards((s) => ({ ...s, loading: true }));
+    const data = await cloud.fetchCardGenerations();
+    setCards({ loading: false, error: data.error ?? null, rows: data.rows ?? [] });
+  };
+  const refetchAll = () => { loadSnapshot(); loadLeads(); loadFantasy(); loadCards(); };
 
   useEffect(() => {
     if (canLoad) refetchAll();
@@ -108,7 +124,7 @@ export default function AdminDashboardPage({ cloud, localMode }) {
     );
   }
 
-  const tabProps = { cloud, snapshot, leads, refetchGroups: loadSnapshot, refetchLeads: loadLeads };
+  const tabProps = { cloud, snapshot, leads, fantasy, cards, refetchGroups: loadSnapshot, refetchLeads: loadLeads };
 
   return page(
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -148,8 +164,10 @@ export default function AdminDashboardPage({ cloud, localMode }) {
         </div>
 
         {tab === "overview" && <AdminOverviewTab {...tabProps} />}
+        {tab === "mvp" && <AdminMvpTab {...tabProps} />}
         {tab === "groups" && <AdminGroupsTab {...tabProps} />}
         {tab === "users" && <AdminUsersTab {...tabProps} />}
+        {tab === "fantasy" && <AdminFantasyTab {...tabProps} />}
       </div>
     </div>
   );
