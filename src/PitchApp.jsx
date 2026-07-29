@@ -869,6 +869,14 @@ export default function PitchApp() {
   // Only the organizer (or an assistant they appointed) draws/renames.
   const canManageTeams = cloudMode ? Boolean(me?.isOrganizerPlayer || me?.isAssistant) : session.role === "organizer";
 
+  // ── Achievements: normalized per-matchday detail (cloud keeps the full
+  // season, local demo only keeps this level of detail for the day just
+  // played) — feeds AchievementsSection in PerfilTab. `key` matches keyOf()
+  // from endMatchday (uuid in cloud, numeric id in local).
+  const achievementMatchdays = cloudMode
+    ? cloud.matchdays.map((r) => ({ matches: r.summary?.matches ?? [], nightLines: r.summary?.lines ?? [], mvpKey: r.mvp_id ?? null }))
+    : (lastMatchday ? [{ matches: lastMatchday.matches ?? [], nightLines: lastMatchday.lines ?? [], mvpKey: !mvpVote.open ? mvpVote.votes[1] : null }] : []);
+
   // ── Social: normalized for SocialTab (cloud or local) ──
   let social;
   if (cloudAuthed) {
@@ -995,6 +1003,7 @@ export default function PitchApp() {
               signOutEverywhere,
             } : null}
             lang={lang} onLang={changeLang}
+            achievementMatchdays={achievementMatchdays}
           />
         )}
       </div>

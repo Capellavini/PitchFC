@@ -3,7 +3,7 @@ import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, Shie
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
-import { encodePayload } from "../lib/helpers";
+import { encodePayload, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
 import FutCard from "./FutCard";
@@ -11,8 +11,9 @@ import RatingForm from "./RatingForm";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
+import AchievementsSection from "./AchievementsSection";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured, achievementMatchdays }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -50,6 +51,17 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
   };
 
   const attendance = Math.round((player.gamesPlayed / TOTAL_GAMES) * 100);
+
+  // Achievements context — same overall-lock rule as the FUT card (needs
+  // 3+ peer ratings before the attributes/overall mean anything).
+  const overallLocked = player.ratingsCount != null && player.ratingsCount < 3;
+  const achievementsCtx = {
+    attendancePct: attendance,
+    matchdays: achievementMatchdays ?? [],
+    playerKey: cloudMode ? player.uuid : player.id,
+    overall: overallLocked ? 0 : computeOverall(player.position, player.attrs),
+    isLeader: Boolean(player.isOrganizerPlayer || player.isAssistant),
+  };
 
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];
@@ -269,6 +281,8 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           ))}
         </div>
       </div>
+
+      <AchievementsSection player={player} ctx={achievementsCtx} />
 
       {/* Payment method (own profile only) */}
       {isOwn && (

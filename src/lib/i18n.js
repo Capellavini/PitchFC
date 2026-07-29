@@ -474,6 +474,21 @@ const EN = {
 
   // ── Matchday (goalkeeper picker) ────────────────────────
   "GR?": "GK?",
+
+  // ── Achievements ─────────────────────────────────────────
+  "CONQUISTAS": "ACHIEVEMENTS", "desbloqueadas": "unlocked",
+  "Estreante": "Rookie", "Disputou o primeiro jogo": "Played your first game",
+  "Bota de Ouro": "Golden Boot", "10 golos na temporada": "10 goals this season",
+  "Criador de Jogo": "Playmaker", "10 assistências na temporada": "10 assists this season",
+  "Veterano": "Veteran", "50 jogos disputados": "50 games played",
+  "Muralha": "Brick Wall", "10 jogos sem sofrer golos": "10 clean sheets",
+  "Rei da Noite": "King of the Night", "5 vezes eleito MVP": "Voted MVP 5 times",
+  "Fiel": "Loyal", "90%+ de presença na temporada": "90%+ season attendance",
+  "3 ou mais golos numa só partida": "3+ goals in a single match",
+  "Show Particular": "One-Man Show", "Golo e assistência na mesma partida": "Goal and assist in the same match",
+  "Herói da Vitória": "Match Hero", "MVP da noite com 2+ golos": "MVP of the night with 2+ goals",
+  "Liderança": "Leadership", "Foi organizador ou auxiliar do grupo": "Was organizer or assistant of the group",
+  "Bem-visto": "Well Liked", "Cartão com overall 80+ (avaliação dos colegas)": "Card with 80+ overall (peer-rated)",
 };
 
 const PT_BR = {
@@ -710,6 +725,14 @@ const PT_BR = {
   "Banco insuficiente": "Saldo insuficiente",
   "A gerar o teu card…": "Gerando seu card…",
   "Descarregar": "Baixar",
+
+  // ── Achievements ─────────────────────────────────────────
+  "Bota de Ouro": "Chuteira de Ouro", "10 golos na temporada": "10 gols na temporada",
+  "10 jogos sem sofrer golos": "10 jogos sem sofrer gols",
+  "5 vezes eleito MVP": "5 vezes eleito MVP",
+  "3 ou mais golos numa só partida": "3 ou mais gols em uma só partida",
+  "Golo e assistência na mesma partida": "Gol e assistência na mesma partida",
+  "MVP da noite com 2+ golos": "MVP da noite com 2+ gols",
 };
 
 const IT = {
@@ -1126,6 +1149,21 @@ const IT = {
 
   // ── Matchday (goalkeeper picker) ────────────────────────
   "GR?": "POR?",
+
+  // ── Achievements ─────────────────────────────────────────
+  "CONQUISTAS": "TROFEI", "desbloqueadas": "sbloccati",
+  "Estreante": "Esordiente", "Disputou o primeiro jogo": "Ha giocato la prima partita",
+  "Bota de Ouro": "Scarpa d'Oro", "10 golos na temporada": "10 gol in stagione",
+  "Criador de Jogo": "Regista", "10 assistências na temporada": "10 assist in stagione",
+  "Veterano": "Veterano", "50 jogos disputados": "50 partite disputate",
+  "Muralha": "Muro Invalicabile", "10 jogos sem sofrer golos": "10 clean sheet",
+  "Rei da Noite": "Re della Serata", "5 vezes eleito MVP": "MVP per 5 volte",
+  "Fiel": "Fedele", "90%+ de presença na temporada": "90%+ di presenza in stagione",
+  "3 ou mais golos numa só partida": "3 o più gol in una sola partita",
+  "Show Particular": "Spettacolo Personale", "Golo e assistência na mesma partida": "Gol e assist nella stessa partita",
+  "Herói da Vitória": "Eroe della Vittoria", "MVP da noite com 2+ golos": "MVP della serata con 2+ gol",
+  "Liderança": "Leadership", "Foi organizador ou auxiliar do grupo": "È stato organizzatore o assistente del gruppo",
+  "Bem-visto": "Ben Voluto", "Cartão com overall 80+ (avaliação dos colegas)": "Card con overall 80+ (valutazione dei compagni)",
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR, it: IT };
