@@ -27,6 +27,7 @@ import JoinGroup from "./components/JoinGroup";
 import RatePlayer from "./components/RatePlayer";
 import MagicConfirm from "./components/MagicConfirm";
 import LeaguePage from "./components/LeaguePage";
+import AdminDashboardPage from "./components/admin/AdminDashboardPage";
 import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
@@ -665,6 +666,12 @@ export default function PitchApp() {
   const path = window.location.pathname.replace(/\/+$/, "");
   if (path === "/league") {
     return <LeaguePage onEnterApp={() => { window.location.href = "/"; }} />;
+  }
+
+  // ── Desktop admin dashboard (path /admin) — full width, no shell, own
+  // auth gate (same cloud.isAdmin check as the in-app mobile panel). ───
+  if (path === "/admin") {
+    return <AdminDashboardPage cloud={cloud} localMode={localMode} />;
   }
 
   // Default profile from the signed-up account's metadata.

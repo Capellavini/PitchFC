@@ -434,6 +434,17 @@ export function useCloud() {
     const r = await supabase.from("players").delete().eq("id", id);
     return r.error ? { error: r.error.message } : {};
   };
+  const adminDeleteLead = async (id) => {
+    const r = await supabase.from("leads").delete().eq("id", id);
+    return r.error ? { error: r.error.message } : {};
+  };
+
+  /** Owner-only: /league landing page signups (migration 12). Reads are
+   *  already RLS-gated to is_admin(), so this is a plain select. */
+  const fetchLeads = async () => {
+    const r = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+    return r.error ? { error: r.error.message, leads: [] } : { leads: r.data ?? [] };
+  };
 
   /** Owner-only: snapshot of every group for the admin overview. RLS is
    *  permissive (open read v1), so the anon key can read across groups. */
@@ -818,6 +829,7 @@ export function useCloud() {
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
+    fetchLeads, adminDeleteLead,
     fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,
