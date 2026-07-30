@@ -15,7 +15,7 @@ PITCH is a mobile-first web app that organizes a **weekly football game between 
   - **Local demo mode** (no keys): the original localStorage prototype, unchanged. This is the fallback if keys are missing or a cloud query fails.
 - Supabase migration is **in progress**, PR by PR. Done: PR 1 (roster/attendances/realtime), PR 2 (auth + groups + invites + admin events + cloud bookings). SQL lives in `supabase/schema.sql` (base) and `supabase/migration-2-auth.sql` (run once for PR 2). Setup guide: `SUPABASE.md`.
 - **Owner/admin**: emails in `VITE_ADMIN_EMAILS` (default `capella.vinicius@gmail.com`) get the "Criar evento" UI in the Clube → Eventos tab. See `isAdminEmail` in `src/lib/supabase.js`.
-- **Still local even in cloud mode** (later PRs): social feed/posts, live matchday + season totals (`extras` map), peer ratings, material checklist, team draw, MVP votes, history, open-matches mock, event RSVP (`eventStatus` map).
+- **Still local even in cloud mode** (later PRs): material checklist, open-matches mock, event RSVP (`eventStatus` map). (Team draw and live matchday scoring used to be on this list too — both now sync via `games.teams`/`games.live_matchday`, read-only for non-organizers.)
 
 ## Product principles
 
