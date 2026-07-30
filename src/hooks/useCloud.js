@@ -423,11 +423,23 @@ export function useCloud() {
 
   /** Team draw lives on the current game row so every viewer sees the
    *  same draw the organizer made — was purely local-device state before,
-   *  which is why a draw made on one phone never showed up on another. */
-  const updateGameTeams = async (teams) => {
+   *  which is why a draw made on one phone never showed up on another.
+   *  `resetConfirmed`: drawing/clearing invalidates any earlier "Confirmar
+   *  equipas" — players stop seeing the (now stale) lineup until the
+   *  organizer confirms again. Renaming/moving a player doesn't reset it —
+   *  small edits after confirming should just flow through live. */
+  const updateGameTeams = async (teams, { resetConfirmed = false } = {}) => {
     if (!data.game) return;
-    setData((d) => ({ ...d, game: d.game ? { ...d.game, teams } : d.game }));
-    await supabase.from("games").update({ teams }).eq("id", data.game.id);
+    const patch = resetConfirmed ? { teams, teams_confirmed: false } : { teams };
+    setData((d) => ({ ...d, game: d.game ? { ...d.game, ...patch } : d.game }));
+    await supabase.from("games").update(patch).eq("id", data.game.id);
+  };
+
+  /** Reveals the current draw to players — see updateGameTeams above. */
+  const confirmGameTeams = async () => {
+    if (!data.game) return;
+    setData((d) => ({ ...d, game: d.game ? { ...d.game, teams_confirmed: true } : d.game }));
+    await supabase.from("games").update({ teams_confirmed: true }).eq("id", data.game.id);
   };
 
   /** Live matchday scoring, same idea: the organizer's in-progress scores
@@ -876,7 +888,7 @@ export function useCloud() {
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken,
-    setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots, updateGameTeams, updateGameLiveMatchday,
+    setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,
     fetchFantasyAdminData,

@@ -497,6 +497,10 @@ const EN = {
   "Aguarda o organizador começar o dia de jogo.": "Waiting for the organizer to start matchday.",
   "Empate — a aguardar o desempate por pénaltis.": "Tied — waiting for the penalty shootout result.",
   "A TUA EQUIPA": "YOUR TEAM",
+  "Confirmar equipas": "Confirm teams", "Gerir equipas": "Manage teams", "Sorteio, nomes e trocas": "Draw, names and swaps",
+  "As equipas foram confirmadas, mas não estás em nenhuma esta ronda.": "Teams were confirmed, but you're not on one this round.",
+  "Equipas": "Teams",
+  "O organizador está a preparar as equipas — aguarda a confirmação.": "The organizer is putting the teams together — wait for confirmation.",
 };
 
 const PT_BR = {
@@ -738,6 +742,10 @@ const PT_BR = {
   "Bota de Ouro": "Chuteira de Ouro", "10 golos na temporada": "10 gols na temporada",
   "Empate — a aguardar o desempate por pénaltis.": "Empate — aguardando o desempate por pênaltis.",
   "A TUA EQUIPA": "SEU TIME",
+  "Confirmar equipas": "Confirmar times", "Gerir equipas": "Gerenciar times",
+  "As equipas foram confirmadas, mas não estás em nenhuma esta ronda.": "Os times foram confirmados, mas você não está em nenhum nesta rodada.",
+  "Equipas": "Times",
+  "O organizador está a preparar as equipas — aguarda a confirmação.": "O organizador está preparando os times — aguarde a confirmação.",
   "10 jogos sem sofrer golos": "10 jogos sem sofrer gols",
   "5 vezes eleito MVP": "5 vezes eleito MVP",
   "3 ou mais golos numa só partida": "3 ou mais gols em uma só partida",
@@ -1182,6 +1190,10 @@ const IT = {
   "Aguarda o organizador começar o dia de jogo.": "In attesa che l'organizzatore inizi la giornata di gioco.",
   "Empate — a aguardar o desempate por pénaltis.": "Pareggio — in attesa del risultato dei rigori.",
   "A TUA EQUIPA": "LA TUA SQUADRA",
+  "Confirmar equipas": "Conferma squadre", "Gerir equipas": "Gestisci squadre", "Sorteio, nomes e trocas": "Sorteggio, nomi e scambi",
+  "As equipas foram confirmadas, mas não estás em nenhuma esta ronda.": "Le squadre sono state confermate, ma non sei in nessuna questo turno.",
+  "Equipas": "Squadre",
+  "O organizador está a preparar as equipas — aguarda a confirmação.": "L'organizzatore sta preparando le squadre — attendi la conferma.",
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR, it: IT };

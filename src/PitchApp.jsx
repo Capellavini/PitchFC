@@ -71,6 +71,7 @@ export default function PitchApp() {
   // see the `teams`/`matchday` derived consts and updateTeams/updateMatchday
   // below, which pick whichever source applies.
   const [teamsRaw, setTeamsLocal] = usePersistentState("teams", null);
+  const [teamsConfirmedLocal, setTeamsConfirmedLocal] = usePersistentState("teamsConfirmed", false);
   const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", []);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votes: { 1: null, 2: null, 3: null } });
   const [history, setHistory]   = usePersistentState("history", HISTORY);
@@ -205,11 +206,19 @@ export default function PitchApp() {
   const teams = cloudMode
     ? (Array.isArray(cloud.game?.teams) ? cloud.game.teams : null)
     : (Array.isArray(teamsRaw) ? teamsRaw : null);
-  const updateTeams = (updater) => {
+  // Draw/clear invalidate an earlier confirmation (players shouldn't see a
+  // stale lineup); renaming/moving a player doesn't (small edits after
+  // confirming just flow through live) — see drawTeams/clearTeams below.
+  const updateTeams = (updater, { resetConfirmed = false } = {}) => {
     const next = typeof updater === "function" ? updater(teams) : updater;
-    if (cloudMode) cloud.updateGameTeams(next);
-    else setTeamsLocal(next);
+    if (cloudMode) cloud.updateGameTeams(next, { resetConfirmed });
+    else { setTeamsLocal(next); if (resetConfirmed) setTeamsConfirmedLocal(false); }
   };
+
+  // Teams stay a private draft until the organizer taps "Confirmar
+  // equipas" — only then do players see the lineup on their Matchday tab.
+  const teamsConfirmed = Boolean(teams) && (cloudMode ? Boolean(cloud.game?.teams_confirmed) : teamsConfirmedLocal);
+  const confirmTeams = () => { if (cloudMode) cloud.confirmGameTeams(); else setTeamsConfirmedLocal(true); };
 
   // Live matchday scoring: same idea — synced via cloud.game.live_matchday
   // so a player watching sees the organizer's scores update live, instead
@@ -313,7 +322,7 @@ export default function PitchApp() {
     } else {
       setGroup((g) => g.map((p) => (p.isMe ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
     }
-    updateTeams(null); // roster changed → invalidate draw
+    updateTeams(null, { resetConfirmed: true }); // roster changed → invalidate draw
   };
 
   // Organizer/assistant sets any player's status directly — guests have
@@ -325,7 +334,7 @@ export default function PitchApp() {
     if (!player) return;
     if (cloudMode) cloud.setMyStatus(newStatus, player.uuid, gameId);
     else setGroup((g) => g.map((p) => (p.id === playerId ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
-    updateTeams(null);
+    updateTeams(null, { resetConfirmed: true });
   };
 
   // Organizer permanently removes a guest (no-account) player.
@@ -335,10 +344,10 @@ export default function PitchApp() {
     if (!window.confirm(`${t("Apagar")} ${nick}${t("? Esta ação não pode ser desfeita — o jogador sai do grupo e perde o histórico.")}`)) return;
     if (cloudMode) cloud.adminDeletePlayer(player.uuid).then(() => cloud.refetch());
     else setGroup((g) => g.filter((p) => p.id !== playerId));
-    updateTeams(null);
+    updateTeams(null, { resetConfirmed: true });
   };
 
-  const clearTeams = () => updateTeams(null);
+  const clearTeams = () => updateTeams(null, { resetConfirmed: true });
 
   const toggleMaterial = (id) =>
     setMaterial((m) => m.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
@@ -386,7 +395,7 @@ export default function PitchApp() {
       const ti = round % 2 === 0 ? slot : n - 1 - slot; // snake
       newTeams[ti].players.push(p.id);
     });
-    updateTeams(newTeams);
+    updateTeams(newTeams, { resetConfirmed: true });
   };
 
   const renameTeam = (teamId, name) =>
@@ -1005,6 +1014,7 @@ export default function PitchApp() {
           <MatchdayTab
             group={displayGroup} game={game}
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
+            teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner }}
             lastMatchday={lastMatchdayView}
           />
