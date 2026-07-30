@@ -427,10 +427,15 @@ export function useCloud() {
    *  `resetConfirmed`: drawing/clearing invalidates any earlier "Confirmar
    *  equipas" — players stop seeing the (now stale) lineup until the
    *  organizer confirms again. Renaming/moving a player doesn't reset it —
-   *  small edits after confirming should just flow through live. */
-  const updateGameTeams = async (teams, { resetConfirmed = false } = {}) => {
+   *  small edits after confirming should just flow through live.
+   *  `drawnBy`: stamps who drew/cleared it (teams_set_by), so a group with
+   *  more than one organizer/assistant doesn't get confused about who
+   *  already did this — surfaced as "sorteado por" in the UI. */
+  const updateGameTeams = async (teams, { resetConfirmed = false, drawnBy = false } = {}) => {
     if (!data.game) return;
-    const patch = resetConfirmed ? { teams, teams_confirmed: false } : { teams };
+    const patch = { teams };
+    if (resetConfirmed) { patch.teams_confirmed = false; patch.teams_confirmed_by = null; }
+    if (drawnBy) patch.teams_set_by = teams ? (data.myPlayer?.id ?? null) : null;
     setData((d) => ({ ...d, game: d.game ? { ...d.game, ...patch } : d.game }));
     await supabase.from("games").update(patch).eq("id", data.game.id);
   };
@@ -438,8 +443,9 @@ export function useCloud() {
   /** Reveals the current draw to players — see updateGameTeams above. */
   const confirmGameTeams = async () => {
     if (!data.game) return;
-    setData((d) => ({ ...d, game: d.game ? { ...d.game, teams_confirmed: true } : d.game }));
-    await supabase.from("games").update({ teams_confirmed: true }).eq("id", data.game.id);
+    const patch = { teams_confirmed: true, teams_confirmed_by: data.myPlayer?.id ?? null };
+    setData((d) => ({ ...d, game: d.game ? { ...d.game, ...patch } : d.game }));
+    await supabase.from("games").update(patch).eq("id", data.game.id);
   };
 
   /** Live matchday scoring, same idea: the organizer's in-progress scores

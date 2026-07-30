@@ -43,7 +43,7 @@ function LineupCard({ p, group }) {
  *  after tapping "Confirmar equipas" do players see the lineup. Once
  *  confirmed, organizers see their own lineup too (they play too), with
  *  the management grid tucked into a collapsible section. */
-export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, matchdayProps, lastMatchday }) {
+export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, lastMatchday }) {
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const confirmed = group.filter((p) => p.status === "confirmed");
   const { playing } = splitWaitlist(confirmed, game.spots);
@@ -159,6 +159,11 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
             {resolveTeam(myTeam.players).map((p) => <LineupCard key={p.id} p={p} group={group} />)}
           </div>
+          {teamsConfirmedByName && (
+            <div style={{ fontSize: 10, color: C.text3, textAlign: "center", marginTop: 14 }}>
+              {t("Confirmado por")} {teamsConfirmedByName}
+            </div>
+          )}
         </div>
       )}
 
@@ -167,7 +172,8 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
           front and center otherwise, with the "Confirmar equipas" CTA. */}
       {showGridBlock && (
         managedAndConfirmed ? (
-          <Collapsible icon={<Users2 size={16} color={C.text2} />} title={t("Gerir equipas")} subtitle={t("Sorteio, nomes e trocas")}>
+          <Collapsible icon={<Users2 size={16} color={C.text2} />} title={t("Gerir equipas")}
+            subtitle={teamsConfirmedByName ? `${t("Sorteio, nomes e trocas")} · ${t("confirmado por")} ${teamsConfirmedByName}` : t("Sorteio, nomes e trocas")}>
             {gridContent}
           </Collapsible>
         ) : (
@@ -180,6 +186,11 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
                   : playing.length < 2 ? t("Faltam confirmações para sortear")
                   : t("Escolhe quantas equipas e sorteia — depois podes renomear.")}
               </div>
+              {teams && teamsSetByName && (
+                <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, marginTop: 4 }}>
+                  {t("Sorteado por")} {teamsSetByName} — {t("ainda por confirmar")}
+                </div>
+              )}
             </div>
             {gridContent}
             {canManageTeams && teams && !teamsConfirmed && (
@@ -199,7 +210,9 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
           <div style={{ fontSize: 11, color: C.text2 }}>
             {!teams
               ? t("Só o organizador (ou o auxiliar) pode sortear e renomear.")
-              : t("O organizador está a preparar as equipas — aguarda a confirmação.")}
+              : teamsSetByName
+                ? `${t("O organizador está a preparar as equipas — aguarda a confirmação.")} (${teamsSetByName})`
+                : t("O organizador está a preparar as equipas — aguarda a confirmação.")}
           </div>
         </div>
       )}

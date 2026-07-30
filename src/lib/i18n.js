@@ -501,6 +501,8 @@ const EN = {
   "As equipas foram confirmadas, mas não estás em nenhuma esta ronda.": "Teams were confirmed, but you're not on one this round.",
   "Equipas": "Teams",
   "O organizador está a preparar as equipas — aguarda a confirmação.": "The organizer is putting the teams together — wait for confirmation.",
+  "Sorteado por": "Drawn by", "ainda por confirmar": "not confirmed yet",
+  "confirmado por": "confirmed by", "Confirmado por": "Confirmed by",
 };
 
 const PT_BR = {
@@ -1194,6 +1196,8 @@ const IT = {
   "As equipas foram confirmadas, mas não estás em nenhuma esta ronda.": "Le squadre sono state confermate, ma non sei in nessuna questo turno.",
   "Equipas": "Squadre",
   "O organizador está a preparar as equipas — aguarda a confirmação.": "L'organizzatore sta preparando le squadre — attendi la conferma.",
+  "Sorteado por": "Sorteggiato da", "ainda por confirmar": "ancora da confermare",
+  "confirmado por": "confermato da", "Confirmado por": "Confermato da",
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR, it: IT };

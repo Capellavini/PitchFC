@@ -209,9 +209,9 @@ export default function PitchApp() {
   // Draw/clear invalidate an earlier confirmation (players shouldn't see a
   // stale lineup); renaming/moving a player doesn't (small edits after
   // confirming just flow through live) — see drawTeams/clearTeams below.
-  const updateTeams = (updater, { resetConfirmed = false } = {}) => {
+  const updateTeams = (updater, { resetConfirmed = false, drawnBy = false } = {}) => {
     const next = typeof updater === "function" ? updater(teams) : updater;
-    if (cloudMode) cloud.updateGameTeams(next, { resetConfirmed });
+    if (cloudMode) cloud.updateGameTeams(next, { resetConfirmed, drawnBy });
     else { setTeamsLocal(next); if (resetConfirmed) setTeamsConfirmedLocal(false); }
   };
 
@@ -219,6 +219,15 @@ export default function PitchApp() {
   // equipas" — only then do players see the lineup on their Matchday tab.
   const teamsConfirmed = Boolean(teams) && (cloudMode ? Boolean(cloud.game?.teams_confirmed) : teamsConfirmedLocal);
   const confirmTeams = () => { if (cloudMode) cloud.confirmGameTeams(); else setTeamsConfirmedLocal(true); };
+
+  // With more than one organizer/assistant able to draw or confirm, show
+  // who did it — avoids "did I already draw these?" confusion.
+  const teamsSetByName = cloudMode && cloud.game?.teams_set_by
+    ? baseGroup.find((p) => p.uuid === cloud.game.teams_set_by)?.nick ?? null
+    : null;
+  const teamsConfirmedByName = cloudMode && cloud.game?.teams_confirmed_by
+    ? baseGroup.find((p) => p.uuid === cloud.game.teams_confirmed_by)?.nick ?? null
+    : null;
 
   // Live matchday scoring: same idea — synced via cloud.game.live_matchday
   // so a player watching sees the organizer's scores update live, instead
@@ -322,7 +331,7 @@ export default function PitchApp() {
     } else {
       setGroup((g) => g.map((p) => (p.isMe ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
     }
-    updateTeams(null, { resetConfirmed: true }); // roster changed → invalidate draw
+    updateTeams(null, { resetConfirmed: true, drawnBy: true }); // roster changed → invalidate draw
   };
 
   // Organizer/assistant sets any player's status directly — guests have
@@ -334,7 +343,7 @@ export default function PitchApp() {
     if (!player) return;
     if (cloudMode) cloud.setMyStatus(newStatus, player.uuid, gameId);
     else setGroup((g) => g.map((p) => (p.id === playerId ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
-    updateTeams(null, { resetConfirmed: true });
+    updateTeams(null, { resetConfirmed: true, drawnBy: true });
   };
 
   // Organizer permanently removes a guest (no-account) player.
@@ -344,10 +353,10 @@ export default function PitchApp() {
     if (!window.confirm(`${t("Apagar")} ${nick}${t("? Esta ação não pode ser desfeita — o jogador sai do grupo e perde o histórico.")}`)) return;
     if (cloudMode) cloud.adminDeletePlayer(player.uuid).then(() => cloud.refetch());
     else setGroup((g) => g.filter((p) => p.id !== playerId));
-    updateTeams(null, { resetConfirmed: true });
+    updateTeams(null, { resetConfirmed: true, drawnBy: true });
   };
 
-  const clearTeams = () => updateTeams(null, { resetConfirmed: true });
+  const clearTeams = () => updateTeams(null, { resetConfirmed: true, drawnBy: true });
 
   const toggleMaterial = (id) =>
     setMaterial((m) => m.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
@@ -395,7 +404,7 @@ export default function PitchApp() {
       const ti = round % 2 === 0 ? slot : n - 1 - slot; // snake
       newTeams[ti].players.push(p.id);
     });
-    updateTeams(newTeams, { resetConfirmed: true });
+    updateTeams(newTeams, { resetConfirmed: true, drawnBy: true });
   };
 
   const renameTeam = (teamId, name) =>
@@ -1015,6 +1024,7 @@ export default function PitchApp() {
             group={displayGroup} game={game}
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
+            teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner }}
             lastMatchday={lastMatchdayView}
           />
