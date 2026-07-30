@@ -324,6 +324,13 @@ export default function PitchApp() {
     else setGroup((g) => g.map((p) => (p.isMe ? { ...p, paid: true } : p)));
   };
 
+  // Team draws are sticky on purpose — they used to auto-clear on any
+  // status change ("roster changed → invalidate draw"), which was fine
+  // when a draw was disposable local-only state, but now that it's a
+  // shared draft the whole group reads, wiping it every time literally
+  // anyone confirms/declines (routine, all week long) silently destroyed
+  // the organizer's work. Redraw/"Limpar sorteio" are the explicit way
+  // to discard it now.
   const toggleMyStatus = (newStatus) => {
     if (cloudMode && me) {
       cloud.setMyStatus(newStatus, me.uuid, gameId);
@@ -331,7 +338,6 @@ export default function PitchApp() {
     } else {
       setGroup((g) => g.map((p) => (p.isMe ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
     }
-    updateTeams(null, { resetConfirmed: true, drawnBy: true }); // roster changed → invalidate draw
   };
 
   // Organizer/assistant sets any player's status directly — guests have
@@ -343,7 +349,6 @@ export default function PitchApp() {
     if (!player) return;
     if (cloudMode) cloud.setMyStatus(newStatus, player.uuid, gameId);
     else setGroup((g) => g.map((p) => (p.id === playerId ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
-    updateTeams(null, { resetConfirmed: true, drawnBy: true });
   };
 
   // Organizer permanently removes a guest (no-account) player.
@@ -353,7 +358,6 @@ export default function PitchApp() {
     if (!window.confirm(`${t("Apagar")} ${nick}${t("? Esta ação não pode ser desfeita — o jogador sai do grupo e perde o histórico.")}`)) return;
     if (cloudMode) cloud.adminDeletePlayer(player.uuid).then(() => cloud.refetch());
     else setGroup((g) => g.filter((p) => p.id !== playerId));
-    updateTeams(null, { resetConfirmed: true, drawnBy: true });
   };
 
   const clearTeams = () => updateTeams(null, { resetConfirmed: true, drawnBy: true });
