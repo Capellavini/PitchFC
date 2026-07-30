@@ -496,6 +496,7 @@ const EN = {
   // ── Live matchday, read-only for non-organizers ─────────
   "Aguarda o organizador começar o dia de jogo.": "Waiting for the organizer to start matchday.",
   "Empate — a aguardar o desempate por pénaltis.": "Tied — waiting for the penalty shootout result.",
+  "A TUA EQUIPA": "YOUR TEAM",
 };
 
 const PT_BR = {
@@ -736,6 +737,7 @@ const PT_BR = {
   // ── Achievements ─────────────────────────────────────────
   "Bota de Ouro": "Chuteira de Ouro", "10 golos na temporada": "10 gols na temporada",
   "Empate — a aguardar o desempate por pénaltis.": "Empate — aguardando o desempate por pênaltis.",
+  "A TUA EQUIPA": "SEU TIME",
   "10 jogos sem sofrer golos": "10 jogos sem sofrer gols",
   "5 vezes eleito MVP": "5 vezes eleito MVP",
   "3 ou mais golos numa só partida": "3 ou mais gols em uma só partida",
@@ -1179,6 +1181,7 @@ const IT = {
   // ── Live matchday, read-only for non-organizers ─────────
   "Aguarda o organizador começar o dia de jogo.": "In attesa che l'organizzatore inizi la giornata di gioco.",
   "Empate — a aguardar o desempate por pénaltis.": "Pareggio — in attesa del risultato dei rigori.",
+  "A TUA EQUIPA": "LA TUA SQUADRA",
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR, it: IT };

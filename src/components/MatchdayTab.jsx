@@ -1,11 +1,35 @@
 import { useState } from "react";
 import { Shuffle, RotateCcw } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { splitWaitlist } from "../lib/helpers";
+import { splitWaitlist, ini, playerColor, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import Matchday from "./Matchday";
 import MatchTimer from "./MatchTimer";
 import MatchSummary from "./MatchSummary";
+
+/** One player in the lineup — same visual language as the Pitch Manager
+ *  pitch (photo/initials circle, OVR badge, name below), just off the
+ *  green background since this isn't a formation. */
+function LineupCard({ p, group, color }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, width: 68 }}>
+      <div style={{
+        width: 54, height: 54, borderRadius: 27, flexShrink: 0, position: "relative",
+        background: p.photo ? C.surface : `${playerColor(group, p)}22`,
+        border: `2.5px solid ${p.isMe ? C.accent : playerColor(group, p)}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 16, fontWeight: 800, color: playerColor(group, p),
+        boxShadow: p.isMe ? `0 0 0 3px ${C.accentDim}` : "none",
+      }}>
+        {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 24 }} /> : ini(p.name)}
+        <span style={{ position: "absolute", bottom: -6, left: -6, fontSize: 9, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 7, padding: "1px 5px", border: `1px solid ${C.card}` }}>
+          {computeOverall(p.position, p.attrs)}
+        </span>
+      </div>
+      <span style={{ fontSize: 11, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1, maxWidth: 68, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+    </div>
+  );
+}
 
 /** Everything about the live day itself — team draw, timer, live
  *  scoring and the running summary — split out of "Jogo" (which keeps
@@ -18,6 +42,14 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
   const { playing } = splitWaitlist(confirmed, game.spots);
   const resolveTeam = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
 
+  // Players (not organizer/assistant) see just their own lineup once the
+  // draw is made — the full manage-every-team grid stays for whoever can
+  // actually redraw/rename/move players. Falls back to the grid if this
+  // player isn't in any team yet (e.g. sat out this round).
+  const me = group.find((p) => p.isMe);
+  const myTeam = teams?.find((tm) => tm.players.includes(me?.id));
+  const showOwnLineup = !canManageTeams && teams && myTeam;
+
   return (
     <div style={{ padding: "0 16px" }}>
       <div style={{ padding: "20px 0 16px" }}>
@@ -25,7 +57,19 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
         <div style={{ fontSize: 13, color: C.text2 }}>{t("Sorteio, cronómetro e marcação ao vivo.")}</div>
       </div>
 
-      {/* TEAM DRAW */}
+      {/* OWN LINEUP — players see just their team, Fantasy-card style */}
+      {showOwnLineup ? (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: myTeam.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text2 }}>{t("A TUA EQUIPA")}</span>
+            <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, color: myTeam.color }}>{myTeam.name}</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
+            {resolveTeam(myTeam.players).map((p) => <LineupCard key={p.id} p={p} group={group} />)}
+          </div>
+        </div>
+      ) : (
       <div style={{ ...cardStyle, marginBottom: 14 }}>
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Sorteio de Equipas")}</div>
@@ -112,6 +156,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
           </div>
         )}
       </div>
+      )}
 
       {/* MATCH TIMER */}
       <MatchTimer />
