@@ -65,11 +65,16 @@ export default function PitchApp() {
   const [group, setGroup]       = usePersistentState("group", INITIAL_GROUP);
   const [material, setMaterial] = usePersistentState("material", INITIAL_MATERIAL);
   const [posts, setPosts]       = usePersistentState("posts", INITIAL_POSTS);
-  const [teamsRaw, setTeams]    = usePersistentState("teams", null);
+  // teamsRaw/matchdayLocal: local-demo-only storage. In cloud mode the
+  // real source of truth is cloud.game.teams / cloud.game.live_matchday
+  // (synced via Supabase so every device sees the same draw/scores) —
+  // see the `teams`/`matchday` derived consts and updateTeams/updateMatchday
+  // below, which pick whichever source applies.
+  const [teamsRaw, setTeamsLocal] = usePersistentState("teams", null);
   const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", []);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votes: { 1: null, 2: null, 3: null } });
   const [history, setHistory]   = usePersistentState("history", HISTORY);
-  const [matchday, setMatchday] = usePersistentState("matchday", null);
+  const [matchdayLocal, setMatchdayLocal] = usePersistentState("matchday", null);
   const [lastMatchday, setLastMatchday] = usePersistentState("lastMatchday", null);
   const [bookings, setBookings] = usePersistentState("bookings", INITIAL_BOOKINGS);
   const [events, setEvents]     = usePersistentState("events", CLUB_EVENTS);
@@ -195,10 +200,30 @@ export default function PitchApp() {
 
   // Teams: array of { id, name, color, players:[playerId] }. Old saves
   // used a { a:[], b:[] } object — ignore those (force a fresh draw).
-  const teams = Array.isArray(teamsRaw) ? teamsRaw : null;
+  // Cloud mode reads/writes the draw on the group's game row (synced to
+  // every device); local demo keeps its own localStorage copy.
+  const teams = cloudMode
+    ? (Array.isArray(cloud.game?.teams) ? cloud.game.teams : null)
+    : (Array.isArray(teamsRaw) ? teamsRaw : null);
+  const updateTeams = (updater) => {
+    const next = typeof updater === "function" ? updater(teams) : updater;
+    if (cloudMode) cloud.updateGameTeams(next);
+    else setTeamsLocal(next);
+  };
+
+  // Live matchday scoring: same idea — synced via cloud.game.live_matchday
+  // so a player watching sees the organizer's scores update live, instead
+  // of each device holding its own disconnected copy.
+  const matchday = cloudMode ? (cloud.game?.live_matchday ?? null) : matchdayLocal;
+  const updateMatchday = (updater) => {
+    const next = typeof updater === "function" ? updater(matchday) : updater;
+    if (cloudMode) cloud.updateGameLiveMatchday(next);
+    else setMatchdayLocal(next);
+  };
+
   useEffect(() => {
-    if (teamsRaw && !Array.isArray(teamsRaw)) setTeams(null);
-    if (matchday?.matches?.some((m) => m.homeId === undefined)) setMatchday(null);
+    if (teamsRaw && !Array.isArray(teamsRaw)) setTeamsLocal(null);
+    if (matchdayLocal?.matches?.some((m) => m.homeId === undefined)) setMatchdayLocal(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -288,7 +313,7 @@ export default function PitchApp() {
     } else {
       setGroup((g) => g.map((p) => (p.isMe ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
     }
-    setTeams(null); // roster changed → invalidate draw
+    updateTeams(null); // roster changed → invalidate draw
   };
 
   // Organizer/assistant sets any player's status directly — guests have
@@ -300,7 +325,7 @@ export default function PitchApp() {
     if (!player) return;
     if (cloudMode) cloud.setMyStatus(newStatus, player.uuid, gameId);
     else setGroup((g) => g.map((p) => (p.id === playerId ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
-    setTeams(null);
+    updateTeams(null);
   };
 
   // Organizer permanently removes a guest (no-account) player.
@@ -310,10 +335,10 @@ export default function PitchApp() {
     if (!window.confirm(`${t("Apagar")} ${nick}${t("? Esta ação não pode ser desfeita — o jogador sai do grupo e perde o histórico.")}`)) return;
     if (cloudMode) cloud.adminDeletePlayer(player.uuid).then(() => cloud.refetch());
     else setGroup((g) => g.filter((p) => p.id !== playerId));
-    setTeams(null);
+    updateTeams(null);
   };
 
-  const clearTeams = () => setTeams(null);
+  const clearTeams = () => updateTeams(null);
 
   const toggleMaterial = (id) =>
     setMaterial((m) => m.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
@@ -361,15 +386,15 @@ export default function PitchApp() {
       const ti = round % 2 === 0 ? slot : n - 1 - slot; // snake
       newTeams[ti].players.push(p.id);
     });
-    setTeams(newTeams);
+    updateTeams(newTeams);
   };
 
   const renameTeam = (teamId, name) =>
-    setTeams((ts) => (Array.isArray(ts) ? ts.map((t) => (t.id === teamId ? { ...t, name } : t)) : ts));
+    updateTeams((ts) => (Array.isArray(ts) ? ts.map((t) => (t.id === teamId ? { ...t, name } : t)) : ts));
 
   // Manually move a player to another team (remove everywhere, add to target).
   const movePlayer = (playerId, toTeamId) =>
-    setTeams((ts) => (Array.isArray(ts)
+    updateTeams((ts) => (Array.isArray(ts)
       ? ts.map((t) => ({ ...t, players: t.id === toTeamId ? [...t.players.filter((id) => id !== playerId), playerId] : t.players.filter((id) => id !== playerId) }))
       : ts));
 
@@ -409,19 +434,19 @@ export default function PitchApp() {
         homeGkId: defaultGkFor(f.homeId), awayGkId: defaultGkFor(f.awayId),
         events: [], stage: "grupo",
       }));
-      setMatchday({ startedAt: Date.now(), mode, config, matches });
+      updateMatchday({ startedAt: Date.now(), mode, config, matches });
     } else {
-      setMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, homeId: teams[0].id, awayId: teams[1].id, homeGkId: defaultGkFor(teams[0].id), awayGkId: defaultGkFor(teams[1].id), events: [] }] });
+      updateMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, homeId: teams[0].id, awayId: teams[1].id, homeGkId: defaultGkFor(teams[0].id), awayGkId: defaultGkFor(teams[1].id), events: [] }] });
     }
   };
   const addMatch = (homeId, awayId) =>
-    setMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, homeId, awayId, homeGkId: defaultGkFor(homeId), awayGkId: defaultGkFor(awayId), events: [] }] }));
+    updateMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, homeId, awayId, homeGkId: defaultGkFor(homeId), awayGkId: defaultGkFor(awayId), events: [] }] }));
   const addGoal = (matchId, event) =>
-    setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
+    updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
   const setGoalkeeper = (matchId, side, playerId) =>
-    setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, [side]: playerId } : m)) }));
+    updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, [side]: playerId } : m)) }));
   const setPenaltyWinner = (matchId, teamId) =>
-    setMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, penaltyWinnerId: teamId } : m)) }));
+    updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, penaltyWinnerId: teamId } : m)) }));
 
   // Group stage → play-off (Personalizado only). Seeds the first
   // knockout round from group standings the first time; subsequent
@@ -429,7 +454,7 @@ export default function PitchApp() {
   // (silently) if the current round isn't fully decided yet, or if a
   // champion has already been reached.
   const advancePlayoff = () => {
-    setMatchday((md) => {
+    updateMatchday((md) => {
       if (!md || md.mode !== "personalizado" || !md.config?.faseFinal) return md;
       const goalsOf = (m, teamId) => m.events.filter((e) => e.teamId === teamId).length;
       const playoffRoundNums = md.matches.filter((m) => m.stage === "playoff").map((m) => m.round);
@@ -557,8 +582,10 @@ export default function PitchApp() {
       setHistory((h) => [{ id: Date.now(), date, confirmed: confirmed.length, result: `${totalGoals}⚽`, allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length }, ...h]);
       setLastMatchday({ date, mode: matchday.mode, ...summary });
       setMvpVote({ open: true, votes: { 1: null, 2: null, 3: null } });
+      setMatchdayLocal(null);
     }
-    setMatchday(null);
+    // Cloud mode: cloud.commitMatchday already clears games.live_matchday
+    // server-side (and refetch() picks that up) — no local mirror to reset.
   };
 
   // ── Club: events + bookings ────────────────────────────

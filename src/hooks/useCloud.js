@@ -174,6 +174,7 @@ export function useCloud() {
     const ch = supabase
       .channel(`pitch-live-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "attendances" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "games" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "players" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, refetch)
@@ -420,6 +421,25 @@ export function useCloud() {
     if (data.game) await supabase.from("games").update({ spots: n }).eq("id", data.game.id);
   };
 
+  /** Team draw lives on the current game row so every viewer sees the
+   *  same draw the organizer made — was purely local-device state before,
+   *  which is why a draw made on one phone never showed up on another. */
+  const updateGameTeams = async (teams) => {
+    if (!data.game) return;
+    setData((d) => ({ ...d, game: d.game ? { ...d.game, teams } : d.game }));
+    await supabase.from("games").update({ teams }).eq("id", data.game.id);
+  };
+
+  /** Live matchday scoring, same idea: the organizer's in-progress scores
+   *  now sync to every player's screen (read-only for them — gated by
+   *  canManageTeams in the UI, not here). Cleared back to null once the
+   *  matchday is committed (see commitMatchday). */
+  const updateGameLiveMatchday = async (liveMatchday) => {
+    if (!data.game) return;
+    setData((d) => ({ ...d, game: d.game ? { ...d.game, live_matchday: liveMatchday } : d.game }));
+    await supabase.from("games").update({ live_matchday: liveMatchday }).eq("id", data.game.id);
+  };
+
   // ── Owner-only admin mutations (cross-group). RLS is permissive
   //    (open write v1), so the anon key can write across groups. These
   //    are gated client-side by the admin email; lock down via RLS/role
@@ -556,6 +576,10 @@ export function useCloud() {
         }));
       if (rows.length) await supabase.from("fantasy_scores").insert(rows);
     }
+    // The matchday is now historical (in the matchdays table) — clear the
+    // live scoring state off the game row so it doesn't linger for the
+    // next one.
+    if (data.game) await supabase.from("games").update({ live_matchday: null }).eq("id", data.game.id);
     await refetch();
   };
 
@@ -852,7 +876,7 @@ export function useCloud() {
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken,
-    setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots,
+    setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots, updateGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,
     fetchFantasyAdminData,

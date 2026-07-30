@@ -117,7 +117,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
       <MatchTimer />
 
       {/* LIVE MATCHDAY */}
-      <Matchday {...matchdayProps} group={group} teams={teams} />
+      <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} />
 
       {/* MATCHDAY SUMMARY (current/last games) */}
       <MatchSummary matchday={matchdayProps.matchday} lastMatchday={lastMatchday} teams={teams} group={group} />

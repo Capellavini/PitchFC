@@ -16,7 +16,7 @@ const DEFAULT_CUSTOM_CONFIG = { confrontos: "unico", faseFinal: false, finalista
  *  between two chosen teams; you pick the scorer + assist per goal.
  *  'campeonato' adds a points/goal-difference standings table.
  *  Ending the matchday feeds season stats, history and MVP voting. */
-export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onSetGoalkeeper, onEnd, onAdvancePlayoff, onSetPenaltyWinner }) {
+export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onSetGoalkeeper, onEnd, onAdvancePlayoff, onSetPenaltyWinner, canManage = true }) {
   const [pending, setPending] = useState(null);   // { matchId, teamId, scorerId? }
   const [mode, setMode] = useState("avulsa");
   const [customConfig, setCustomConfig] = useState(DEFAULT_CUSTOM_CONFIG);
@@ -31,6 +31,14 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
 
   // ── Not started yet ────────────────────────────────────
   if (!matchday) {
+    if (!canManage) {
+      return (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{t("Dia de jogo")}</div>
+          <div style={{ fontSize: 11, color: C.text2 }}>{t("Aguarda o organizador começar o dia de jogo.")}</div>
+        </div>
+      );
+    }
     return (
       <div style={{ ...cardStyle, marginBottom: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{t("Dia de jogo")}</div>
@@ -223,13 +231,17 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                   never assumed from the fixed position field */}
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <Shield size={12} color={C.text3} style={{ flexShrink: 0 }} />
-                {[["homeGkId", m.homeId], ["awayGkId", m.awayId]].map(([side, teamId]) => (
+                {canManage ? [["homeGkId", m.homeId], ["awayGkId", m.awayId]].map(([side, teamId]) => (
                   <select key={side} value={m[side] ?? ""}
                     onChange={(e) => onSetGoalkeeper(m.id, side, e.target.value ? Number(e.target.value) : null)}
                     style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 6px", fontSize: 11, color: m[side] ? C.text1 : C.text3, outline: "none" }}>
                     <option value="">{t("GR?")}</option>
                     {teamPlayers(teamId).map((p) => <option key={p.id} value={p.id}>{p.nick}</option>)}
                   </select>
+                )) : [["homeGkId", m.homeId], ["awayGkId", m.awayId]].map(([side, teamId]) => (
+                  <span key={side} style={{ flex: 1, fontSize: 11, color: m[side] ? C.text1 : C.text3, textAlign: "center" }}>
+                    {byId(m[side])?.nick ?? t("GR?")}
+                  </span>
                 ))}
               </div>
 
@@ -250,6 +262,8 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                     <div style={{ fontSize: 12, textAlign: "center", color: C.text2 }}>
                       {t("Venceu nos pénaltis:")} <strong style={{ color: teamColor(m.penaltyWinnerId) }}>{teamName(m.penaltyWinnerId)}</strong>
                     </div>
+                  ) : !canManage ? (
+                    <div style={{ fontSize: 11, color: C.text2, textAlign: "center" }}>{t("Empate — a aguardar o desempate por pénaltis.")}</div>
                   ) : (
                     <>
                       <div style={{ fontSize: 11, color: C.text2, marginBottom: 8, textAlign: "center" }}>{t("Empate — quem venceu nos pénaltis?")}</div>
@@ -279,7 +293,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
               )}
 
               {/* goal entry */}
-              {isPending ? (
+              {!canManage ? null : isPending ? (
                 <div style={{ background: C.card, borderRadius: 12, padding: 12 }}>
                   <div style={{ fontSize: 11, color: C.text2, marginBottom: 8 }}>
                     {pending.scorerId
@@ -319,7 +333,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
       </div>
 
       {/* new-game team picker (3+ teams) */}
-      {composing && (
+      {canManage && composing && (
         <div style={{ background: C.surface, borderRadius: 12, padding: 12, marginBottom: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 700 }}>{t("Quem joga agora?")}</span>
@@ -343,25 +357,27 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
         </div>
       )}
 
-      {isPersonalizado && matchday.config?.faseFinal && !champion && (
+      {canManage && isPersonalizado && matchday.config?.faseFinal && !champion && (
         <button onClick={onAdvancePlayoff} disabled={!canAdvance}
           style={{ width: "100%", marginBottom: 10, background: canAdvance ? C.goldDim : C.surface, color: canAdvance ? C.gold : C.text3, border: `1px solid ${canAdvance ? C.gold + "55" : C.border}`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: canAdvance ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <ArrowRightCircle size={15} />
           {currentPlayoffRound === 0 ? t("Avançar para a fase final") : t("Avançar de ronda")}
         </button>
       )}
-      {isPersonalizado && matchday.config?.faseFinal && !canAdvance && !champion && currentPlayoffRound > 0 && (
+      {canManage && isPersonalizado && matchday.config?.faseFinal && !canAdvance && !champion && currentPlayoffRound > 0 && (
         <div style={{ fontSize: 10, color: C.text3, textAlign: "center", marginBottom: 10 }}>{t("Termina os jogos desta ronda para avançar.")}</div>
       )}
 
-      <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={startCompose} style={{ flex: 1, background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <Plus size={15} /> {t("Novo jogo")}
-        </button>
-        <button onClick={onEnd} style={{ flex: 1, background: C.redDim, color: C.red, border: `1px solid ${C.red}44`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <Flag size={15} /> {t("Terminar dia")}
-        </button>
-      </div>
+      {canManage && (
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={startCompose} style={{ flex: 1, background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Plus size={15} /> {t("Novo jogo")}
+          </button>
+          <button onClick={onEnd} style={{ flex: 1, background: C.redDim, color: C.red, border: `1px solid ${C.red}44`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Flag size={15} /> {t("Terminar dia")}
+          </button>
+        </div>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 10, color: C.text3 }}>
         <Shield size={11} /> {t("Clean sheets do GR escolhido e das Defesas contam ao terminar o dia.")}
