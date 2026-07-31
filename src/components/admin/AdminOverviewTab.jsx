@@ -33,6 +33,11 @@ export default function AdminOverviewTab({ snapshot, leads }) {
   const avgPlayers = groups.length ? (players.length / groups.length).toFixed(1) : "0";
   const gamesPlayed = games.filter((g) => g.status === "played").length;
 
+  const daysAgo = (n) => Date.now() - n * 24 * 60 * 60 * 1000;
+  const realUsers = players.filter((p) => p.user_id);
+  const newUsers7d = realUsers.filter((p) => p.created_at && new Date(p.created_at).getTime() >= daysAgo(7)).length;
+  const newUsers30d = realUsers.filter((p) => p.created_at && new Date(p.created_at).getTime() >= daysAgo(30)).length;
+
   const byGroupSize = groups
     .map((g) => ({ name: g.name, count: players.filter((p) => p.group_id === g.id).length }))
     .sort((a, b) => b.count - a.count)
@@ -48,6 +53,7 @@ export default function AdminOverviewTab({ snapshot, leads }) {
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
         <StatCard label="Grupos" value={groups.length} />
         <StatCard label="Jogadores registados" value={players.length} sub={`${avgPlayers} por grupo em média`} />
+        <StatCard label="Novos utilizadores (7 dias)" value={newUsers7d} sub={`${newUsers30d} nos últimos 30 dias`} />
         <StatCard label="Grupos ativos" value={`${activePct}%`} sub={`${groupsWithActiveGame.size} de ${groups.length} com jogo em aberto`} />
         <StatCard label="Jogos disputados" value={gamesPlayed} sub={`${games.length} jogos no total`} />
         <StatCard label="Leads (site /league)" value={leads.rows?.length ?? 0} />
