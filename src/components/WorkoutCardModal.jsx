@@ -17,7 +17,7 @@ const FIELDS = [
  *  rendered into a shareable card (renderWorkoutCard) that also carries
  *  the player's own goals/assists for the last matchday, then published
  *  straight to the Social feed like any other photo post. */
-export default function WorkoutCardModal({ me, groupName, lastMatchday, social, onClose }) {
+export default function WorkoutCardModal({ me, groupName, lastMatchday, social, onClose, onGenerated }) {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [watch, setWatch] = useState({ distanceKm: "", durationMin: "", calories: "", avgHr: "" });
@@ -60,6 +60,7 @@ export default function WorkoutCardModal({ me, groupName, lastMatchday, social, 
       });
       setCardUrl(url);
       setStage("preview");
+      onGenerated?.();
     } catch (err) {
       setError(err.message || t("Falha ao gerar o cartão."));
       setStage("form");

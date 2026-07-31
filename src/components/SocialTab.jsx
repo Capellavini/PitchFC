@@ -21,7 +21,7 @@ const colorFor = (key = "") => PALETTE[[...String(key)].reduce((h, c) => (h + c.
 /** Football social feed — three scopes (grupo / clube / amigos) with a
  *  friends graph. Cloud-backed when logged in; same UI for the local
  *  demo (fed normalized data by PitchApp). */
-export default function SocialTab({ social, me, groupName, lastMatchday }) {
+export default function SocialTab({ social, me, groupName, lastMatchday, onCardGenerated }) {
   const [scope, setScope] = useState("clube");
   const [draft, setDraft] = useState("");
   const [draftMedia, setDraftMedia] = useState(null); // { url, kind: 'photo' | 'video' }
@@ -264,7 +264,7 @@ export default function SocialTab({ social, me, groupName, lastMatchday }) {
       )}
 
       {showWorkout && (
-        <WorkoutCardModal me={me} groupName={groupName} lastMatchday={lastMatchday} social={social} onClose={() => setShowWorkout(false)} />
+        <WorkoutCardModal me={me} groupName={groupName} lastMatchday={lastMatchday} social={social} onClose={() => setShowWorkout(false)} onGenerated={onCardGenerated} />
       )}
     </div>
   );

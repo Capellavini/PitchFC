@@ -7,6 +7,8 @@ import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import PostMatchCardModal from "./PostMatchCard";
+import WorkoutCardModal from "./WorkoutCardModal";
+import CardTemplatePicker from "./CardTemplatePicker";
 
 const RANKS = [
   { n: 1, label: "1º lugar", color: C.gold },
@@ -14,12 +16,12 @@ const RANKS = [
   { n: 3, label: "3º lugar", color: C.bronze },
 ];
 
-export default function StatsTab({ group, history, lastMatchday, mvp, statMode, setStatMode, groupName, onCardGenerated }) {
+export default function StatsTab({ group, history, lastMatchday, mvp, statMode, setStatMode, groupName, onCardGenerated, social }) {
   const fields = { goals: "goals", assists: "assists", mvps: "mvps" };
   const list = [...group].sort((a, b) => (b[fields[statMode]] || 0) - (a[fields[statMode]] || 0)).slice(0, 8);
   const totalGames = history.reduce((s, h) => s + (h.games || 1), 0);
   const lines = lastMatchday?.lines ?? [];
-  const [showCard, setShowCard] = useState(false);
+  const [cardStep, setCardStep] = useState(null); // null | 'pick' | 'match' | 'workout'
 
   const me = group.find((p) => p.isMe);
   const myKey = me ? (me.uuid ?? me.id) : null;
@@ -79,7 +81,7 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
             </div>
           )}
           {iPlayed && (
-            <button onClick={() => setShowCard(true)}
+            <button onClick={() => setCardStep("pick")}
               style={{ width: "100%", marginTop: 14, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Share2 size={15} /> {t("Gerar o meu card")}
             </button>
@@ -87,8 +89,14 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
         </div>
       )}
 
-      {showCard && me && (
-        <PostMatchCardModal player={me} group={group} matchday={lastMatchday} groupName={groupName} isMVP={isMVP} onClose={() => setShowCard(false)} onGenerated={onCardGenerated} />
+      {cardStep === "pick" && (
+        <CardTemplatePicker onPick={setCardStep} onClose={() => setCardStep(null)} />
+      )}
+      {cardStep === "match" && me && (
+        <PostMatchCardModal player={me} group={group} matchday={lastMatchday} groupName={groupName} isMVP={isMVP} onClose={() => setCardStep(null)} onGenerated={onCardGenerated} />
+      )}
+      {cardStep === "workout" && me && (
+        <WorkoutCardModal me={me} groupName={groupName} lastMatchday={lastMatchday} social={social} onClose={() => setCardStep(null)} onGenerated={onCardGenerated} />
       )}
 
       {/* MVP VOTING — ranked top-3 ballot, feeds Fantasy League bonuses */}

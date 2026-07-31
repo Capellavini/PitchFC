@@ -1046,9 +1046,9 @@ export default function PitchApp() {
             onDeleteEvent={cloud.deleteEvent}
           />
         )}
-        {tab === "social" && <SocialTab social={social} me={displayGroup.find((p) => p.isMe)} groupName={game.groupName} lastMatchday={lastMatchdayView} />}
+        {tab === "social" && <SocialTab social={social} me={displayGroup.find((p) => p.isMe)} groupName={game.groupName} lastMatchday={lastMatchdayView} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} />}
         {tab === "stats" && (
-          <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} groupName={game.groupName} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} />
+          <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} groupName={game.groupName} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} social={social} />
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />

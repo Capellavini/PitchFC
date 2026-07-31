@@ -480,6 +480,9 @@ const EN = {
   "PREÇO": "PRICE", "PTS NA LIGA": "LEAGUE PTS", "DONOS": "OWNERS",
   "Gerar o meu card": "Create my card", "A gerar o teu card…": "Creating your card…",
   "Falha ao gerar o card.": "Couldn't create the card.", "Descarregar": "Download",
+  "Que cartão queres gerar?": "Which card do you want to create?",
+  "Cartão de jogo": "Match card", "Estilo FUT — golos, assistências e MVP da noite.": "FUT style — goals, assists and the night's MVP.",
+  "Cartão de treino": "Workout card", "Estilo Strava — foto + dados do relógio.": "Strava style — photo + watch data.",
 
   // ── Matchday (goalkeeper picker) ────────────────────────
   "GR?": "GK?",
@@ -1184,6 +1187,9 @@ const IT = {
   "PREÇO": "PREZZO", "PTS NA LIGA": "PT IN LEGA", "DONOS": "PROPRIETARI",
   "Gerar o meu card": "Crea la mia card", "A gerar o teu card…": "Creazione della tua card…",
   "Falha ao gerar o card.": "Impossibile creare la card.", "Descarregar": "Scarica",
+  "Que cartão queres gerar?": "Quale card vuoi creare?",
+  "Cartão de jogo": "Card partita", "Estilo FUT — golos, assistências e MVP da noite.": "Stile FUT — gol, assist e MVP della serata.",
+  "Cartão de treino": "Card allenamento", "Estilo Strava — foto + dados do relógio.": "Stile Strava — foto + dati dell'orologio.",
 
   // ── Matchday (goalkeeper picker) ────────────────────────
   "GR?": "POR?",
