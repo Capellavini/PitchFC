@@ -500,7 +500,7 @@ export function useCloud() {
       supabase.from("groups").select("*").order("created_at"),
       supabase.from("players").select("*"),
       supabase.from("games").select("id,group_id,scheduled_at,status,spots").order("scheduled_at", { ascending: false }),
-      supabase.from("attendances").select("game_id,player_id,status,paid"),
+      supabase.from("attendances").select("game_id,player_id,status,paid,responded_at"),
       supabase.from("matchdays").select("id,group_id,played_on,created_at").order("created_at", { ascending: false }),
     ]);
     return {

@@ -71,7 +71,7 @@ const WeeklyChart = ({ title, rows, atKey, distinctBy, caption }) => {
  *  registered, % groups with Pitch Manager adoption, weekly group
  *  retention, weekly active players per group, weekly cards generated. */
 export default function AdminMvpTab({ snapshot, fantasy, cards }) {
-  const { loading, error, groups, players, matchdays } = snapshot;
+  const { loading, error, groups, players, matchdays, attendances } = snapshot;
 
   if (loading) return <div style={{ fontSize: 13, color: C.text2 }}>A carregar…</div>;
   if (error) return <div style={{ fontSize: 13, color: C.red }}>Erro: {error}</div>;
@@ -86,9 +86,23 @@ export default function AdminMvpTab({ snapshot, fantasy, cards }) {
 
   const FOUR_DAYS = 4 * 86400000;
   const activeCutoff = Date.now() - FOUR_DAYS;
+  // "Active" = opened the app (last_seen_at, login or magic link) OR
+  // confirmed/declined a game (attendances.responded_at) — a player who
+  // only ever responds via the magic link and never re-opens it still
+  // clearly used the app, so last_seen_at alone undercounts them.
+  const lastRespondedByPlayer = new Map();
+  (attendances ?? []).forEach((a) => {
+    if (!a.responded_at) return;
+    const t = new Date(a.responded_at).getTime();
+    if (t > (lastRespondedByPlayer.get(a.player_id) ?? 0)) lastRespondedByPlayer.set(a.player_id, t);
+  });
   const activeByGroup = groups.map((g) => {
     const members = players.filter((p) => p.group_id === g.id);
-    const active = members.filter((p) => p.last_seen_at && new Date(p.last_seen_at).getTime() >= activeCutoff).length;
+    const active = members.filter((p) => {
+      const seen = p.last_seen_at ? new Date(p.last_seen_at).getTime() : 0;
+      const responded = lastRespondedByPlayer.get(p.id) ?? 0;
+      return Math.max(seen, responded) >= activeCutoff;
+    }).length;
     return { name: g.name, active, total: members.length };
   }).sort((a, b) => b.active - a.active);
 
@@ -106,6 +120,8 @@ export default function AdminMvpTab({ snapshot, fantasy, cards }) {
       </div>
 
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
+        <WeeklyChart title="Novos utilizadores por semana" rows={players.filter((p) => p.user_id)} atKey="created_at"
+          caption="Contas reais criadas por semana (exclui jogadores avulsos sem conta)." />
         <WeeklyChart title="Retenção de grupos por semana" rows={matchdays ?? []} atKey="played_on" distinctBy="group_id"
           caption="Nº de grupos com pelo menos um resultado registado nessa semana." />
         <WeeklyChart title="Cards gerados por semana" rows={cards?.rows ?? []} atKey="created_at"
@@ -114,7 +130,7 @@ export default function AdminMvpTab({ snapshot, fantasy, cards }) {
 
       <div style={cardStyle}>
         <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}>Jogadores ativos por grupo</div>
-        <div style={{ fontSize: 11, color: C.text3, marginBottom: 14 }}>Abriu a app nos últimos 4 dias. Conta a partir de hoje — quem não voltou a abrir ainda aparece como inativo mesmo que use o grupo normalmente.</div>
+        <div style={{ fontSize: 11, color: C.text3, marginBottom: 14 }}>Abriu a app OU confirmou/recusou presença nos últimos 4 dias.</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {activeByGroup.map((g) => (
             <div key={g.name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
