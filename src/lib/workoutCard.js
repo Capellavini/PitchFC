@@ -106,12 +106,11 @@ export async function renderWorkoutCard({ photoFile, playerNick, groupName, date
     ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(200,255,0,0.35)"; ctx.stroke();
 
     ctx.textAlign = "center";
-    ctx.font = "900 30px -apple-system, sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 32px -apple-system, sans-serif";
     ctx.fillStyle = "#C8FF00";
-    ctx.fillText(`⚽ ${pitch.goals || 0}   🎯 ${pitch.assists || 0}`, W / 2, y + 20);
-    ctx.font = "700 13px -apple-system, sans-serif";
-    ctx.fillStyle = "#8A94A8";
-    ctx.fillText("NO JOGO DA PITCH", W / 2, y + 62);
+    ctx.fillText(`⚽ ${pitch.goals || 0}   🎯 ${pitch.assists || 0}`, W / 2, y + 46);
+    ctx.textBaseline = "top";
   }
 
   ctx.textAlign = "center";

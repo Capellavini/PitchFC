@@ -25,6 +25,7 @@ export default function WorkoutCardModal({ me, groupName, lastMatchday, social, 
   const [stage, setStage] = useState("form"); // 'form' | 'generating' | 'preview' | 'publishing'
   const [cardUrl, setCardUrl] = useState(null);
   const [error, setError] = useState(null);
+  const [includePitch, setIncludePitch] = useState(true);
 
   const myKey = me ? (me.uuid ?? me.id) : null;
   const iPlayed = Boolean(me) && (lastMatchday?.candidates ?? []).some((c) => c.key === myKey);
@@ -56,7 +57,7 @@ export default function WorkoutCardModal({ me, groupName, lastMatchday, social, 
           calories: parseFloat(watch.calories) || 0,
           avgHr: parseFloat(watch.avgHr) || 0,
         },
-        pitch,
+        pitch: includePitch ? pitch : null,
       });
       setCardUrl(url);
       setStage("preview");
@@ -131,9 +132,11 @@ export default function WorkoutCardModal({ me, groupName, lastMatchday, social, 
               style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text1, outline: "none", resize: "none", fontFamily: "inherit", marginBottom: 12 }} />
 
             {pitch && (
-              <div style={{ fontSize: 12, color: C.accent, marginBottom: 12 }}>
-                {t("Vais juntar também os teus")} ⚽ {pitch.goals} · 🎯 {pitch.assists} {t("do último jogo.")}
-              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: C.accent, marginBottom: 12, cursor: "pointer" }}>
+                <input type="checkbox" checked={includePitch} onChange={(e) => setIncludePitch(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: C.accent, cursor: "pointer" }} />
+                {t("Juntar também os teus")} ⚽ {pitch.goals} · 🎯 {pitch.assists} {t("do último jogo")}
+              </label>
             )}
 
             {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 10 }}>{error}</div>}
