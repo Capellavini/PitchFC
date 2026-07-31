@@ -9,7 +9,7 @@ import { ini, computeOverall } from "./helpers";
 
 const W = 720, H = 1280;
 
-function loadImage(src) {
+export function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -19,7 +19,7 @@ function loadImage(src) {
   });
 }
 
-function roundRect(ctx, x, y, w, h, r) {
+export function roundRect(ctx, x, y, w, h, r) {
   if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -34,7 +34,7 @@ function roundRect(ctx, x, y, w, h, r) {
  *  measures within `maxW` at the given weight/family — needed because a
  *  night can have anywhere from 1 to 8+ games, so a fixed score font
  *  would overflow a narrow chip and bleed into its neighbour. */
-function fitFont(ctx, text, maxW, { startPx, minPx, weight, family }) {
+export function fitFont(ctx, text, maxW, { startPx, minPx, weight, family }) {
   let px = startPx;
   while (px > minPx) {
     ctx.font = `${weight} ${px}px ${family}`;

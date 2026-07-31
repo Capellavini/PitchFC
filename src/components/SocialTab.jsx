@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Users, Building2, UserPlus, MessageCircle, Send, ImagePlus, Video, Trash2, Check, X } from "lucide-react";
+import { Users, Building2, UserPlus, MessageCircle, Send, ImagePlus, Video, Watch, Trash2, Check, X } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { ini } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { openWhatsApp, sharePostMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
+import WorkoutCardModal from "./WorkoutCardModal";
 
 const SCOPES = [
   { id: "grupo", Icon: Users,      label: "Grupo"  },
@@ -20,7 +21,7 @@ const colorFor = (key = "") => PALETTE[[...String(key)].reduce((h, c) => (h + c.
 /** Football social feed — three scopes (grupo / clube / amigos) with a
  *  friends graph. Cloud-backed when logged in; same UI for the local
  *  demo (fed normalized data by PitchApp). */
-export default function SocialTab({ social }) {
+export default function SocialTab({ social, me, groupName, lastMatchday }) {
   const [scope, setScope] = useState("clube");
   const [draft, setDraft] = useState("");
   const [draftMedia, setDraftMedia] = useState(null); // { url, kind: 'photo' | 'video' }
@@ -29,6 +30,7 @@ export default function SocialTab({ social }) {
   const [openComments, setOpenComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
   const [addOpen, setAddOpen] = useState(false);
+  const [showWorkout, setShowWorkout] = useState(false);
 
   const { meId, myGroupId, posts, friendIds, friends, requests, candidates, sentPending, friendshipIdOf } = social;
 
@@ -104,6 +106,11 @@ export default function SocialTab({ social }) {
               <Video size={15} /> {t("Vídeo")}
               <input type="file" accept="video/*" disabled={uploading} onChange={(e) => pickMedia(e, "video")} style={{ display: "none" }} />
             </label>
+            {me && (
+              <button onClick={() => setShowWorkout(true)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.text2, background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+                <Watch size={15} /> {t("Treino")}
+              </button>
+            )}
           </div>
           <button onClick={publish} disabled={uploading || (!draft.trim() && !draftMedia)} style={{ background: (draft.trim() || draftMedia) && !uploading ? C.accent : C.accentDim, color: (draft.trim() || draftMedia) && !uploading ? C.bg : C.text3, border: "none", borderRadius: 10, padding: "7px 16px", fontSize: 12, fontWeight: 800, cursor: uploading ? "default" : "pointer" }}>
             {t("Publicar")}
@@ -254,6 +261,10 @@ export default function SocialTab({ social }) {
             );
           })}
         </div>
+      )}
+
+      {showWorkout && (
+        <WorkoutCardModal me={me} groupName={groupName} lastMatchday={lastMatchday} social={social} onClose={() => setShowWorkout(false)} />
       )}
     </div>
   );
