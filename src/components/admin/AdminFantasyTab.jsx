@@ -43,7 +43,7 @@ export default function AdminFantasyTab({ fantasy }) {
                       <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {(s.player_ids || []).map((pid) => {
                           const isCaptain = pid === s.captain_id;
-                          const isReserve = pid === s.reserve_id;
+                          const isReserve = (s.reserve_ids || []).includes(pid);
                           return (
                             <span key={pid} style={{
                               display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600,

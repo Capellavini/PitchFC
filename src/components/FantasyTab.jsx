@@ -115,7 +115,10 @@ function CreateLeague({ isOrganizer, onCreateLeague, nextSeason }) {
 function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores, offers, matchdays, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer }) {
   const weights = league.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
   const mySquad = squads.find((s) => s.participant_id === me?.uuid);
-  const complete = mySquad?.player_ids?.length === league.squad_size;
+  // squad_size is the minimum, not a hard cap — managers can buy extra
+  // depth once the bank allows it; anyone beyond the minimum just needs
+  // to be benched (reserveIds) since only non-reserves score.
+  const complete = (mySquad?.player_ids?.length || 0) >= league.squad_size;
   const [selected, setSelected] = useState(mySquad?.player_ids || []);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -173,14 +176,16 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
 
   const total = selected.reduce((s, id) => s + (prices[id] || 0), 0);
   const overBudget = total > effectiveBudget;
-  const canSave = !locked && selected.length === league.squad_size && !overBudget;
+  const canSave = !locked && selected.length >= league.squad_size && !overBudget;
 
   const toggle = (id) => {
     if (locked) return;
     setSaved(false);
     setSelected((sel) => {
       if (sel.includes(id)) return sel.filter((x) => x !== id);
-      if (sel.length >= league.squad_size) return sel;
+      // No hard cap on squad size anymore — extra buys beyond
+      // league.squad_size just sit on the bench (reserveIds), bounded
+      // only by budget and the per-player ownership cap.
       if (group.find((p) => p.uuid === id)?.injured) return sel; // injured — can't be escalated
       const count = ownership[id] || 0;
       if (count >= OWNERSHIP_CAP) return sel; // full — trade instead
@@ -191,13 +196,18 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
   const save = async (extra = {}) => {
     setSaving(true);
     setError(null);
-    const res = await onSaveSquad(league.id, extra.playerIds ?? selected, extra.captainId ?? mySquad?.captain_id ?? null, extra.reserveId ?? mySquad?.reserve_id ?? null);
+    const res = await onSaveSquad(league.id, extra.playerIds ?? selected, extra.captainId ?? mySquad?.captain_id ?? null, extra.reserveIds ?? mySquad?.reserve_ids ?? []);
     setSaving(false);
     if (!res?.error) {
       setSaved(true); setTimeout(() => setSaved(false), 2000);
-      if ((extra.playerIds ?? selected).length === league.squad_size) setEditing(false);
+      if ((extra.playerIds ?? selected).length >= league.squad_size) setEditing(false);
     } else setError(res.error);
     return res;
+  };
+
+  const toggleReserve = (id) => {
+    const current = mySquad?.reserve_ids || [];
+    save({ reserveIds: current.includes(id) ? current.filter((x) => x !== id) : [...current, id] });
   };
 
   const filteredGroup = group.filter((p) => p.nick.toLowerCase().includes(search.trim().toLowerCase()));
@@ -242,14 +252,14 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
             <div style={{ fontSize: 11, color: C.orange, marginBottom: 8 }}>{t("Ainda sem capitão — toca na coroa de um jogador no campo.")}</div>
           )}
           <FantasyPitch
-            group={group} playerIds={mySquad.player_ids} captainId={mySquad.captain_id} reserveId={mySquad.reserve_id}
+            group={group} playerIds={mySquad.player_ids} captainId={mySquad.captain_id} reserveIds={mySquad.reserve_ids}
             weights={weights} lastRoundLines={lastRoundLines} readOnly={locked}
             onSetCaptain={(id) => save({ captainId: id })}
-            onSetReserve={(id) => save({ reserveId: mySquad.reserve_id === id ? null : id })}
+            onSetReserve={toggleReserve}
           />
           <FantasyBench
-            group={group} reserveId={mySquad.reserve_id} captainId={mySquad.captain_id} weights={weights} lastRoundLines={lastRoundLines}
-            readOnly={locked} onSetReserve={(id) => save({ reserveId: mySquad.reserve_id === id ? null : id })}
+            group={group} reserveIds={mySquad.reserve_ids} captainId={mySquad.captain_id} weights={weights} lastRoundLines={lastRoundLines}
+            readOnly={locked} onSetReserve={toggleReserve}
           />
         </>
       ) : (
@@ -437,7 +447,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
               <button onClick={() => setViewingId(null)} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex" }}><X size={16} /></button>
             </div>
             <FantasyPitch
-              group={group} playerIds={rivalSquad.player_ids} captainId={rivalSquad.captain_id} reserveId={rivalSquad.reserve_id}
+              group={group} playerIds={rivalSquad.player_ids} captainId={rivalSquad.captain_id} reserveIds={rivalSquad.reserve_ids}
               weights={weights} lastRoundLines={lastRoundLines} readOnly
             />
           </div>
@@ -574,7 +584,8 @@ function TradeOfferPanel({ group, me, mySquad, prices, target, myBank, onClose, 
   };
 
   return (
-    <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.orange}55` }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,15,24,0.85)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, overflowY: "auto" }}>
+    <div onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: "100%", maxWidth: 380, border: `1px solid ${C.orange}55` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <div style={{ fontSize: 13, fontWeight: 800 }}>{t("Oferta por")} {targetPlayer?.nick}</div>
         <button onClick={onClose} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex" }}><X size={16} /></button>
@@ -624,6 +635,7 @@ function TradeOfferPanel({ group, me, mySquad, prices, target, myBank, onClose, 
         {sending ? t("Um momento…") : overBank ? t("Banco insuficiente") : t("Enviar oferta")}
       </BtnPrimary>
       {error && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{error}</div>}
+    </div>
     </div>
   );
 }

@@ -64,11 +64,13 @@ export const squadCostBasis = (pricesPaid) =>
  *  useCloud.js closeMvp, which adds it separately once decided).
  *  Players who didn't play that round (absent from summaryLines)
  *  contribute 0. The captain's total is doubled (capitaoMultiplier).
- *  The reserve (bench) never scores, regardless of how they played. */
-export function computeRoundPoints(playerIds, captainId, summaryLines, weights = DEFAULT_FANTASY_WEIGHTS, reserveId = null) {
+ *  Reserves (bench — any number of them, not just one) never score,
+ *  regardless of how they played. */
+export function computeRoundPoints(playerIds, captainId, summaryLines, weights = DEFAULT_FANTASY_WEIGHTS, reserveIds = []) {
   const lines = summaryLines || [];
+  const reserveSet = new Set(reserveIds || []);
   return (playerIds || []).reduce((total, id) => {
-    if (id === reserveId) return total;
+    if (reserveSet.has(id)) return total;
     const line = lines.find((l) => l.key === id);
     if (!line) return total;
     let pts = weights.participou
@@ -85,9 +87,10 @@ export function computeRoundPoints(playerIds, captainId, summaryLines, weights =
  *  only ever collects one of the three (a player can't finish 1st AND
  *  2nd), so the first match wins. Returns 0 if none of the podium is
  *  in this squad, or if the only podium finisher in the squad is benched. */
-export function mvpBonus(playerIds, captainId, podium, weights = DEFAULT_FANTASY_WEIGHTS, reserveId = null) {
+export function mvpBonus(playerIds, captainId, podium, weights = DEFAULT_FANTASY_WEIGHTS, reserveIds = []) {
   const { mvpId, runnerUpId, thirdId } = podium || {};
-  const ids = (playerIds || []).filter((id) => id !== reserveId);
+  const reserveSet = new Set(reserveIds || []);
+  const ids = (playerIds || []).filter((id) => !reserveSet.has(id));
   const placementWeight = mvpId && ids.includes(mvpId) ? weights.mvp
     : runnerUpId && ids.includes(runnerUpId) ? weights.mvp2
     : thirdId && ids.includes(thirdId) ? weights.mvp3

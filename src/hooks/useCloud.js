@@ -589,8 +589,8 @@ export function useCloud() {
         .filter((s) => s.player_ids?.length)
         .map((s) => ({
           league_id: data.fantasyLeague.id, matchday_id: md.data.id, participant_id: s.participant_id,
-          player_ids: s.player_ids, captain_id: s.captain_id, reserve_id: s.reserve_id,
-          points: computeRoundPoints(s.player_ids, s.captain_id, summary.lines, weights, s.reserve_id),
+          player_ids: s.player_ids, captain_id: s.captain_id, reserve_ids: s.reserve_ids || [],
+          points: computeRoundPoints(s.player_ids, s.captain_id, summary.lines, weights, s.reserve_ids),
         }));
       if (rows.length) {
         await supabase.from("fantasy_scores").insert(rows);
@@ -666,7 +666,7 @@ export function useCloud() {
       const rows = data.fantasyScores.filter((s) => s.matchday_id === matchdayId
         && s.player_ids?.some((id) => id === winnerId || id === runnerUpId || id === thirdId));
       await Promise.all(rows.map((s) => {
-        const bonus = mvpBonus(s.player_ids, s.captain_id, podium, weights, s.reserve_id);
+        const bonus = mvpBonus(s.player_ids, s.captain_id, podium, weights, s.reserve_ids);
         if (!bonus) return null;
         const squad = data.fantasySquads.find((sq) => sq.participant_id === s.participant_id);
         return Promise.all([
@@ -707,7 +707,7 @@ export function useCloud() {
    *  participant, freely editable up to 8h before the next kickoff (see
    *  FantasyTab, which hides the editor once locked — this is a second,
    *  server-side check against the same game.scheduled_at). */
-  const saveFantasySquad = async (leagueId, playerIds, captainId, reserveId) => {
+  const saveFantasySquad = async (leagueId, playerIds, captainId, reserveIds) => {
     if (!data.myPlayer) return { error: "Sem sessão." };
     if (data.game?.scheduled_at) {
       const lockAt = new Date(data.game.scheduled_at).getTime() - 8 * 3600 * 1000;
@@ -732,7 +732,7 @@ export function useCloud() {
       ? nextPricesPaid(existing?.prices_paid, playerIds, fantasyPriceOf())
       : undefined;
     const r = await supabase.from("fantasy_squads").upsert(
-      { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, reserve_id: reserveId ?? null,
+      { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, reserve_ids: reserveIds ?? [],
         ...(pricesPaid ? { prices_paid: pricesPaid } : {}), updated_at: new Date().toISOString() },
       { onConflict: "league_id,participant_id" });
     if (r.error) return { error: r.error.message };

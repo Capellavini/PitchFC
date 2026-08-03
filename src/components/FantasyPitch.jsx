@@ -15,10 +15,10 @@ const ROW_ORDER = ["Avançado", "Médio", "Defesa", "Guarda-redes"]; // top → 
  *  be captain). readOnly renders another participant's squad (from the
  *  leaderboard) with no tap actions. lastRoundLines, if given, overlays
  *  each player's points from that round. */
-export default function FantasyPitch({ group, playerIds, captainId, reserveId, weights, lastRoundLines, readOnly, onSetCaptain, onSetReserve }) {
+export default function FantasyPitch({ group, playerIds, captainId, reserveIds, weights, lastRoundLines, readOnly, onSetCaptain, onSetReserve }) {
   const byId = (uuid) => group.find((p) => p.uuid === uuid);
-  const starters = playerIds.filter((id) => id !== reserveId);
-  const reserve = reserveId && playerIds.includes(reserveId) ? byId(reserveId) : null;
+  const reserveSet = new Set(reserveIds || []);
+  const starters = playerIds.filter((id) => !reserveSet.has(id));
 
   const rows = ROW_ORDER.map((pos) => ({
     pos,
@@ -29,7 +29,7 @@ export default function FantasyPitch({ group, playerIds, captainId, reserveId, w
   const unmatched = starters.map(byId).filter((p) => p && !ROW_ORDER.includes(p.position));
   if (unmatched.length) rows.push({ pos: null, players: unmatched });
 
-  const pointsFor = (uuid) => (lastRoundLines ? computeRoundPoints([uuid], captainId, lastRoundLines, weights, reserveId) : null);
+  const pointsFor = (uuid) => (lastRoundLines ? computeRoundPoints([uuid], captainId, lastRoundLines, weights, reserveIds) : null);
 
   const renderIcon = (p, { bench } = {}) => {
     const isCaptain = p.uuid === captainId;
@@ -110,25 +110,29 @@ export default function FantasyPitch({ group, playerIds, captainId, reserveId, w
 
 /** The bench strip, rendered as a separate card below FantasyPitch —
  *  kept out of the green pitch so it visually reads as "not playing",
- *  matching FPL's bench-below-the-pitch layout. */
-export function FantasyBench({ group, reserveId, captainId, weights, lastRoundLines, readOnly, onSetReserve }) {
-  const p = group.find((x) => x.uuid === reserveId);
+ *  matching FPL's bench-below-the-pitch layout. Any number of reserves
+ *  now (extra buys beyond the league's starting squad size sit here,
+ *  never scoring), not just a single bench spot. */
+export function FantasyBench({ group, reserveIds, captainId, weights, lastRoundLines, readOnly, onSetReserve }) {
+  const reserves = (reserveIds || []).map((id) => group.find((x) => x.uuid === id)).filter(Boolean);
   return (
     <div style={{ ...cardStyle, marginBottom: 14, background: C.surface }}>
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: p ? 10 : 0 }}>{t("BANCO")}</div>
-      {p ? (
-        <div style={{ display: "flex" }}>
-          <BenchIcon p={p} group={group} captainId={captainId} weights={weights} lastRoundLines={lastRoundLines} readOnly={readOnly} onSetReserve={onSetReserve} />
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: reserves.length ? 10 : 0 }}>{t("BANCO")}</div>
+      {reserves.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+          {reserves.map((p) => (
+            <BenchIcon key={p.uuid} p={p} group={group} captainId={captainId} weights={weights} lastRoundLines={lastRoundLines} readOnly={readOnly} onSetReserve={onSetReserve} />
+          ))}
         </div>
       ) : (
-        <div style={{ fontSize: 11, color: C.text3 }}>{t("Sem suplente definido.")}</div>
+        <div style={{ fontSize: 11, color: C.text3 }}>{t("Sem suplentes definidos.")}</div>
       )}
     </div>
   );
 }
 
 function BenchIcon({ p, group, captainId, weights, lastRoundLines, readOnly, onSetReserve }) {
-  const pts = lastRoundLines ? computeRoundPoints([p.uuid], captainId, lastRoundLines, weights, p.uuid) : null;
+  const pts = lastRoundLines ? computeRoundPoints([p.uuid], captainId, lastRoundLines, weights, [p.uuid]) : null;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, width: 72, opacity: 0.75 }}>
       <div style={{
