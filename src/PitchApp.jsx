@@ -290,6 +290,11 @@ export default function PitchApp() {
     return true;
   };
 
+  // A brand-new cloud group can skip picking a day/time at onboarding
+  // ("Ainda não sei o dia/hora") — no games row exists yet. Only cloud
+  // mode can be in this state; local demo always ships with a game.
+  const noGameScheduled = cloudMode && !cloud.game;
+
   // The "next game" as the UI consumes it.
   const game = {
     ...groupSettings,
@@ -301,6 +306,7 @@ export default function PitchApp() {
     // (it may have been shifted for this one week) over the recurring
     // weekday/time pattern. Used to lock the Fantasy squad 8h before kickoff.
     kickoffAt: cloud.game?.scheduled_at ? new Date(cloud.game.scheduled_at) : nextGameDate(groupSettings.weekday, groupSettings.time),
+    noGameScheduled,
   };
 
   // Recurring confirmation window (derived): before the weekly open moment,
@@ -1018,6 +1024,7 @@ export default function PitchApp() {
             canManageTeams={canManageTeams} onSetPlayerStatus={setPlayerStatus}
             inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
             onReschedule={(weekday, time) => saveSettings({ ...groupSettings, weekday, time })}
+            onScheduleGame={cloudMode ? (weekday, time) => cloud.scheduleNextGame(weekday, time) : undefined}
             confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
           />
         ))}

@@ -16,7 +16,7 @@ import Collapsible from "./Collapsible";
 
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine, canManageTeams,
-  inviteUrl, canManageGame, onSetSpots, onReschedule, confirmOpen = true, opensAtLabel, onSetPlayerStatus,
+  inviteUrl, canManageGame, onSetSpots, onReschedule, onScheduleGame, confirmOpen = true, opensAtLabel, onSetPlayerStatus,
 }) {
   const [copied, setCopied] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
@@ -31,12 +31,53 @@ export default function JogoTab({
   useEffect(() => {
     let cancelled = false;
     setWeather(null);
-    if ((game.city || game.venue) && game.kickoffAt) {
+    if (!game.noGameScheduled && (game.city || game.venue) && game.kickoffAt) {
       fetchGameWeather(game.venue, game.kickoffAt, game.city).then((w) => { if (!cancelled) setWeather(w); });
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game.venue, game.city, kickoffTime]);
+  }, [game.venue, game.city, kickoffTime, game.noGameScheduled]);
+
+  // "Ainda não sei o dia/hora" at onboarding — the group exists but has
+  // no game yet. Everyone sees an empty state; only the organizer gets
+  // the day/time picker to schedule the first one (reuses the same
+  // chips+time UI as the "Alterar" reschedule flow below).
+  if (game.noGameScheduled) {
+    return (
+      <div style={{ padding: "0 16px" }}>
+        <div style={{ padding: "20px 0 16px" }}>
+          <div style={{ ...displayFont, fontSize: 22 }}>{t("Jogo")}</div>
+        </div>
+        <div style={{ ...cardStyle, textAlign: "center", padding: "28px 20px" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t("Nenhum jogo marcado")}</div>
+          <div style={{ fontSize: 12, color: C.text2, marginBottom: canManageGame ? 20 : 0 }}>
+            {canManageGame ? t("Escolhe o dia e a hora do primeiro jogo do grupo.") : t("O organizador ainda não marcou o próximo jogo.")}
+          </div>
+          {canManageGame && onScheduleGame && (
+            <>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", marginBottom: 12 }}>
+                {WEEKDAYS_PT.map((day, i) => {
+                  const active = draftDay === i;
+                  return (
+                    <button key={day} onClick={() => setDraftDay(i)}
+                      style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" }}>
+                      {t(day.slice(0, 3))}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 }}>
+                <span style={{ fontSize: 11, color: C.text2 }}>{t("Hora:")}</span>
+                <input type="time" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
+              </div>
+              <BtnPrimary onClick={() => onScheduleGame(draftDay, draftTime)}>{t("Agendar primeiro jogo")}</BtnPrimary>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const confirmed = group.filter((p) => p.status === "confirmed");
   const pending   = group.filter((p) => p.status === "pending");

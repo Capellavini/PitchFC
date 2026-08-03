@@ -53,23 +53,40 @@ export default function OnboardingOrganizer({ settings, onDone, onBack, isEditin
 
       {/* Schedule */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>{t("Dia e hora do jogo")}</div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-          {WEEKDAYS_PT.map((day, i) => {
-            const active = form.weekday === i;
-            return (
-              <button key={day} onClick={() => set("weekday", i)} style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" }}>
-                {t(day.slice(0, 3))}
-              </button>
-            );
-          })}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: form.skipSchedule ? 0 : 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Dia e hora do jogo")}</div>
+          {!isEditing && (
+            <button onClick={() => set("skipSchedule", !form.skipSchedule)}
+              style={{ background: "none", border: "none", color: form.skipSchedule ? C.accent : C.text2, fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+              {form.skipSchedule ? t("✓ Ainda não sei") : t("Ainda não sei o dia/hora")}
+            </button>
+          )}
         </div>
-        <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Hora de início")}</div>
-        <input type="time" value={form.time} onChange={(e) => set("time", e.target.value)}
-          style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
+        {form.skipSchedule ? (
+          <div style={{ fontSize: 11, color: C.text2, marginTop: 8 }}>
+            {t("Sem problema — o grupo fica criado e agendas o primeiro jogo mais tarde, na aba Jogo.")}
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+              {WEEKDAYS_PT.map((day, i) => {
+                const active = form.weekday === i;
+                return (
+                  <button key={day} onClick={() => set("weekday", i)} style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" }}>
+                    {t(day.slice(0, 3))}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Hora de início")}</div>
+            <input type="time" value={form.time} onChange={(e) => set("time", e.target.value)}
+              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
+          </>
+        )}
       </div>
 
       {/* Recurring + confirmation-open window */}
+      {!form.skipSchedule && (
       <div style={{ ...cardStyle, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: form.recurring ? 14 : 0 }}>
           <div style={{ flex: 1 }}>
@@ -110,6 +127,7 @@ export default function OnboardingOrganizer({ settings, onDone, onBack, isEditin
           </>
         )}
       </div>
+      )}
 
       {/* Price */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>

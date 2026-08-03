@@ -273,15 +273,19 @@ export function useCloud() {
       .insert(playerFields(profileForm, { user_id: user.id, group_id: groupId, is_organizer: true }))
       .select().single();
 
-    const game = await supabase.from("games").insert({
-      group_id: groupId, scheduled_at: nextGameISO(groupForm.weekday, groupForm.time),
-      venue: groupForm.venue, spots: groupForm.maxPlayers,
-      total_cost_cents: Math.round(groupForm.monthlyPrice * 100),
-      status: "open", recurring_rule: `weekly_${groupForm.weekday}_${groupForm.time}`,
-    }).select().single();
+    // "Ainda não sei o dia/hora" — the group exists but has no game yet;
+    // the organizer schedules the first one later (scheduleNextGame).
+    if (!groupForm.skipSchedule) {
+      const game = await supabase.from("games").insert({
+        group_id: groupId, scheduled_at: nextGameISO(groupForm.weekday, groupForm.time),
+        venue: groupForm.venue, spots: groupForm.maxPlayers,
+        total_cost_cents: Math.round(groupForm.monthlyPrice * 100),
+        status: "open", recurring_rule: `weekly_${groupForm.weekday}_${groupForm.time}`,
+      }).select().single();
 
-    if (pl.data && game.data) {
-      await supabase.from("attendances").insert({ game_id: game.data.id, player_id: pl.data.id, status: "pending" });
+      if (pl.data && game.data) {
+        await supabase.from("attendances").insert({ game_id: game.data.id, player_id: pl.data.id, status: "pending" });
+      }
     }
     await refetch();
     return { inviteToken: grp.data.invite_token };
@@ -305,15 +309,17 @@ export function useCloud() {
 
     await supabase.from("players").update({ group_id: groupId, is_organizer: true, is_assistant: false }).eq("id", player.id);
 
-    const game = await supabase.from("games").insert({
-      group_id: groupId, scheduled_at: nextGameISO(groupForm.weekday, groupForm.time),
-      venue: groupForm.venue, spots: groupForm.maxPlayers,
-      total_cost_cents: Math.round(groupForm.monthlyPrice * 100),
-      status: "open", recurring_rule: `weekly_${groupForm.weekday}_${groupForm.time}`,
-    }).select().single();
+    if (!groupForm.skipSchedule) {
+      const game = await supabase.from("games").insert({
+        group_id: groupId, scheduled_at: nextGameISO(groupForm.weekday, groupForm.time),
+        venue: groupForm.venue, spots: groupForm.maxPlayers,
+        total_cost_cents: Math.round(groupForm.monthlyPrice * 100),
+        status: "open", recurring_rule: `weekly_${groupForm.weekday}_${groupForm.time}`,
+      }).select().single();
 
-    if (game.data) {
-      await supabase.from("attendances").insert({ game_id: game.data.id, player_id: player.id, status: "pending" });
+      if (game.data) {
+        await supabase.from("attendances").insert({ game_id: game.data.id, player_id: player.id, status: "pending" });
+      }
     }
     await refetch();
     return { inviteToken: grp.data.invite_token };
@@ -407,6 +413,30 @@ export function useCloud() {
       setData((d) => ({ ...d, game: d.game ? { ...d.game, ...gamePatch } : d.game }));
       await supabase.from("games").update(gamePatch).eq("id", data.game.id);
     }
+  };
+
+  /** First game for a group that was created with "Ainda não sei o
+   *  dia/hora" (no game row yet) — organizer picks weekday/time from the
+   *  JogoTab empty state. Everyone currently in the group starts pending
+   *  on it, same as a freshly-created group. */
+  const scheduleNextGame = async (weekday, time) => {
+    if (!data.groupRow) return { error: "Sem grupo." };
+    const groupId = data.groupRow.id;
+    await supabase.from("groups").update({ weekday, game_time: time }).eq("id", groupId);
+    const game = await supabase.from("games").insert({
+      group_id: groupId, scheduled_at: nextGameISO(weekday, time),
+      venue: data.groupRow.venue, spots: data.groupRow.max_players,
+      total_cost_cents: data.groupRow.monthly_price_cents,
+      status: "open", recurring_rule: `weekly_${weekday}_${time}`,
+    }).select().single();
+    if (game.error) return { error: game.error.message };
+    if (data.players.length) {
+      await supabase.from("attendances").insert(
+        data.players.map((p) => ({ game_id: game.data.id, player_id: p.id, status: "pending" }))
+      );
+    }
+    await refetch();
+    return {};
   };
 
   /** Organizer changes the number of players for this game. Keeps the
@@ -922,7 +952,7 @@ export function useCloud() {
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken,
-    setMyStatus, setPaid, updatePlayer, updateGroupRow, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
+    setMyStatus, setPaid, updatePlayer, updateGroupRow, scheduleNextGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,
     fetchFantasyAdminData,
