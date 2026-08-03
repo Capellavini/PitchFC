@@ -48,6 +48,11 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
   const confirmed = group.filter((p) => p.status === "confirmed");
   const { playing } = splitWaitlist(confirmed, game.spots);
   const resolveTeam = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
+  const teamOverall = (tm) => {
+    const players = resolveTeam(tm.players);
+    if (!players.length) return null;
+    return Math.round(players.reduce((s, p) => s + computeOverall(p.position, p.attrs), 0) / players.length);
+  };
 
   const me = group.find((p) => p.isMe);
   const myTeam = teams?.find((tm) => tm.players.includes(me?.id));
@@ -112,6 +117,9 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
                 ) : (
                   <span style={{ flex: 1, minWidth: 0, color: tm.color, fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tm.name}</span>
                 )}
+                {teamOverall(tm) != null && (
+                  <span style={{ fontSize: 10, fontWeight: 800, color: C.text2, flexShrink: 0 }}>OVR {teamOverall(tm)}</span>
+                )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {resolveTeam(tm.players).map((p) => (
@@ -155,6 +163,9 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
             <span style={{ width: 8, height: 8, borderRadius: 4, background: myTeam.color, flexShrink: 0 }} />
             <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text2 }}>{t("A TUA EQUIPA")}</span>
             <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, color: myTeam.color }}>{myTeam.name}</span>
+            {teamOverall(myTeam) != null && (
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.text2 }}>OVR {teamOverall(myTeam)}</span>
+            )}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
             {resolveTeam(myTeam.players).map((p) => <LineupCard key={p.id} p={p} group={group} />)}
