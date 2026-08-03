@@ -79,12 +79,22 @@ export function useCloud() {
       const gid = myPlayer.group_id;
       const [g, p, gm, bk] = await Promise.all([
         supabase.from("groups").select("*").eq("id", gid).single(),
-        supabase.from("players").select("*").eq("group_id", gid).order("created_at"),
+        supabase.from("players").select("*, player_group_memberships(group_id,goals,assists,mvps,games_played,wins,clean_sheets)").eq("group_id", gid).order("created_at"),
         supabase.from("games").select("*").eq("group_id", gid)
           .in("status", ["open", "full", "live"]).order("scheduled_at", { ascending: false }).limit(1),
         supabase.from("bookings").select("*, groups(name)").order("day"),
       ]);
       if (g.error || p.error) throw g.error || p.error;
+      // Season stats now live per-membership (player_group_memberships),
+      // not on the player row — pull this group's slice back onto each
+      // player so every existing consumer (StatsTab, PerfilTab, GrupoTab,
+      // FantasyTab, achievements.js) keeps reading p.goals/p.games_played/
+      // etc. unchanged.
+      const players = (p.data ?? []).map((pl) => {
+        const { player_group_memberships, ...rest } = pl;
+        const m = player_group_memberships?.find((row) => row.group_id === gid);
+        return m ? { ...rest, goals: m.goals, assists: m.assists, mvps: m.mvps, games_played: m.games_played, wins: m.wins, clean_sheets: m.clean_sheets } : rest;
+      });
       const game = gm.data?.[0] ?? null;
       let attendances = [];
       if (game) {
@@ -108,7 +118,7 @@ export function useCloud() {
       // Peer ratings for everyone in the roster — averaged into each
       // player's card (gated to 3+ ratings) and listed as "who rated you".
       let ratings = [];
-      const rtq = await supabase.from("peer_ratings").select("*").in("player_id", (p.data ?? []).map((x) => x.id));
+      const rtq = await supabase.from("peer_ratings").select("*").in("player_id", players.map((x) => x.id));
       if (!rtq.error) ratings = rtq.data ?? [];
 
       // Social: cloud feed (author + likes + comments), my friend graph,
@@ -143,7 +153,7 @@ export function useCloud() {
         fantasyTradeOffers = ftoq.data ?? [];
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players: p.data ?? [], game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers });
+      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -176,6 +186,7 @@ export function useCloud() {
       .on("postgres_changes", { event: "*", schema: "public", table: "attendances" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "games" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "players" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "player_group_memberships" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "matchdays" }, refetch)
@@ -612,13 +623,15 @@ export function useCloud() {
     const updates = Object.entries(statsByUuid).map(([uuid, s]) => {
       const p = current[uuid];
       if (!p) return null;
-      return supabase.from("players").update({
+      // Per-group membership row, not the player row (see migration 37) —
+      // p.goals/etc. already reflect this group's slice (see load()).
+      return supabase.from("player_group_memberships").update({
         goals: (p.goals || 0) + (s.goals || 0),
         assists: (p.assists || 0) + (s.assists || 0),
         clean_sheets: (p.clean_sheets || 0) + (s.cleanSheets || 0),
         wins: (p.wins || 0) + (s.wins || 0),
         games_played: (p.games_played || 0) + (s.played ? 1 : 0),
-      }).eq("id", uuid);
+      }).eq("player_id", uuid).eq("group_id", data.groupRow.id);
     }).filter(Boolean);
     await Promise.all(updates);
     const md = await supabase.from("matchdays").insert({
@@ -694,7 +707,7 @@ export function useCloud() {
       votes.forEach((v) => { tally[v.voted_for_id] = (tally[v.voted_for_id] || 0) + (MVP_BALLOT_POINTS[v.rank] || 0); });
       [winnerId, runnerUpId, thirdId] = Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([id]) => id);
       const winner = data.players.find((p) => p.id === winnerId);
-      if (winner) await supabase.from("players").update({ mvps: (winner.mvps || 0) + 1 }).eq("id", winnerId);
+      if (winner) await supabase.from("player_group_memberships").update({ mvps: (winner.mvps || 0) + 1 }).eq("player_id", winnerId).eq("group_id", data.groupRow.id);
       await supabase.from("matchdays")
         .update({ mvp_open: false, mvp_id: winnerId, runner_up_id: runnerUpId ?? null, third_id: thirdId ?? null })
         .eq("id", matchdayId);
