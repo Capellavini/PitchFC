@@ -20,7 +20,7 @@ with pre_fix_bonus as (
   join public.matchdays md on md.id = fsc.matchday_id
   join public.fantasy_leagues fl on fl.id = fsc.league_id
   where md.created_at < '2026-08-03 14:36:00+00'
-  group by fsc.league_id, fsc.participant_id
+  group by fsc.league_id, fsc.participant_id, fl.scoring_weights
 )
 update public.fantasy_squads fs
 set budget_adjustment = fs.budget_adjustment + pre_fix_bonus.bonus
