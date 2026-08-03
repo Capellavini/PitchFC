@@ -52,12 +52,41 @@ export const t = (s) => (current === "pt" ? s : (DICTS[current]?.[s] ?? s));
 
 // Attribute names get their own map: "Defesa" the position translates to
 // "Defender", but "Defesa" the attribute is "Defending" — can't share a key.
-const ATTRS_PT = { rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
+const ATTRS_PT = {
+  rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico",
+  div: "Elasticidade", man: "Segurança", kic: "Chute", ref: "Reflexos", spd: "Velocidade", pos: "Posicionamento",
+};
 const ATTRS_PT_BR = { rit: "Ritmo", rem: "Finalização", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
-const ATTRS_EN = { rit: "Pace", rem: "Shooting", pas: "Passing", dri: "Dribbling", def: "Defending", fis: "Physical" };
-const ATTRS_IT = { rit: "Ritmo", rem: "Tiro", pas: "Passaggio", dri: "Dribbling", def: "Difesa", fis: "Fisico" };
+const ATTRS_EN = {
+  rit: "Pace", rem: "Shooting", pas: "Passing", dri: "Dribbling", def: "Defending", fis: "Physical",
+  div: "Diving", man: "Handling", kic: "Kicking", ref: "Reflexes", spd: "Speed", pos: "Positioning",
+};
+const ATTRS_IT = {
+  rit: "Ritmo", rem: "Tiro", pas: "Passaggio", dri: "Dribbling", def: "Difesa", fis: "Fisico",
+  div: "Tuffo", man: "Presa", kic: "Calci", ref: "Riflessi", spd: "Velocità", pos: "Posizionamento",
+};
 const ATTRS_DICTS = { "pt-br": ATTRS_PT_BR, en: ATTRS_EN, it: ATTRS_IT };
 export const attrName = (k) => (current === "pt" ? ATTRS_PT[k] : (ATTRS_DICTS[current]?.[k] ?? ATTRS_PT[k]));
+
+// 3-letter FUT-card abbreviations — separate from attrName's full words.
+// EN uses FIFA's own well-known codes (PAC/SHO/PAS/DRI/DEF/PHY, and for
+// goalkeepers DIV/HAN/KIC/REF/SPD/POS) rather than a mechanical
+// truncation, since that's what players expect to see.
+const ATTR_ABBR_PT = {
+  rit: "RIT", rem: "REM", pas: "PAS", dri: "DRI", def: "DEF", fis: "FIS",
+  div: "DIV", man: "MAN", kic: "KIC", ref: "REF", spd: "SPD", pos: "POS",
+};
+const ATTR_ABBR_PT_BR = { rit: "RIT", rem: "FIN", pas: "PAS", dri: "DRI", def: "DEF", fis: "FIS" };
+const ATTR_ABBR_EN = {
+  rit: "PAC", rem: "SHO", pas: "PAS", dri: "DRI", def: "DEF", fis: "PHY",
+  div: "DIV", man: "HAN", kic: "KIC", ref: "REF", spd: "SPD", pos: "POS",
+};
+const ATTR_ABBR_IT = {
+  rit: "RIT", rem: "TIR", pas: "PAS", dri: "DRI", def: "DIF", fis: "FIS",
+  div: "TUF", man: "PRE", kic: "CAL", ref: "RIF", spd: "VEL", pos: "POS",
+};
+const ATTR_ABBR_DICTS = { "pt-br": ATTR_ABBR_PT_BR, en: ATTR_ABBR_EN, it: ATTR_ABBR_IT };
+export const attrAbbr = (k) => (current === "pt" ? ATTR_ABBR_PT[k] : (ATTR_ABBR_DICTS[current]?.[k] ?? ATTR_ABBR_PT[k]));
 
 const EN = {
   // ── Dates ──────────────────────────────────────────────
@@ -363,6 +392,7 @@ const EN = {
   // ── PerfilTab / SecuritySection ────────────────────────
   "O Meu Cartão": "My Card", "Editar": "Edit", "Ver o meu": "View mine",
   "Lesionado": "Injured", "Marcar como lesionado": "Mark as injured", "Remover lesão": "Remove injury",
+  "LENDA": "LEGEND", "OURO": "GOLD", "PRATA": "SILVER", "BRONZE": "BRONZE",
   "Não podes escalar um jogador lesionado.": "You can't field an injured player.",
   "Esse jogador está lesionado — a troca não pode ser aceite.": "That player is injured — the trade can't be accepted.",
   "Editar Perfil": "Edit Profile",
@@ -1071,6 +1101,7 @@ const IT = {
   // ── PerfilTab / SecuritySection ────────────────────────
   "O Meu Cartão": "La Mia Carta", "Editar": "Modifica", "Ver o meu": "Vedi il mio",
   "Lesionado": "Infortunato", "Marcar como lesionado": "Segna come infortunato", "Remover lesão": "Rimuovi infortunio",
+  "LENDA": "LEGGENDA", "OURO": "ORO", "PRATA": "ARGENTO", "BRONZE": "BRONZO",
   "Não podes escalar um jogador lesionado.": "Non puoi schierare un giocatore infortunato.",
   "Esse jogador está lesionado — a troca não pode ser aceite.": "Questo giocatore è infortunato — lo scambio non può essere accettato.",
   "Editar Perfil": "Modifica Profilo",

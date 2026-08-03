@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { C, cardStyle, displayFont } from "../theme";
-import { ATTR_LABELS } from "../lib/helpers";
+import { attrLabelsFor, defaultAttrsFor } from "../lib/helpers";
 import { t, attrName } from "../lib/i18n";
 import BtnPrimary from "./BtnPrimary";
-
-const DEFAULT_ATTRS = { rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 };
 
 /** Inline stats rating, submitted right from the target player's profile
  *  (cloud mode) — replaces the old WhatsApp-link + paste-code flow.
  *  Re-submitting updates the rater's previous rating instead of adding a
- *  second one (one rating per rater per player, enforced server-side). */
-export default function RatingForm({ nick, existing, onSubmit }) {
-  const [attrs, setAttrs] = useState(existing ?? DEFAULT_ATTRS);
+ *  second one (one rating per rater per player, enforced server-side).
+ *  Goalkeepers are rated on a completely different attribute set
+ *  (diving/handling/kicking/reflexes/speed/positioning). */
+export default function RatingForm({ nick, position, existing, onSubmit }) {
+  const labels = attrLabelsFor(position);
+  const [attrs, setAttrs] = useState(existing ?? defaultAttrsFor(position));
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState(null);
@@ -35,7 +36,7 @@ export default function RatingForm({ nick, existing, onSubmit }) {
       <div style={{ fontSize: 11, color: C.text2, marginBottom: 12 }}>
         {t("Sê justo — a média com as avaliações dos outros amigos forma o cartão dele.")}
       </div>
-      {Object.keys(ATTR_LABELS).map((k) => (
+      {Object.keys(labels).map((k) => (
         <div key={k} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
           <span style={{ width: 52, fontSize: 12, color: C.text2 }}>{attrName(k)}</span>
           <input type="range" min="40" max="99" value={attrs[k]}

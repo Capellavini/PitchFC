@@ -239,6 +239,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
         cloudMode && onSubmitRating && (
           <RatingForm
             nick={player.nick}
+            position={player.position}
             existing={player.myRatingAttrs}
             onSubmit={(attrs) => onSubmitRating(player.uuid, attrs)}
           />

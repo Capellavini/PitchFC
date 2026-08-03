@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { Copy, Check, MessageCircle } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND } from "../theme";
-import { ATTR_LABELS, decodePayload, encodePayload } from "../lib/helpers";
+import { attrLabelsFor, defaultAttrsFor, decodePayload, encodePayload } from "../lib/helpers";
 import { openWhatsApp, rateResultMessage } from "../lib/whatsapp";
+import { attrName } from "../lib/i18n";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
-
-const ATTR_NAMES = { rit: "Ritmo", rem: "Remate", pas: "Passe", dri: "Drible", def: "Defesa", fis: "Físico" };
 
 /** Standalone page opened from a "rate me" link (?rate=payload).
  *  No login needed — the friend rates and sends back a code.
  *  Becomes a real magic-link write when Supabase lands. */
 export default function RatePlayer({ payload }) {
   const player = decodePayload(payload);
-  const [attrs, setAttrs] = useState({ rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 });
+  const [attrs, setAttrs] = useState(defaultAttrsFor(player?.position));
   const [raterName, setRaterName] = useState("");
   const [code, setCode] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -88,9 +87,9 @@ export default function RatePlayer({ payload }) {
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 14 }}>
-        {Object.keys(ATTR_LABELS).map((k) => (
+        {Object.keys(attrLabelsFor(player.position)).map((k) => (
           <div key={k} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            <span style={{ width: 52, fontSize: 12, color: C.text2 }}>{ATTR_NAMES[k]}</span>
+            <span style={{ width: 52, fontSize: 12, color: C.text2 }}>{attrName(k)}</span>
             <input type="range" min="40" max="99" value={attrs[k]}
               onChange={(e) => setAttrs((a) => ({ ...a, [k]: Number(e.target.value) }))}
               style={{ flex: 1, accentColor: C.accent }} />

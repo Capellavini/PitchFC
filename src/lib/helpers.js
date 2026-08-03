@@ -120,17 +120,29 @@ export function relativeTime(ts) {
 }
 
 // ── FUT card overall ─────────────────────────────────────
-export const ATTR_LABELS = { rit: "RIT", rem: "REM", pas: "PAS", dri: "DRI", def: "DEF", fis: "FIS" };
+// Goalkeepers get their own FIFA-style attribute set (diving/handling/
+// kicking/reflexes/speed/positioning) — completely different axes from
+// outfield players, so they're never mixed into the same 6 keys.
+const ATTR_LABELS = { rit: "RIT", rem: "REM", pas: "PAS", dri: "DRI", def: "DEF", fis: "FIS" };
+const GK_ATTR_LABELS = { div: "DIV", man: "MAN", kic: "KIC", ref: "REF", spd: "SPD", pos: "POS" };
+const DEFAULT_ATTRS = { rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 };
+const DEFAULT_GK_ATTRS = { div: 70, man: 70, kic: 70, ref: 70, spd: 70, pos: 70 };
+
+/** Which attribute labels/keys apply to a player — goalkeepers use their
+ *  own set, everyone else uses the outfield one. Drives the FUT card,
+ *  the rating sliders and default attrs consistently off one source. */
+export const attrLabelsFor = (position) => (position === "Guarda-redes" ? GK_ATTR_LABELS : ATTR_LABELS);
+export const defaultAttrsFor = (position) => (position === "Guarda-redes" ? DEFAULT_GK_ATTRS : DEFAULT_ATTRS);
 
 const OVERALL_WEIGHTS = {
-  "Guarda-redes": { def: 0.40, fis: 0.25, pas: 0.15, rit: 0.10, dri: 0.05, rem: 0.05 },
   "Defesa":       { def: 0.35, fis: 0.25, rit: 0.15, pas: 0.15, dri: 0.05, rem: 0.05 },
   "Médio":        { pas: 0.30, dri: 0.20, rit: 0.15, fis: 0.15, rem: 0.10, def: 0.10 },
   "Avançado":     { rem: 0.35, rit: 0.25, dri: 0.20, pas: 0.10, fis: 0.05, def: 0.05 },
 };
+const GK_OVERALL_WEIGHTS = { ref: 0.25, div: 0.25, pos: 0.20, man: 0.15, kic: 0.10, spd: 0.05 };
 
 export function computeOverall(position, attrs) {
-  const w = OVERALL_WEIGHTS[position] ?? OVERALL_WEIGHTS["Médio"];
+  const w = position === "Guarda-redes" ? GK_OVERALL_WEIGHTS : (OVERALL_WEIGHTS[position] ?? OVERALL_WEIGHTS["Médio"]);
   return Math.round(Object.keys(w).reduce((sum, k) => sum + (attrs?.[k] ?? 60) * w[k], 0));
 }
 
@@ -152,13 +164,16 @@ export function decodePayload(s) {
   }
 }
 
-const ATTR_KEYS = ["rit", "rem", "pas", "dri", "def", "fis"];
-
-/** Average a list of attrs objects, per attribute. */
-export function averageAttrs(list) {
+/** Average a list of attrs objects, per attribute. Goalkeepers are rated
+ *  on a different attribute set than outfield players, so the key list
+ *  is derived from the rated player's own position (falls back to
+ *  whatever keys the first rating actually has, for old callers that
+ *  don't know the position). */
+export function averageAttrs(list, position) {
   if (!list.length) return null;
+  const keys = position ? Object.keys(attrLabelsFor(position)) : Object.keys(list[0] || {});
   const out = {};
-  ATTR_KEYS.forEach((k) => {
+  keys.forEach((k) => {
     out[k] = Math.round(list.reduce((s, a) => s + (a?.[k] ?? 60), 0) / list.length);
   });
   return out;

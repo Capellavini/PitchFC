@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Camera, ChevronLeft } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
+import { defaultAttrsFor } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
@@ -14,10 +15,15 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
     name: me.name ?? "", nick: me.nick ?? "", age: me.age ?? 25,
     nationality: me.nationality ?? "🇵🇹 Portugal", club: me.club ?? "FC Porto",
     position: me.position ?? "Médio", foot: me.foot ?? "Direito",
-    attrs: me.attrs ?? { rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 },
+    attrs: me.attrs ?? defaultAttrsFor(me.position ?? "Médio"),
   });
 
-  const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  // Goalkeepers use a completely different attribute set (diving/
+  // handling/kicking/reflexes/speed/positioning) than outfield players —
+  // switching position resets attrs to the matching default (there's no
+  // slider here to edit them anyway; ratings unlock the real numbers).
+  const set = (key, value) => setForm((f) =>
+    key === "position" ? { ...f, position: value, attrs: defaultAttrsFor(value) } : { ...f, [key]: value });
 
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];

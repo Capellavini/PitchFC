@@ -15,7 +15,7 @@ import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
-import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl } from "./lib/helpers";
+import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor } from "./lib/helpers";
 import { t, setLang, detectLang } from "./lib/i18n";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
@@ -45,7 +45,6 @@ import NoGroupState from "./components/NoGroupState";
 import BtnPrimary from "./components/BtnPrimary";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
-const DEFAULT_ATTRS = { rit: 70, rem: 70, pas: 70, dri: 70, def: 70, fis: 70 };
 
 // Team draw supports 2–6 teams; each gets a colour and an editable name.
 const TEAM_PALETTE = ["#C8FF00", "#4895FF", "#FF9F0A", "#A78BFA", "#FF6B9D", "#2DD4BF"];
@@ -151,7 +150,7 @@ export default function PitchApp() {
         return {
           id, uuid: p.id, name: p.name, nick: p.nick, email: p.email, phone: p.phone,
           photo: p.photo_url, age: p.age, nationality: p.nationality, club: p.club,
-          position: p.position, foot: p.foot, attrs: p.attrs ?? DEFAULT_ATTRS,
+          position: p.position, foot: p.foot, attrs: p.attrs ?? defaultAttrsFor(p.position),
           isOrganizerPlayer: p.is_organizer, isAssistant: p.is_assistant,
           isGuest: !p.user_id, injured: p.injured,
           magicToken: p.magic_token,
@@ -256,7 +255,7 @@ export default function PitchApp() {
       const rows = (cloud.ratings || []).filter((r) => r.player_id === p.uuid);
       return {
         count: rows.length,
-        avgAttrs: rows.length ? averageAttrs(rows.map((r) => r.attrs)) : null,
+        avgAttrs: rows.length ? averageAttrs(rows.map((r) => r.attrs), p.position) : null,
         raters: rows.map((r) => ({ id: r.rater_id, nick: baseGroup.find((x) => x.uuid === r.rater_id)?.nick || r.rater_name || "?" })),
         myRatingAttrs: rows.find((r) => r.rater_id === me?.uuid)?.attrs ?? null,
       };
@@ -264,7 +263,7 @@ export default function PitchApp() {
     if (p.isMe) {
       return {
         count: peerRatings.length,
-        avgAttrs: peerRatings.length ? averageAttrs(peerRatings.map((r) => r.a)) : null,
+        avgAttrs: peerRatings.length ? averageAttrs(peerRatings.map((r) => r.a), p.position) : null,
         raters: peerRatings.map((r) => ({ id: null, nick: r.from || "Anónimo" })),
         myRatingAttrs: null,
       };
@@ -425,7 +424,8 @@ export default function PitchApp() {
     const clean = name.trim();
     if (!clean) return;
     const o = overall ? Math.max(40, Math.min(99, overall)) : 65;
-    const attrs = { rit: o, rem: o, pas: o, dri: o, def: o, fis: o };
+    const keys = Object.keys(defaultAttrsFor(position));
+    const attrs = Object.fromEntries(keys.map((k) => [k, o]));
     const nick = clean.split(/\s+/)[0] || clean;
     if (cloudMode) {
       cloud.addManualPlayer({ name: clean, nick, position, attrs });
@@ -728,7 +728,7 @@ export default function PitchApp() {
   const profileDefaults = {
     name: meta.name || "", nick: (meta.name || "").split(" ")[0] || "",
     phone: meta.phone || "", age: 25, nationality: "🇵🇹 Portugal", club: "FC Porto",
-    position: "Médio", foot: "Direito", attrs: { ...DEFAULT_ATTRS },
+    position: "Médio", foot: "Direito", attrs: { ...defaultAttrsFor("Médio") },
   };
 
   // Owner-only admin overview of every group. Reachable from ANY logged-in

@@ -1,7 +1,7 @@
 import { Cross } from "lucide-react";
 import { C, displayFont } from "../theme";
-import { ini, computeOverall, POSITION_ABBR, ATTR_LABELS } from "../lib/helpers";
-import { t, getLang } from "../lib/i18n";
+import { ini, computeOverall, POSITION_ABBR, attrLabelsFor } from "../lib/helpers";
+import { t, getLang, attrAbbr } from "../lib/i18n";
 
 // Tier tint fades into C.card so the cards sit on the navy palette.
 // "icon" (>= 86) is the FIFA-legend look: champagne gold, light rays,
@@ -117,10 +117,10 @@ export default function FutCard({ player, width = 260, ratingsCount }) {
 
       {/* Attributes 3×2 */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 * scale, position: "relative" }}>
-        {Object.keys(ATTR_LABELS).map((k) => (
+        {Object.keys(attrLabelsFor(player.position)).map((k) => (
           <div key={k} style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5 * scale }}>
             <span style={{ ...displayFont, fontSize: 17 * scale, color: tier.color }}>{locked ? "–" : (player.attrs?.[k] ?? 60)}</span>
-            <span style={{ fontSize: 9 * scale, fontWeight: 700, color: C.text2, letterSpacing: "0.05em" }}>{ATTR_LABELS[k]}</span>
+            <span style={{ fontSize: 9 * scale, fontWeight: 700, color: C.text2, letterSpacing: "0.05em" }}>{attrAbbr(k)}</span>
           </div>
         ))}
       </div>
@@ -138,7 +138,7 @@ export default function FutCard({ player, width = 260, ratingsCount }) {
       {isIcon && (
         <div style={{ textAlign: "center", marginTop: 10 * scale, position: "relative" }}>
           <span style={{ fontSize: 9 * scale, fontWeight: 900, letterSpacing: "0.35em", color: tier.color }}>
-            ★ {tier.label} ★
+            ★ {t(tier.label)} ★
           </span>
         </div>
       )}
