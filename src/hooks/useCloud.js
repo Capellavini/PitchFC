@@ -369,6 +369,7 @@ export function useCloud() {
   // an update matches zero rows instead of erroring.
   const setMyStatus = async (status_, playerId, gameId) => {
     const respondedAt = new Date().toISOString();
+    const previous = data.attendances.find((a) => a.player_id === playerId) ?? null;
     setData((d) => {
       const exists = d.attendances.some((a) => a.player_id === playerId);
       return {
@@ -378,10 +379,25 @@ export function useCloud() {
           : [...d.attendances, { game_id: gameId, player_id: playerId, status: status_, responded_at: respondedAt, paid: false }],
       };
     });
-    await supabase.from("attendances").upsert(
+    const r = await supabase.from("attendances").upsert(
       { game_id: gameId, player_id: playerId, status: status_, responded_at: respondedAt },
       { onConflict: "game_id,player_id" }
     );
+    // The server also enforces the confirmation window (a device with a
+    // skewed clock/timezone can otherwise see the button before it's
+    // really open) — if it rejects the write, undo the optimistic patch
+    // instead of leaving the UI showing a status that never actually
+    // saved.
+    if (r.error) {
+      setData((d) => ({
+        ...d,
+        attendances: previous
+          ? d.attendances.map((a) => (a.player_id === playerId ? previous : a))
+          : d.attendances.filter((a) => a.player_id !== playerId),
+      }));
+      return { error: r.error.message };
+    }
+    return {};
   };
   const setPaid = async (paid, playerId, gameId) => {
     setData((d) => ({ ...d, attendances: d.attendances.map((a) => (a.player_id === playerId ? { ...a, paid } : a)) }));
