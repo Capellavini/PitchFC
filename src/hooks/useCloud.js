@@ -714,6 +714,16 @@ export function useCloud() {
       if (Date.now() > lockAt) return { error: "Escalação trancada — falta menos de 8h para o jogo." };
     }
     const existing = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
+    // Kept players are charged what was actually paid for them (cost
+    // basis), never today's live price — otherwise re-saving an
+    // unchanged squad after your own players did well would falsely
+    // read as "over budget" (the exact bug the bank fix already solved
+    // for the display; this is the same computation, used here for the
+    // save validation itself). Only genuinely new picks cost today's
+    // price — a real transaction.
+    const pricesPaid = data.fantasyLeague
+      ? nextPricesPaid(existing?.prices_paid, playerIds, fantasyPriceOf())
+      : undefined;
     if (data.fantasyLeague) {
       // Injured players can be *kept* if they were already on the squad
       // (e.g. hurt after being picked, or you're just re-saving a captain
@@ -723,14 +733,9 @@ export function useCloud() {
       const injuredAdd = newlyAdded.find((id) => data.players.find((p) => p.id === id)?.injured);
       if (injuredAdd) return { error: "Não podes escalar um jogador lesionado." };
 
-      const priceOf = fantasyPriceOf();
       const effectiveBudget = data.fantasyLeague.budget + (existing?.budget_adjustment || 0);
-      const total = playerIds.reduce((s, id) => s + priceOf(id), 0);
-      if (total > effectiveBudget) return { error: "Orçamento insuficiente para esta escalação." };
+      if (squadCostBasis(pricesPaid) > effectiveBudget) return { error: "Orçamento insuficiente para esta escalação." };
     }
-    const pricesPaid = data.fantasyLeague
-      ? nextPricesPaid(existing?.prices_paid, playerIds, fantasyPriceOf())
-      : undefined;
     const r = await supabase.from("fantasy_squads").upsert(
       { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, reserve_ids: reserveIds ?? [],
         ...(pricesPaid ? { prices_paid: pricesPaid } : {}), updated_at: new Date().toISOString() },

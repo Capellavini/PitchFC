@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Pencil, X, Search, Check, ArrowRightLeft, Cross } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall } from "../lib/helpers";
-import { fantasyPrice, computeRoundPoints, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM, squadCostBasis } from "../lib/fantasy";
+import { fantasyPrice, computeRoundPoints, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM, squadCostBasis, nextPricesPaid } from "../lib/fantasy";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
@@ -174,7 +174,12 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
   const squadBank = (squad) => league.budget + (squad?.budget_adjustment || 0) - squadCostBasis(squad?.prices_paid);
   const effectiveBudget = league.budget + (mySquad?.budget_adjustment || 0);
 
-  const total = selected.reduce((s, id) => s + (prices[id] || 0), 0);
+  // Same rule as the bank itself: players you already own are charged
+  // what you actually paid, not today's live price — only genuinely new
+  // picks in `selected` cost today's price. Mirrors exactly what
+  // useCloud.js's saveFantasySquad will persist, so this preview can't
+  // drift from what happens on save.
+  const total = squadCostBasis(nextPricesPaid(mySquad?.prices_paid, selected, (id) => prices[id] || 0));
   const overBudget = total > effectiveBudget;
   const canSave = !locked && selected.length >= league.squad_size && !overBudget;
 
