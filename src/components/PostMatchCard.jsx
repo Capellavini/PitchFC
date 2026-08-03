@@ -3,7 +3,7 @@ import { X, Download, Share2 } from "lucide-react";
 import { C } from "../theme";
 import { t } from "../lib/i18n";
 import { playerColor } from "../lib/helpers";
-import { renderPostMatchCard, dataUrlToFile } from "../lib/postMatchCard";
+import { renderPostMatchCard, shareCard, downloadCard } from "../lib/postMatchCard";
 
 /** Generates the current player's real post-match share card (their own
  *  goals/assists per game that night, OVR, MVP crown only if they
@@ -28,16 +28,8 @@ export default function PostMatchCardModal({ player, group, matchday, groupName,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const share = async () => {
-    if (!state.url) return;
-    const file = dataUrlToFile(state.url, "pitch-card.png");
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "PITCH" }); } catch { /* user cancelled the share sheet */ }
-    } else {
-      const a = document.createElement("a");
-      a.href = state.url; a.download = "pitch-card.png"; a.click();
-    }
-  };
+  const share = () => state.url && shareCard(state.url, "pitch-card.png");
+  const download = () => state.url && downloadCard(state.url, "pitch-card.png");
 
   return (
     <div onClick={onClose} style={{
@@ -57,9 +49,9 @@ export default function PostMatchCardModal({ player, group, matchday, groupName,
               <button onClick={share} style={{ flex: 1, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <Share2 size={16} /> {t("Partilhar")}
               </button>
-              <a href={state.url} download="pitch-card.png" style={{ flex: 1, background: C.card, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none" }}>
+              <button onClick={download} style={{ flex: 1, background: C.card, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <Download size={16} /> {t("Descarregar")}
-              </a>
+              </button>
             </div>
           </>
         )}

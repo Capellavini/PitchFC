@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { X, Watch, Image as ImageIcon, Upload, Send } from "lucide-react";
+import { X, Watch, Image as ImageIcon, Upload, Send, Share2, Download } from "lucide-react";
 import { C, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
 import { renderWorkoutCard } from "../lib/workoutCard";
-import { dataUrlToFile } from "../lib/postMatchCard";
+import { dataUrlToFile, shareCard, downloadCard } from "../lib/postMatchCard";
 
 const FIELDS = [
   { key: "distanceKm", label: "Distância (km)", placeholder: "5.2" },
@@ -94,6 +94,14 @@ export default function WorkoutCardModal({ me, groupName, lastMatchday, social, 
           <>
             <img src={cardUrl} alt="" style={{ width: "100%", borderRadius: 16, marginBottom: 14, display: "block" }} />
             {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 10 }}>{error}</div>}
+            <div style={{ display: "flex", gap: 10, width: "100%", marginBottom: 10 }}>
+              <button onClick={() => shareCard(cardUrl, "pitch-treino.png")} style={{ flex: 1, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Share2 size={16} /> {t("Partilhar")}
+              </button>
+              <button onClick={() => downloadCard(cardUrl, "pitch-treino.png")} style={{ flex: 1, background: C.card, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Download size={16} /> {t("Descarregar")}
+              </button>
+            </div>
             <div style={{ display: "flex", gap: 10, width: "100%" }}>
               <button onClick={() => setStage("form")} disabled={stage === "publishing"} style={{ flex: 1, background: C.card, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
                 {t("Voltar")}

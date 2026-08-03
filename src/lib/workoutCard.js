@@ -5,7 +5,7 @@
 // matchday, if they played. Same canvas-rendering approach as
 // postMatchCard.js (no DOM, no server).
 
-import { loadImage, roundRect, fitFont } from "./postMatchCard";
+import { loadImage, roundRect, fitFont, drawBallIcon, drawAssistIcon, drawStatRow } from "./postMatchCard";
 
 const W = 720, H = 960;
 
@@ -105,11 +105,13 @@ export async function renderWorkoutCard({ photoFile, playerNick, groupName, date
     ctx.fillStyle = "rgba(200,255,0,0.1)"; ctx.fill();
     ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(200,255,0,0.35)"; ctx.stroke();
 
-    ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "900 32px -apple-system, sans-serif";
-    ctx.fillStyle = "#C8FF00";
-    ctx.fillText(`⚽ ${pitch.goals || 0}   🎯 ${pitch.assists || 0}`, W / 2, y + 46);
+    drawStatRow(ctx, W / 2, y + 46, {
+      icon1: drawBallIcon, n1: pitch.goals || 0,
+      icon2: drawAssistIcon, n2: pitch.assists || 0,
+      iconR: 15, gap: 8, groupGap: 26,
+      color: "#C8FF00", font: "900 32px -apple-system, sans-serif",
+    });
     ctx.textBaseline = "top";
   }
 
