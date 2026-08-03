@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, supabaseEnabled, isAdminEmail } from "../lib/supabase";
-import { computeRoundPoints, mvpBonus, fantasyPrice, DEFAULT_FANTASY_WEIGHTS } from "../lib/fantasy";
+import { computeRoundPoints, mvpBonus, fantasyPrice, DEFAULT_FANTASY_WEIGHTS, nextPricesPaid, squadCostBasis } from "../lib/fantasy";
 
 /**
  * PR 2 of the Supabase migration: real accounts (email + password),
@@ -592,7 +592,19 @@ export function useCloud() {
           player_ids: s.player_ids, captain_id: s.captain_id, reserve_id: s.reserve_id,
           points: computeRoundPoints(s.player_ids, s.captain_id, summary.lines, weights, s.reserve_id),
         }));
-      if (rows.length) await supabase.from("fantasy_scores").insert(rows);
+      if (rows.length) {
+        await supabase.from("fantasy_scores").insert(rows);
+        // The bank's only source of "new money" round to round (besides
+        // trades) — a good week buys room to strengthen the squad next.
+        const bankPerPoint = weights.bankPerPoint ?? DEFAULT_FANTASY_WEIGHTS.bankPerPoint;
+        await Promise.all(rows.map((row) => {
+          const squad = data.fantasySquads.find((s) => s.participant_id === row.participant_id);
+          if (!squad || !row.points) return null;
+          return supabase.from("fantasy_squads")
+            .update({ budget_adjustment: (squad.budget_adjustment || 0) + row.points * bankPerPoint })
+            .eq("id", squad.id);
+        }).filter(Boolean));
+      }
     }
     // The matchday is now historical (in the matchdays table) — clear the
     // live scoring state off the game row so it doesn't linger for the
@@ -649,14 +661,19 @@ export function useCloud() {
     // one of the 3 finishers, now that it's decided.
     if (winnerId && data.fantasyLeague) {
       const weights = data.fantasyLeague.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
+      const bankPerPoint = weights.bankPerPoint ?? DEFAULT_FANTASY_WEIGHTS.bankPerPoint;
       const podium = { mvpId: winnerId, runnerUpId, thirdId };
       const rows = data.fantasyScores.filter((s) => s.matchday_id === matchdayId
         && s.player_ids?.some((id) => id === winnerId || id === runnerUpId || id === thirdId));
-      await Promise.all(rows.map((s) =>
-        supabase.from("fantasy_scores")
-          .update({ points: s.points + mvpBonus(s.player_ids, s.captain_id, podium, weights, s.reserve_id) })
-          .eq("id", s.id)
-      ));
+      await Promise.all(rows.map((s) => {
+        const bonus = mvpBonus(s.player_ids, s.captain_id, podium, weights, s.reserve_id);
+        if (!bonus) return null;
+        const squad = data.fantasySquads.find((sq) => sq.participant_id === s.participant_id);
+        return Promise.all([
+          supabase.from("fantasy_scores").update({ points: s.points + bonus }).eq("id", s.id),
+          squad && supabase.from("fantasy_squads").update({ budget_adjustment: (squad.budget_adjustment || 0) + bonus * bankPerPoint }).eq("id", squad.id),
+        ]);
+      }).filter(Boolean));
     }
     await refetch();
   };
@@ -696,8 +713,8 @@ export function useCloud() {
       const lockAt = new Date(data.game.scheduled_at).getTime() - 8 * 3600 * 1000;
       if (Date.now() > lockAt) return { error: "Escalação trancada — falta menos de 8h para o jogo." };
     }
+    const existing = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
     if (data.fantasyLeague) {
-      const existing = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
       // Injured players can be *kept* if they were already on the squad
       // (e.g. hurt after being picked, or you're just re-saving a captain
       // change) — only block newly adding one that's already flagged.
@@ -711,8 +728,12 @@ export function useCloud() {
       const total = playerIds.reduce((s, id) => s + priceOf(id), 0);
       if (total > effectiveBudget) return { error: "Orçamento insuficiente para esta escalação." };
     }
+    const pricesPaid = data.fantasyLeague
+      ? nextPricesPaid(existing?.prices_paid, playerIds, fantasyPriceOf())
+      : undefined;
     const r = await supabase.from("fantasy_squads").upsert(
-      { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, reserve_id: reserveId ?? null, updated_at: new Date().toISOString() },
+      { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, reserve_id: reserveId ?? null,
+        ...(pricesPaid ? { prices_paid: pricesPaid } : {}), updated_at: new Date().toISOString() },
       { onConflict: "league_id,participant_id" });
     if (r.error) return { error: r.error.message };
     await refetch();
@@ -734,8 +755,7 @@ export function useCloud() {
     if (data.fantasyLeague) {
       const priceOf = fantasyPriceOf();
       const mySquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
-      const myBank = data.fantasyLeague.budget + (mySquad?.budget_adjustment || 0)
-        - (mySquad?.player_ids || []).reduce((s, id) => s + priceOf(id), 0);
+      const myBank = data.fantasyLeague.budget + (mySquad?.budget_adjustment || 0) - squadCostBasis(mySquad?.prices_paid);
       const netCost = (priceOf(targetPlayerId) - priceOf(givePlayerId)) + (offerType === "cash" ? Number(offerCash) || 0 : 0);
       if (netCost > myBank) return { error: "Banco insuficiente para esta oferta." };
     }
@@ -780,17 +800,20 @@ export function useCloud() {
     const buyerAdjustment = (buyerSquad.budget_adjustment || 0) - (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
     const sellerAdjustment = (sellerSquad.budget_adjustment || 0) + (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
 
+    const priceOf = fantasyPriceOf();
+    const buyerNewPricesPaid = nextPricesPaid(buyerSquad.prices_paid, buyerNewIds, priceOf);
+    const sellerNewPricesPaid = nextPricesPaid(sellerSquad.prices_paid, sellerNewIds, priceOf);
+
     if (data.fantasyLeague) {
-      const priceOf = fantasyPriceOf();
-      const buyerBankAfter = data.fantasyLeague.budget + buyerAdjustment - buyerNewIds.reduce((s, id) => s + priceOf(id), 0);
-      const sellerBankAfter = data.fantasyLeague.budget + sellerAdjustment - sellerNewIds.reduce((s, id) => s + priceOf(id), 0);
+      const buyerBankAfter = data.fantasyLeague.budget + buyerAdjustment - squadCostBasis(buyerNewPricesPaid);
+      const sellerBankAfter = data.fantasyLeague.budget + sellerAdjustment - squadCostBasis(sellerNewPricesPaid);
       if (buyerBankAfter < 0) return { error: "O comprador não tem banco suficiente para esta troca." };
       if (sellerBankAfter < 0) return { error: "Isto deixaria o teu banco negativo." };
     }
 
     const [buyerRes, sellerRes] = await Promise.all([
-      supabase.from("fantasy_squads").update({ player_ids: buyerNewIds, budget_adjustment: buyerAdjustment }).eq("id", buyerSquad.id),
-      supabase.from("fantasy_squads").update({ player_ids: sellerNewIds, budget_adjustment: sellerAdjustment }).eq("id", sellerSquad.id),
+      supabase.from("fantasy_squads").update({ player_ids: buyerNewIds, budget_adjustment: buyerAdjustment, prices_paid: buyerNewPricesPaid }).eq("id", buyerSquad.id),
+      supabase.from("fantasy_squads").update({ player_ids: sellerNewIds, budget_adjustment: sellerAdjustment, prices_paid: sellerNewPricesPaid }).eq("id", sellerSquad.id),
     ]);
     if (buyerRes.error || sellerRes.error) return { error: buyerRes.error?.message || sellerRes.error?.message };
 

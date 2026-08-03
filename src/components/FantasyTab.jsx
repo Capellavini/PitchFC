@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Pencil, X, Search, Check, ArrowRightLeft, Cross } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall } from "../lib/helpers";
-import { fantasyPrice, computeRoundPoints, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM } from "../lib/fantasy";
+import { fantasyPrice, computeRoundPoints, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM, squadCostBasis } from "../lib/fantasy";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
@@ -164,10 +164,11 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
   const ownersOf = (uuid) => squads.filter((s) => s.player_ids?.includes(uuid));
   // A squad's real spending power isn't just league.budget — completed
   // trades move cash in/out via budget_adjustment (see useCloud.js
-  // respondTradeOffer). Ignoring it here would let someone keep spending
-  // through the squad editor past what they actually have left.
-  const squadSpend = (squad) => (squad?.player_ids || []).reduce((s, id) => s + (prices[id] || 0), 0);
-  const squadBank = (squad) => league.budget + (squad?.budget_adjustment || 0) - squadSpend(squad);
+  // respondTradeOffer). Bank uses each player's actual cost basis
+  // (prices_paid), never their live market price — otherwise a squad
+  // that simply plays well would see its own bank drift negative with
+  // no purchase ever made (see fantasy_bank_fix migration).
+  const squadBank = (squad) => league.budget + (squad?.budget_adjustment || 0) - squadCostBasis(squad?.prices_paid);
   const effectiveBudget = league.budget + (mySquad?.budget_adjustment || 0);
 
   const total = selected.reduce((s, id) => s + (prices[id] || 0), 0);
@@ -231,7 +232,7 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
 
       {complete && !editing ? (
         <>
-          <TopBar total={total} budget={effectiveBudget} count={selected.length} squadSize={league.squad_size} overBudget={false} />
+          <TopBar total={squadCostBasis(mySquad?.prices_paid)} budget={effectiveBudget} count={selected.length} squadSize={league.squad_size} overBudget={false} />
           {!locked && (
             <button onClick={() => setEditing(true)} style={{ background: C.surface, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, marginBottom: 10 }}>
             <Pencil size={11} /> {t("Editar escalação")}

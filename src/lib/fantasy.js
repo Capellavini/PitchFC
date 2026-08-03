@@ -8,6 +8,10 @@ export const DEFAULT_FANTASY_WEIGHTS = {
   participou: 2, golo: 8, assistencia: 5, cleanSheet: 5,
   mvp: 10, mvp2: 6, mvp3: 3,
   capitaoMultiplier: 2, priceBase: 20, priceScale: 1.5,
+  // $ credited to the bank per fantasy point scored that round — the
+  // bank's only source of "new money" round to round (besides trades),
+  // so a good week actually buys you room to strengthen the squad.
+  bankPerPoint: 1,
 };
 
 /** Money display for Pitch Manager — everything in millions, FPL-style
@@ -33,6 +37,26 @@ export function fantasyPrice(playerUuid, roundsSinceStart, weights = DEFAULT_FAN
   const total = rounds.reduce((sum, md) => sum + computeRoundPoints([playerUuid], null, md.summary.lines, weights), 0);
   return Math.round(weights.priceBase + (total / rounds.length) * weights.priceScale);
 }
+
+/** A squad's bank must never re-price players it already owns at
+ *  today's (ever-rising) market value — that guaranteed a negative bank
+ *  the moment your own picks did well, with no purchase ever made. This
+ *  computes the next per-player cost basis for a squad transitioning to
+ *  `newPlayerIds`: kept players retain what they were actually charged;
+ *  anyone newly added is charged today's price (a real transaction).
+ *  Dropped players simply don't appear — that basis is freed. */
+export function nextPricesPaid(prevPricesPaid, newPlayerIds, priceOf) {
+  const next = {};
+  (newPlayerIds || []).forEach((id) => {
+    next[id] = prevPricesPaid?.[id] ?? priceOf(id);
+  });
+  return next;
+}
+
+/** Sum of a squad's per-player cost basis — what's actually committed,
+ *  as opposed to the squad's live market value. */
+export const squadCostBasis = (pricesPaid) =>
+  Object.values(pricesPaid || {}).reduce((s, v) => s + (Number(v) || 0), 0);
 
 /** Fantasy points a squad earns for one round, from that round's
  *  matchday.summary.lines. Excludes the MVP bonus — the MVP isn't known
