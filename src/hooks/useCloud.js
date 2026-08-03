@@ -759,6 +759,12 @@ export function useCloud() {
       const lockAt = new Date(data.game.scheduled_at).getTime() - 8 * 3600 * 1000;
       if (Date.now() > lockAt) return { error: "Escalação trancada — falta menos de 8h para o jogo." };
     }
+    // Dedupe defensively — closes the same class of bug found in trading
+    // (see accept_fantasy_trade, migration 35): nothing upstream should
+    // ever hand this a list with repeats, but a stale double-click here
+    // shouldn't be able to write one either.
+    playerIds = [...new Set(playerIds)];
+    reserveIds = reserveIds ? [...new Set(reserveIds)] : reserveIds;
     const existing = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
     // Kept players are charged what was actually paid for them (cost
     // basis), never today's live price — otherwise re-saving an
@@ -803,6 +809,17 @@ export function useCloud() {
     if (data.players.find((p) => p.id === targetPlayerId)?.injured) {
       return { error: "Não podes escalar um jogador lesionado." };
     }
+    // Ownership must be checked against the CURRENT squads, not assumed —
+    // an offer built on a stale/wrong pairing is exactly how the target
+    // player ended up duplicated (see accept_fantasy_trade, migration 35).
+    const mySquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
+    const theirSquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === toParticipantId);
+    if (!mySquad?.player_ids.includes(givePlayerId)) {
+      return { error: "Não tens esse jogador na tua escalação." };
+    }
+    if (!theirSquad?.player_ids.includes(targetPlayerId)) {
+      return { error: "Esse jogador já não pertence a essa escalação." };
+    }
     if (data.fantasyLeague) {
       const priceOf = fantasyPriceOf();
       const mySquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
@@ -843,10 +860,12 @@ export function useCloud() {
     const sellerSquad = data.fantasySquads.find((s) => s.participant_id === offer.to_participant_id);
     if (!buyerSquad || !sellerSquad) return { error: "Escalação não encontrada." };
 
-    const buyerNewIds = buyerSquad.player_ids.filter((id) => id !== offer.give_player_id).concat(offer.target_player_id);
-    const sellerNewIds = offer.offer_type === "swap"
+    // De-duplicated defensively here too — belt-and-suspenders on top of
+    // the DB-side dedup in accept_fantasy_trade (see migration 35).
+    const buyerNewIds = [...new Set(buyerSquad.player_ids.filter((id) => id !== offer.give_player_id).concat(offer.target_player_id))];
+    const sellerNewIds = [...new Set(offer.offer_type === "swap"
       ? sellerSquad.player_ids.filter((id) => id !== offer.target_player_id).concat(offer.give_player_id)
-      : sellerSquad.player_ids.filter((id) => id !== offer.target_player_id);
+      : sellerSquad.player_ids.filter((id) => id !== offer.target_player_id))];
 
     const buyerAdjustment = (buyerSquad.budget_adjustment || 0) - (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
     const sellerAdjustment = (sellerSquad.budget_adjustment || 0) + (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
@@ -862,13 +881,22 @@ export function useCloud() {
       if (sellerBankAfter < 0) return { error: "Isto deixaria o teu banco negativo." };
     }
 
-    const [buyerRes, sellerRes] = await Promise.all([
-      supabase.from("fantasy_squads").update({ player_ids: buyerNewIds, budget_adjustment: buyerAdjustment, prices_paid: buyerNewPricesPaid }).eq("id", buyerSquad.id),
-      supabase.from("fantasy_squads").update({ player_ids: sellerNewIds, budget_adjustment: sellerAdjustment, prices_paid: sellerNewPricesPaid }).eq("id", sellerSquad.id),
-    ]);
-    if (buyerRes.error || sellerRes.error) return { error: buyerRes.error?.message || sellerRes.error?.message };
+    // A single security-definer RPC applies both squads' changes + flips
+    // the offer to 'accepted' in one transaction (see migration 35) —
+    // plain client updates can't touch the OTHER participant's squad row
+    // at all (RLS scopes fantasy_squads writes to participant_id =
+    // my_player_id()), which is exactly how this used to half-apply.
+    const r = await supabase.rpc("accept_fantasy_trade", {
+      p_offer_id: offer.id,
+      p_buyer_player_ids: buyerNewIds,
+      p_buyer_budget_adjustment: buyerAdjustment,
+      p_buyer_prices_paid: buyerNewPricesPaid,
+      p_seller_player_ids: sellerNewIds,
+      p_seller_budget_adjustment: sellerAdjustment,
+      p_seller_prices_paid: sellerNewPricesPaid,
+    });
+    if (r.error) return { error: r.error.message };
 
-    await supabase.from("fantasy_trade_offers").update({ status: "accepted", resolved_at: new Date().toISOString() }).eq("id", offer.id);
     await refetch();
     return {};
   };
