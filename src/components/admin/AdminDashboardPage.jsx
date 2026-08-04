@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Users2, UsersRound, Target, Trophy, LogOut, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Users2, UsersRound, Target, Trophy, Map, LogOut, RefreshCw } from "lucide-react";
 import { C, BRAND, displayFont } from "../../theme";
 import AdminOverviewTab from "./AdminOverviewTab";
 import AdminGroupsTab from "./AdminGroupsTab";
 import AdminUsersTab from "./AdminUsersTab";
 import AdminMvpTab from "./AdminMvpTab";
 import AdminFantasyTab from "./AdminFantasyTab";
+import AdminRoadmapTab from "./AdminRoadmapTab";
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 const NAV = [
@@ -14,6 +15,7 @@ const NAV = [
   { id: "groups", label: "Grupos", icon: Users2 },
   { id: "users", label: "Utilizadores", icon: UsersRound },
   { id: "fantasy", label: "Pitch Manager", icon: Trophy },
+  { id: "roadmap", label: "Roadmap", icon: Map },
 ];
 
 /** Standalone desktop admin dashboard at /admin — separate from the
@@ -31,6 +33,7 @@ export default function AdminDashboardPage({ cloud, localMode }) {
   const [leads, setLeads] = useState({ loading: true, error: null, rows: [] });
   const [fantasy, setFantasy] = useState({ loading: true, error: null, leagues: [], squads: [], players: [] });
   const [cards, setCards] = useState({ loading: true, error: null, rows: [] });
+  const [roadmap, setRoadmap] = useState({ loading: true, error: null, data: null });
 
   const canLoad = Boolean(cloud.user) && cloud.isAdmin;
 
@@ -54,7 +57,12 @@ export default function AdminDashboardPage({ cloud, localMode }) {
     const data = await cloud.fetchCardGenerations();
     setCards({ loading: false, error: data.error ?? null, rows: data.rows ?? [] });
   };
-  const refetchAll = () => { loadSnapshot(); loadLeads(); loadFantasy(); loadCards(); };
+  const loadRoadmap = async () => {
+    setRoadmap((s) => ({ ...s, loading: true }));
+    const res = await cloud.fetchRoadmapContent();
+    setRoadmap({ loading: false, error: res.error ?? null, data: res.data ?? null });
+  };
+  const refetchAll = () => { loadSnapshot(); loadLeads(); loadFantasy(); loadCards(); loadRoadmap(); };
 
   useEffect(() => {
     if (canLoad) refetchAll();
@@ -124,7 +132,7 @@ export default function AdminDashboardPage({ cloud, localMode }) {
     );
   }
 
-  const tabProps = { cloud, snapshot, leads, fantasy, cards, refetchGroups: loadSnapshot, refetchLeads: loadLeads };
+  const tabProps = { cloud, snapshot, leads, fantasy, cards, roadmap, refetchGroups: loadSnapshot, refetchLeads: loadLeads, refetchRoadmap: loadRoadmap };
 
   return page(
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -168,6 +176,7 @@ export default function AdminDashboardPage({ cloud, localMode }) {
         {tab === "groups" && <AdminGroupsTab {...tabProps} />}
         {tab === "users" && <AdminUsersTab {...tabProps} />}
         {tab === "fantasy" && <AdminFantasyTab {...tabProps} />}
+        {tab === "roadmap" && <AdminRoadmapTab {...tabProps} />}
       </div>
     </div>
   );

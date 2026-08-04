@@ -666,6 +666,18 @@ export function useCloud() {
     return r.error ? { error: r.error.message, rows: [] } : { rows: r.data ?? [] };
   };
 
+  /** Owner-only: the whole /roadmap page as one JSON document, editable
+   *  from /admin without a code deploy. Both read and write are gated
+   *  to is_admin() at the RLS level (unlike most tables here). */
+  const fetchRoadmapContent = async () => {
+    const r = await supabase.from("roadmap_content").select("data").eq("id", 1).maybeSingle();
+    return { data: r.data?.data ?? null, error: r.error?.message };
+  };
+  const saveRoadmapContent = async (roadmapData) => {
+    const r = await supabase.from("roadmap_content").upsert({ id: 1, data: roadmapData, updated_at: new Date().toISOString() });
+    return r.error ? { error: r.error.message } : {};
+  };
+
   /** Fire-and-forget log of a post-match card being generated — feeds the
    *  "cards per week" MVP metric. Best-effort: never blocks the download/
    *  share flow on the caller's side. */
@@ -1104,7 +1116,7 @@ export function useCloud() {
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup, removeMember, banMember, unbanMember,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
-    fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,
+    fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated, fetchRoadmapContent, saveRoadmapContent,
     fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,

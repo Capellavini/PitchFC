@@ -28,6 +28,7 @@ import RatePlayer from "./components/RatePlayer";
 import MagicConfirm from "./components/MagicConfirm";
 import LeaguePage from "./components/LeaguePage";
 import AdminDashboardPage from "./components/admin/AdminDashboardPage";
+import RoadmapPage from "./components/RoadmapPage";
 import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
@@ -762,6 +763,12 @@ export default function PitchApp() {
   // auth gate (same cloud.isAdmin check as the in-app mobile panel). ───
   if (path === "/admin") {
     return <AdminDashboardPage cloud={cloud} localMode={localMode} />;
+  }
+
+  // ── Business plan / roadmap (path /roadmap) — full width, no shell,
+  // admin-only (financial projections, not meant to be discoverable). ───
+  if (path === "/roadmap") {
+    return <RoadmapPage cloud={cloud} localMode={localMode} />;
   }
 
   // Default profile from the signed-up account's metadata.
