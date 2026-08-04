@@ -1,8 +1,9 @@
 import { useState, Fragment } from "react";
-import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2 } from "lucide-react";
+import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2, LayoutGrid, ChevronDown } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { t } from "../lib/i18n";
 import { matchWinner } from "../lib/tournament";
+import TacticsBoard from "./TacticsBoard";
 
 const MODES = [
   { id: "avulsa",       Icon: Swords,   label: "Avulsa",       hint: "Marca golos e assistências, sem tabela." },
@@ -21,6 +22,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
   const [mode, setMode] = useState("avulsa");
   const [customConfig, setCustomConfig] = useState(DEFAULT_CUSTOM_CONFIG);
   const [composing, setComposing] = useState(null); // { homeId, awayId } when picking a new game
+  const [tacticsTeamId, setTacticsTeamId] = useState(null); // accordion — one team's board open at a time
 
   const list = Array.isArray(teams) ? teams : [];
   const byId = (id) => group.find((p) => p.id === id);
@@ -203,6 +205,31 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
               <span style={{ ...displayFont, color: C.text1 }}>{r.pts}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* tactics board — personal, device-local lineup planning; only
+          shows once a team is big enough for a formation to make sense */}
+      {list.filter((tm) => (tm.players?.length || 0) >= 7).length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          {list.filter((tm) => (tm.players?.length || 0) >= 7).map((tm) => {
+            const open = tacticsTeamId === tm.id;
+            return (
+              <div key={tm.id} style={{ ...cardStyle, marginBottom: 8, padding: 0, overflow: "hidden" }}>
+                <button onClick={() => setTacticsTeamId(open ? null : tm.id)}
+                  style={{ width: "100%", background: "none", border: "none", cursor: "pointer", color: C.text1, display: "flex", alignItems: "center", gap: 10, padding: 14, textAlign: "left" }}>
+                  <LayoutGrid size={16} color={tm.color} />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{t("Tática")} — {tm.name}</span>
+                  <ChevronDown size={16} color={C.text3} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                </button>
+                {open && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    <TacticsBoard team={tm} group={group} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
