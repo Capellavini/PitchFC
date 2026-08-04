@@ -368,12 +368,14 @@ export default function PitchApp() {
 
   // Organizer removes a real member — soft: they keep their account/stats
   // and can rejoin later via a fresh invite, unlike removeGuestPlayer above.
-  const removeMember = (playerId, nick) => {
+  const removeMember = async (playerId, nick) => {
     const player = baseGroup.find((p) => p.id === playerId);
     if (!player) return;
     if (!window.confirm(`${t("Remover")} ${nick}${t(" do grupo? Pode voltar a entrar com um novo convite.")}`)) return;
-    if (cloudMode) cloud.removeMember(player.uuid, cloud.groupRow.id);
-    else setGroup((g) => g.filter((p) => p.id !== playerId));
+    if (cloudMode) {
+      const res = await cloud.removeMember(player.uuid, cloud.groupRow.id);
+      if (res?.error) window.alert(res.error);
+    } else setGroup((g) => g.filter((p) => p.id !== playerId));
   };
 
   const clearTeams = () => updateTeams(null, { resetConfirmed: true, drawnBy: true });
