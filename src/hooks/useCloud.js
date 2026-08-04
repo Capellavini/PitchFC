@@ -32,7 +32,7 @@ const EMPTY = {
   user: null, myPlayer: null, groupRow: null,
   players: [], game: null, attendances: [], events: [], bookings: [],
   matchdays: [], mvpVotes: [], ratings: [],
-  posts: [], friendships: [], allPlayers: [], myGroups: [],
+  posts: [], friendships: [], allPlayers: [], myGroups: [], bannedMembers: [],
   fantasyLeague: null, fantasySquads: [], fantasyScores: [], fantasyTradeOffers: [],
 };
 
@@ -77,7 +77,7 @@ export function useCloud() {
       if (!myPlayer.group_id) { setData({ ...EMPTY, user, myPlayer, events }); setStatus("needsGroup"); return; }
 
       const gid = myPlayer.group_id;
-      const [g, p, gm, bk, mg] = await Promise.all([
+      const [g, p, gm, bk, mg, bm] = await Promise.all([
         supabase.from("groups").select("*").eq("id", gid).single(),
         supabase.from("players").select("*, player_group_memberships(group_id,goals,assists,mvps,games_played,wins,clean_sheets,epic_saves)").eq("group_id", gid).order("created_at"),
         supabase.from("games").select("*").eq("group_id", gid)
@@ -88,6 +88,11 @@ export function useCloud() {
         supabase.from("player_group_memberships")
           .select("group_id,role,joined_at,groups(name,venue,city,weekday,game_time)")
           .eq("player_id", myPlayer.id).order("joined_at"),
+        // This group's banned players (organizer-only via RLS — empty for
+        // everyone else) — powers the "Jogadores banidos" list in Grupo.
+        supabase.from("player_group_memberships")
+          .select("player_id,players(nick,name,photo_url)")
+          .eq("group_id", gid).eq("banned", true),
       ]);
       if (g.error || p.error) throw g.error || p.error;
       // Season stats now live per-membership (player_group_memberships),
@@ -158,7 +163,7 @@ export function useCloud() {
         fantasyTradeOffers = ftoq.data ?? [];
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers });
+      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -349,6 +354,11 @@ export function useCloud() {
     if (!groupId) return { error: "Convite inválido ou expirado." };
 
     let player = data.myPlayer;
+    if (player) {
+      const ban = await supabase.from("player_group_memberships")
+        .select("banned").eq("player_id", player.id).eq("group_id", groupId).maybeSingle();
+      if (ban.data?.banned) return { error: "Foste removido deste grupo pelo organizador." };
+    }
     // Already a member of this group (e.g. opened the group's own share
     // link from WhatsApp): nothing to change — above all, never touch the
     // existing confirmation.
@@ -386,8 +396,9 @@ export function useCloud() {
     if (!data.myPlayer) return { error: "Sem sessão." };
     if (data.myPlayer.group_id === groupId) return {};
     const m = await supabase.from("player_group_memberships")
-      .select("role").eq("player_id", data.myPlayer.id).eq("group_id", groupId).maybeSingle();
+      .select("role,banned").eq("player_id", data.myPlayer.id).eq("group_id", groupId).maybeSingle();
     if (!m.data) return { error: "Não pertences a esse grupo." };
+    if (m.data.banned) return { error: "Foste removido deste grupo pelo organizador." };
     const r = await supabase.from("players").update({
       group_id: groupId,
       is_organizer: m.data.role === "organizer",
@@ -413,6 +424,30 @@ export function useCloud() {
     const r2 = await supabase.from("players")
       .update({ group_id: null, is_organizer: false, is_assistant: false }).eq("id", playerId);
     if (r2.error) return { error: r2.error.message };
+    await refetch();
+    return {};
+  };
+
+  /** Stronger than removeMember: also blocks the player from rejoining
+   *  via a fresh invite (joinGroupByToken) or the group switcher in
+   *  their own Perfil (switchActiveGroup) — both check this flag. Their
+   *  membership row (and stats) still isn't deleted, so unbanMember is a
+   *  full, clean undo. */
+  const banMember = async (playerId, groupId) => {
+    const r1 = await supabase.from("player_group_memberships")
+      .update({ role: "member", banned: true }).eq("player_id", playerId).eq("group_id", groupId);
+    if (r1.error) return { error: r1.error.message };
+    const r2 = await supabase.from("players")
+      .update({ group_id: null, is_organizer: false, is_assistant: false }).eq("id", playerId);
+    if (r2.error) return { error: r2.error.message };
+    await refetch();
+    return {};
+  };
+
+  const unbanMember = async (playerId, groupId) => {
+    const r = await supabase.from("player_group_memberships")
+      .update({ banned: false }).eq("player_id", playerId).eq("group_id", groupId);
+    if (r.error) return { error: r.error.message };
     await refetch();
     return {};
   };
@@ -1066,7 +1101,7 @@ export function useCloud() {
     canSeeFantasy: Boolean(data.user),
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
-    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup, removeMember,
+    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup, removeMember, banMember, unbanMember,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,

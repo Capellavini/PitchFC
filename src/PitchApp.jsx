@@ -378,6 +378,21 @@ export default function PitchApp() {
     } else setGroup((g) => g.filter((p) => p.id !== playerId));
   };
 
+  // Banir — stronger than removeMember: also blocks rejoining. The typed
+  // "type their nick to confirm" step lives in PerfilTab itself, so no
+  // second native confirm() here.
+  const banMember = async (playerId) => {
+    const player = baseGroup.find((p) => p.id === playerId);
+    if (!player) return {};
+    if (cloudMode) return await cloud.banMember(player.uuid, cloud.groupRow.id);
+    setGroup((g) => g.filter((p) => p.id !== playerId));
+    return {};
+  };
+  const unbanMember = async (playerId) => {
+    if (cloudMode) return await cloud.unbanMember(playerId, cloud.groupRow.id);
+    return {};
+  };
+
   const clearTeams = () => updateTeams(null, { resetConfirmed: true, drawnBy: true });
 
   const toggleMaterial = (id) =>
@@ -1079,7 +1094,7 @@ export default function PitchApp() {
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
-          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} canManageTeams={canManageTeams} />)}
+          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} canManageTeams={canManageTeams} />)}
         {tab === "fantasy" && cloud.canSeeFantasy && (
           <FantasyTab
             group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
@@ -1109,6 +1124,7 @@ export default function PitchApp() {
             achievementMatchdays={achievementMatchdays}
             myGroups={cloudMode ? cloud.myGroups : []}
             onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}
+            onBanMember={banMember}
           />
         )}
       </div>

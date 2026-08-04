@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2, UserMinus } from "lucide-react";
+import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2, UserMinus, Ban } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES, POSITIONS } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
@@ -8,11 +8,12 @@ import { openWhatsApp, inviteMessage, groupInviteMessage } from "../lib/whatsapp
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
+import Collapsible from "./Collapsible";
 
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, canManageTeams }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams }) {
   const [copied, setCopied] = useState(false);
   const [guestOpen, setGuestOpen] = useState(false);
   const [guest, setGuest] = useState(EMPTY_GUEST);
@@ -164,6 +165,23 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
           </button>
         )}
       </div>
+
+      {isOrganizer && bannedMembers?.length > 0 && (
+        <Collapsible icon={<Ban size={16} color={C.red} />} title={t("Jogadores banidos")} subtitle={t("Bloqueados de voltar a entrar")} badge={bannedMembers.length}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {bannedMembers.map((b) => (
+              <div key={b.player_id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, borderRadius: 12, padding: "10px 12px" }}>
+                <Avatar name={b.players?.name || "?"} color={C.text3} size={32} fontSize={11} photo={b.players?.photo_url} />
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{b.players?.nick}</div>
+                <button onClick={() => onUnbanMember(b.player_id)}
+                  style={{ display: "flex", alignItems: "center", gap: 5, background: C.greenDim, color: C.green, border: `1px solid ${C.greenBorder}`, borderRadius: 9, padding: "6px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  <UserCheck size={13} /> {t("Desbanir")}
+                </button>
+              </div>
+            ))}
+          </div>
+        </Collapsible>
+      )}
     </div>
   );
 }

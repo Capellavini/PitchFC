@@ -13,7 +13,7 @@ import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
 import AchievementsSection from "./AchievementsSection";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured, achievementMatchdays, myGroups, onSwitchGroup }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured, achievementMatchdays, myGroups, onSwitchGroup, onBanMember }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -26,6 +26,18 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
     const res = await onSwitchGroup(groupId);
     setSwitchingId(null);
     if (res?.error) setSwitchError(res.error);
+  };
+  const [banText, setBanText] = useState("");
+  const [banBusy, setBanBusy] = useState(false);
+  const [banError, setBanError] = useState(null);
+  const banMatches = banText.trim().toLowerCase() === (player.nick || "").toLowerCase();
+  const submitBan = async () => {
+    setBanError(null);
+    setBanBusy(true);
+    const res = await onBanMember(player.id, player.nick);
+    setBanBusy(false);
+    if (res?.error) setBanError(res.error);
+    else setBanText("");
   };
   const [form, setForm] = useState(player);
   const [codeOpen, setCodeOpen] = useState(false);
@@ -293,6 +305,25 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
       </div>
 
       <AchievementsSection player={player} ctx={achievementsCtx} />
+
+      {/* Ban — organizer-only, viewing a teammate's own profile. Kept off
+          the roster list on purpose (see onRemoveMember there instead) so
+          this stronger, harder-to-undo action isn't a one-tap icon. */}
+      {!isOwn && isOrganizer && onBanMember && !player.isGuest && !player.isOrganizerPlayer && (
+        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.red}44` }}>
+          <SectionLabel style={{ color: C.red }}>{t("BANIR JOGADOR")}</SectionLabel>
+          <div style={{ fontSize: 12, color: C.text2, marginBottom: 10, lineHeight: 1.5 }}>
+            {t("Impede")} {player.nick} {t("de voltar a entrar neste grupo, mesmo com um novo convite. Escreve o nick dele para confirmar:")}
+          </div>
+          <input value={banText} onChange={(e) => setBanText(e.target.value)} placeholder={player.nick}
+            style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", marginBottom: 10 }} />
+          <button onClick={submitBan} disabled={!banMatches || banBusy}
+            style={{ width: "100%", background: banMatches ? C.redDim : C.surface, color: banMatches ? C.red : C.text3, border: `1px solid ${banMatches ? C.red : C.border}`, borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 700, cursor: banMatches && !banBusy ? "pointer" : "default", opacity: banBusy ? 0.6 : 1 }}>
+            {banBusy ? t("A banir…") : t("Banir do grupo")}
+          </button>
+          {banError && <div style={{ fontSize: 12, color: C.red, marginTop: 8 }}>{banError}</div>}
+        </div>
+      )}
 
       {/* Payment method (own profile only) */}
       {isOwn && (
