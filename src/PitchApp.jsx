@@ -365,6 +365,16 @@ export default function PitchApp() {
     else setGroup((g) => g.filter((p) => p.id !== playerId));
   };
 
+  // Organizer removes a real member — soft: they keep their account/stats
+  // and can rejoin later via a fresh invite, unlike removeGuestPlayer above.
+  const removeMember = (playerId, nick) => {
+    const player = baseGroup.find((p) => p.id === playerId);
+    if (!player) return;
+    if (!window.confirm(`${t("Remover")} ${nick}${t(" do grupo? Pode voltar a entrar com um novo convite.")}`)) return;
+    if (cloudMode) cloud.removeMember(player.uuid, cloud.groupRow.id);
+    else setGroup((g) => g.filter((p) => p.id !== playerId));
+  };
+
   const clearTeams = () => updateTeams(null, { resetConfirmed: true, drawnBy: true });
 
   const toggleMaterial = (id) =>
@@ -1061,7 +1071,7 @@ export default function PitchApp() {
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
-          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} canManageTeams={canManageTeams} />)}
+          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} canManageTeams={canManageTeams} />)}
         {tab === "fantasy" && cloud.canSeeFantasy && (
           <FantasyTab
             group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}

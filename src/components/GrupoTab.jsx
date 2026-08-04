@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2 } from "lucide-react";
+import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2, UserMinus } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES, POSITIONS } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
@@ -12,7 +12,7 @@ import BtnPrimary from "./BtnPrimary";
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, canManageTeams }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, canManageTeams }) {
   const [copied, setCopied] = useState(false);
   const [guestOpen, setGuestOpen] = useState(false);
   const [guest, setGuest] = useState(EMPTY_GUEST);
@@ -74,6 +74,16 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                           style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: C.redDim, border: `1px solid ${C.red}44`, cursor: "pointer", flexShrink: 0 }}
                         >
                           <Trash2 size={14} color={C.red} />
+                        </span>
+                      )}
+                      {isOrganizer && !p.isGuest && !p.isOrganizerPlayer && (
+                        <span
+                          role="button"
+                          title={t("Remover do grupo")}
+                          onClick={(e) => { e.stopPropagation(); onRemoveMember(p.id, p.nick); }}
+                          style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: C.redDim, border: `1px solid ${C.red}44`, cursor: "pointer", flexShrink: 0 }}
+                        >
+                          <UserMinus size={14} color={C.red} />
                         </span>
                       )}
                     </>

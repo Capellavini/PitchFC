@@ -398,6 +398,25 @@ export function useCloud() {
     return {};
   };
 
+  /** Organizer removes a real (non-guest) member from the group. Soft
+   *  removal only: clears the player's group_id/roles but keeps their
+   *  player_group_memberships row (and its stats) so rejoining later via
+   *  a fresh invite picks up right where they left off — consistent with
+   *  every other membership mutation, which never destroys history. The
+   *  membership's role is reset to 'member' too, otherwise a removed
+   *  former organizer/assistant could restore their own elevated role
+   *  later just by using the group switcher in Perfil. */
+  const removeMember = async (playerId, groupId) => {
+    const r1 = await supabase.from("player_group_memberships")
+      .update({ role: "member" }).eq("player_id", playerId).eq("group_id", groupId);
+    if (r1.error) return { error: r1.error.message };
+    const r2 = await supabase.from("players")
+      .update({ group_id: null, is_organizer: false, is_assistant: false }).eq("id", playerId);
+    if (r2.error) return { error: r2.error.message };
+    await refetch();
+    return {};
+  };
+
   // ── In-app mutations (optimistic patch + write) ────────
   // Upsert, not update: a player without an attendances row yet (e.g. a
   // guest/manual player added straight into the DB, or added via
@@ -1046,7 +1065,7 @@ export function useCloud() {
     canSeeFantasy: Boolean(data.user),
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
-    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup,
+    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup, removeMember,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,
