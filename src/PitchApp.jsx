@@ -160,6 +160,7 @@ export default function PitchApp() {
           // Season stats now live on the cloud player row (shared ranking).
           goals: p.goals || 0, assists: p.assists || 0, mvps: p.mvps || 0,
           gamesPlayed: p.games_played || 0, wins: p.wins || 0, cleanSheets: p.clean_sheets || 0,
+          epicSaves: p.epic_saves || 0,
         };
       })
     : group;
@@ -481,6 +482,8 @@ export default function PitchApp() {
     updateMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, homeId, awayId, homeGkId: defaultGkFor(homeId), awayGkId: defaultGkFor(awayId), events: [] }] }));
   const addGoal = (matchId, event) =>
     updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
+  const addEpicSave = (matchId, { teamId, playerId }) =>
+    updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, { teamId, type: "epicSave", playerId }] } : m)) }));
   const setGoalkeeper = (matchId, side, playerId) =>
     updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, [side]: playerId } : m)) }));
   const setPenaltyWinner = (matchId, teamId) =>
@@ -494,7 +497,7 @@ export default function PitchApp() {
   const advancePlayoff = () => {
     updateMatchday((md) => {
       if (!md || md.mode !== "personalizado" || !md.config?.faseFinal) return md;
-      const goalsOf = (m, teamId) => m.events.filter((e) => e.teamId === teamId).length;
+      const goalsOf = (m, teamId) => m.events.filter((e) => e.teamId === teamId && e.type !== "epicSave").length;
       const playoffRoundNums = md.matches.filter((m) => m.stage === "playoff").map((m) => m.round);
       const currentRound = playoffRoundNums.length ? Math.max(...playoffRoundNums) : 0;
       let pairs, round;
@@ -529,10 +532,13 @@ export default function PitchApp() {
     const stats = {};
     const bump = (id, key) => {
       if (!id) return;
-      stats[id] = stats[id] ?? { goals: 0, assists: 0, cleanSheets: 0, wins: 0 };
+      stats[id] = stats[id] ?? { goals: 0, assists: 0, cleanSheets: 0, wins: 0, epicSaves: 0 };
       stats[id][key] += 1;
     };
-    matchday.matches.forEach((m) => m.events.forEach((e) => { bump(e.scorerId, "goals"); bump(e.assistId, "assists"); }));
+    matchday.matches.forEach((m) => m.events.forEach((e) => {
+      if (e.type === "epicSave") bump(e.playerId, "epicSaves");
+      else { bump(e.scorerId, "goals"); bump(e.assistId, "assists"); }
+    }));
 
     const teamsById = Object.fromEntries((teams || []).map((t) => [t.id, t]));
     const teamResults = (teams || []).map((t) => ({ id: t.id, name: t.name, color: t.color, wins: 0 }));
@@ -542,8 +548,8 @@ export default function PitchApp() {
     const keyOf = (p) => (cloudMode ? p.uuid : p.id);
 
     matchday.matches.forEach((m) => {
-      const hg = m.events.filter((e) => e.teamId === m.homeId).length;
-      const ag = m.events.filter((e) => e.teamId === m.awayId).length;
+      const hg = m.events.filter((e) => e.teamId === m.homeId && e.type !== "epicSave").length;
+      const ag = m.events.filter((e) => e.teamId === m.awayId && e.type !== "epicSave").length;
       const home = teamsById[m.homeId], away = teamsById[m.awayId];
       totalGoals += hg + ag;
       // Clean sheet for the keeper follows who was actually picked as GR
@@ -592,7 +598,7 @@ export default function PitchApp() {
     const lines = Object.entries(stats)
       .map(([lid, s]) => {
         const p = baseGroup.find((x) => x.id === Number(lid));
-        return p ? { key: keyOf(p), nick: p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets } : null;
+        return p ? { key: keyOf(p), nick: p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets, epicSaves: s.epicSaves } : null;
       })
       .filter(Boolean)
       .sort((a, b) => (b.goals * 2 + b.assists) - (a.goals * 2 + a.assists));
@@ -607,7 +613,7 @@ export default function PitchApp() {
         const s = stats[p.id];
         const played = playingIds.has(p.id);
         if (!s && !played) return;
-        statsByUuid[p.uuid] = { goals: s?.goals ?? 0, assists: s?.assists ?? 0, cleanSheets: s?.cleanSheets ?? 0, wins: s?.wins ?? 0, played };
+        statsByUuid[p.uuid] = { goals: s?.goals ?? 0, assists: s?.assists ?? 0, cleanSheets: s?.cleanSheets ?? 0, wins: s?.wins ?? 0, epicSaves: s?.epicSaves ?? 0, played };
       });
       cloud.commitMatchday({ statsByUuid, summary, totalGoals, mode: matchday.mode, nGames: matchday.matches.length });
     } else {
@@ -1048,7 +1054,7 @@ export default function PitchApp() {
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner }}
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner }}
             lastMatchday={lastMatchdayView}
           />
         ))}

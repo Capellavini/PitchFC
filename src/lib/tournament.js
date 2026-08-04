@@ -82,8 +82,8 @@ export function computeStandings(teamIds, matches) {
   matches.forEach((m) => {
     const H = tally[m.homeId], A = tally[m.awayId];
     if (!H || !A) return;
-    const hg = m.events.filter((e) => e.teamId === m.homeId).length;
-    const ag = m.events.filter((e) => e.teamId === m.awayId).length;
+    const hg = m.events.filter((e) => e.teamId === m.homeId && e.type !== "epicSave").length;
+    const ag = m.events.filter((e) => e.teamId === m.awayId && e.type !== "epicSave").length;
     H.gf += hg; H.ga += ag; A.gf += ag; A.ga += hg;
     if (hg > ag) { H.w++; A.l++; } else if (ag > hg) { A.w++; H.l++; } else { H.d++; A.d++; }
   });

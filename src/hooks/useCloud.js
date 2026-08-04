@@ -79,7 +79,7 @@ export function useCloud() {
       const gid = myPlayer.group_id;
       const [g, p, gm, bk, mg] = await Promise.all([
         supabase.from("groups").select("*").eq("id", gid).single(),
-        supabase.from("players").select("*, player_group_memberships(group_id,goals,assists,mvps,games_played,wins,clean_sheets)").eq("group_id", gid).order("created_at"),
+        supabase.from("players").select("*, player_group_memberships(group_id,goals,assists,mvps,games_played,wins,clean_sheets,epic_saves)").eq("group_id", gid).order("created_at"),
         supabase.from("games").select("*").eq("group_id", gid)
           .in("status", ["open", "full", "live"]).order("scheduled_at", { ascending: false }).limit(1),
         supabase.from("bookings").select("*, groups(name)").order("day"),
@@ -98,7 +98,7 @@ export function useCloud() {
       const players = (p.data ?? []).map((pl) => {
         const { player_group_memberships, ...rest } = pl;
         const m = player_group_memberships?.find((row) => row.group_id === gid);
-        return m ? { ...rest, goals: m.goals, assists: m.assists, mvps: m.mvps, games_played: m.games_played, wins: m.wins, clean_sheets: m.clean_sheets } : rest;
+        return m ? { ...rest, goals: m.goals, assists: m.assists, mvps: m.mvps, games_played: m.games_played, wins: m.wins, clean_sheets: m.clean_sheets, epic_saves: m.epic_saves } : rest;
       });
       const game = gm.data?.[0] ?? null;
       let attendances = [];
@@ -688,6 +688,7 @@ export function useCloud() {
         clean_sheets: (p.clean_sheets || 0) + (s.cleanSheets || 0),
         wins: (p.wins || 0) + (s.wins || 0),
         games_played: (p.games_played || 0) + (s.played ? 1 : 0),
+        epic_saves: (p.epic_saves || 0) + (s.epicSaves || 0),
       }).eq("player_id", uuid).eq("group_id", data.groupRow.id);
     }).filter(Boolean);
     await Promise.all(updates);

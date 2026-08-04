@@ -16,7 +16,7 @@ const DEFAULT_CUSTOM_CONFIG = { confrontos: "unico", faseFinal: false, finalista
  *  between two chosen teams; you pick the scorer + assist per goal.
  *  'campeonato' adds a points/goal-difference standings table.
  *  Ending the matchday feeds season stats, history and MVP voting. */
-export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onSetGoalkeeper, onEnd, onAdvancePlayoff, onSetPenaltyWinner, canManage = true }) {
+export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onEpicSave, onSetGoalkeeper, onEnd, onAdvancePlayoff, onSetPenaltyWinner, canManage = true }) {
   const [pending, setPending] = useState(null);   // { matchId, teamId, scorerId? }
   const [mode, setMode] = useState("avulsa");
   const [customConfig, setCustomConfig] = useState(DEFAULT_CUSTOM_CONFIG);
@@ -112,7 +112,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
 
   const isCampeonato = matchday.mode === "campeonato";
   const isPersonalizado = matchday.mode === "personalizado";
-  const goalsOf = (m, teamId) => m.events.filter((e) => e.teamId === teamId).length;
+  const goalsOf = (m, teamId) => m.events.filter((e) => e.teamId === teamId && e.type !== "epicSave").length;
 
   // Group-stage table (campeonato uses the whole matchday; personalizado
   // only the "grupo" matches — the play-off doesn't count towards it).
@@ -245,6 +245,19 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                 ))}
               </div>
 
+              {/* epic save — logged directly against whichever GK is set
+                  for that side, no scorer/assist picker needed */}
+              {canManage && (m.homeGkId || m.awayGkId) && (
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  {[["homeGkId", m.homeId], ["awayGkId", m.awayId]].filter(([side]) => m[side]).map(([side, teamId]) => (
+                    <button key={side} onClick={() => onEpicSave(m.id, { teamId, playerId: m[side] })}
+                      style={{ flex: 1, background: C.blueDim, color: C.blue, border: `1px solid ${C.blueBorder}`, borderRadius: 10, padding: "6px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      🧤 {t("Defesa")} {byId(m[side])?.nick}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* score row */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 10 }}>
                 <span style={{ flex: 1, textAlign: "right", fontSize: 11, fontWeight: 800, color: teamColor(m.homeId), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{teamName(m.homeId)}</span>
@@ -285,8 +298,12 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
                   {m.events.map((e, i) => (
                     <div key={i} style={{ fontSize: 11, color: C.text2, textAlign: e.teamId === m.homeId ? "left" : "right" }}>
-                      ⚽ <strong style={{ color: C.text1 }}>{byId(e.scorerId)?.nick}</strong>
-                      {e.assistId && <span> ({"assist."} {byId(e.assistId)?.nick})</span>}
+                      {e.type === "epicSave" ? (
+                        <>🧤 <strong style={{ color: C.text1 }}>{byId(e.playerId)?.nick}</strong> <span>({t("defesa espetacular")})</span></>
+                      ) : (
+                        <>⚽ <strong style={{ color: C.text1 }}>{byId(e.scorerId)?.nick}</strong>
+                        {e.assistId && <span> ({"assist."} {byId(e.assistId)?.nick})</span>}</>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -380,7 +397,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 10, color: C.text3 }}>
-        <Shield size={11} /> {t("Clean sheets do GR escolhido e das Defesas contam ao terminar o dia.")}
+        <Shield size={11} /> {t("Clean sheets e defesas espetaculares do GR escolhido contam ao terminar o dia.")}
       </div>
     </div>
   );

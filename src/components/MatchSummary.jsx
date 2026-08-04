@@ -30,11 +30,12 @@ export default function MatchSummary({ matchday, lastMatchday, teams, group }) {
     (teams || []).forEach((t) => { tally[t.id] = { name: t.name, color: t.color, wins: 0 }; });
     matchday.matches.forEach((m) => {
       nGames++;
-      const hg = m.events.filter((e) => e.teamId === m.homeId).length;
-      const ag = m.events.filter((e) => e.teamId === m.awayId).length;
+      const hg = m.events.filter((e) => e.teamId === m.homeId && e.type !== "epicSave").length;
+      const ag = m.events.filter((e) => e.teamId === m.awayId && e.type !== "epicSave").length;
       if (hg > ag && tally[m.homeId]) tally[m.homeId].wins++;
       else if (ag > hg && tally[m.awayId]) tally[m.awayId].wins++;
       m.events.forEach((e) => {
+        if (e.type === "epicSave") return;
         sc[e.scorerId] = (sc[e.scorerId] || 0) + 1;
         if (e.assistId) as[e.assistId] = (as[e.assistId] || 0) + 1;
       });

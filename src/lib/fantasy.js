@@ -5,7 +5,7 @@
 // cleanSheets }), built in PitchApp.jsx when the organizer ends the day.
 
 export const DEFAULT_FANTASY_WEIGHTS = {
-  participou: 2, golo: 8, assistencia: 5, cleanSheet: 5,
+  participou: 2, golo: 8, assistencia: 5, cleanSheet: 5, epicSave: 4,
   mvp: 10, mvp2: 6, mvp3: 3,
   capitaoMultiplier: 2, priceBase: 20, priceScale: 1.5,
   // $ credited to the bank per fantasy point scored that round — the
@@ -76,7 +76,8 @@ export function computeRoundPoints(playerIds, captainId, summaryLines, weights =
     let pts = weights.participou
       + (line.goals || 0) * weights.golo
       + (line.assists || 0) * weights.assistencia
-      + (line.cleanSheets > 0 ? weights.cleanSheet : 0);
+      + (line.cleanSheets > 0 ? weights.cleanSheet : 0)
+      + (line.epicSaves || 0) * weights.epicSave;
     if (id === captainId) pts *= weights.capitaoMultiplier;
     return total + pts;
   }, 0);
