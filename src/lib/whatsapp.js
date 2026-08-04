@@ -15,7 +15,7 @@ export function openWhatsApp(text, phone) {
 const appUrl = () => window.location.origin;
 
 // One-tap, no-login confirmation link for a specific player.
-export const magicConfirmUrl = (token) => `${appUrl()}?confirm=${token}`;
+export const magicConfirmUrl = (token, gameId) => `${appUrl()}?confirm=${token}${gameId ? `&game=${gameId}` : ""}`;
 
 export const reminderMessage = (player, game, url) =>
   `Olá ${player.nick}! ⚽ Vais jogar? ${game.date} às ${game.time} · ${game.venue}. Confirma num toque (sem registo): ${url || appUrl()}`;

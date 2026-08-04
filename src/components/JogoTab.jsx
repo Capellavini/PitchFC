@@ -402,7 +402,7 @@ export default function JogoTab({
                     <Check size={12} /> {t("Confirmar")}
                   </button>
                 )}
-                <button onClick={() => openWhatsApp(reminderMessage(p, game, p.magicToken ? magicConfirmUrl(p.magicToken) : undefined), p.phone)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, cursor: "pointer" }}>{t("Lembrar")}</button>
+                <button onClick={() => openWhatsApp(reminderMessage(p, game, p.magicToken ? magicConfirmUrl(p.magicToken, game.id) : undefined), p.phone)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, cursor: "pointer" }}>{t("Lembrar")}</button>
               </div>
             ))}
           </div>

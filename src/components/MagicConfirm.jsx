@@ -17,13 +17,13 @@ const fmt = (iso) => {
  * writes the player's attendance through SECURITY DEFINER RPCs (the token
  * is the credential), so it works for anonymous visitors despite RLS.
  */
-export default function MagicConfirm({ token }) {
+export default function MagicConfirm({ token, gameId }) {
   const [state, setState] = useState({ loading: true, error: null, info: null });
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
     if (!supabaseEnabled) { setState({ loading: false, error: "Indisponível neste modo.", info: null }); return; }
-    const { data, error } = await supabase.rpc("magic_game_info", { token });
+    const { data, error } = await supabase.rpc("magic_game_info", { token, p_game_id: gameId || null });
     if (error) setState({ loading: false, error: error.message, info: null });
     else if (!data) setState({ loading: false, error: "Link inválido ou expirado.", info: null });
     else setState({ loading: false, error: null, info: data });
@@ -32,7 +32,7 @@ export default function MagicConfirm({ token }) {
 
   const setStatus = async (s) => {
     setBusy(true);
-    const { data } = await supabase.rpc("magic_set_status", { token, new_status: s });
+    const { data } = await supabase.rpc("magic_set_status", { token, new_status: s, p_game_id: gameId || null });
     setBusy(false);
     if (data) setState((st) => ({ ...st, info: data }));
   };

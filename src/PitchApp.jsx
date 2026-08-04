@@ -299,6 +299,7 @@ export default function PitchApp() {
   // The "next game" as the UI consumes it.
   const game = {
     ...groupSettings,
+    id: gameId,
     label: groupSettings.groupName,
     date: nextGameDateLabel(groupSettings.weekday),
     spots: groupSettings.maxPlayers,
@@ -742,7 +743,8 @@ export default function PitchApp() {
   // ── Magic-link confirmation (?confirm=<magic_token>) — no login ───
   const confirmParam = new URLSearchParams(window.location.search).get("confirm");
   if (confirmParam) {
-    return shell(<MagicConfirm token={confirmParam.trim()} />);
+    const gameParam = new URLSearchParams(window.location.search).get("game");
+    return shell(<MagicConfirm token={confirmParam.trim()} gameId={gameParam ? gameParam.trim() : null} />);
   }
 
   // ── Password recovery: landed from the reset email → set a new one ───
