@@ -852,6 +852,8 @@ export default function PitchApp() {
         isEditing
         onBack={() => setEditingGroup(false)}
         onDone={(form) => { saveSettings(form); setEditingGroup(false); }}
+        hasGame={cloudMode && Boolean(cloud.game)}
+        onCancelGame={cloudMode ? cloud.cancelGame : null}
       />
     );
   }

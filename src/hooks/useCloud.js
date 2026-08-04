@@ -491,6 +491,19 @@ export function useCloud() {
     return {};
   };
 
+  /** Cancel the group's current scheduled game — a soft cancel (status
+   *  flip, not a delete) so it stays out of every "current game" fetch
+   *  (all filtered to open/full/live) without losing the historical row.
+   *  Reuses the already-shipped "no game scheduled" empty state/re-entry
+   *  point in JogoTab once data.game goes back to null. */
+  const cancelGame = async () => {
+    if (!data.game) return {};
+    const r = await supabase.from("games").update({ status: "cancelled" }).eq("id", data.game.id);
+    if (r.error) return { error: r.error.message };
+    await refetch();
+    return {};
+  };
+
   /** Organizer changes the number of players for this game. Keeps the
    *  group default (max_players) and the live game row (spots) in sync. */
   const setSpots = async (n) => {
@@ -1034,7 +1047,7 @@ export function useCloud() {
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup,
-    setMyStatus, setPaid, updatePlayer, updateGroupRow, scheduleNextGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
+    setMyStatus, setPaid, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,
     fetchFantasyAdminData,

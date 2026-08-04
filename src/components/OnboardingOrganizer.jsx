@@ -12,9 +12,18 @@ import BtnPrimary from "./BtnPrimary";
  *  still said "Criar grupo e convidar" either way, which read as if it
  *  might wipe or re-invite the group. Now it's explicit about which
  *  mode this is. */
-export default function OnboardingOrganizer({ settings, onDone, onBack, isEditing = false }) {
+export default function OnboardingOrganizer({ settings, onDone, onBack, isEditing = false, hasGame = false, onCancelGame }) {
   const [form, setForm] = useState({ ...settings });
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const [cancelling, setCancelling] = useState(false);
+
+  const cancelGame = async () => {
+    if (!window.confirm(t("Cancelar o jogo marcado? As confirmações e vagas atuais são perdidas — podes agendar um novo mais tarde na aba Jogo."))) return;
+    setCancelling(true);
+    await onCancelGame();
+    setCancelling(false);
+    onBack();
+  };
 
   const perPlayer = form.maxPlayers > 0 ? form.monthlyPrice / form.maxPlayers : 0;
   const lang = getLang();
@@ -84,6 +93,13 @@ export default function OnboardingOrganizer({ settings, onDone, onBack, isEditin
           </>
         )}
       </div>
+
+      {isEditing && hasGame && onCancelGame && (
+        <button onClick={cancelGame} disabled={cancelling}
+          style={{ width: "100%", background: C.redDim, color: C.red, border: `1px solid ${C.red}44`, borderRadius: 12, padding: "12px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 14, opacity: cancelling ? 0.6 : 1 }}>
+          {cancelling ? t("A cancelar…") : t("Cancelar jogo marcado")}
+        </button>
+      )}
 
       {/* Recurring + confirmation-open window */}
       {!form.skipSchedule && (
