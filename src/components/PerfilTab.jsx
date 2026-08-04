@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Repeat, Check } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -13,11 +13,20 @@ import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
 import AchievementsSection from "./AchievementsSection";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured, achievementMatchdays }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured, achievementMatchdays, myGroups, onSwitchGroup }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
   const [editing, setEditing] = useState(false);
+  const [switchingId, setSwitchingId] = useState(null);
+  const [switchError, setSwitchError] = useState(null);
+  const switchGroup = async (groupId) => {
+    setSwitchError(null);
+    setSwitchingId(groupId);
+    const res = await onSwitchGroup(groupId);
+    setSwitchingId(null);
+    if (res?.error) setSwitchError(res.error);
+  };
   const [form, setForm] = useState(player);
   const [codeOpen, setCodeOpen] = useState(false);
   const [codeDraft, setCodeDraft] = useState("");
@@ -317,8 +326,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
 
       {/* Player with no group at all yet (skipped joining one): start
           their own from here instead of being stuck with only "join via
-          invite". Not shown once already in a group — one group per
-          account for now, no switching from Perfil. */}
+          invite". Not shown once already in a group. */}
       {isOwn && onCreateGroup && (
         <button onClick={onCreateGroup} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1, border: `1px solid ${C.accentBorder}` }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -329,6 +337,34 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
             <div style={{ fontSize: 11, color: C.text2 }}>{t("Torna-te organizador do teu próprio jogo semanal")}</div>
           </div>
         </button>
+      )}
+
+      {/* Meus grupos: switch which membership is active — only shown once
+          there's actually something to switch to. */}
+      {isOwn && onSwitchGroup && myGroups?.length > 1 && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <SectionLabel>{t("Meus grupos")}</SectionLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {myGroups.map((m) => {
+              const active = m.group_id === player.group_id;
+              const roleLabel = m.role === "organizer" ? t("Organizador") : m.role === "assistant" ? t("Auxiliar") : t("Membro");
+              const busy = switchingId === m.group_id;
+              return (
+                <button key={m.group_id} onClick={() => !active && !busy && switchGroup(m.group_id)} disabled={active || busy}
+                  style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, cursor: active ? "default" : "pointer", textAlign: "left", color: C.text1, opacity: busy ? 0.6 : 1, padding: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: active ? C.greenDim : C.surface, border: `1px solid ${active ? C.green : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {active ? <Check size={16} color={C.green} /> : <Repeat size={15} color={C.text2} />}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{m.groups?.name}</div>
+                    <div style={{ fontSize: 11, color: C.text2 }}>{roleLabel}{m.groups?.venue ? ` · ${m.groups.venue}` : ""}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {switchError && <div style={{ fontSize: 12, color: C.red, marginTop: 8 }}>{switchError}</div>}
+        </div>
       )}
 
       {/* Language picker */}

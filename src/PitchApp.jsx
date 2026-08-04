@@ -1087,6 +1087,8 @@ export default function PitchApp() {
             } : null}
             lang={lang} onLang={changeLang}
             achievementMatchdays={achievementMatchdays}
+            myGroups={cloudMode ? cloud.myGroups : []}
+            onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}
           />
         )}
       </div>

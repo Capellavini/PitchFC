@@ -32,7 +32,7 @@ const EMPTY = {
   user: null, myPlayer: null, groupRow: null,
   players: [], game: null, attendances: [], events: [], bookings: [],
   matchdays: [], mvpVotes: [], ratings: [],
-  posts: [], friendships: [], allPlayers: [],
+  posts: [], friendships: [], allPlayers: [], myGroups: [],
   fantasyLeague: null, fantasySquads: [], fantasyScores: [], fantasyTradeOffers: [],
 };
 
@@ -77,12 +77,17 @@ export function useCloud() {
       if (!myPlayer.group_id) { setData({ ...EMPTY, user, myPlayer, events }); setStatus("needsGroup"); return; }
 
       const gid = myPlayer.group_id;
-      const [g, p, gm, bk] = await Promise.all([
+      const [g, p, gm, bk, mg] = await Promise.all([
         supabase.from("groups").select("*").eq("id", gid).single(),
         supabase.from("players").select("*, player_group_memberships(group_id,goals,assists,mvps,games_played,wins,clean_sheets)").eq("group_id", gid).order("created_at"),
         supabase.from("games").select("*").eq("group_id", gid)
           .in("status", ["open", "full", "live"]).order("scheduled_at", { ascending: false }).limit(1),
         supabase.from("bookings").select("*, groups(name)").order("day"),
+        // Every group this player has ever belonged to (see migration 36) —
+        // powers the "Meus grupos" switcher in Perfil.
+        supabase.from("player_group_memberships")
+          .select("group_id,role,joined_at,groups(name,venue,city,weekday,game_time)")
+          .eq("player_id", myPlayer.id).order("joined_at"),
       ]);
       if (g.error || p.error) throw g.error || p.error;
       // Season stats now live per-membership (player_group_memberships),
@@ -153,7 +158,7 @@ export function useCloud() {
         fantasyTradeOffers = ftoq.data ?? [];
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers });
+      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -369,6 +374,26 @@ export function useCloud() {
         .upsert({ game_id: gm.data[0].id, player_id: player.id, status: "pending" },
           { onConflict: "game_id,player_id", ignoreDuplicates: true });
     }
+    await refetch();
+    return {};
+  };
+
+  /** Switch which of the player's existing memberships is active — unlike
+   *  joinGroupByToken (a fresh join), this restores is_organizer/
+   *  is_assistant from what the membership row remembers for that group,
+   *  so switching back to a group you used to organize restores the role. */
+  const switchActiveGroup = async (groupId) => {
+    if (!data.myPlayer) return { error: "Sem sessão." };
+    if (data.myPlayer.group_id === groupId) return {};
+    const m = await supabase.from("player_group_memberships")
+      .select("role").eq("player_id", data.myPlayer.id).eq("group_id", groupId).maybeSingle();
+    if (!m.data) return { error: "Não pertences a esse grupo." };
+    const r = await supabase.from("players").update({
+      group_id: groupId,
+      is_organizer: m.data.role === "organizer",
+      is_assistant: m.data.role === "assistant",
+    }).eq("id", data.myPlayer.id);
+    if (r.error) return { error: r.error.message };
     await refetch();
     return {};
   };
@@ -1008,7 +1033,7 @@ export function useCloud() {
     canSeeFantasy: Boolean(data.user),
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
-    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken,
+    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup,
     setMyStatus, setPaid, updatePlayer, updateGroupRow, scheduleNextGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated,
