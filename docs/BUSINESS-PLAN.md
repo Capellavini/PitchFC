@@ -375,33 +375,42 @@ projecção mensal de tesouraria a 24 meses.
 | Armazenamento | Supabase, tabela `roadmap_content`, coluna `data` (JSONB), `id = 1` |
 | Seed inicial | `docs/roadmap-seed.json` |
 
-**Esquema do documento** (todas as chaves opcionais — um documento antigo continua a renderizar):
+**Esquema do documento** (todas as chaves opcionais — um documento antigo continua a
+renderizar). Desde a migração 45, todo o texto traduzível é `{ "pt": "", "en": "" }` em
+vez de uma string — a página `/roadmap` tem um toggle PT/EN (`src/lib/roadmapI18n.js`)
+que lê a língua activa, recuando para `pt` se faltar tradução. Só valores numéricos
+(`value`, `amount`, `revenue`, `costs`, `cost`, os campos da `calculator`) e enums
+(`status`, `statusKind`, `highlight`, `num`) continuam strings/números simples:
 
 ```jsonc
 {
-  "hero":        { "tagline": "", "stats": [{ "value": "", "label": "" }] },
-  "execSummary": [{ "title": "", "desc": "" }],
-  "company":     { "mission": "", "operations": [{ "title": "", "desc": "" }],
-                   "startupCosts": [{ "item": "", "kind": "", "amount": 0 }], "costsNote": "" },
-  "today":       [{ "title": "", "desc": "", "status": "done|beta" }],
-  "phases":      [{ "num": 0, "when": "", "title": "", "desc": "", "tags": [] }],
-  "pricing":     [{ "name": "", "price": "", "desc": "", "highlight": "" }],
-  "tam":         { "tam": { "value": 0, "label": "" }, "sam": {}, "som": {}, "assumptions": "" },
-  "competitors": [{ "category": "", "examples": "", "solves": "", "fails": "" }],
-  "advantages":  [{ "title": "", "desc": "" }],
-  "revenueStreams": [{ "title": "", "desc": "", "statusLabel": "", "statusKind": "live|next|later" }],
-  "financials":  { "rows": [{ "year": "", "groups": "", "revenue": 0, "costs": 0, "sources": "" }],
-                   "assumptions": "" },
+  "hero":        { "tagline": { "pt": "", "en": "" }, "stats": [{ "value": "", "label": { "pt": "", "en": "" } }] },
+  "execSummary": [{ "title": {}, "desc": {} }],
+  "company":     { "mission": {}, "operations": [{ "title": {}, "desc": {} }],
+                   "startupCosts": [{ "item": {}, "kind": {}, "amount": 0 }], "costsNote": {} },
+  "today":       [{ "title": {}, "desc": {}, "status": "done|beta" }],
+  "phases":      [{ "num": 0, "when": {}, "title": {}, "desc": {}, "tags": [{}] }],
+  "pricing":     [{ "name": {}, "price": {}, "desc": {}, "highlight": "" }],
+  "tam":         { "tam": { "value": 0, "label": {} }, "sam": {}, "som": {}, "assumptions": {} },
+  "competitors": [{ "category": {}, "examples": {}, "solves": {}, "fails": {} }],
+  "advantages":  [{ "title": {}, "desc": {} }],
+  "revenueStreams": [{ "title": {}, "desc": {}, "statusLabel": {}, "statusKind": "live|next|later" }],
+  "financials":  { "rows": [{ "year": {}, "groups": {}, "revenue": 0, "costs": 0, "sources": {} }],
+                   "assumptions": {} },
   "calculator":  { "groups": 0, "price": 0, "players": 0, "fee": 0, "games": 0,
                    "adoption": 0, "take": 0, "fixedMonthly": 0, "variablePerGroup": 0 },
-  "calculatorNote": "",
-  "marketing":   [{ "title": "", "desc": "" }],
-  "partnerships":[{ "category": "", "name": "", "why": "" }],
-  "brandDeals":  [{ "title": "", "desc": "" }],
-  "management":  { "now": "", "hires": [{ "when": "", "role": "", "trigger": "", "cost": 0 }],
-                   "advisors": "" },
-  "risks":       [{ "risk": "", "mitigation": "" }],
-  "nextSteps":   [{ "title": "", "desc": "" }],
-  "appendixNote": ""
+  "calculatorNote": {},
+  "marketing":   [{ "title": {}, "desc": {} }],
+  "partnerships":[{ "category": {}, "name": {}, "why": {} }],
+  "brandDeals":  [{ "title": {}, "desc": {} }],
+  "management":  { "now": {}, "hires": [{ "when": {}, "role": {}, "trigger": {}, "cost": 0 }],
+                   "advisors": {} },
+  "risks":       [{ "risk": {}, "mitigation": {} }],
+  "nextSteps":   [{ "title": {}, "desc": {} }],
+  "appendixNote": {}
 }
 ```
+
+(`{}` above means `{ "pt": "", "en": "" }`, abbreviated for width. The interactive
+calculator's own field labels/hints are bilingual component copy hardcoded in
+`RoadmapCalculator.jsx`, not part of this document — only the starting numbers are.)

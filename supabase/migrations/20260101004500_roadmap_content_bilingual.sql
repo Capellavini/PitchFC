@@ -1,4 +1,16 @@
-{
+-- ─────────────────────────────────────────────────────────
+-- Migration 45 — Bilingual /roadmap content (PT/EN)
+--
+-- Every translatable string in roadmap_content becomes { pt, en } instead
+-- of a bare string, ported from a standalone bilingual .htm draft of the
+-- same business plan. The public /roadmap page gained a PT/EN toggle
+-- (src/lib/roadmapI18n.js reads the active language, falling back to pt
+-- for any field saved before this migration). Same table, same admin-only
+-- RLS — content only, no schema change. Mirrors docs/roadmap-seed.json.
+-- ─────────────────────────────────────────────────────────
+
+update public.roadmap_content
+set data = '{
   "hero": {
     "tagline": {
       "pt": "De grupo de WhatsApp caótico a sistema operativo do futebol amador — organizador, jogador e, mais tarde, o campo em si.",
@@ -43,7 +55,7 @@
       },
       "desc": {
         "pt": "Milhões de jogos semanais são organizados à mão em grupos de WhatsApp: contar quem vem, perseguir quem não pagou, sortear equipas de cabeça, reservar campo por telefone. O organizador é um voluntário exausto, e o grupo perde o jogo quando ele desiste.",
-        "en": "Millions of weekly games are organised by hand in WhatsApp groups: counting who is in, chasing who hasn't paid, drawing teams from memory, booking the pitch by phone. The organiser is an exhausted volunteer, and the game dies when they quit."
+        "en": "Millions of weekly games are organised by hand in WhatsApp groups: counting who is in, chasing who hasn''t paid, drawing teams from memory, booking the pitch by phone. The organiser is an exhausted volunteer, and the game dies when they quit."
       }
     },
     {
@@ -53,7 +65,7 @@
       },
       "desc": {
         "pt": "Uma aplicação web que absorve todo o trabalho do organizador — grelha de confirmações, cobrança, sorteio equilibrado, matchday ao vivo, estatísticas e fantasy — sem obrigar ninguém a instalar nada: o jogador confirma por link mágico no WhatsApp, num toque.",
-        "en": "A web app that absorbs the organiser's entire workload — confirmation grid, collection, balanced draw, live matchday, stats and fantasy — without forcing anyone to install anything: players confirm via a magic link in WhatsApp, in one tap."
+        "en": "A web app that absorbs the organiser''s entire workload — confirmation grid, collection, balanced draw, live matchday, stats and fantasy — without forcing anyone to install anything: players confirm via a magic link in WhatsApp, in one tap."
       }
     },
     {
@@ -192,7 +204,7 @@
     ],
     "costsNote": {
       "pt": "O trabalho de desenvolvimento é feito internamente e não está monetizado nesta tabela — é o principal custo de oportunidade do projecto e deve ser declarado como tal a qualquer investidor.",
-      "en": "Development work is done in-house and is not priced in this table — it is the project's main opportunity cost and should be declared as such to any investor."
+      "en": "Development work is done in-house and is not priced in this table — it is the project''s main opportunity cost and should be declared as such to any investor."
     }
   },
   "today": [
@@ -342,7 +354,7 @@
       },
       "desc": {
         "pt": "O wedge: resolver por completo o jogo semanal de um grupo de amigos, sem exigir que ninguém mude de app para participar.",
-        "en": "The wedge: fully solve one group of friends' weekly game, without requiring anyone to switch apps to take part."
+        "en": "The wedge: fully solve one group of friends'' weekly game, without requiring anyone to switch apps to take part."
       },
       "tags": [
         {
@@ -387,7 +399,7 @@
       },
       "desc": {
         "pt": "Ligar o que já existe mas está desligado, e construir o que falta para o organizador deixar de fazer trabalho manual. É onde nasce a subscrição paga.",
-        "en": "Switch on what already exists but is off, and build what's missing so the organiser stops doing manual work. This is where the paid subscription is born."
+        "en": "Switch on what already exists but is off, and build what''s missing so the organiser stops doing manual work. This is where the paid subscription is born."
       },
       "tags": [
         {
@@ -898,7 +910,7 @@
     ],
     "assumptions": {
       "pt": "⚠ Premissas. Preço médio blended ≈€6–7/mês por grupo (mistura free/pro e PT/BR). O ano 2 inclui a primeira contratação part-time (~€18k); o ano 3 inclui equipa de 2–3 pessoas (~€90k) e entrada operacional no Brasil (~€15k). Exclui capital de arranque e o custo de oportunidade da equipa fundadora. O salto de 500 para 3 000 grupos no ano 3 é a premissa mais frágil de todo o plano e depende inteiramente de o efeito de rede da Fase 2 funcionar.",
-      "en": "⚠ Assumptions. Blended average price ≈€6–7/month per group (free/pro and PT/BR mix). Year 2 includes the first part-time hire (~€18k); Year 3 includes a 2–3 person team (~€90k) and Brazil operational entry (~€15k). Excludes seed capital and the founding team's opportunity cost. The jump from 500 to 3,000 groups in Year 3 is the single most fragile assumption in the plan and depends entirely on Phase 2's network effect working."
+      "en": "⚠ Assumptions. Blended average price ≈€6–7/month per group (free/pro and PT/BR mix). Year 2 includes the first part-time hire (~€18k); Year 3 includes a 2–3 person team (~€90k) and Brazil operational entry (~€15k). Excludes seed capital and the founding team''s opportunity cost. The jump from 500 to 3,000 groups in Year 3 is the single most fragile assumption in the plan and depends entirely on Phase 2''s network effect working."
     }
   },
   "calculator": {
@@ -954,7 +966,7 @@
       },
       "desc": {
         "pt": "O caso Ziar Imóveis como case study para vender a RH de outras empresas. Venda directa, ticket maior, sem depender de viralidade.",
-        "en": "The Ziar Imóveis case as a case study to sell into other companies' HR. Direct sales, bigger ticket, no reliance on virality."
+        "en": "The Ziar Imóveis case as a case study to sell into other companies'' HR. Direct sales, bigger ticket, no reliance on virality."
       }
     }
   ],
@@ -1109,7 +1121,7 @@
   "management": {
     "now": {
       "pt": "Equipa fundadora, acumulando produto, engenharia e apoio ao cliente. É simultaneamente a maior força do projecto — ciclo de iteração muito curto, custo próximo de zero — e o seu maior risco de concentração.",
-      "en": "Founding team, doubling as product, engineering and customer support. This is simultaneously the project's greatest strength — very short iteration cycle, near-zero cost — and its biggest concentration risk."
+      "en": "Founding team, doubling as product, engineering and customer support. This is simultaneously the project''s greatest strength — very short iteration cycle, near-zero cost — and its biggest concentration risk."
     },
     "hires": [
       {
@@ -1196,7 +1208,7 @@
       },
       "mitigation": {
         "pt": "Freemium: o grátis resolve o jogo, o pago vende tempo poupado ao organizador — cobrança automática e zero perseguição de pagamentos.",
-        "en": "Freemium: free solves the game, paid sells the organiser's time back — automatic collection and no chasing payments."
+        "en": "Freemium: free solves the game, paid sells the organiser''s time back — automatic collection and no chasing payments."
       }
     },
     {
@@ -1232,7 +1244,7 @@
     {
       "risk": {
         "pt": "Visão computacional é terreno de players maiores",
-        "en": "Computer vision is bigger players' turf"
+        "en": "Computer vision is bigger players'' turf"
       },
       "mitigation": {
         "pt": "Adiada para a Fase 4 e reduzida ao mínimo: integrações OAuth em vez de reconhecimento de golo próprio.",
@@ -1306,4 +1318,6 @@
     "pt": "Documentos a anexar numa versão formal: currículo da equipa fundadora · demonstração do produto ou capturas de ecrã · dados de utilização actuais · contrato-modelo com operador de campos · termos e política de privacidade (RGPD) · orçamento do processador de pagamentos · projecção mensal de tesouraria a 24 meses.",
     "en": "Documents to attach in a formal version: founding team CVs · product demo or screenshots · current usage data · template pitch-operator agreement · terms and privacy policy (GDPR) · payment processor quote · 24-month monthly cash-flow projection."
   }
-}
+}'::jsonb,
+    updated_at = now()
+where id = 1;
