@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import { C, BRAND, displayFont } from "../theme";
+import RoadmapCalculator from "./RoadmapCalculator";
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 
@@ -14,10 +15,16 @@ const CHART = {
   ord1: "#C8FF00", ord2: "#6E9C13", ord3: "#3F5217",
 };
 
+/** Section order follows the SCORE startup business plan template, so the
+ *  page reads as a plan rather than a feature list. Every section is driven
+ *  by an optional key on the roadmap document — a document saved before
+ *  these keys existed still renders, just with fewer sections. */
 const NAV = [
-  ["hoje", "O que já existe"], ["roadmap", "Roadmap"], ["mercado", "Mercado"],
-  ["modelo", "Modelo de negócio"], ["custos", "Custos vs. receita"], ["marketing", "Marketing"],
-  ["parcerias", "Parcerias"], ["marcas", "Brand deals"], ["riscos", "Riscos"],
+  ["resumo", "Resumo"], ["empresa", "Empresa"], ["hoje", "O que já existe"],
+  ["roadmap", "Roadmap"], ["precario", "Preçário"], ["mercado", "Mercado"],
+  ["concorrencia", "Concorrência"], ["modelo", "Modelo de negócio"], ["custos", "Financeiro"],
+  ["marketing", "Marketing"], ["parcerias", "Parcerias"], ["marcas", "Brand deals"],
+  ["gestao", "Gestão"], ["riscos", "Riscos"], ["anexo", "Próximos passos"],
 ];
 
 const fmtK = (n) => (Math.abs(n) >= 1000 ? `€${Math.round(n / 1000)}k` : `€${n}`);
@@ -43,6 +50,11 @@ const pillTag = (label, kind) => {
   const [bg, fg] = colors[kind] || [C.card, C.text2];
   return <span style={{ display: "inline-block", fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", padding: "2px 8px", borderRadius: 9, background: bg, color: fg }}>{label}</span>;
 };
+/** Assumption / caveat block. Orange rail = "this number is an estimate",
+ *  used consistently everywhere a figure is not primary research. */
+const noteBox = (text, bg = C.card) => (
+  <div style={{ marginTop: 16, padding: "12px 14px", background: bg, borderLeft: `2px solid ${C.orange}`, borderRadius: "0 10px 10px 0", fontSize: 12.5, color: C.text2, lineHeight: 1.6 }}>{text}</div>
+);
 
 /** Standalone page at /roadmap — own auth gate (copies AdminDashboardPage's
  *  demo/loading/login/not-admin states, since this is a separate top-level
@@ -133,6 +145,19 @@ export default function RoadmapPage({ cloud, localMode }) {
   const costPts = rows.map((r, i) => `${xFor(i)},${yFor(r.costs || 0)}`).join(" ");
   const areaPath = rows.length ? `M ${xFor(0)} ${bottom} L ${revPts.split(" ").join(" L ")} L ${xFor(rows.length - 1)} ${bottom} Z` : "";
 
+  // Optional sections are hidden when the document has nothing for them, so
+  // the nav must hide with them — otherwise it offers links that jump nowhere.
+  const filled = (v) => (Array.isArray(v) ? v.length > 0 : Boolean(v));
+  const present = {
+    resumo: filled(doc.execSummary),
+    empresa: filled(doc.company?.mission) || filled(doc.company?.operations) || filled(doc.company?.startupCosts),
+    precario: filled(doc.pricing),
+    concorrencia: filled(doc.competitors) || filled(doc.advantages),
+    gestao: filled(doc.management?.now) || filled(doc.management?.hires) || filled(doc.management?.advisors),
+    anexo: filled(doc.nextSteps) || filled(doc.appendixNote),
+  };
+  const nav = NAV.filter(([id]) => present[id] !== false);
+
   return page(
     <div>
       {/* header */}
@@ -164,7 +189,7 @@ export default function RoadmapPage({ cloud, localMode }) {
       {/* nav */}
       <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(10,15,24,0.9)", backdropFilter: "blur(8px)", borderBottom: `1px solid ${C.border}`, overflowX: "auto" }}>
         <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", gap: 4, padding: "0 32px" }}>
-          {NAV.map(([id, label]) => (
+          {nav.map(([id, label]) => (
             <a key={id} href={`#${id}`} style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: C.text2, textDecoration: "none", padding: "13px 12px", whiteSpace: "nowrap" }}>{label}</a>
           ))}
         </div>
@@ -172,9 +197,77 @@ export default function RoadmapPage({ cloud, localMode }) {
 
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: "0 32px 100px" }}>
 
+        {/* resumo executivo */}
+        {(doc.execSummary || []).length > 0 && (
+          <section id="resumo" style={{ paddingTop: 56 }}>
+            {secH("01 — Sumário executivo", "O que é, para quem, e porquê agora")}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {doc.execSummary.map((s, i) => (
+                <div key={i} style={card}>
+                  <div style={{ fontSize: 14, fontWeight: 800 }}>{s.title}</div>
+                  <div style={{ fontSize: 13, color: C.text2, marginTop: 6, lineHeight: 1.6 }}>{s.desc}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* empresa */}
+        {(doc.company?.mission || (doc.company?.operations || []).length > 0 || (doc.company?.startupCosts || []).length > 0) && (
+          <section id="empresa" style={{ paddingTop: 56 }}>
+            {secH("02 — Descrição da empresa", "Missão, operação e custos de arranque")}
+            {doc.company?.mission && (
+              <div style={{ ...card, background: C.surface, marginBottom: 12 }}>
+                <div style={{ ...eyebrow, color: C.text3 }}>Missão</div>
+                <div style={{ fontSize: 15, color: C.text1, marginTop: 8, lineHeight: 1.6, maxWidth: 680 }}>{doc.company.mission}</div>
+              </div>
+            )}
+            {(doc.company?.operations || []).length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                {doc.company.operations.map((o, i) => (
+                  <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{o.title}</div>
+                    <div style={{ fontSize: 12.5, color: C.text2, marginTop: 4, lineHeight: 1.5 }}>{o.desc}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {(doc.company?.startupCosts || []).length > 0 && (
+              <div style={{ ...card, overflowX: "auto" }}>
+                <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12 }}>Despesas de arranque — 12 meses</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5, minWidth: 420 }}>
+                  <thead>
+                    <tr>
+                      {["Rubrica", "Natureza", "Ano 1"].map((h) => (
+                        <th key={h} style={{ textAlign: h === "Ano 1" ? "right" : "left", fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase", color: C.text3, fontWeight: 700, padding: "0 10px 10px" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {doc.company.startupCosts.map((r, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}` }}>{r.item}</td>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, color: C.text2 }}>{r.kind}</td>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, textAlign: "right", fontFamily: "ui-monospace, monospace", color: C.text2 }}>€{(r.amount || 0).toLocaleString("pt-PT")}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={2} style={{ padding: 10, borderTop: `1px solid ${C.border}`, fontWeight: 800 }}>Total</td>
+                      <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, textAlign: "right", fontFamily: "ui-monospace, monospace", fontWeight: 800, color: C.accent }}>
+                        €{doc.company.startupCosts.reduce((a, r) => a + (r.amount || 0), 0).toLocaleString("pt-PT")}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                {doc.company?.costsNote && noteBox(doc.company.costsNote, C.surface)}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* hoje */}
         <section id="hoje" style={{ paddingTop: 56 }}>
-          {secH("01 — Ponto de partida", "O que já existe", "Inventário do que está em produção hoje.")}
+          {secH("03 — Ponto de partida", "O que já existe", "Inventário do que está em produção hoje.")}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {(doc.today || []).map((f, i) => (
               <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
@@ -188,7 +281,7 @@ export default function RoadmapPage({ cloud, localMode }) {
 
         {/* roadmap */}
         <section id="roadmap" style={{ paddingTop: 56 }}>
-          {secH("02 — Roteiro de produto", "Roadmap")}
+          {secH("04 — Roteiro de produto", "Roadmap")}
           <div>
             {(doc.phases || []).map((p, i, arr) => (
               <div key={i} style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 18, paddingBottom: i === arr.length - 1 ? 0 : 32 }}>
@@ -211,9 +304,25 @@ export default function RoadmapPage({ cloud, localMode }) {
           </div>
         </section>
 
+        {/* preçário */}
+        {(doc.pricing || []).length > 0 && (
+          <section id="precario" style={{ paddingTop: 56 }}>
+            {secH("05 — Produto e serviços", "Preçário", "O que é grátis, o que é pago, e o que a empresa compra.")}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+              {doc.pricing.map((t, i) => (
+                <div key={i} style={{ ...card, border: `1px solid ${t.highlight ? C.accentBorder : C.border}` }}>
+                  <div style={{ fontSize: 14, fontWeight: 800 }}>{t.name}</div>
+                  <div style={{ ...displayFont, fontSize: 22, color: t.highlight ? C.accent : C.text1, marginTop: 6 }}>{t.price}</div>
+                  <div style={{ fontSize: 12.5, color: C.text2, marginTop: 6, lineHeight: 1.55 }}>{t.desc}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* mercado */}
         <section id="mercado" style={{ paddingTop: 56 }}>
-          {secH("03 — Dimensão de mercado", "TAM · SAM · SOM — Portugal + Brasil")}
+          {secH("06 — Dimensão de mercado", "TAM · SAM · SOM — Portugal + Brasil")}
           <div style={{ ...card, background: C.surface }}>
             {["tam", "sam", "som"].map((k, i) => {
               const v = doc.tam?.[k] || { value: 0, label: "" };
@@ -238,9 +347,54 @@ export default function RoadmapPage({ cloud, localMode }) {
           </div>
         </section>
 
+        {/* concorrência */}
+        {((doc.competitors || []).length > 0 || (doc.advantages || []).length > 0) && (
+          <section id="concorrencia" style={{ paddingTop: 56 }}>
+            {secH("07 — Avaliação competitiva", "Quem mais resolve isto", "O concorrente real não é uma app — é o status quo gratuito.")}
+            {(doc.competitors || []).length > 0 && (
+              <div style={{ ...card, overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5, minWidth: 620 }}>
+                  <thead>
+                    <tr>
+                      {["Categoria", "O que resolve", "Onde falha para o nosso cliente"].map((h) => (
+                        <th key={h} style={{ textAlign: "left", fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase", color: C.text3, fontWeight: 700, padding: "0 10px 10px" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {doc.competitors.map((c, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, verticalAlign: "top", width: 190 }}>
+                          <div style={{ fontWeight: 700 }}>{c.category}</div>
+                          {c.examples && <div style={{ fontSize: 12, color: C.text3, marginTop: 3 }}>{c.examples}</div>}
+                        </td>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, color: C.text2, verticalAlign: "top" }}>{c.solves}</td>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, color: C.text2, verticalAlign: "top" }}>{c.fails}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {(doc.advantages || []).length > 0 && (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 800, margin: "22px 0 10px" }}>Vantagem defensável</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  {doc.advantages.map((a, i) => (
+                    <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{a.title}</div>
+                      <div style={{ fontSize: 12.5, color: C.text2, marginTop: 4, lineHeight: 1.5 }}>{a.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
         {/* modelo */}
         <section id="modelo" style={{ paddingTop: 56 }}>
-          {secH("04 — Modelo de negócio", "Vias de receita")}
+          {secH("08 — Modelo de negócio", "Vias de receita")}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {(doc.revenueStreams || []).map((s, i) => (
               <div key={i} style={{ ...card, display: "flex", gap: 14 }}>
@@ -257,7 +411,7 @@ export default function RoadmapPage({ cloud, localMode }) {
 
         {/* custos */}
         <section id="custos" style={{ paddingTop: 56 }}>
-          {secH("05 — Custos vs. receita potencial", "Cenário-base")}
+          {secH("09 — Plano financeiro", "Cenário-base, e um modelo que podes mexer")}
           <div style={{ ...card, background: C.surface }}>
             <div style={{ fontSize: 13, fontWeight: 800 }}>Receita vs. custos em caixa (€)</div>
             {rows.length > 0 ? (
@@ -316,11 +470,21 @@ export default function RoadmapPage({ cloud, localMode }) {
               <div style={{ marginTop: 16, padding: "12px 14px", background: C.surface, borderLeft: `2px solid ${C.orange}`, borderRadius: "0 10px 10px 0", fontSize: 12.5, color: C.text2, lineHeight: 1.6 }}>{doc.financials.assumptions}</div>
             )}
           </div>
+
+          {/* Interactive model — lets a partner or investor replace our
+              assumptions with theirs instead of arguing with a static table. */}
+          <div style={{ height: 28 }} />
+          <div style={{ ...displayFont, fontSize: 19 }}>Testa as tuas próprias premissas</div>
+          <div style={{ fontSize: 13.5, color: C.text2, margin: "6px 0 14px", maxWidth: 680, lineHeight: 1.6 }}>
+            Mexe nos valores e tudo recalcula, incluindo o ponto de equilíbrio.
+          </div>
+          <RoadmapCalculator defaults={doc.calculator} />
+          {noteBox(doc.calculatorNote || "Modelo de estado estável: assume o número de grupos constante ao longo de doze meses e não modela crescimento, churn nem sazonalidade. Serve para testar ordem de grandeza e sensibilidade ao preço — não substitui uma projecção mensal de tesouraria.", C.surface)}
         </section>
 
         {/* marketing */}
         <section id="marketing" style={{ paddingTop: 56 }}>
-          {secH("06 — Marketing", "Como crescer")}
+          {secH("10 — Marketing", "Como crescer")}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {(doc.marketing || []).map((m, i) => (
               <div key={i} style={card}>
@@ -333,7 +497,7 @@ export default function RoadmapPage({ cloud, localMode }) {
 
         {/* parcerias */}
         <section id="parcerias" style={{ paddingTop: 56 }}>
-          {secH("07 — Parcerias", "Quem torna o roteiro mais barato de executar")}
+          {secH("11 — Parcerias", "Quem torna o roteiro mais barato de executar")}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {(doc.partnerships || []).map((p, i) => (
               <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px" }}>
@@ -347,7 +511,7 @@ export default function RoadmapPage({ cloud, localMode }) {
 
         {/* marcas */}
         <section id="marcas" style={{ paddingTop: 56 }}>
-          {secH("08 — Brand deals", "Onde uma marca pode aparecer sem estragar a experiência")}
+          {secH("12 — Brand deals", "Onde uma marca pode aparecer sem estragar a experiência")}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {(doc.brandDeals || []).map((b, i) => (
               <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
@@ -358,9 +522,51 @@ export default function RoadmapPage({ cloud, localMode }) {
           </div>
         </section>
 
+        {/* gestão */}
+        {((doc.management?.hires || []).length > 0 || doc.management?.now || doc.management?.advisors) && (
+          <section id="gestao" style={{ paddingTop: 56 }}>
+            {secH("13 — Plano de gestão", "Quem faz o quê, e por que ordem se contrata")}
+            {doc.management?.now && (
+              <div style={{ ...card, background: C.surface, marginBottom: 12 }}>
+                <div style={{ ...eyebrow, color: C.text3 }}>Hoje</div>
+                <div style={{ fontSize: 13.5, color: C.text2, marginTop: 8, lineHeight: 1.6, maxWidth: 680 }}>{doc.management.now}</div>
+              </div>
+            )}
+            {(doc.management?.hires || []).length > 0 && (
+              <div style={{ ...card, overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5, minWidth: 560 }}>
+                  <thead>
+                    <tr>
+                      {["Quando", "Função", "Gatilho", "Custo anual"].map((h) => (
+                        <th key={h} style={{ textAlign: h === "Custo anual" ? "right" : "left", fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase", color: C.text3, fontWeight: 700, padding: "0 10px 10px" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {doc.management.hires.map((h, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, fontWeight: 600, whiteSpace: "nowrap" }}>{h.when}</td>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}` }}>{h.role}</td>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, color: C.text2 }}>{h.trigger}</td>
+                        <td style={{ padding: 10, borderTop: `1px solid ${C.border}`, textAlign: "right", fontFamily: "ui-monospace, monospace", color: C.text2 }}>€{(h.cost || 0).toLocaleString("pt-PT")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {doc.management?.advisors && (
+              <div style={{ ...card, marginTop: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 800 }}>Aconselhamento externo</div>
+                <div style={{ fontSize: 13, color: C.text2, marginTop: 6, lineHeight: 1.6 }}>{doc.management.advisors}</div>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* riscos */}
-        <section id="riscos" style={{ paddingTop: 56, paddingBottom: 40 }}>
-          {secH("09 — Riscos & mitigação", "O que pode correr mal, e o que já aponta na direção certa")}
+        <section id="riscos" style={{ paddingTop: 56 }}>
+          {secH("14 — Riscos & mitigação", "O que pode correr mal, e o que já aponta na direção certa")}
           <div style={{ display: "flex", flexDirection: "column", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
             {(doc.risks || []).map((r, i) => (
               <div key={i} style={{ background: C.card, padding: "16px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
@@ -370,6 +576,25 @@ export default function RoadmapPage({ cloud, localMode }) {
             ))}
           </div>
         </section>
+
+        {/* anexo — o que falta para o plano ficar defensável */}
+        {((doc.nextSteps || []).length > 0 || doc.appendixNote) && (
+          <section id="anexo" style={{ paddingTop: 56, paddingBottom: 40 }}>
+            {secH("15 — Próximos passos", "O que falta para este plano ficar defensável", "Por ordem: o que muda a conversa com um investidor ou parceiro.")}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(doc.nextSteps || []).map((s, i) => (
+                <div key={i} style={{ ...card, display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <div style={{ ...displayFont, fontSize: 20, color: C.accent, minWidth: 26 }}>{i + 1}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800 }}>{s.title}</div>
+                    <div style={{ fontSize: 12.5, color: C.text2, marginTop: 4, lineHeight: 1.55 }}>{s.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {doc.appendixNote && noteBox(doc.appendixNote, C.surface)}
+          </section>
+        )}
 
       </div>
     </div>

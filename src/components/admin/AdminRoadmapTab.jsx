@@ -1,17 +1,42 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Save } from "lucide-react";
 import { C, cardStyle } from "../../theme";
+import { CALC_DEFAULTS } from "../RoadmapCalculator";
 
 const inputStyle = { width: "100%", boxSizing: "border-box", background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", fontSize: 13, color: C.text1, outline: "none", fontFamily: "inherit" };
 const labelStyle = { fontSize: 11, color: C.text3, marginBottom: 4, fontWeight: 700 };
 
+/** Shape of the whole /roadmap document. Sections follow the SCORE startup
+ *  business plan template. Every key is optional on the rendering side, so a
+ *  document saved before a section existed still renders — but keep this
+ *  object exhaustive so the editor always shows every section. */
 const EMPTY_DOC = {
   hero: { tagline: "", stats: [{ value: "", label: "" }, { value: "", label: "" }, { value: "", label: "" }, { value: "", label: "" }] },
-  today: [], phases: [],
+  execSummary: [],
+  company: { mission: "", operations: [], startupCosts: [], costsNote: "" },
+  today: [], phases: [], pricing: [],
   tam: { tam: { value: 0, label: "" }, sam: { value: 0, label: "" }, som: { value: 0, label: "" }, assumptions: "" },
+  competitors: [], advantages: [],
   revenueStreams: [], financials: { rows: [], assumptions: "" },
-  marketing: [], partnerships: [], brandDeals: [], risks: [],
+  calculator: { ...CALC_DEFAULTS }, calculatorNote: "",
+  marketing: [], partnerships: [], brandDeals: [],
+  management: { now: "", hires: [], advisors: "" },
+  risks: [], nextSteps: [], appendixNote: "",
 };
+
+/** Starting values for the interactive model on /roadmap. Editing these
+ *  changes what a visitor sees first, not what they can explore. */
+const CALC_FIELDS = [
+  { key: "groups", label: "Grupos pagantes" },
+  { key: "price", label: "Preço médio / grupo / mês (€)" },
+  { key: "players", label: "Jogadores por jogo" },
+  { key: "fee", label: "Valor por jogador / jogo (€)" },
+  { key: "games", label: "Jogos por mês" },
+  { key: "adoption", label: "Pagamentos na app (%)" },
+  { key: "take", label: "Comissão retida (%)" },
+  { key: "fixedMonthly", label: "Custos fixos / mês (€)" },
+  { key: "variablePerGroup", label: "Custo variável / grupo / mês (€)" },
+];
 
 function Field({ f, value, onChange }) {
   if (f.type === "textarea") {
@@ -82,8 +107,21 @@ export default function AdminRoadmapTab({ cloud, roadmap, refetchRoadmap }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
 
+  // Merge one level into the nested sections too, so a document saved before
+  // a sub-key existed (e.g. company without `operations`) doesn't hand the
+  // editor an undefined array to map over.
   useEffect(() => {
-    if (roadmap?.data) setDoc({ ...EMPTY_DOC, ...roadmap.data });
+    if (!roadmap?.data) return;
+    const d = roadmap.data;
+    setDoc({
+      ...EMPTY_DOC, ...d,
+      hero: { ...EMPTY_DOC.hero, ...(d.hero || {}) },
+      company: { ...EMPTY_DOC.company, ...(d.company || {}) },
+      tam: { ...EMPTY_DOC.tam, ...(d.tam || {}) },
+      financials: { ...EMPTY_DOC.financials, ...(d.financials || {}) },
+      calculator: { ...EMPTY_DOC.calculator, ...(d.calculator || {}) },
+      management: { ...EMPTY_DOC.management, ...(d.management || {}) },
+    });
   }, [roadmap?.data]);
 
   const set = (key, val) => setDoc((d) => ({ ...d, [key]: val }));
@@ -125,6 +163,35 @@ export default function AdminRoadmapTab({ cloud, roadmap, refetchRoadmap }) {
         </div>
       </div>
 
+      <ListEditor title="Sumário executivo" items={doc.execSummary} onChange={(v) => set("execSummary", v)}
+        fields={[{ key: "title", label: "Título (ex.: O problema)" }, { key: "desc", label: "Texto", type: "textarea" }]} />
+
+      {/* Empresa */}
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Empresa</div>
+        <div style={labelStyle}>Missão</div>
+        <textarea rows={2} value={doc.company.mission} onChange={(e) => set("company", { ...doc.company, mission: e.target.value })} style={{ ...inputStyle, marginBottom: 14, resize: "vertical" }} />
+        <div style={{ ...labelStyle, marginBottom: 8 }}>Forma legal e operação</div>
+        <SubListEditor
+          items={doc.company.operations}
+          onChange={(operations) => set("company", { ...doc.company, operations })}
+          addLabel="Adicionar ponto"
+          blank={{ title: "", desc: "" }}
+          fields={[{ key: "title", label: "Título" }, { key: "desc", label: "Descrição", type: "textarea" }]}
+        />
+        <div style={{ ...labelStyle, margin: "16px 0 8px" }}>Despesas de arranque (ano 1)</div>
+        <SubListEditor
+          items={doc.company.startupCosts}
+          onChange={(startupCosts) => set("company", { ...doc.company, startupCosts })}
+          addLabel="Adicionar rubrica"
+          blank={{ item: "", kind: "Fixo", amount: 0 }}
+          columns="2fr 1fr 1fr"
+          fields={[{ key: "item", label: "Rubrica" }, { key: "kind", label: "Natureza" }, { key: "amount", label: "Valor (€)", type: "number" }]}
+        />
+        <div style={{ ...labelStyle, marginTop: 14 }}>Nota sobre os custos</div>
+        <textarea rows={2} value={doc.company.costsNote} onChange={(e) => set("company", { ...doc.company, costsNote: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} />
+      </div>
+
       <ListEditor title="O que já existe" items={doc.today} onChange={(v) => set("today", v)}
         fields={[
           { key: "title", label: "Título" },
@@ -139,6 +206,14 @@ export default function AdminRoadmapTab({ cloud, roadmap, refetchRoadmap }) {
           { key: "title", label: "Título" },
           { key: "desc", label: "Descrição", type: "textarea" },
           { key: "tags", label: "Etiquetas", type: "tags" },
+        ]} />
+
+      <ListEditor title="Preçário" items={doc.pricing} onChange={(v) => set("pricing", v)}
+        fields={[
+          { key: "name", label: "Plano" },
+          { key: "price", label: "Preço (texto livre)" },
+          { key: "highlight", label: "Destacar", type: "select", options: [{ value: "", label: "Não" }, { value: "1", label: "Sim" }] },
+          { key: "desc", label: "O que inclui", type: "textarea" },
         ]} />
 
       {/* TAM */}
@@ -157,6 +232,17 @@ export default function AdminRoadmapTab({ cloud, roadmap, refetchRoadmap }) {
         <textarea rows={4} value={doc.tam.assumptions} onChange={(e) => set("tam", { ...doc.tam, assumptions: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
 
+      <ListEditor title="Concorrência" items={doc.competitors} onChange={(v) => set("competitors", v)}
+        fields={[
+          { key: "category", label: "Categoria" },
+          { key: "examples", label: "Exemplos" },
+          { key: "solves", label: "O que resolve", type: "textarea" },
+          { key: "fails", label: "Onde falha para o nosso cliente", type: "textarea" },
+        ]} />
+
+      <ListEditor title="Vantagem defensável" items={doc.advantages} onChange={(v) => set("advantages", v)}
+        fields={[{ key: "title", label: "Título" }, { key: "desc", label: "Descrição", type: "textarea" }]} />
+
       <ListEditor title="Vias de receita" items={doc.revenueStreams} onChange={(v) => set("revenueStreams", v)}
         fields={[
           { key: "title", label: "Título" },
@@ -173,6 +259,26 @@ export default function AdminRoadmapTab({ cloud, roadmap, refetchRoadmap }) {
         <textarea rows={3} value={doc.financials.assumptions} onChange={(e) => set("financials", { ...doc.financials, assumptions: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
 
+      {/* Calculadora — valores iniciais do modelo interativo em /roadmap */}
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 800 }}>Calculadora — valores por omissão</div>
+        <div style={{ fontSize: 12, color: C.text2, margin: "4px 0 14px", lineHeight: 1.5 }}>
+          O que o visitante vê antes de mexer em nada. Ele continua livre de alterar tudo — isto é só o ponto de partida.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          {CALC_FIELDS.map((f) => (
+            <div key={f.key}>
+              <div style={labelStyle}>{f.label}</div>
+              <input type="number" step="any" value={doc.calculator[f.key] ?? 0}
+                onChange={(e) => set("calculator", { ...doc.calculator, [f.key]: Number(e.target.value) || 0 })}
+                style={inputStyle} />
+            </div>
+          ))}
+        </div>
+        <div style={{ ...labelStyle, marginTop: 14 }}>Nota / limitações do modelo</div>
+        <textarea rows={3} value={doc.calculatorNote} onChange={(e) => set("calculatorNote", e.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
+      </div>
+
       <ListEditor title="Marketing" items={doc.marketing} onChange={(v) => set("marketing", v)}
         fields={[{ key: "title", label: "Título" }, { key: "desc", label: "Descrição", type: "textarea" }]} />
 
@@ -182,8 +288,70 @@ export default function AdminRoadmapTab({ cloud, roadmap, refetchRoadmap }) {
       <ListEditor title="Brand deals" items={doc.brandDeals} onChange={(v) => set("brandDeals", v)}
         fields={[{ key: "title", label: "Título" }, { key: "desc", label: "Descrição", type: "textarea" }]} />
 
+      {/* Gestão */}
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Plano de gestão</div>
+        <div style={labelStyle}>Equipa hoje</div>
+        <textarea rows={2} value={doc.management.now} onChange={(e) => set("management", { ...doc.management, now: e.target.value })} style={{ ...inputStyle, marginBottom: 14, resize: "vertical" }} />
+        <div style={{ ...labelStyle, marginBottom: 8 }}>Plano de contratação</div>
+        <SubListEditor
+          items={doc.management.hires}
+          onChange={(hires) => set("management", { ...doc.management, hires })}
+          addLabel="Adicionar contratação"
+          blank={{ when: "", role: "", trigger: "", cost: 0 }}
+          columns="1fr 1fr"
+          fields={[
+            { key: "when", label: "Quando" },
+            { key: "role", label: "Função" },
+            { key: "cost", label: "Custo anual (€)", type: "number" },
+            { key: "trigger", label: "Gatilho", type: "textarea" },
+          ]}
+        />
+        <div style={{ ...labelStyle, marginTop: 14 }}>Aconselhamento externo</div>
+        <textarea rows={2} value={doc.management.advisors} onChange={(e) => set("management", { ...doc.management, advisors: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} />
+      </div>
+
       <ListEditor title="Riscos & mitigação" items={doc.risks} onChange={(v) => set("risks", v)}
         fields={[{ key: "risk", label: "Risco", type: "textarea" }, { key: "mitigation", label: "Mitigação", type: "textarea" }]} />
+
+      <ListEditor title="Próximos passos" items={doc.nextSteps} onChange={(v) => set("nextSteps", v)}
+        fields={[{ key: "title", label: "Passo" }, { key: "desc", label: "Porquê / como", type: "textarea" }]} />
+
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Nota final / documentos a anexar</div>
+        <textarea rows={3} value={doc.appendixNote} onChange={(e) => set("appendixNote", e.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
+      </div>
+    </div>
+  );
+}
+
+/** Compact repeater for arrays nested inside another card (company.operations,
+ *  company.startupCosts, management.hires). ListEditor renders its own card and
+ *  header, which would nest cards two deep here. */
+function SubListEditor({ items, fields, onChange, blank, addLabel, columns = "1fr 1fr" }) {
+  const update = (i, key, val) => onChange(items.map((it, idx) => (idx === i ? { ...it, [key]: val } : it)));
+  const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, position: "relative" }}>
+          <button onClick={() => remove(i)} title="Remover" style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex" }}>
+            <Trash2 size={14} />
+          </button>
+          <div style={{ display: "grid", gridTemplateColumns: columns, gap: 10, paddingRight: 24 }}>
+            {fields.map((f) => (
+              <div key={f.key} style={f.type === "textarea" ? { gridColumn: "1 / -1" } : undefined}>
+                <div style={labelStyle}>{f.label}</div>
+                <Field f={f} value={item[f.key]} onChange={(v) => update(i, f.key, v)} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      <button onClick={() => onChange([...items, { ...blank }])} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 5, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+        <Plus size={13} /> {addLabel}
+      </button>
     </div>
   );
 }
