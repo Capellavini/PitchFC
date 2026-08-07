@@ -365,7 +365,12 @@ export function useCloud() {
     if (player?.group_id === groupId) return {};
 
     if (player) {
-      await supabase.from("players").update({ group_id: groupId }).eq("id", player.id);
+      // Joining via a fresh invite always starts as a plain member — an
+      // is_organizer/is_assistant left over from wherever they organize
+      // elsewhere must never carry into a group they didn't create. The
+      // membership-sync trigger reads these same columns, so resetting
+      // them here also keeps the new player_group_memberships row correct.
+      await supabase.from("players").update({ group_id: groupId, is_organizer: false, is_assistant: false }).eq("id", player.id);
     } else {
       const ins = await supabase.from("players").insert({
         user_id: user.id, group_id: groupId,
