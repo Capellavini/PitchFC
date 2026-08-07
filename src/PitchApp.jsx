@@ -17,6 +17,7 @@ import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor } from "./lib/helpers";
 import { t, setLang, detectLang } from "./lib/i18n";
+import { getThemeMode, setThemeMode } from "./lib/themeMode";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
@@ -83,6 +84,7 @@ export default function PitchApp() {
   const [ownPublished, setOwnPublished] = usePersistentState("ownPublished", false);
   const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
   const [lang, setLangState]    = usePersistentState("lang", detectLang());
+  const [themeMode, setThemeModeState] = useState(getThemeMode());
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
@@ -97,6 +99,7 @@ export default function PitchApp() {
   // renders, so every t() call below sees the current choice.
   setLang(lang);
   const changeLang = (l) => { setLang(l); setLangState(l); };
+  const changeTheme = (m) => { setThemeMode(m); setThemeModeState(m); };
 
   // ── Cloud (PR 2: auth + groups + invites + events) ─────
   const cloud = useCloud();
@@ -1130,6 +1133,7 @@ export default function PitchApp() {
               signOutEverywhere,
             } : null}
             lang={lang} onLang={changeLang}
+            themeMode={themeMode} onThemeMode={changeTheme}
             achievementMatchdays={achievementMatchdays}
             myGroups={cloudMode ? cloud.myGroups : []}
             onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}

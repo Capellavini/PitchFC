@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Repeat, Check } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Repeat, Check, Moon, Sun } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -13,7 +13,7 @@ import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
 import AchievementsSection from "./AchievementsSection";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, onToggleInjured, achievementMatchdays, myGroups, onSwitchGroup, onBanMember }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, myGroups, onSwitchGroup, onBanMember }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -416,6 +416,32 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
               <option value="en">🇬🇧 EN</option>
               <option value="it">🇮🇹 IT</option>
             </select>
+          </div>
+        </div>
+      )}
+
+      {/* Theme picker */}
+      {isOwn && onThemeMode && (
+        <div style={{ ...cardStyle, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {themeMode === "light" ? <Sun size={18} color={C.text2} /> : <Moon size={18} color={C.text2} />}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Tema")}</div>
+              <div style={{ fontSize: 11, color: C.text2 }}>{t("Escuro")} · {t("Claro")}</div>
+            </div>
+            <div style={{ display: "flex", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 3, gap: 2 }}>
+              {[["dark", Moon, "Escuro"], ["light", Sun, "Claro"]].map(([id, Icon, label]) => {
+                const active = (themeMode ?? "dark") === id;
+                return (
+                  <button key={id} onClick={() => onThemeMode(id)} title={t(label)}
+                    style={{ display: "flex", alignItems: "center", gap: 5, background: active ? C.accentDim : "none", color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : "transparent"}`, borderRadius: 8, padding: "7px 10px", fontSize: 11, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
+                    <Icon size={13} /> {t(label)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

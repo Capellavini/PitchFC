@@ -3,9 +3,19 @@
   box-sizing: border-box;
 }
 
+/* Only the page background needs a CSS-level toggle (it has to be right
+   before React mounts, and it covers the scroll-bounce/notch areas
+   components don't reach) — every other color is C.xxx in src/theme.js,
+   mutated in place on toggle (see applyPalette there and
+   src/lib/themeMode.js). Keep this in sync with DARK.bg/LIGHT.bg. */
 html,
 body {
-  background: #0a0f18; /* C.bg — keep in sync with src/theme.js */
+  background: #0a0f18; /* DARK.bg */
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background: #f4f5f7; /* LIGHT.bg */
 }
 
 body {
