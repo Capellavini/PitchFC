@@ -245,11 +245,16 @@ export default function RoadmapPage({ cloud, localMode }) {
       </div>
 
       {/* nav */}
-      <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(10,15,24,0.9)", backdropFilter: "blur(8px)", borderBottom: `1px solid ${C.border}`, overflowX: "auto" }}>
-        <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", gap: 4, padding: "0 32px" }}>
-          {nav.map(([id, label]) => (
-            <a key={id} href={`#${id}`} style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: C.text2, textDecoration: "none", padding: "13px 12px", whiteSpace: "nowrap" }}>{tt(label)}</a>
-          ))}
+      <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(10,15,24,0.9)", backdropFilter: "blur(8px)", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ position: "relative", maxWidth: 1040, margin: "0 auto" }}>
+          <style>{`.roadmap-nav-scroll{scrollbar-width:none;-ms-overflow-style:none}.roadmap-nav-scroll::-webkit-scrollbar{display:none}`}</style>
+          <div className="roadmap-nav-scroll" style={{ display: "flex", gap: 4, padding: "0 32px", overflowX: "auto" }}>
+            {nav.map(([id, label]) => (
+              <a key={id} href={`#${id}`} style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: C.text2, textDecoration: "none", padding: "13px 12px", whiteSpace: "nowrap" }}>{tt(label)}</a>
+            ))}
+          </div>
+          {/* fade hint that the nav keeps scrolling past the edge */}
+          <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: 32, background: "linear-gradient(90deg, rgba(10,15,24,0), rgba(10,15,24,0.95))", pointerEvents: "none" }} />
         </div>
       </div>
 
