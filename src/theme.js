@@ -97,15 +97,34 @@ export const BRAND = {
   field: "/brand/field.jpg",  // navy pitch illustration (presentation background)
 };
 
-/** Navy-field backdrop with a dark fade so content stays readable.
- *  rgba(10,15,24,…) = C.bg. Deliberately NOT theme-aware — this is the
- *  brand/marketing hero backdrop (landing, onboarding), which stays
- *  dark navy regardless of the in-app light/dark choice. */
-export const fieldBackdrop = (top = 0.35, bottom = 0.85) => ({
-  backgroundImage: `linear-gradient(180deg, rgba(10,15,24,${top}) 0%, rgba(10,15,24,${bottom}) 100%), url(${BRAND.field})`,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-});
+const hexToRgb = (hex) => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+};
+
+/** Field-photo backdrop, faded into the CURRENT theme's background —
+ *  reads C.bg fresh on every call, so it automatically fades to navy in
+ *  dark mode or off-white in light mode (same navy field.jpg photo
+ *  either way; only the fade color changes). Used for both the
+ *  pre-login brand hero (landing, onboarding) and JogoTab's slot-grid
+ *  card, so both need to match whatever theme is currently active.
+ *
+ *  The photo itself is always dark navy, so the light-mode fade can't
+ *  just reuse whatever subtle top/bottom a caller tuned for dark-mode
+ *  text staying white on a visible photo — light mode needs the wash
+ *  strong enough, throughout, that dark C.text1 text stays legible even
+ *  near the top where a dark-mode fade would deliberately stay sheer. */
+export const fieldBackdrop = (top = 0.35, bottom = 0.85) => {
+  const rgb = hexToRgb(C.bg);
+  const isLight = C.bg !== DARK.bg;
+  const t = isLight ? Math.max(top, 0.82) : top;
+  const b = isLight ? Math.max(bottom, 0.95) : bottom;
+  return {
+    backgroundImage: `linear-gradient(180deg, rgba(${rgb},${t}) 0%, rgba(${rgb},${b}) 100%), url(${BRAND.field})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+  };
+};
 
 export const AVATAR_PALETTE = [
   C.accent, C.blue, C.orange, C.green,
