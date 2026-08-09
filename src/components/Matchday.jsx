@@ -1,5 +1,5 @@
 import { useState, Fragment } from "react";
-import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2, LayoutGrid, ChevronDown } from "lucide-react";
+import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2, LayoutGrid, ChevronDown, RotateCcw } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { t } from "../lib/i18n";
 import { matchWinner } from "../lib/tournament";
@@ -17,7 +17,7 @@ const DEFAULT_CUSTOM_CONFIG = { confrontos: "unico", faseFinal: false, finalista
  *  between two chosen teams; you pick the scorer + assist per goal.
  *  'campeonato' adds a points/goal-difference standings table.
  *  Ending the matchday feeds season stats, history and MVP voting. */
-export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onEpicSave, onSetGoalkeeper, onEnd, onAdvancePlayoff, onSetPenaltyWinner, canManage = true }) {
+export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onEpicSave, onSetGoalkeeper, onEnd, onCancel, onAdvancePlayoff, onSetPenaltyWinner, canManage = true }) {
   const [pending, setPending] = useState(null);   // { matchId, teamId, scorerId? }
   const [mode, setMode] = useState("avulsa");
   const [customConfig, setCustomConfig] = useState(DEFAULT_CUSTOM_CONFIG);
@@ -421,6 +421,12 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
             <Flag size={15} /> {t("Terminar dia")}
           </button>
         </div>
+      )}
+
+      {canManage && onCancel && (
+        <button onClick={onCancel} style={{ width: "100%", marginTop: 8, background: "none", color: C.text3, border: "none", padding: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+          <RotateCcw size={12} /> {t("Cancelar dia de jogo (começou errado)")}
+        </button>
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 10, color: C.text3 }}>

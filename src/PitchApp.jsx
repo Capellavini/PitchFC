@@ -654,6 +654,19 @@ export default function PitchApp() {
     // server-side (and refetch() picks that up) — no local mirror to reset.
   };
 
+  // Abandon a matchday started by mistake (wrong teams, wrong mode…).
+  // Safe to do any time before "Terminar dia": season stats are only
+  // written there, so discarding the live matchday here touches nothing
+  // already saved — it just clears games.live_matchday / matchdayLocal
+  // back to null so the organizer sees the "Começar dia de jogo" screen
+  // again. Team draw is untouched (use "Limpar sorteio" for that).
+  const cancelMatchday = () => {
+    if (!matchday) return;
+    if (!window.confirm(t("Cancelar o dia de jogo em curso? Todos os golos e resultados registados até agora são apagados. As stats da época não são afetadas — ainda não foram gravadas.")))
+      return;
+    updateMatchday(null);
+  };
+
   // ── Club: events + bookings ────────────────────────────
   const cloudEvents = cloudAuthed
     ? cloud.events.map((e) => ({
@@ -1083,7 +1096,7 @@ export default function PitchApp() {
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner }}
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner }}
             lastMatchday={lastMatchdayView}
           />
         ))}
