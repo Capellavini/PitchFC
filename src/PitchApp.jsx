@@ -713,6 +713,17 @@ export default function PitchApp() {
     updateMatchday(null);
   };
 
+  // League → Records: delete an already-finished matchday (cloud only —
+  // local demo has no per-round breakdown saved to reverse cleanly).
+  // deleteMatchday reverses exactly what that day added to season totals.
+  const deleteMatchdayRecord = async (matchdayId, dateLabel) => {
+    if (!cloudMode) return;
+    if (!window.confirm(`${t("Apagar o dia de jogo de")} ${dateLabel}? ${t("As stats desse dia são retiradas da época de cada jogador. Esta ação não pode ser desfeita.")}`))
+      return;
+    const res = await cloud.deleteMatchday(matchdayId);
+    if (res?.error) window.alert(res.error);
+  };
+
   // ── Club: events + bookings ────────────────────────────
   const cloudEvents = cloudAuthed
     ? cloud.events.map((e) => ({
@@ -992,7 +1003,7 @@ export default function PitchApp() {
   // demo has no shared module for it).
   const MVP_BALLOT_POINTS = { 1: 3, 2: 2, 3: 1 };
 
-  let lastMatchdayView = null, historyView = [], matchdaySummariesView = [], mvp = null;
+  let lastMatchdayView = null, historyView = [], matchdaySummariesView = [], recordsView = [], mvp = null;
   if (cloudMode) {
     const rows = cloud.matchdays;
     // Raw per-day team results (name/color/goals) for the Stats tab's
@@ -1000,6 +1011,14 @@ export default function PitchApp() {
     // every matchday (no persistent team identity to sum a season total
     // over), so this stays a per-day record list, not a season table.
     matchdaySummariesView = rows.map((r) => ({ date: fmtDayMonth(r.played_on), summary: r.summary }));
+    // League → Records: full per-day detail (games/stats/MVP), expandable,
+    // deletable by the organizer.
+    recordsView = rows.map((r) => ({
+      id: r.id, date: fmtDayMonth(r.played_on), nGames: r.n_games, totalGoals: r.total_goals, mode: r.mode,
+      mvpOpen: r.mvp_open, mvpNick: r.mvp_id ? nickByKey(r.mvp_id) : null,
+      runnerUpNick: r.runner_up_id ? nickByKey(r.runner_up_id) : null, thirdNick: r.third_id ? nickByKey(r.third_id) : null,
+      summary: r.summary,
+    }));
     const last = rows[0];
     if (last) {
       lastMatchdayView = { date: fmtDayMonth(last.played_on), mode: last.mode, ...(last.summary || {}) };
@@ -1169,7 +1188,7 @@ export default function PitchApp() {
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
-          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} canManageTeams={canManageTeams} />)}
+          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} canManageTeams={canManageTeams} records={recordsView} onDeleteMatchday={deleteMatchdayRecord} />)}
         {tab === "fantasy" && cloud.canSeeFantasy && (
           <FantasyTab
             group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}

@@ -8,7 +8,7 @@ const NAV = [
   { id: "clube",    Icon: Building2, label: "Clube"    },
   { id: "social",   Icon: Flame,     label: "Social"   },
   { id: "stats",    Icon: Trophy,    label: "Stats"    },
-  { id: "grupo",    Icon: Users,     label: "Grupo"    },
+  { id: "grupo",    Icon: Users,     label: "League"   },
   { id: "fantasy",  Icon: Crown,     label: "Manager" },
   { id: "perfil",   Icon: User,      label: "Perfil"   },
 ];

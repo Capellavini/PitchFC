@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircle, ChevronRight, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2, UserMinus, Ban } from "lucide-react";
+import { MessageCircle, ChevronRight, ChevronDown, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2, UserMinus, Ban, ArrowDownAZ } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { TOTAL_GAMES, POSITIONS } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
@@ -13,7 +13,10 @@ import Collapsible from "./Collapsible";
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday }) {
+  const [view, setView] = useState("squad"); // 'squad' | 'records'
+  const [sortAZ, setSortAZ] = useState(false);
+  const [openRecordId, setOpenRecordId] = useState(null);
   const [copied, setCopied] = useState(false);
   const [guestOpen, setGuestOpen] = useState(false);
   const [guest, setGuest] = useState(EMPTY_GUEST);
@@ -26,17 +29,126 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
   const copyInvite = async () => {
     try { await navigator.clipboard.writeText(inviteUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
+  const sortItems = (items) => (sortAZ ? [...items].sort((a, b) => a.nick.localeCompare(b.nick, "pt")) : items);
   const sections = [
-    { label: "CONFIRMADOS",  items: group.filter((p) => p.status === "confirmed") },
-    { label: "SEM RESPOSTA", items: group.filter((p) => p.status === "pending")   },
-    { label: "NÃO PODEM",    items: group.filter((p) => p.status === "declined")  },
+    { label: "CONFIRMADOS",  items: sortItems(group.filter((p) => p.status === "confirmed")) },
+    { label: "SEM RESPOSTA", items: sortItems(group.filter((p) => p.status === "pending"))   },
+    { label: "NÃO PODEM",    items: sortItems(group.filter((p) => p.status === "declined"))  },
   ];
 
   return (
     <div style={{ padding: "0 16px" }}>
       <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22 }}>{t("O Grupo")}</div>
+        <div style={{ ...displayFont, fontSize: 22 }}>League</div>
         <div style={{ fontSize: 13, color: C.text2 }}>{group.length} {t("jogadores")} · {game.groupName}</div>
+      </div>
+
+      <div style={{ display: "flex", background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
+        {[["squad", "Squad"], ["records", "Records"]].map(([id, label]) => {
+          const active = view === id;
+          return (
+            <button key={id} onClick={() => setView(id)} style={{ flex: 1, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: "none", borderRadius: 10, padding: 9, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {view === "records" ? (
+        <div style={{ marginBottom: 24 }}>
+          {records.length === 0 ? (
+            <div style={{ ...cardStyle, textAlign: "center", padding: "22px 20px" }}>
+              <div style={{ fontSize: 13, color: C.text2 }}>{t("Ainda sem dias de jogo registados.")}</div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {records.map((r) => {
+                const open = openRecordId === r.id;
+                return (
+                  <div key={r.id} style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
+                    <button onClick={() => setOpenRecordId(open ? null : r.id)}
+                      style={{ width: "100%", background: "none", border: "none", cursor: "pointer", color: C.text1, display: "flex", alignItems: "center", gap: 12, padding: 14, textAlign: "left" }}>
+                      <div style={{ width: 48, textAlign: "center", flexShrink: 0 }}>
+                        <div style={{ ...displayFont, fontSize: 16 }}>{r.totalGoals}⚽</div>
+                        <div style={{ fontSize: 10, color: C.text2 }}>{r.date}</div>
+                      </div>
+                      <div style={{ width: 1, height: 30, background: C.border }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: C.text2 }}>{r.nGames} {r.nGames === 1 ? t("jogo") : t("jogos")}</div>
+                        {r.mvpNick ? (
+                          <div style={{ fontSize: 12, marginTop: 1 }}>⭐ MVP: <span style={{ fontWeight: 700 }}>{r.mvpNick}</span></div>
+                        ) : (
+                          <div style={{ fontSize: 12, marginTop: 1, color: C.text3 }}>⭐ {r.mvpOpen ? t("votação a decorrer") : t("sem votos")}</div>
+                        )}
+                      </div>
+                      <ChevronDown size={16} color={C.text3} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
+                    </button>
+                    {open && (
+                      <div style={{ padding: "0 14px 14px" }}>
+                        {(r.summary?.matches ?? []).length > 0 && (
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                            {r.summary.matches.map((m) => (
+                              <div key={m.n} style={{ background: C.surface, borderRadius: 10, padding: "8px 10px", textAlign: "center", flex: 1, minWidth: 90 }}>
+                                <div style={{ fontSize: 9, color: C.text3, fontWeight: 800 }}>{t("JOGO")} {m.n}</div>
+                                <div style={{ ...displayFont, fontSize: 16 }}>{m.homeGoals}–{m.awayGoals}</div>
+                                <div style={{ fontSize: 9, color: C.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.homeName} vs {m.awayName}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {(r.summary?.lines ?? []).length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: isOrganizer && cloudMode ? 12 : 0 }}>
+                            {r.summary.lines.map((l) => (
+                              <div key={l.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <Avatar name={l.nick} color={l.color || C.text2} size={24} fontSize={9} photo={l.photo} />
+                                <span style={{ flex: 1, minWidth: 0, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.nick}</span>
+                                <span style={{ fontSize: 11, color: C.text2, display: "flex", gap: 8, flexShrink: 0 }}>
+                                  {l.goals > 0 && <span>⚽ {l.goals}</span>}
+                                  {l.assists > 0 && <span>🎯 {l.assists}</span>}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {isOrganizer && cloudMode && onDeleteMatchday && (
+                          <button onClick={() => onDeleteMatchday(r.id, r.date)}
+                            style={{ width: "100%", background: C.redDim, color: C.red, border: `1px solid ${C.red}44`, borderRadius: 10, padding: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                            <Trash2 size={13} /> {t("Apagar este dia de jogo")}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+      <>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <button onClick={() => setSortAZ((s) => !s)}
+          style={{ background: sortAZ ? C.accentDim : C.card, color: sortAZ ? C.accent : C.text2, border: `1px solid ${sortAZ ? C.accentBorder : C.border}`, borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+          <ArrowDownAZ size={13} /> A–Z
+        </button>
+        <div style={{ flex: 1 }} />
+        {inviteUrl ? (
+          <>
+            <button onClick={() => openWhatsApp(groupInviteMessage(game.groupName, inviteUrl))}
+              style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+              <MessageCircle size={13} /> {t("Convidar")}
+            </button>
+            <button onClick={copyInvite}
+              style={{ background: C.card, color: copied ? C.green : C.text2, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 10, padding: "7px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+              {copied ? <Check size={13} /> : <Copy size={13} />}
+            </button>
+          </>
+        ) : (
+          <button onClick={() => openWhatsApp(inviteMessage(game.groupName, game))}
+            style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+            <MessageCircle size={13} /> {t("Convidar")}
+          </button>
+        )}
       </div>
 
       {sections.map((section) => section.items.length > 0 && (
@@ -144,28 +256,6 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
         )
       )}
 
-      <div style={{ ...cardStyle, textAlign: "center", padding: "22px 20px", marginBottom: 24 }}>
-        <div style={{ fontSize: 24, marginBottom: 8 }}>👤</div>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{t("Adicionar ao grupo")}</div>
-        <div style={{ fontSize: 12, color: C.text2, marginBottom: 14 }}>
-          {inviteUrl ? t("Partilha o link de convite — quem abrir cria conta e entra logo no grupo.") : t("Convida um amigo pelo link ou WhatsApp")}
-        </div>
-        {inviteUrl ? (
-          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-            <button onClick={() => openWhatsApp(groupInviteMessage(game.groupName, inviteUrl))} style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: "10px 18px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <MessageCircle size={14} /> {t("Convidar")}
-            </button>
-            <button onClick={copyInvite} style={{ background: C.card, color: copied ? C.green : C.text1, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 12, padding: "10px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              {copied ? <><Check size={14} /> {t("Copiado")}</> : <><Copy size={14} /> Link</>}
-            </button>
-          </div>
-        ) : (
-          <button onClick={() => openWhatsApp(inviteMessage(game.groupName, game))} style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <MessageCircle size={14} /> {t("Convidar")}
-          </button>
-        )}
-      </div>
-
       {isOrganizer && bannedMembers?.length > 0 && (
         <Collapsible icon={<Ban size={16} color={C.red} />} title={t("Jogadores banidos")} subtitle={t("Bloqueados de voltar a entrar")} badge={bannedMembers.length}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -181,6 +271,8 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
             ))}
           </div>
         </Collapsible>
+      )}
+      </>
       )}
     </div>
   );

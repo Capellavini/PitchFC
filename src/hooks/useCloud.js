@@ -904,6 +904,45 @@ export function useCloud() {
     await refetch();
   };
 
+  /** Organizer deletes a matchday started/finished by mistake, reversing
+   *  exactly what it added to season totals (using the snapshot already
+   *  saved in summary.candidates/summary.lines — no other matchday is
+   *  touched). matchday_votes and fantasy_scores both have `on delete
+   *  cascade` to matchdays, so they clean up on their own; any Fantasy
+   *  budget already credited from that round's points is intentionally
+   *  left alone (spent money isn't clawed back, only the score is). */
+  const deleteMatchday = async (matchdayId) => {
+    const md = data.matchdays.find((m) => m.id === matchdayId);
+    if (!md) return { error: "Dia de jogo não encontrado." };
+    const summary = md.summary || {};
+    const lineByKey = Object.fromEntries((summary.lines || []).map((l) => [l.key, l]));
+    const playedKeys = new Set((summary.candidates || []).map((c) => c.key));
+    const current = Object.fromEntries(data.players.map((p) => [p.id, p]));
+    const updates = [...playedKeys].map((uuid) => {
+      const p = current[uuid];
+      if (!p) return null;
+      const l = lineByKey[uuid];
+      return supabase.from("player_group_memberships").update({
+        goals: Math.max(0, (p.goals || 0) - (l?.goals || 0)),
+        assists: Math.max(0, (p.assists || 0) - (l?.assists || 0)),
+        clean_sheets: Math.max(0, (p.clean_sheets || 0) - (l?.cleanSheets || 0)),
+        wins: Math.max(0, (p.wins || 0) - (l?.wins || 0)),
+        epic_saves: Math.max(0, (p.epic_saves || 0) - (l?.epicSaves || 0)),
+        games_played: Math.max(0, (p.games_played || 0) - 1),
+      }).eq("player_id", uuid).eq("group_id", data.groupRow.id);
+    }).filter(Boolean);
+    if (md.mvp_id && current[md.mvp_id]) {
+      updates.push(supabase.from("player_group_memberships")
+        .update({ mvps: Math.max(0, (current[md.mvp_id].mvps || 0) - 1) })
+        .eq("player_id", md.mvp_id).eq("group_id", data.groupRow.id));
+    }
+    await Promise.all(updates);
+    const del = await supabase.from("matchdays").delete().eq("id", matchdayId);
+    if (del.error) return { error: del.error.message };
+    await refetch();
+    return {};
+  };
+
   // ── Fantasy League (admin-only beta) ───────────────────
   /** Organizer/assistant/admin creates the group's fantasy league (one
    *  active league per group in this v1). */
@@ -1181,7 +1220,7 @@ export function useCloud() {
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated, fetchRoadmapContent, saveRoadmapContent,
     fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
-    commitMatchday, syncFantasyScores, castMvpVote, clearMvpVote, closeMvp, submitRating,
+    commitMatchday, syncFantasyScores, deleteMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,
     toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment,
     sendFriendRequest, respondFriend, removeFriend,
     createFantasyLeague, saveFantasySquad, createTradeOffer, cancelTradeOffer, respondTradeOffer,
