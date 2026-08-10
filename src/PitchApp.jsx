@@ -588,11 +588,19 @@ export default function PitchApp() {
     }));
 
     const teamsById = Object.fromEntries((teams || []).map((t) => [t.id, t]));
-    const teamResults = (teams || []).map((t) => ({ id: t.id, name: t.name, color: t.color, wins: 0 }));
+    const keyOf = (p) => (cloudMode ? p.uuid : p.id);
+    // Roster snapshot per team (season-stable keys) — lets the Stats tab's
+    // player-comparison feature compute "played together" chemistry later.
+    // Historical matchdays from before this field existed just won't have
+    // it (`t.players` reads undefined there), which the comparison feature
+    // treats as "no data yet" rather than erroring.
+    const teamResults = (teams || []).map((t) => ({
+      id: t.id, name: t.name, color: t.color, wins: 0,
+      players: (t.players || []).map((pid) => keyOf(baseGroup.find((x) => x.id === pid))).filter(Boolean),
+    }));
     const winsById = Object.fromEntries(teamResults.map((t) => [t.id, t]));
     const mdMatches = [];
     let totalGoals = 0;
-    const keyOf = (p) => (cloudMode ? p.uuid : p.id);
 
     matchday.matches.forEach((m) => {
       const hg = m.events.filter((e) => e.teamId === m.homeId && e.type !== "epicSave").length;

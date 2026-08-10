@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { Star, Shield, Share2 } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
@@ -20,6 +20,9 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   const totalGames = history.reduce((s, h) => s + (h.games || 1), 0);
   const lines = lastMatchday?.lines ?? [];
   const [cardStep, setCardStep] = useState(null); // null | 'pick' | 'match' | 'workout'
+  const [comparePicks, setComparePicks] = useState([]); // season-stable keys, 2-4 players
+  const togglePick = (key) => setComparePicks((cur) =>
+    cur.includes(key) ? cur.filter((k) => k !== key) : (cur.length >= 4 ? cur : [...cur, key]));
 
   const me = group.find((p) => p.isMe);
   const myKey = me ? (me.uuid ?? me.id) : null;
@@ -33,21 +36,43 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   // sheets/saves. "Fiabilidade" reuses the season's real game count, not
   // the old fixed demo constant.
   const PLAYER_CATEGORIES = [
-    { id: "geral", label: t("Geral"), value: (p) => (p.goals || 0) * 2 + (p.assists || 0) + (p.wins || 0) + (p.mvps || 0) * 3 + (p.cleanSheets || 0) },
-    { id: "goals", label: `⚽ ${t("Golos")}`, value: (p) => p.goals || 0 },
-    { id: "assists", label: "🎯 Assists", value: (p) => p.assists || 0 },
-    { id: "mvps", label: "⭐ MVPs", value: (p) => p.mvps || 0 },
-    { id: "gk", label: `🧤 ${t("Guarda-redes")}`, value: (p) => (p.cleanSheets || 0) * 3 + (p.epicSaves || 0) },
-    { id: "reliability", label: `📅 ${t("Fiabilidade")}`, value: (p) => (totalGames ? Math.round(((p.gamesPlayed || 0) / totalGames) * 100) : 0), suffix: "%" },
+    { id: "geral", label: t("Geral"), value: (p) => (p.goals || 0) * 2 + (p.assists || 0) + (p.wins || 0) + (p.mvps || 0) * 3 + (p.cleanSheets || 0),
+      hint: t("Pontuação combinada: 2 pts por golo, 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.") },
+    { id: "goals", label: `⚽ ${t("Golos")}`, value: (p) => p.goals || 0, hint: t("Total de golos marcados na época.") },
+    { id: "assists", label: "🎯 Assists", value: (p) => p.assists || 0, hint: t("Total de assistências na época.") },
+    { id: "mvps", label: "⭐ MVPs", value: (p) => p.mvps || 0, hint: t("Vezes eleito MVP do dia.") },
+    { id: "gk", label: `🧤 ${t("Guarda-redes")}`, value: (p) => (p.cleanSheets || 0) * 3 + (p.epicSaves || 0),
+      hint: t("Clean sheets (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.") },
+    { id: "reliability", label: `📅 ${t("Fiabilidade")}`, value: (p) => (totalGames ? Math.round(((p.gamesPlayed || 0) / totalGames) * 100) : 0), suffix: "%",
+      hint: t("% dos dias de jogo da época em que este jogador esteve mesmo em campo, sobre o total de dias realizados pelo grupo — mede assiduidade, não desempenho.") },
   ];
   // Teams are redrawn fresh every matchday (no persistent identity to sum
   // a season total over) — these stay per-day records, à la the Excel's
   // Hall of Fame sheet, not a season-long team table.
   const TEAM_CATEGORIES = [
-    { id: "attackDay", label: `🔥 ${t("Melhor ataque (dia)")}` },
-    { id: "defenseDay", label: `🛡️ ${t("Melhor defesa (dia)")}` },
+    { id: "attackDay", label: `🔥 ${t("Melhor ataque (dia)")}`, hint: t("Mais golos marcados por uma equipa num único dia de jogo.") },
+    { id: "defenseDay", label: `🛡️ ${t("Melhor defesa (dia)")}`, hint: t("Menos golos sofridos por uma equipa num único dia de jogo.") },
   ];
+  const COMPARE_CATEGORY = { id: "compare", label: `🆚 ${t("Comparar jogadores")}`, hint: t("Escolhe 2 a 4 jogadores para comparar as stats e ver a % de vitórias quando jogam juntos.") };
+  const ALL_CATEGORIES = [...PLAYER_CATEGORIES, ...TEAM_CATEGORIES, COMPARE_CATEGORY];
   const activeCat = PLAYER_CATEGORIES.find((c) => c.id === statMode);
+  const activeMeta = ALL_CATEGORIES.find((c) => c.id === statMode);
+
+  // "Jogaram juntos": needs both players on the same team the same day —
+  // only matchdays committed after teamResults started snapshotting
+  // rosters carry this (see PitchApp.jsx endMatchday), so older days just
+  // don't match and this reads as "no data yet", not an error.
+  const togetherStats = (keyA, keyB) => {
+    let gamesTogether = 0, winsTogether = 0;
+    matchdaySummaries.forEach((md) => {
+      const team = (md.summary?.teamResults || []).find((tm) => tm.players?.includes(keyA) && tm.players?.includes(keyB));
+      if (!team) return;
+      gamesTogether += (md.summary?.matches || []).filter((m) => m.homeName === team.name || m.awayName === team.name).length;
+      winsTogether += team.wins || 0;
+    });
+    return { gamesTogether, winsTogether };
+  };
+  const POSITION_ROWS = ["Avançado", "Médio", "Defesa", "Guarda-redes"];
 
   const dayTeamRows = [];
   matchdaySummaries.forEach((md) => {
@@ -195,20 +220,95 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
         </div>
       ) : null)}
 
-      {/* RANKINGS — opens on "Geral"; scroll the chips for the rest */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 16, paddingBottom: 2 }}>
-        {[...PLAYER_CATEGORIES, ...TEAM_CATEGORIES].map((c) => {
-          const active = statMode === c.id;
-          return (
-            <button key={c.id} onClick={() => setStatMode(c.id)}
-              style={{ flexShrink: 0, background: active ? C.accent : C.card, color: active ? C.bg : C.text2, border: `1px solid ${active ? C.accent : C.border}`, borderRadius: 20, padding: "8px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* RANKINGS — opens on "Geral"; a dropdown picks the rest */}
+      <select value={statMode} onChange={(e) => setStatMode(e.target.value)}
+        style={{ width: "100%", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 12px", fontSize: 14, fontWeight: 800, color: C.text1, outline: "none", marginBottom: 6 }}>
+        {ALL_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+      </select>
+      {activeMeta?.hint && <div style={{ fontSize: 11, color: C.text3, marginBottom: 16 }}>{activeMeta.hint}</div>}
 
-      {activeCat ? (
+      {statMode === "compare" ? (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+            {group.map((p) => {
+              const key = p.uuid ?? p.id;
+              const picked = comparePicks.includes(key);
+              return (
+                <button key={p.id} onClick={() => togglePick(key)}
+                  style={{ display: "flex", alignItems: "center", gap: 6, background: picked ? C.accentDim : C.card, border: `1px solid ${picked ? C.accentBorder : C.border}`, borderRadius: 20, padding: "5px 10px 5px 5px", cursor: "pointer" }}>
+                  <Avatar name={p.name} color={playerColor(group, p)} size={24} fontSize={9} photo={p.photo} />
+                  <span style={{ fontSize: 12, fontWeight: picked ? 800 : 600, color: picked ? C.accent : C.text1 }}>{p.nick}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {comparePicks.length < 2 ? (
+            <div style={{ fontSize: 12, color: C.text2 }}>{t("Escolhe pelo menos 2 jogadores.")}</div>
+          ) : (
+            <>
+              {/* pitch — rows top→bottom like a real formation */}
+              <div style={{ borderRadius: 18, padding: 18, marginBottom: 14, background: "linear-gradient(180deg, #1D7A46 0%, #16603A 100%)", border: `1px solid ${C.border}`, position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: "50%", left: 10, right: 10, height: 1, background: "rgba(255,255,255,0.3)" }} />
+                {POSITION_ROWS.map((pos) => {
+                  const players = comparePicks.map((k) => group.find((p) => (p.uuid ?? p.id) === k)).filter((p) => p && p.position === pos);
+                  if (!players.length) return null;
+                  return (
+                    <div key={pos} style={{ display: "flex", justifyContent: "center", gap: 22, marginBottom: 16, position: "relative" }}>
+                      {players.map((p) => (
+                        <div key={p.id} style={{ textAlign: "center" }}>
+                          <Avatar name={p.name} color={playerColor(group, p)} size={46} fontSize={14} photo={p.photo} />
+                          <div style={{ fontSize: 10, fontWeight: 800, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)", marginTop: 3, maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {comparePicks.length === 2 && (() => {
+                const [a, b] = comparePicks;
+                const { gamesTogether, winsTogether } = togetherStats(a, b);
+                return (
+                  <div style={{ ...cardStyle, marginBottom: 14, textAlign: "center" }}>
+                    {gamesTogether > 0 ? (
+                      <div style={{ fontSize: 13 }}>
+                        {t("Jogaram juntos")} <strong>{gamesTogether}</strong> {gamesTogether === 1 ? t("vez") : t("vezes")} · <strong style={{ color: C.accent }}>{Math.round((winsTogether / gamesTogether) * 100)}%</strong> {t("vitórias")}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: C.text3 }}>{t("Ainda sem dados de jogos juntos — passa a contar a partir do próximo dia de jogo.")}</div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* full stat comparison */}
+              <div style={{ ...cardStyle, marginBottom: 20, overflowX: "auto" }}>
+                <div style={{ display: "grid", gridTemplateColumns: `100px repeat(${comparePicks.length}, 1fr)`, gap: 8, minWidth: 100 + comparePicks.length * 60 }}>
+                  <div />
+                  {comparePicks.map((k) => {
+                    const p = group.find((pp) => (pp.uuid ?? pp.id) === k);
+                    return <div key={k} style={{ textAlign: "center", fontSize: 11, fontWeight: 800, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p?.nick}</div>;
+                  })}
+                  {PLAYER_CATEGORIES.map((cat) => (
+                    <Fragment key={cat.id}>
+                      <div style={{ fontSize: 11, color: C.text2, alignSelf: "center" }}>{cat.label}</div>
+                      {comparePicks.map((k) => {
+                        const p = group.find((pp) => (pp.uuid ?? pp.id) === k);
+                        return (
+                          <div key={k} style={{ textAlign: "center", ...displayFont, fontSize: 15, color: C.text1, alignSelf: "center" }}>
+                            {p ? cat.value(p) : "–"}{p && cat.suffix ? cat.suffix : ""}
+                          </div>
+                        );
+                      })}
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      ) : activeCat ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 20 }}>
           {playerList.length === 0 && <div style={{ fontSize: 12, color: C.text2 }}>{t("Ainda sem dados.")}</div>}
           {playerList.map((p, i) => {
