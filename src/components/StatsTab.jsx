@@ -33,18 +33,15 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   // composite), the rest are single-stat cuts. "Guarda-redes" isn't
   // restricted to the position field: the GR rotates match to match (see
   // Matchday.jsx), so it ranks whoever actually racked up clean
-  // sheets/saves. "Fiabilidade" reuses the season's real game count, not
-  // the old fixed demo constant.
+  // sheets/saves.
   const PLAYER_CATEGORIES = [
     { id: "geral", label: t("Geral"), value: (p) => (p.goals || 0) * 2 + (p.assists || 0) + (p.wins || 0) + (p.mvps || 0) * 3 + (p.cleanSheets || 0),
-      hint: t("Pontuação combinada: 2 pts por golo, 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.") },
+      hint: t("Quem está mais completo esta época, tudo junto num só número: 2 pts por golo, 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.") },
     { id: "goals", label: `⚽ ${t("Golos")}`, value: (p) => p.goals || 0, hint: t("Total de golos marcados na época.") },
     { id: "assists", label: "🎯 Assists", value: (p) => p.assists || 0, hint: t("Total de assistências na época.") },
     { id: "mvps", label: "⭐ MVPs", value: (p) => p.mvps || 0, hint: t("Vezes eleito MVP do dia.") },
     { id: "gk", label: `🧤 ${t("Guarda-redes")}`, value: (p) => (p.cleanSheets || 0) * 3 + (p.epicSaves || 0),
       hint: t("Clean sheets (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.") },
-    { id: "reliability", label: `📅 ${t("Fiabilidade")}`, value: (p) => (totalGames ? Math.round(((p.gamesPlayed || 0) / totalGames) * 100) : 0), suffix: "%",
-      hint: t("% dos dias de jogo da época em que este jogador esteve mesmo em campo, sobre o total de dias realizados pelo grupo — mede assiduidade, não desempenho.") },
   ];
   // Teams are redrawn fresh every matchday (no persistent identity to sum
   // a season total over) — these stay per-day records, à la the Excel's
