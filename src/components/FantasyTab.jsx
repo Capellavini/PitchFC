@@ -32,7 +32,7 @@ const leagueEndsAt = (league) => {
  *  past that, the only way in is proposing a trade to a current owner.
  *  Each league runs for a fixed duration (organizer-set, min 1 month);
  *  squads are editable until 8h before the next kickoff. */
-export default function FantasyTab({ group, me, isOrganizer, kickoffAt, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, matchdays, onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer }) {
+export default function FantasyTab({ group, me, isOrganizer, kickoffAt, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, matchdays, onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
   if (!fantasyLeague) {
     return <CreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} />;
   }
@@ -40,10 +40,11 @@ export default function FantasyTab({ group, me, isOrganizer, kickoffAt, fantasyL
   return (
     <>
       <FantasyLeagueView
-        group={group} me={me} league={fantasyLeague} ended={ended} kickoffAt={kickoffAt}
+        group={group} me={me} isOrganizer={isOrganizer} league={fantasyLeague} ended={ended} kickoffAt={kickoffAt}
         squads={fantasySquads} scores={fantasyScores} offers={fantasyTradeOffers} matchdays={matchdays}
         onSaveSquad={onSaveSquad} onCreateTradeOffer={onCreateTradeOffer}
         onCancelTradeOffer={onCancelTradeOffer} onRespondTradeOffer={onRespondTradeOffer}
+        onSyncFantasy={onSyncFantasy}
       />
       {ended && (
         <CreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} nextSeason />
@@ -112,8 +113,17 @@ function CreateLeague({ isOrganizer, onCreateLeague, nextSeason }) {
   );
 }
 
-function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores, offers, matchdays, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer }) {
+function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, squads, scores, offers, matchdays, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
   const weights = league.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null); // number synced, or null before first click
+  const runSync = async () => {
+    setSyncing(true);
+    const res = await onSyncFantasy();
+    setSyncing(false);
+    setSyncResult(res?.synced ?? 0);
+    setTimeout(() => setSyncResult(null), 4000);
+  };
   const mySquad = squads.find((s) => s.participant_id === me?.uuid);
   // squad_size is the minimum, not a hard cap — managers can buy extra
   // depth once the bank allows it; anyone beyond the minimum just needs
@@ -421,7 +431,16 @@ function FantasyLeagueView({ group, me, league, ended, kickoffAt, squads, scores
         </Collapsible>
       )}
 
-      <SectionLabel>{t("Classificação")}</SectionLabel>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <SectionLabel>{t("Classificação")}</SectionLabel>
+        {isOrganizer && onSyncFantasy && (
+          <button onClick={runSync} disabled={syncing}
+            title={t("Recupera jornadas em que as stats gravaram mas a pontuação Fantasy falhou")}
+            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 9px", fontSize: 10, fontWeight: 700, color: C.text3, cursor: syncing ? "default" : "pointer", opacity: syncing ? 0.6 : 1 }}>
+            {syncing ? t("A sincronizar…") : syncResult !== null ? (syncResult > 0 ? `✓ ${syncResult} ${t("recuperada(s)")}` : t("Tudo em dia")) : t("Sincronizar")}
+          </button>
+        )}
+      </div>
       <div style={{ ...cardStyle, marginBottom: 14 }}>
         {leaderboard.length === 0 && <div style={{ fontSize: 12, color: C.text2 }}>{t("Ainda sem jornadas fechadas.")}</div>}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

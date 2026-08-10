@@ -752,27 +752,41 @@ export function useCloud() {
     // Fantasy League: lock every participant's current squad into a
     // scored round for this matchday. MVP bonus isn't included yet — the
     // vote hasn't happened; closeMvp adds it once a winner is picked.
-    if (!md.error && data.fantasyLeague) {
-      const weights = data.fantasyLeague.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
-      const rows = data.fantasySquads
-        .filter((s) => s.player_ids?.length)
-        .map((s) => ({
-          league_id: data.fantasyLeague.id, matchday_id: md.data.id, participant_id: s.participant_id,
-          player_ids: s.player_ids, captain_id: s.captain_id, reserve_ids: s.reserve_ids || [],
-          points: computeRoundPoints(s.player_ids, s.captain_id, summary.lines, weights, s.reserve_ids),
-        }));
-      if (rows.length) {
-        await supabase.from("fantasy_scores").insert(rows);
-        // The bank's only source of "new money" round to round (besides
-        // trades) — a good week buys room to strengthen the squad next.
-        const bankPerPoint = weights.bankPerPoint ?? DEFAULT_FANTASY_WEIGHTS.bankPerPoint;
-        await Promise.all(rows.map((row) => {
-          const squad = data.fantasySquads.find((s) => s.participant_id === row.participant_id);
-          if (!squad || !row.points) return null;
-          return supabase.from("fantasy_squads")
-            .update({ budget_adjustment: (squad.budget_adjustment || 0) + row.points * bankPerPoint })
-            .eq("id", squad.id);
-        }).filter(Boolean));
+    // Wrapped: this used to run unguarded, so any thrown error here (a
+    // squad row shaped unexpectedly, a network blip) silently killed the
+    // rest of the function with nothing shown to the organizer — season
+    // stats above still saved, but that round never reached fantasy_scores
+    // at all, and endMatchday doesn't await this call, so it failed with
+    // zero visible trace. Surface it as a return value instead; see
+    // syncFantasyScores for recovering a round that was missed this way.
+    let fantasyError = null;
+    if (data.fantasyLeague) {
+      try {
+        if (md.error) throw md.error;
+        const weights = data.fantasyLeague.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
+        const rows = data.fantasySquads
+          .filter((s) => s.player_ids?.length)
+          .map((s) => ({
+            league_id: data.fantasyLeague.id, matchday_id: md.data.id, participant_id: s.participant_id,
+            player_ids: s.player_ids, captain_id: s.captain_id, reserve_ids: s.reserve_ids || [],
+            points: computeRoundPoints(s.player_ids, s.captain_id, summary.lines, weights, s.reserve_ids),
+          }));
+        if (rows.length) {
+          const ins = await supabase.from("fantasy_scores").insert(rows);
+          if (ins.error) throw ins.error;
+          // The bank's only source of "new money" round to round (besides
+          // trades) — a good week buys room to strengthen the squad next.
+          const bankPerPoint = weights.bankPerPoint ?? DEFAULT_FANTASY_WEIGHTS.bankPerPoint;
+          await Promise.all(rows.map((row) => {
+            const squad = data.fantasySquads.find((s) => s.participant_id === row.participant_id);
+            if (!squad || !row.points) return null;
+            return supabase.from("fantasy_squads")
+              .update({ budget_adjustment: (squad.budget_adjustment || 0) + row.points * bankPerPoint })
+              .eq("id", squad.id);
+          }).filter(Boolean));
+        }
+      } catch (e) {
+        fantasyError = e?.message || String(e);
       }
     }
     // The matchday is now historical (in the matchdays table) — clear the
@@ -780,6 +794,49 @@ export function useCloud() {
     // next one.
     if (data.game) await supabase.from("games").update({ live_matchday: null }).eq("id", data.game.id);
     await refetch();
+    return fantasyError ? { fantasyError } : {};
+  };
+
+  /** Recovery for a round that silently failed to score (see the
+   *  fantasyError note above, or any round scored before a scoring bug
+   *  fix landed): finds matchdays with zero fantasy_scores rows at all
+   *  and backfills them from that matchday's already-saved summary.lines
+   *  — the real per-round stats aren't lost, only the fantasy_scores
+   *  rows were. Uses TODAY's squads (player_ids/captain/reserves) as a
+   *  stand-in for what each squad looked like that day, since a missed
+   *  round never got a snapshot saved — an approximation if squads
+   *  changed since, but the only data available. Returns how many
+   *  rounds were recovered. */
+  const syncFantasyScores = async () => {
+    if (!data.fantasyLeague) return { synced: 0 };
+    const scoredMatchdayIds = new Set(data.fantasyScores.map((s) => s.matchday_id));
+    const missed = data.matchdays.filter((md) => !scoredMatchdayIds.has(md.id) && md.summary?.lines);
+    if (!missed.length) return { synced: 0 };
+    const weights = data.fantasyLeague.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
+    const bankPerPoint = weights.bankPerPoint ?? DEFAULT_FANTASY_WEIGHTS.bankPerPoint;
+    let synced = 0;
+    for (const md of missed) {
+      const rows = data.fantasySquads
+        .filter((s) => s.player_ids?.length)
+        .map((s) => ({
+          league_id: data.fantasyLeague.id, matchday_id: md.id, participant_id: s.participant_id,
+          player_ids: s.player_ids, captain_id: s.captain_id, reserve_ids: s.reserve_ids || [],
+          points: computeRoundPoints(s.player_ids, s.captain_id, md.summary.lines, weights, s.reserve_ids),
+        }));
+      if (!rows.length) continue;
+      const ins = await supabase.from("fantasy_scores").insert(rows);
+      if (ins.error) continue; // leave this round for another attempt rather than lose the others
+      await Promise.all(rows.map((row) => {
+        const squad = data.fantasySquads.find((s) => s.participant_id === row.participant_id);
+        if (!squad || !row.points) return null;
+        return supabase.from("fantasy_squads")
+          .update({ budget_adjustment: (squad.budget_adjustment || 0) + row.points * bankPerPoint })
+          .eq("id", squad.id);
+      }).filter(Boolean));
+      synced++;
+    }
+    await refetch();
+    return { synced };
   };
 
   /** Cast one of the 3 ranked ballot slots (1st/2nd/3rd choice). The same
@@ -1124,7 +1181,7 @@ export function useCloud() {
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated, fetchRoadmapContent, saveRoadmapContent,
     fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
-    commitMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,
+    commitMatchday, syncFantasyScores, castMvpVote, clearMvpVote, closeMvp, submitRating,
     toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment,
     sendFriendRequest, respondFriend, removeFriend,
     createFantasyLeague, saveFantasySquad, createTradeOffer, cancelTradeOffer, respondTradeOffer,

@@ -570,7 +570,7 @@ export default function PitchApp() {
     });
   };
 
-  const endMatchday = () => {
+  const endMatchday = async () => {
     if (!matchday) return;
     if (!window.confirm(t("Terminar o dia de jogo? As stats entram para a época e abre a votação MVP."))) return;
 
@@ -662,7 +662,10 @@ export default function PitchApp() {
         if (!s && !played) return;
         statsByUuid[p.uuid] = { goals: s?.goals ?? 0, assists: s?.assists ?? 0, cleanSheets: s?.cleanSheets ?? 0, wins: s?.wins ?? 0, epicSaves: s?.epicSaves ?? 0, played };
       });
-      cloud.commitMatchday({ statsByUuid, summary, totalGoals, mode: matchday.mode, nGames: matchday.matches.length });
+      const res = await cloud.commitMatchday({ statsByUuid, summary, totalGoals, mode: matchday.mode, nGames: matchday.matches.length });
+      if (res?.fantasyError) {
+        window.alert(t("As stats da época foram gravadas, mas a pontuação da Fantasy falhou para este dia. Vai a Manager e usa \"Sincronizar\" para recuperar esta ronda.") + `\n\n(${res.fantasyError})`);
+      }
     } else {
       setGroup((g) => g.map((p) => {
         const s = stats[p.id];
@@ -1152,6 +1155,7 @@ export default function PitchApp() {
             fantasyTradeOffers={cloud.fantasyTradeOffers} matchdays={cloud.matchdays}
             onCreateLeague={cloud.createFantasyLeague} onSaveSquad={cloud.saveFantasySquad}
             onCreateTradeOffer={cloud.createTradeOffer} onCancelTradeOffer={cloud.cancelTradeOffer} onRespondTradeOffer={cloud.respondTradeOffer}
+            onSyncFantasy={cloud.syncFantasyScores}
           />
         )}
         {tab === "perfil" && (
