@@ -7,18 +7,20 @@ import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist, WEEKDAYS_PT } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { fetchGameWeather, weatherIconFor } from "../lib/weather";
-import { openWhatsApp, reminderMessage, groupReminderMessage, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage, magicConfirmUrl, lineupShareMessage } from "../lib/whatsapp";
+import { openWhatsApp, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage, lineupShareMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import Collapsible from "./Collapsible";
+import ShareSheet from "./ShareSheet";
 
 export default function JogoTab({
   group, game, togglePaid, toggleMyStatus, payMine, canManageTeams,
   inviteUrl, canManageGame, onSetSpots, onReschedule, onScheduleGame, confirmOpen = true, opensAtLabel, onSetPlayerStatus,
 }) {
   const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [draftDay, setDraftDay] = useState(game.weekday);
   const [draftTime, setDraftTime] = useState(game.time);
@@ -80,7 +82,6 @@ export default function JogoTab({
   }
 
   const confirmed = group.filter((p) => p.status === "confirmed");
-  const pending   = group.filter((p) => p.status === "pending");
   const declined  = group.filter((p) => p.status === "declined");
   const me        = group.find((p) => p.isMe);
   // Once the game is full, extra confirmations form an ordered waiting line.
@@ -127,9 +128,9 @@ export default function JogoTab({
               )}
             </div>
           </div>
-          <button onClick={copyShare} title={t("Copiar link do jogo")}
-            style={{ flexShrink: 0, background: copied ? C.greenDim : C.accentDim, color: copied ? C.green : C.accent, border: `1px solid ${copied ? C.greenBorder : C.accentBorder}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            {copied ? <><Check size={14} /> {t("Copiado")}</> : <><Share2 size={14} /> {t("Partilhar")}</>}
+          <button onClick={() => setShareOpen(true)} title={t("Partilhar jogo")}
+            style={{ flexShrink: 0, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            <Share2 size={14} /> {t("Partilhar")}
           </button>
         </div>
       </div>
@@ -206,10 +207,6 @@ export default function JogoTab({
                 <Plus size={14} />
               </button>
             </div>
-            <button onClick={copyShare} title={t("Copiar link do jogo")}
-              style={{ marginLeft: "auto", background: C.card, color: copied ? C.green : C.text2, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-              {copied ? <><Check size={13} /> {t("Copiado")}</> : <><Copy size={13} /> Link</>}
-            </button>
           </div>
         )}
 
@@ -258,39 +255,11 @@ export default function JogoTab({
           </div>
         )}
 
-        {/* Share the game sheet (confirmed list + venue/date/price) to the group chat */}
-        {playing.length > 0 && (
-          <button onClick={() => openWhatsApp(lineupShareMessage(game, playing, waitlist, price, shareUrl))}
-            style={{ width: "100%", background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, position: "relative" }}>
-            <MessageCircle size={15} /> {t("Partilhar lista no WhatsApp")}
-          </button>
-        )}
       </div>
 
-      {/* INVITE CTA — prominent while the group is still small */}
-      {canManageGame && group.length <= Math.max(6, Math.ceil(game.spots / 2)) && (
-        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}`, background: C.accentDim }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <UserPlus size={18} color={C.accent} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 800 }}>{t("Agora convida os jogadores 📣")}</div>
-              <div style={{ fontSize: 12, color: C.text2 }}>{t("Partilha o link — quem abrir entra logo no grupo.")}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => openWhatsApp(inviteUrl ? groupInviteMessage(game.groupName, shareUrl) : inviteMessage(game.groupName, game))}
-              style={{ flex: 1, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <MessageCircle size={14} /> {t("Convidar")}
-            </button>
-            <button onClick={copyShare}
-              style={{ background: C.card, color: copied ? C.green : C.text1, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 10, padding: "11px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-              {copied ? <><Check size={14} /> {t("Copiado")}</> : <><Copy size={14} /> Link</>}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* MY STATUS + PAYMENT — gated by the recurring confirmation window */}
+      {/* MY STATUS + PAYMENT — gated by the recurring confirmation window.
+          Sits right under the grid (was further down, swapped with the
+          old standalone WhatsApp-share button that lived here). */}
       {!confirmOpen ? (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -313,7 +282,7 @@ export default function JogoTab({
               <div style={{ fontSize: 14, fontWeight: 700, color: C.accent }}>{t("Estás na lista de espera")}</div>
               <div style={{ fontSize: 12, color: C.text2 }}>{t("Entras automaticamente se alguém desistir. Sem pagar até entrares.")}</div>
             </div>
-            <button onClick={() => toggleMyStatus("declined")} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "7px 12px", fontSize: 12, color: C.text2, cursor: "pointer" }}>{t("Sair")}</button>
+            <button onClick={() => toggleMyStatus("declined")} style={{ background: C.redDim, border: `1px solid ${C.red}55`, borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 800, color: C.red, cursor: "pointer" }}>{t("Sair")}</button>
           </div>
         </div>
       ) : me?.status === "confirmed" ? (
@@ -326,7 +295,7 @@ export default function JogoTab({
               <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>{t("Estás dentro!")}</div>
               <div style={{ fontSize: 12, color: C.text2 }}>{me.paid ? t("Pago ✓ — bom jogo!") : `${t("Falta pagar")} ${price}`}</div>
             </div>
-            <button onClick={() => toggleMyStatus("declined")} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "7px 12px", fontSize: 12, color: C.text2, cursor: "pointer" }}>{t("Cancelar")}</button>
+            <button onClick={() => toggleMyStatus("declined")} style={{ background: C.redDim, border: `1px solid ${C.red}55`, borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 800, color: C.red, cursor: "pointer" }}>{t("Cancelar")}</button>
           </div>
           {!me.paid && (
             <BtnPrimary onClick={payMine} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -347,6 +316,29 @@ export default function JogoTab({
           <div style={{ display: "flex", gap: 10 }}>
             <BtnPrimary onClick={() => toggleMyStatus("confirmed")} style={{ flex: 1, fontSize: 15 }}>{spotsLeft > 0 ? t("Estou dentro!") : t("Entrar na lista de espera")}</BtnPrimary>
             <button onClick={() => toggleMyStatus("declined")} style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 13, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>{t("Não posso")}</button>
+          </div>
+        </div>
+      )}
+
+      {/* INVITE CTA — prominent while the group is still small */}
+      {canManageGame && group.length <= Math.max(6, Math.ceil(game.spots / 2)) && (
+        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}`, background: C.accentDim }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <UserPlus size={18} color={C.accent} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>{t("Agora convida os jogadores 📣")}</div>
+              <div style={{ fontSize: 12, color: C.text2 }}>{t("Partilha o link — quem abrir entra logo no grupo.")}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => openWhatsApp(inviteUrl ? groupInviteMessage(game.groupName, shareUrl) : inviteMessage(game.groupName, game))}
+              style={{ flex: 1, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <MessageCircle size={14} /> {t("Convidar")}
+            </button>
+            <button onClick={copyShare}
+              style={{ background: C.card, color: copied ? C.green : C.text1, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 10, padding: "11px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              {copied ? <><Check size={14} /> {t("Copiado")}</> : <><Copy size={14} /> Link</>}
+            </button>
           </div>
         </div>
       )}
@@ -374,35 +366,6 @@ export default function JogoTab({
                 ) : (
                   <span style={{ fontSize: 10, color: C.text3 }}>{p.position.slice(0, 3).toUpperCase()}</span>
                 )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* PENDING */}
-      {pending.length > 0 && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Sem resposta")}</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>{pending.length} {pending.length === 1 ? t("jogador ainda não respondeu") : t("jogadores ainda não responderam")}</div>
-            </div>
-            <button onClick={() => openWhatsApp(groupReminderMessage(pending, game))} style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-              <MessageCircle size={13} /> {t("Lembrar todos")}
-            </button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {pending.map((p) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} photo={p.photo} injured={p.injured} />
-                <span style={{ flex: 1, fontSize: 13, color: C.text2 }}>{p.nick}</span>
-                {canManageTeams && (
-                  <button onClick={() => onSetPlayerStatus(p.id, "confirmed")} style={{ background: C.greenDim, border: `1px solid ${C.greenBorder}55`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.green, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                    <Check size={12} /> {t("Confirmar")}
-                  </button>
-                )}
-                <button onClick={() => openWhatsApp(reminderMessage(p, game, p.magicToken ? magicConfirmUrl(p.magicToken, game.id) : undefined), p.phone)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, cursor: "pointer" }}>{t("Lembrar")}</button>
               </div>
             ))}
           </div>
@@ -478,6 +441,22 @@ export default function JogoTab({
           </div>
         )}
       </Collapsible>
+
+      {shareOpen && (
+        <ShareSheet
+          title={t("Partilhar jogo")}
+          onClose={() => setShareOpen(false)}
+          options={[
+            { icon: Copy, label: t("Copiar link do jogo"), done: copied, onClick: copyShare },
+            ...(playing.length > 0 ? [{
+              icon: MessageCircle,
+              label: t("Enviar lista no WhatsApp"),
+              desc: t("Confirmados, vagas e preço"),
+              onClick: () => { openWhatsApp(lineupShareMessage(game, playing, waitlist, price, shareUrl)); setShareOpen(false); },
+            }] : []),
+          ]}
+        />
+      )}
 
     </div>
   );
