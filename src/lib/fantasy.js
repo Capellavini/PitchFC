@@ -32,6 +32,7 @@ export const OWNERSHIP_CAP = 6;
  *  to `created_at >= league.starts_at` (see FantasyTab). No stored/
  *  fluctuating market — deterministic from those rounds' summary.lines. */
 export function fantasyPrice(playerUuid, roundsSinceStart, weights = DEFAULT_FANTASY_WEIGHTS) {
+  weights = { ...DEFAULT_FANTASY_WEIGHTS, ...weights };
   const rounds = (roundsSinceStart || []).filter((md) => (md.summary?.lines || []).some((l) => l.key === playerUuid));
   if (!rounds.length) return weights.priceBase;
   const total = rounds.reduce((sum, md) => sum + computeRoundPoints([playerUuid], null, md.summary.lines, weights), 0);
@@ -67,6 +68,12 @@ export const squadCostBasis = (pricesPaid) =>
  *  Reserves (bench — any number of them, not just one) never score,
  *  regardless of how they played. */
 export function computeRoundPoints(playerIds, captainId, summaryLines, weights = DEFAULT_FANTASY_WEIGHTS, reserveIds = []) {
+  // Leagues store their own scoring_weights row in the DB — merge with
+  // the JS defaults so a key added here later (e.g. epicSave) that an
+  // older/stored league row doesn't have falls back to a number instead
+  // of `undefined`, which would otherwise poison every sum below to NaN
+  // (0 * undefined = NaN, not 0).
+  weights = { ...DEFAULT_FANTASY_WEIGHTS, ...weights };
   const lines = summaryLines || [];
   const reserveSet = new Set(reserveIds || []);
   return (playerIds || []).reduce((total, id) => {
@@ -89,6 +96,7 @@ export function computeRoundPoints(playerIds, captainId, summaryLines, weights =
  *  2nd), so the first match wins. Returns 0 if none of the podium is
  *  in this squad, or if the only podium finisher in the squad is benched. */
 export function mvpBonus(playerIds, captainId, podium, weights = DEFAULT_FANTASY_WEIGHTS, reserveIds = []) {
+  weights = { ...DEFAULT_FANTASY_WEIGHTS, ...weights };
   const { mvpId, runnerUpId, thirdId } = podium || {};
   const reserveSet = new Set(reserveIds || []);
   const ids = (playerIds || []).filter((id) => !reserveSet.has(id));
