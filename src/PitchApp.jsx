@@ -506,10 +506,33 @@ export default function PitchApp() {
     updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
   const addEpicSave = (matchId, { teamId, playerId }) =>
     updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, { teamId, type: "epicSave", playerId }] } : m)) }));
+  // Undo a misclicked goal/assist/save — safe any time before "Terminar
+  // dia": season stats are only computed from `events` at that point, so
+  // there's nothing elsewhere to reconcile.
+  const removeMatchEvent = (matchId, eventIndex) =>
+    updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: m.events.filter((_, i) => i !== eventIndex) } : m)) }));
   const setGoalkeeper = (matchId, side, playerId) =>
     updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, [side]: playerId } : m)) }));
   const setPenaltyWinner = (matchId, teamId) =>
     updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, penaltyWinnerId: teamId } : m)) }));
+  // Per-match substitution: swaps who's selectable as scorer/assist/GK for
+  // ONE match only — doesn't touch the permanent team draw or any other
+  // match. `inId` can belong to any team currently in the draw (a
+  // temporary "loan" for this game). Re-subbing the same outgoing player
+  // replaces their previous incoming sub instead of stacking.
+  const substitutePlayer = (matchId, teamId, outId, inId) =>
+    updateMatchday((md) => ({
+      ...md,
+      matches: md.matches.map((m) => (m.id !== matchId ? m : {
+        ...m,
+        subs: [...(m.subs || []).filter((s) => !(s.teamId === teamId && s.outId === outId)), { teamId, outId, inId }],
+      })),
+    }));
+  const revertSubstitution = (matchId, teamId, outId) =>
+    updateMatchday((md) => ({
+      ...md,
+      matches: md.matches.map((m) => (m.id !== matchId ? m : { ...m, subs: (m.subs || []).filter((s) => !(s.teamId === teamId && s.outId === outId)) })),
+    }));
 
   // Group stage → play-off (Personalizado only). Seeds the first
   // knockout round from group standings the first time; subsequent
@@ -558,8 +581,10 @@ export default function PitchApp() {
       stats[id][key] += 1;
     };
     matchday.matches.forEach((m) => m.events.forEach((e) => {
+      // Own goals count on the scoreboard (teamId is already the team that
+      // benefits) but never bump the player's personal goals tally.
       if (e.type === "epicSave") bump(e.playerId, "epicSaves");
-      else { bump(e.scorerId, "goals"); bump(e.assistId, "assists"); }
+      else if (!e.ownGoal) { bump(e.scorerId, "goals"); bump(e.assistId, "assists"); }
     }));
 
     const teamsById = Object.fromEntries((teams || []).map((t) => [t.id, t]));
@@ -602,7 +627,7 @@ export default function PitchApp() {
         matchStats[id] = matchStats[id] ?? { goals: 0, assists: 0 };
         matchStats[id][key] += 1;
       };
-      m.events.forEach((e) => { bumpMatch(e.scorerId, "goals"); bumpMatch(e.assistId, "assists"); });
+      m.events.forEach((e) => { if (!e.ownGoal) { bumpMatch(e.scorerId, "goals"); bumpMatch(e.assistId, "assists"); } });
       const matchLines = Object.entries(matchStats).map(([pid, s]) => {
         const p = baseGroup.find((x) => x.id === Number(pid));
         return p ? { key: keyOf(p), goals: s.goals, assists: s.assists } : null;
@@ -620,7 +645,7 @@ export default function PitchApp() {
     const lines = Object.entries(stats)
       .map(([lid, s]) => {
         const p = baseGroup.find((x) => x.id === Number(lid));
-        return p ? { key: keyOf(p), nick: p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets, epicSaves: s.epicSaves } : null;
+        return p ? { key: keyOf(p), nick: p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets, epicSaves: s.epicSaves, wins: s.wins } : null;
       })
       .filter(Boolean)
       .sort((a, b) => (b.goals * 2 + b.assists) - (a.goals * 2 + a.assists));
@@ -1096,7 +1121,7 @@ export default function PitchApp() {
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner }}
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution }}
             lastMatchday={lastMatchdayView}
           />
         ))}

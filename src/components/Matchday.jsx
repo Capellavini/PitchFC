@@ -1,5 +1,5 @@
 import { useState, Fragment } from "react";
-import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2, LayoutGrid, ChevronDown, RotateCcw } from "lucide-react";
+import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2, LayoutGrid, ChevronDown, RotateCcw, RefreshCw } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { t } from "../lib/i18n";
 import { matchWinner } from "../lib/tournament";
@@ -17,12 +17,13 @@ const DEFAULT_CUSTOM_CONFIG = { confrontos: "unico", faseFinal: false, finalista
  *  between two chosen teams; you pick the scorer + assist per goal.
  *  'campeonato' adds a points/goal-difference standings table.
  *  Ending the matchday feeds season stats, history and MVP voting. */
-export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onEpicSave, onSetGoalkeeper, onEnd, onCancel, onAdvancePlayoff, onSetPenaltyWinner, canManage = true }) {
-  const [pending, setPending] = useState(null);   // { matchId, teamId, scorerId? }
+export default function Matchday({ matchday, teams, group, onStart, onAddMatch, onGoal, onEpicSave, onRemoveEvent, onSetGoalkeeper, onEnd, onCancel, onAdvancePlayoff, onSetPenaltyWinner, onSubstitute, onRevertSub, canManage = true }) {
+  const [pending, setPending] = useState(null);   // { matchId, teamId, scorerId?, ownGoal }
   const [mode, setMode] = useState("avulsa");
   const [customConfig, setCustomConfig] = useState(DEFAULT_CUSTOM_CONFIG);
   const [composing, setComposing] = useState(null); // { homeId, awayId } when picking a new game
   const [tacticsTeamId, setTacticsTeamId] = useState(null); // accordion — one team's board open at a time
+  const [subPicker, setSubPicker] = useState(null); // { matchId, teamId, outId? } — per-match substitution
 
   const list = Array.isArray(teams) ? teams : [];
   const byId = (id) => group.find((p) => p.id === id);
@@ -30,6 +31,16 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
   const teamPlayers = (teamId) => (teamById(teamId)?.players ?? []).map(byId).filter(Boolean);
   const teamName = (id) => teamById(id)?.name ?? "—";
   const teamColor = (id) => teamById(id)?.color ?? C.text2;
+  const opposingId = (m, teamId) => (teamId === m.homeId ? m.awayId : m.homeId);
+  // Per-match roster: the drawn team, minus anyone subbed out of THIS
+  // match, plus whoever was subbed in — doesn't touch the permanent draw.
+  const matchRoster = (m, teamId) => {
+    const subs = (m.subs || []).filter((s) => s.teamId === teamId);
+    const outIds = new Set(subs.map((s) => s.outId));
+    const subIns = subs.map((s) => byId(s.inId)).filter(Boolean);
+    return [...teamPlayers(teamId).filter((p) => !outIds.has(p.id)), ...subIns];
+  };
+  const allTournamentPlayers = () => list.flatMap((tm) => teamPlayers(tm.id));
 
   // ── Not started yet ────────────────────────────────────
   if (!matchday) {
@@ -173,6 +184,12 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
           {isPersonalizado ? <Settings2 size={11} /> : isCampeonato ? <Trophy size={11} /> : <Swords size={11} />}
           {isPersonalizado ? t("PERSONALIZADO") : isCampeonato ? t("CAMPEONATO") : t("AVULSA")}
         </span>
+        {canManage && onCancel && (
+          <button onClick={onCancel} title={t("Cancelar dia de jogo (começou errado)")}
+            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", color: C.text3, cursor: "pointer", flexShrink: 0 }}>
+            <RotateCcw size={12} />
+          </button>
+        )}
       </div>
 
       {/* champion banner (personalizado) */}
@@ -234,7 +251,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
       )}
 
       {/* matches */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 14 }}>
         {matchday.matches.map((m, idx) => {
           if (m.isBye) {
             return (
@@ -248,59 +265,173 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
             );
           }
           const isPending = pending?.matchId === m.id;
+          const isSubbing = subPicker?.matchId === m.id;
           const sides = [m.homeId, m.awayId];
           const tied = m.stage === "playoff" && goalsOf(m, m.homeId) === goalsOf(m, m.awayId);
           return (
-            <div key={m.id} style={{ background: idx % 2 === 0 ? C.surface : C.card, borderRadius: 14, padding: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: 8 }}>{matchLabel(m)}</div>
+            <div key={m.id} style={{ background: idx % 2 === 0 ? C.surface : C.card, borderRadius: 18, padding: 20 }}>
 
-              {/* goalkeeper picker — rotates match to match, so it's
-                  never assumed from the fixed position field */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <Shield size={12} color={C.text3} style={{ flexShrink: 0 }} />
-                {canManage ? [["homeGkId", m.homeId], ["awayGkId", m.awayId]].map(([side, teamId]) => (
-                  <select key={side} value={m[side] ?? ""}
-                    onChange={(e) => onSetGoalkeeper(m.id, side, e.target.value ? Number(e.target.value) : null)}
-                    style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 6px", fontSize: 11, color: m[side] ? C.text1 : C.text3, outline: "none" }}>
-                    <option value="">{t("GR?")}</option>
-                    {teamPlayers(teamId).map((p) => <option key={p.id} value={p.id}>{p.nick}</option>)}
-                  </select>
-                )) : [["homeGkId", m.homeId], ["awayGkId", m.awayId]].map(([side, teamId]) => (
-                  <span key={side} style={{ flex: 1, fontSize: 11, color: m[side] ? C.text1 : C.text3, textAlign: "center" }}>
-                    {byId(m[side])?.nick ?? t("GR?")}
-                  </span>
-                ))}
+              {/* header: GAME N badge, flanked by per-match substitution */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative", marginBottom: 16 }}>
+                {canManage && (
+                  <button onClick={() => setSubPicker(isSubbing && subPicker.teamId === m.homeId ? null : { matchId: m.id, teamId: m.homeId, outId: null })}
+                    title={t("Substituir jogador")}
+                    style={{ position: "absolute", left: 0, width: 26, height: 26, borderRadius: 13, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.text3 }}>
+                    <RefreshCw size={12} />
+                  </button>
+                )}
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 16px", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text2 }}>
+                  {matchLabel(m)}
+                </div>
+                {canManage && (
+                  <button onClick={() => setSubPicker(isSubbing && subPicker.teamId === m.awayId ? null : { matchId: m.id, teamId: m.awayId, outId: null })}
+                    title={t("Substituir jogador")}
+                    style={{ position: "absolute", right: 0, width: 26, height: 26, borderRadius: 13, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.text3 }}>
+                    <RefreshCw size={12} />
+                  </button>
+                )}
               </div>
 
-              {/* epic save — logged directly against whichever GK is set
-                  for that side, no scorer/assist picker needed */}
-              {canManage && (m.homeGkId || m.awayGkId) && (
-                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                  {[["homeGkId", m.homeId], ["awayGkId", m.awayId]].filter(([side]) => m[side]).map(([side, teamId]) => (
-                    <button key={side} onClick={() => onEpicSave(m.id, { teamId, playerId: m[side] })}
-                      style={{ flex: 1, background: C.blueDim, color: C.blue, border: `1px solid ${C.blueBorder}`, borderRadius: 10, padding: "6px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      🧤 {t("Defesa")} {byId(m[side])?.nick}
+              {/* substitution picker */}
+              {isSubbing && (
+                <div style={{ background: C.card, borderRadius: 12, padding: 12, marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: teamColor(subPicker.teamId) }}>{t("Substituição")} — {teamName(subPicker.teamId)}</span>
+                    <button onClick={() => setSubPicker(null)} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex" }}><X size={14} /></button>
+                  </div>
+                  {(m.subs || []).filter((s) => s.teamId === subPicker.teamId).length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                      {(m.subs || []).filter((s) => s.teamId === subPicker.teamId).map((s) => (
+                        <span key={s.outId} style={{ display: "flex", alignItems: "center", gap: 5, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "4px 6px 4px 10px", fontSize: 11 }}>
+                          {byId(s.outId)?.nick} → {byId(s.inId)?.nick}
+                          <button onClick={() => onRevertSub(m.id, subPicker.teamId, s.outId)} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex", padding: 0 }}><X size={11} /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: C.text2, marginBottom: 8 }}>{subPicker.outId ? t("Quem entra?") : t("Quem sai?")}</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {(subPicker.outId
+                      ? allTournamentPlayers().filter((p) => !matchRoster(m, subPicker.teamId).some((q) => q.id === p.id))
+                      : matchRoster(m, subPicker.teamId)
+                    ).map((p) => (
+                      <button key={p.id}
+                        onClick={() => {
+                          if (subPicker.outId) { onSubstitute(m.id, subPicker.teamId, subPicker.outId, p.id); setSubPicker(null); }
+                          else setSubPicker({ ...subPicker, outId: p.id });
+                        }}
+                        style={{ background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 16, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        {p.nick}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* team names + score */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18, marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: teamColor(m.homeId), textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90 }}>{teamName(m.homeId)}</div>
+                <span style={{ ...displayFont, fontSize: 30, whiteSpace: "nowrap" }}>
+                  {goalsOf(m, m.homeId)} <span style={{ color: C.text3 }}>–</span> {goalsOf(m, m.awayId)}
+                </span>
+                <div style={{ fontSize: 13, fontWeight: 800, color: teamColor(m.awayId), textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90 }}>{teamName(m.awayId)}</div>
+              </div>
+
+              {/* goal entry */}
+              {canManage && !isPending && (
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 14 }}>
+                  {sides.map((tid) => (
+                    <button key={tid} onClick={() => setPending({ matchId: m.id, teamId: tid, scorerId: null, ownGoal: false })}
+                      style={{ background: `${teamColor(tid)}14`, color: teamColor(tid), border: `1px solid ${teamColor(tid)}44`, borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                      + {t("Golo")}
                     </button>
                   ))}
                 </div>
               )}
+              {canManage && isPending && (
+                <div style={{ background: C.card, borderRadius: 12, padding: 12, marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: C.text2 }}>
+                      {pending.ownGoal
+                        ? t("Próprio golo do adversário — quem foi?")
+                        : pending.scorerId
+                          ? t("Assistência de…")
+                          : <>{t("Golo dos")} <strong style={{ color: teamColor(pending.teamId) }}>{teamName(pending.teamId)}</strong> {t("— quem marcou?")}</>}
+                    </div>
+                    {!pending.scorerId && (
+                      <button onClick={() => setPending((p) => ({ ...p, ownGoal: !p.ownGoal }))}
+                        style={{ flexShrink: 0, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 8px", fontSize: 10, color: C.text3, cursor: "pointer" }}>
+                        {pending.ownGoal ? t("↩ Golo normal") : t("Próprio golo")}
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {matchRoster(m, pending.ownGoal ? opposingId(m, pending.teamId) : pending.teamId)
+                      .filter((p) => p.id !== pending.scorerId)
+                      .map((p) => (
+                        <button key={p.id}
+                          onClick={() => {
+                            if (pending.ownGoal) { onGoal(m.id, { teamId: pending.teamId, scorerId: p.id, ownGoal: true }); setPending(null); }
+                            else if (pending.scorerId) confirmGoal(p.id);
+                            else setPending({ ...pending, scorerId: p.id });
+                          }}
+                          style={{ background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 16, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                          {p.nick}
+                        </button>
+                      ))}
+                    {pending.scorerId && !pending.ownGoal && (
+                      <button onClick={() => confirmGoal(null)} style={{ background: "none", color: C.text2, border: `1px dashed ${C.border}`, borderRadius: 16, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+                        {t("Sem assistência")}
+                      </button>
+                    )}
+                    <button onClick={() => setPending(null)} style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Cancelar")}</button>
+                  </div>
+                </div>
+              )}
 
-              {/* score row */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 10 }}>
-                <span style={{ flex: 1, textAlign: "right", fontSize: 11, fontWeight: 800, color: teamColor(m.homeId), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{teamName(m.homeId)}</span>
-                <span style={{ ...displayFont, fontSize: 28, whiteSpace: "nowrap" }}>
-                  {goalsOf(m, m.homeId)} <span style={{ color: C.text3 }}>–</span> {goalsOf(m, m.awayId)}
-                </span>
-                <span style={{ flex: 1, fontSize: 11, fontWeight: 800, color: teamColor(m.awayId), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{teamName(m.awayId)}</span>
-              </div>
+              {/* events log — each line removable (misclick undo) */}
+              {m.events.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 14 }}>
+                  {m.events.map((e, i) => {
+                    const home = e.teamId === m.homeId;
+                    const line = e.type === "epicSave" ? (
+                      <>🧤 <strong style={{ color: C.text1 }}>{byId(e.playerId)?.nick}</strong> <span>({t("defesa espetacular")})</span></>
+                    ) : e.ownGoal ? (
+                      <>⚽ <strong style={{ color: C.text1 }}>{byId(e.scorerId)?.nick}</strong> <span>({t("próprio golo")})</span></>
+                    ) : (
+                      <>⚽ <strong style={{ color: C.text1 }}>{byId(e.scorerId)?.nick}</strong>
+                      {e.assistId && <span> ({"assist."} {byId(e.assistId)?.nick})</span>}</>
+                    );
+                    const removeBtn = canManage && (
+                      <button onClick={() => onRemoveEvent(m.id, i)} title={t("Remover")}
+                        style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex", padding: 0, flexShrink: 0 }}>
+                        <X size={11} />
+                      </button>
+                    );
+                    return (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text2, justifyContent: home ? "flex-start" : "flex-end" }}>
+                        {home && removeBtn}
+                        <span>{line}</span>
+                        {!home && removeBtn}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-              {/* penalty shootout — only for a tied play-off match, when the
-                  organizer enabled "permitir grandes penalidades" */}
+              {/* penalty shootout — sits below the events log (not between
+                  the score and the goal buttons) so a tap here can't be
+                  mistaken for logging a goal; correctable after the fact */}
               {tied && matchday.config?.penaltis && (
-                <div style={{ background: C.card, borderRadius: 10, padding: 10, marginBottom: 10 }}>
+                <div style={{ background: C.card, borderRadius: 10, padding: 10, marginBottom: 14 }}>
                   {m.penaltyWinnerId ? (
-                    <div style={{ fontSize: 12, textAlign: "center", color: C.text2 }}>
-                      {t("Venceu nos pénaltis:")} <strong style={{ color: teamColor(m.penaltyWinnerId) }}>{teamName(m.penaltyWinnerId)}</strong>
+                    <div style={{ fontSize: 12, textAlign: "center", color: C.text2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>{t("Venceu nos pénaltis:")} <strong style={{ color: teamColor(m.penaltyWinnerId) }}>{teamName(m.penaltyWinnerId)}</strong></span>
+                      {canManage && (
+                        <button onClick={() => onSetPenaltyWinner(m.id, null)} style={{ background: "none", border: "none", color: C.text3, fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>
+                          {t("corrigir")}
+                        </button>
+                      )}
                     </div>
                   ) : !canManage ? (
                     <div style={{ fontSize: 11, color: C.text2, textAlign: "center" }}>{t("Empate — a aguardar o desempate por pénaltis.")}</div>
@@ -320,57 +451,37 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                 </div>
               )}
 
-              {/* events log */}
-              {m.events.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
-                  {m.events.map((e, i) => (
-                    <div key={i} style={{ fontSize: 11, color: C.text2, textAlign: e.teamId === m.homeId ? "left" : "right" }}>
-                      {e.type === "epicSave" ? (
-                        <>🧤 <strong style={{ color: C.text1 }}>{byId(e.playerId)?.nick}</strong> <span>({t("defesa espetacular")})</span></>
-                      ) : (
-                        <>⚽ <strong style={{ color: C.text1 }}>{byId(e.scorerId)?.nick}</strong>
-                        {e.assistId && <span> ({"assist."} {byId(e.assistId)?.nick})</span>}</>
-                      )}
-                    </div>
+              {/* goalkeepers — closes the block */}
+              <div style={{ paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, textAlign: "center", marginBottom: 8 }}>{t("GUARDA-REDES")}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: canManage && (m.homeGkId || m.awayGkId) ? 8 : 0 }}>
+                  {canManage ? [["homeGkId", m.homeId], ["awayGkId", m.awayId]].map(([side, teamId]) => (
+                    <select key={side} value={m[side] ?? ""}
+                      onChange={(e) => onSetGoalkeeper(m.id, side, e.target.value ? Number(e.target.value) : null)}
+                      style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 6px", fontSize: 11, color: m[side] ? C.text1 : C.text3, outline: "none" }}>
+                      <option value="">{t("GR?")}</option>
+                      {matchRoster(m, teamId).map((p) => <option key={p.id} value={p.id}>{p.nick}</option>)}
+                    </select>
+                  )) : [["homeGkId", m.homeId], ["awayGkId", m.awayId]].map(([side, teamId]) => (
+                    <span key={side} style={{ flex: 1, fontSize: 11, color: m[side] ? C.text1 : C.text3, textAlign: "center" }}>
+                      {byId(m[side])?.nick ?? t("GR?")}
+                    </span>
                   ))}
                 </div>
-              )}
 
-              {/* goal entry */}
-              {!canManage ? null : isPending ? (
-                <div style={{ background: C.card, borderRadius: 12, padding: 12 }}>
-                  <div style={{ fontSize: 11, color: C.text2, marginBottom: 8 }}>
-                    {pending.scorerId
-                      ? t("Assistência de…")
-                      : <>{t("Golo dos")} <strong style={{ color: teamColor(pending.teamId) }}>{teamName(pending.teamId)}</strong> {t("— quem marcou?")}</>}
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {teamPlayers(pending.teamId)
-                      .filter((p) => p.id !== pending.scorerId)
-                      .map((p) => (
-                        <button key={p.id}
-                          onClick={() => pending.scorerId ? confirmGoal(p.id) : setPending({ ...pending, scorerId: p.id })}
-                          style={{ background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 16, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                          {p.nick}
-                        </button>
-                      ))}
-                    {pending.scorerId && (
-                      <button onClick={() => confirmGoal(null)} style={{ background: "none", color: C.text2, border: `1px dashed ${C.border}`, borderRadius: 16, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
-                        {t("Sem assistência")}
+                {/* epic save — logged directly against whichever GK is set
+                    for that side, no scorer/assist picker needed */}
+                {canManage && (m.homeGkId || m.awayGkId) && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[["homeGkId", m.homeId], ["awayGkId", m.awayId]].filter(([side]) => m[side]).map(([side, teamId]) => (
+                      <button key={side} onClick={() => onEpicSave(m.id, { teamId, playerId: m[side] })}
+                        style={{ flex: 1, background: C.blueDim, color: C.blue, border: `1px solid ${C.blueBorder}`, borderRadius: 10, padding: "6px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        🧤 {t("Defesa")} {byId(m[side])?.nick}
                       </button>
-                    )}
-                    <button onClick={() => setPending(null)} style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Cancelar")}</button>
+                    ))}
                   </div>
-                </div>
-              ) : (
-                <div style={{ display: "flex", gap: 8 }}>
-                  {sides.map((tid) => (
-                    <button key={tid} onClick={() => setPending({ matchId: m.id, teamId: tid })} style={{ flex: 1, background: `${teamColor(tid)}14`, color: teamColor(tid), border: `1px solid ${teamColor(tid)}44`, borderRadius: 10, padding: 8, fontSize: 12, fontWeight: 800, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      + {t("Golo")} {teamName(tid)}
-                    </button>
-                  ))}
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         })}
