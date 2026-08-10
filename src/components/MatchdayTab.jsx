@@ -5,7 +5,6 @@ import { splitWaitlist, ini, playerColor, computeOverall } from "../lib/helpers"
 import { t } from "../lib/i18n";
 import Matchday from "./Matchday";
 import MatchTimer from "./MatchTimer";
-import MatchSummary from "./MatchSummary";
 import Collapsible from "./Collapsible";
 
 /** One player in the lineup — same visual language as the Pitch Manager
@@ -43,7 +42,7 @@ function LineupCard({ p, group }) {
  *  after tapping "Confirmar equipas" do players see the lineup. Once
  *  confirmed, organizers see their own lineup too (they play too), with
  *  the management grid tucked into a collapsible section. */
-export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, lastMatchday }) {
+export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps }) {
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const confirmed = group.filter((p) => p.status === "confirmed");
   const { playing } = splitWaitlist(confirmed, game.spots);
@@ -53,6 +52,12 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
     if (!players.length) return null;
     return Math.round(players.reduce((s, p) => s + computeOverall(p.position, p.attrs), 0) / players.length);
   };
+  // Confirmed players not on any drawn team — either they confirmed after
+  // the draw, or a teammate declining freed them up (see releaseFromTeams
+  // in PitchApp.jsx). Lets the organizer patch the gap by hand instead of
+  // redrawing everyone over one person.
+  const assignedIds = new Set((teams || []).flatMap((tm) => tm.players));
+  const unassigned = teams ? playing.filter((p) => !assignedIds.has(p.id)) : [];
 
   const me = group.find((p) => p.isMe);
   const myTeam = teams?.find((tm) => tm.players.includes(me?.id));
@@ -146,6 +151,28 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
           ))}
         </div>
       )}
+
+      {unassigned.length > 0 && (
+        <div style={{ marginTop: 12, background: C.orangeDim, border: `1px solid ${C.orange}44`, borderRadius: 12, padding: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.orange, marginBottom: 8 }}>{t("JOGADORES SEM EQUIPA")}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {unassigned.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+                {canManageTeams ? (
+                  <select defaultValue="" onChange={(e) => e.target.value && movePlayer(p.id, e.target.value)}
+                    style={{ marginLeft: "auto", background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: 9, padding: "1px 2px", outline: "none", maxWidth: 90 }}>
+                    <option value="">{t("Colocar em…")}</option>
+                    {teams.map((tt) => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
+                  </select>
+                ) : (
+                  <span style={{ fontSize: 9, color: C.text3, marginLeft: "auto" }}>{p.position.slice(0, 3).toUpperCase()}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -228,14 +255,12 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
         </div>
       )}
 
-      {/* MATCH TIMER */}
-      <MatchTimer />
+      {/* MATCH TIMER — only once the day is actually live; a countdown
+          sitting there before kickoff invited mistaps and confusion. */}
+      {matchdayProps.matchday && <MatchTimer />}
 
       {/* LIVE MATCHDAY */}
       <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} />
-
-      {/* MATCHDAY SUMMARY (current/last games) */}
-      <MatchSummary matchday={matchdayProps.matchday} lastMatchday={lastMatchday} teams={teams} group={group} />
     </div>
   );
 }

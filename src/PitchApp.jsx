@@ -342,6 +342,14 @@ export default function PitchApp() {
   // anyone confirms/declines (routine, all week long) silently destroyed
   // the organizer's work. Redraw/"Limpar sorteio" are the explicit way
   // to discard it now.
+  // Leaving the game frees just that one slot in whatever team they were
+  // drawn into, instead of the organizer having to redraw/"Limpar sorteio"
+  // over one person leaving — Matchday's "jogadores sem equipa" section
+  // picks up the gap so it can be filled by hand.
+  const releaseFromTeams = (playerId) => {
+    if (Array.isArray(teams)) updateTeams((ts) => ts.map((tm) => ({ ...tm, players: tm.players.filter((id) => id !== playerId) })));
+  };
+
   const toggleMyStatus = (newStatus) => {
     if (cloudMode && me) {
       cloud.setMyStatus(newStatus, me.uuid, gameId);
@@ -349,6 +357,7 @@ export default function PitchApp() {
     } else {
       setGroup((g) => g.map((p) => (p.isMe ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
     }
+    if (newStatus !== "confirmed" && me) releaseFromTeams(me.id);
   };
 
   // Organizer/assistant sets any player's status directly — guests have
@@ -360,6 +369,7 @@ export default function PitchApp() {
     if (!player) return;
     if (cloudMode) cloud.setMyStatus(newStatus, player.uuid, gameId);
     else setGroup((g) => g.map((p) => (p.id === playerId ? { ...p, status: newStatus, paid: newStatus === "confirmed" ? p.paid : false, respondedAt: newStatus === "confirmed" ? new Date().toISOString() : p.respondedAt } : p)));
+    if (newStatus !== "confirmed") releaseFromTeams(playerId);
   };
 
   // Organizer permanently removes a guest (no-account) player.
@@ -1138,7 +1148,6 @@ export default function PitchApp() {
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution }}
-            lastMatchday={lastMatchdayView}
           />
         ))}
         {tab === "clube" && cloud.isAdmin && (
