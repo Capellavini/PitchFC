@@ -88,7 +88,7 @@ export default function PitchApp() {
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
-  const [statMode, setStatMode] = useState("goals");
+  const [statMode, setStatMode] = useState("geral");
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -974,9 +974,14 @@ export default function PitchApp() {
   // demo has no shared module for it).
   const MVP_BALLOT_POINTS = { 1: 3, 2: 2, 3: 1 };
 
-  let lastMatchdayView = null, historyView = [], mvp = null;
+  let lastMatchdayView = null, historyView = [], matchdaySummariesView = [], mvp = null;
   if (cloudMode) {
     const rows = cloud.matchdays;
+    // Raw per-day team results (name/color/goals) for the Stats tab's
+    // "melhor ataque/defesa num dia" records — teams are redrawn fresh
+    // every matchday (no persistent team identity to sum a season total
+    // over), so this stays a per-day record list, not a season table.
+    matchdaySummariesView = rows.map((r) => ({ date: fmtDayMonth(r.played_on), summary: r.summary }));
     const last = rows[0];
     if (last) {
       lastMatchdayView = { date: fmtDayMonth(last.played_on), mode: last.mode, ...(last.summary || {}) };
@@ -1143,7 +1148,7 @@ export default function PitchApp() {
         )}
         {tab === "social" && <SocialTab social={social} me={displayGroup.find((p) => p.isMe)} groupName={game.groupName} lastMatchday={lastMatchdayView} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} />}
         {tab === "stats" && (
-          <StatsTab group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} groupName={game.groupName} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} social={social} />
+          <StatsTab group={displayGroup} history={historyView} matchdaySummaries={matchdaySummariesView} lastMatchday={lastMatchdayView} mvp={mvp} statMode={statMode} setStatMode={setStatMode} groupName={game.groupName} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} social={social} />
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />

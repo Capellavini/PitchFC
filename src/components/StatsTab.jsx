@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Star, Check, Shield, Share2 } from "lucide-react";
+import { Star, Shield, Share2 } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
 import { t } from "../lib/i18n";
@@ -16,9 +16,7 @@ const RANKS = [
   { n: 3, label: "3º lugar", color: C.bronze },
 ];
 
-export default function StatsTab({ group, history, lastMatchday, mvp, statMode, setStatMode, groupName, onCardGenerated, social }) {
-  const fields = { goals: "goals", assists: "assists", mvps: "mvps" };
-  const list = [...group].sort((a, b) => (b[fields[statMode]] || 0) - (a[fields[statMode]] || 0)).slice(0, 8);
+export default function StatsTab({ group, history, matchdaySummaries = [], lastMatchday, mvp, statMode, setStatMode, groupName, onCardGenerated, social }) {
   const totalGames = history.reduce((s, h) => s + (h.games || 1), 0);
   const lines = lastMatchday?.lines ?? [];
   const [cardStep, setCardStep] = useState(null); // null | 'pick' | 'match' | 'workout'
@@ -27,6 +25,53 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
   const myKey = me ? (me.uuid ?? me.id) : null;
   const iPlayed = Boolean(me) && (lastMatchday?.candidates ?? []).some((c) => c.key === myKey);
   const isMVP = Boolean(me) && mvp?.podium?.first === me.nick;
+
+  // Per-player ranking categories — opens on "Geral" (a simple weighted
+  // composite), the rest are single-stat cuts. "Guarda-redes" isn't
+  // restricted to the position field: the GR rotates match to match (see
+  // Matchday.jsx), so it ranks whoever actually racked up clean
+  // sheets/saves. "Fiabilidade" reuses the season's real game count, not
+  // the old fixed demo constant.
+  const PLAYER_CATEGORIES = [
+    { id: "geral", label: t("Geral"), value: (p) => (p.goals || 0) * 2 + (p.assists || 0) + (p.wins || 0) + (p.mvps || 0) * 3 + (p.cleanSheets || 0) },
+    { id: "goals", label: `⚽ ${t("Golos")}`, value: (p) => p.goals || 0 },
+    { id: "assists", label: "🎯 Assists", value: (p) => p.assists || 0 },
+    { id: "mvps", label: "⭐ MVPs", value: (p) => p.mvps || 0 },
+    { id: "gk", label: `🧤 ${t("Guarda-redes")}`, value: (p) => (p.cleanSheets || 0) * 3 + (p.epicSaves || 0) },
+    { id: "reliability", label: `📅 ${t("Fiabilidade")}`, value: (p) => (totalGames ? Math.round(((p.gamesPlayed || 0) / totalGames) * 100) : 0), suffix: "%" },
+  ];
+  // Teams are redrawn fresh every matchday (no persistent identity to sum
+  // a season total over) — these stay per-day records, à la the Excel's
+  // Hall of Fame sheet, not a season-long team table.
+  const TEAM_CATEGORIES = [
+    { id: "attackDay", label: `🔥 ${t("Melhor ataque (dia)")}` },
+    { id: "defenseDay", label: `🛡️ ${t("Melhor defesa (dia)")}` },
+  ];
+  const activeCat = PLAYER_CATEGORIES.find((c) => c.id === statMode);
+
+  const dayTeamRows = [];
+  matchdaySummaries.forEach((md) => {
+    const matches = md.summary?.matches ?? [];
+    const colorByName = {};
+    (md.summary?.teamResults ?? []).forEach((tr) => { colorByName[tr.name] = tr.color; });
+    const byTeam = {};
+    matches.forEach((m) => {
+      if (m.homeName && m.homeName !== "—") {
+        byTeam[m.homeName] = byTeam[m.homeName] || { gf: 0, ga: 0 };
+        byTeam[m.homeName].gf += m.homeGoals; byTeam[m.homeName].ga += m.awayGoals;
+      }
+      if (m.awayName && m.awayName !== "—") {
+        byTeam[m.awayName] = byTeam[m.awayName] || { gf: 0, ga: 0 };
+        byTeam[m.awayName].gf += m.awayGoals; byTeam[m.awayName].ga += m.homeGoals;
+      }
+    });
+    Object.entries(byTeam).forEach(([name, s]) => dayTeamRows.push({ name, date: md.date, color: colorByName[name] || C.text2, ...s }));
+  });
+  const attackList = [...dayTeamRows].sort((a, b) => b.gf - a.gf).slice(0, 8);
+  const defenseList = [...dayTeamRows].sort((a, b) => a.ga - b.ga).slice(0, 8);
+
+  const playerList = activeCat ? [...group].sort((a, b) => activeCat.value(b) - activeCat.value(a)).slice(0, 8) : [];
+  const playerMax = activeCat && playerList[0] ? (activeCat.value(playerList[0]) || 1) : 1;
 
   // Assigning a candidate to a rank they already hold elsewhere moves
   // them (the DB rejects the same candidate at two ranks for one voter).
@@ -150,64 +195,57 @@ export default function StatsTab({ group, history, lastMatchday, mvp, statMode, 
         </div>
       ) : null)}
 
-      {/* LEADERBOARD */}
-      <div style={{ display: "flex", background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
-        {[["goals", t("⚽ Golos")], ["assists", "🎯 Assists"], ["mvps", "⭐ MVPs"]].map(([m, label]) => {
-          const active = statMode === m;
+      {/* RANKINGS — opens on "Geral"; scroll the chips for the rest */}
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 16, paddingBottom: 2 }}>
+        {[...PLAYER_CATEGORIES, ...TEAM_CATEGORIES].map((c) => {
+          const active = statMode === c.id;
           return (
-            <button key={m} onClick={() => setStatMode(m)} style={{ flex: 1, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: "none", borderRadius: 10, padding: 9, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
-              {label}
+            <button key={c.id} onClick={() => setStatMode(c.id)}
+              style={{ flexShrink: 0, background: active ? C.accent : C.card, color: active ? C.bg : C.text2, border: `1px solid ${active ? C.accent : C.border}`, borderRadius: 20, padding: "8px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
+              {c.label}
             </button>
           );
         })}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 20 }}>
-        {list.map((p, i) => {
-          const value = p[fields[statMode]] || 0;
-          const max = (list[0][fields[statMode]] || 0) || 1;
-          return (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: p.isMe ? C.accentDim : C.card, border: `1px solid ${p.isMe ? C.accentBorder : C.border}`, borderRadius: 12, padding: "10px 12px" }}>
-              <span style={{ width: 20, fontSize: 12, fontWeight: 800, color: i === 0 ? C.accent : i === 1 ? C.text2 : i === 2 ? C.orange : C.text3 }}>{i + 1}</span>
-              <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={10} isMe={p.isMe} photo={p.photo} injured={p.injured} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1 }}>{p.nick}</div>
-                <div style={{ height: 3, background: C.border, borderRadius: 2, marginTop: 4, width: "85%" }}>
-                  <div style={{ height: "100%", borderRadius: 2, background: p.isMe ? C.accent : playerColor(group, p), width: `${(value / max) * 100}%` }} />
+      {activeCat ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 20 }}>
+          {playerList.length === 0 && <div style={{ fontSize: 12, color: C.text2 }}>{t("Ainda sem dados.")}</div>}
+          {playerList.map((p, i) => {
+            const value = activeCat.value(p);
+            return (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: p.isMe ? C.accentDim : C.card, border: `1px solid ${p.isMe ? C.accentBorder : C.border}`, borderRadius: 12, padding: "10px 12px" }}>
+                <span style={{ width: 20, fontSize: 12, fontWeight: 800, color: i === 0 ? C.accent : i === 1 ? C.text2 : i === 2 ? C.orange : C.text3 }}>{i + 1}</span>
+                <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={10} isMe={p.isMe} photo={p.photo} injured={p.injured} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1 }}>{p.nick}</div>
+                  <div style={{ height: 3, background: C.border, borderRadius: 2, marginTop: 4, width: "85%" }}>
+                    <div style={{ height: "100%", borderRadius: 2, background: p.isMe ? C.accent : playerColor(group, p), width: `${(value / playerMax) * 100}%` }} />
+                  </div>
                 </div>
+                <span style={{ ...displayFont, fontSize: 17, color: p.isMe ? C.accent : C.text1 }}>{value}{activeCat.suffix || ""}</span>
               </div>
-              <span style={{ ...displayFont, fontSize: 17, color: p.isMe ? C.accent : C.text1 }}>{value}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* HISTORY */}
-      <SectionLabel>{t("HISTÓRICO DE JOGOS")}</SectionLabel>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-        {history.map((g) => (
-          <div key={g.id} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
-            <div style={{ width: 48, textAlign: "center", flexShrink: 0 }}>
-              <div style={{ ...displayFont, fontSize: 16 }}>{g.result}</div>
-              <div style={{ fontSize: 10, color: C.text2 }}>{g.date}</div>
-            </div>
-            <div style={{ width: 1, height: 30, background: C.border }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, color: C.text2 }}>{g.confirmed} {t("jogadores")}{g.games ? ` · ${g.games} ${t("jogos")}` : ""}</div>
-              {g.mvpNick ? (
-                <div style={{ fontSize: 12, marginTop: 1 }}>⭐ MVP: <span style={{ fontWeight: 700 }}>{g.mvpNick}</span></div>
-              ) : (
-                <div style={{ fontSize: 12, marginTop: 1, color: C.text3 }}>⭐ MVP: {t("votação a decorrer")}</div>
-              )}
-            </div>
-            {typeof g.allPaid === "boolean" && (
-              <div style={{ fontSize: 11 }}>
-                {g.allPaid ? <span style={{ color: C.green }}>{t("Pago")} <Check size={10} style={{ display: "inline" }} /></span> : <span style={{ color: C.orange }}>{t("Pendente")}</span>}
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 20 }}>
+          {(statMode === "attackDay" ? attackList : defenseList).length === 0 && (
+            <div style={{ fontSize: 12, color: C.text2 }}>{t("Ainda sem dias de jogo registados.")}</div>
+          )}
+          {(statMode === "attackDay" ? attackList : defenseList).map((r, i) => (
+            <div key={`${r.name}-${r.date}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10, background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px" }}>
+              <span style={{ width: 20, fontSize: 12, fontWeight: 800, color: i === 0 ? C.accent : i === 1 ? C.text2 : i === 2 ? C.orange : C.text3 }}>{i + 1}</span>
+              <span style={{ width: 10, height: 10, borderRadius: 5, background: r.color, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                <div style={{ fontSize: 10, color: C.text3 }}>{r.date}</div>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+              <span style={{ ...displayFont, fontSize: 17, color: C.text1 }}>{statMode === "attackDay" ? r.gf : r.ga}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
