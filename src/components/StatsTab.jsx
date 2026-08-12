@@ -34,7 +34,10 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   // restricted to the position field: the GR rotates match to match (see
   // Matchday.jsx), so it ranks whoever actually racked up clean
   // sheets/saves.
-  const impactoOf = (p) => (p.goals || 0) * 2 + (p.assists || 0) + (p.wins || 0) + (p.mvps || 0) * 3 + (p.cleanSheets || 0);
+  // Goals from further off the pitch are rarer and count for more — a
+  // Guarda-redes goal is a story, an Avançado goal is the job.
+  const GOAL_WEIGHT = { "Avançado": 2, "Médio": 2.5, "Defesa": 3, "Guarda-redes": 4 };
+  const impactoOf = (p) => (p.goals || 0) * (GOAL_WEIGHT[p.position] ?? 2) + (p.assists || 0) + (p.wins || 0) + (p.mvps || 0) * 3 + (p.cleanSheets || 0);
 
   // Sobre-entrega/sub-entrega: where a player ranks by peer-rated OVR vs.
   // where they rank by actual Impacto, both as a percentile within the
@@ -54,9 +57,31 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   const impactoPct = percentileRank(ratedGroup, impactoOf);
   const performanceGap = (p) => Math.round((impactoPct[p.id] ?? 0) - (ovrPct[p.id] ?? 0));
 
+  // Forma: the same idea as Impacto, windowed to the last 5 days actually
+  // played (not last 5 calendar days) — matchdaySummaries is already
+  // newest-first. "Em fogo" compares that recent per-day rate against the
+  // season's per-day rate, so it's fair to someone who's only played a
+  // handful of games this season too.
+  const recentDays = matchdaySummaries.slice(0, 5);
+  const formaOf = (p) => {
+    const key = p.uuid ?? p.id;
+    return recentDays.reduce((sum, md) => {
+      const line = (md.summary?.lines || []).find((l) => l.key === key);
+      if (!line) return sum;
+      return sum + (line.goals || 0) * (GOAL_WEIGHT[p.position] ?? 2) + (line.assists || 0) + (line.wins || 0) + (line.cleanSheets || 0);
+    }, 0);
+  };
+  const isHot = (p) => {
+    const key = p.uuid ?? p.id;
+    const seasonPerDay = (p.gamesPlayed || 0) > 0 ? impactoOf(p) / p.gamesPlayed : 0;
+    const recentGames = recentDays.filter((md) => (md.summary?.lines || []).some((l) => l.key === key)).length;
+    if (!recentGames || !seasonPerDay) return false;
+    return formaOf(p) / recentGames >= seasonPerDay * 1.3;
+  };
+
   const PLAYER_CATEGORIES = [
     { id: "geral", label: t("Impacto"), value: impactoOf,
-      hint: t("Quem está mais completo esta época, tudo junto num só número: 2 pts por golo, 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.") },
+      hint: t("Quem está mais completo esta época, tudo junto num só número: golo vale mais quanto mais longe da baliza adversária é a posição (2 Avançado, 2,5 Médio, 3 Defesa, 4 Guarda-redes), 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.") },
     { id: "goals", label: `⚽ ${t("Golos")}`, value: (p) => p.goals || 0, hint: t("Total de golos marcados na época.") },
     { id: "assists", label: "🎯 Assists", value: (p) => p.assists || 0, hint: t("Total de assistências na época.") },
     { id: "mvps", label: "⭐ MVPs", value: (p) => p.mvps || 0, hint: t("Vezes eleito MVP do dia.") },
@@ -64,6 +89,8 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
       hint: t("Clean sheets (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.") },
     { id: "gap", label: `📈 ${t("Sobre-entrega")}`, value: performanceGap, signed: true, noBar: true, suffix: "%", source: ratedGroup,
       hint: t("Compara o ranking de avaliação (OVR dos colegas) com o ranking real de Impacto. Positivo = rende mais do que esperavam; negativo = rende menos. Só entra quem já tem 3+ avaliações.") },
+    { id: "forma", label: `🔥 ${t("Forma (últimos 5)")}`, value: formaOf, hot: isHot,
+      hint: t("O mesmo cálculo do Impacto, mas só dos últimos 5 dias de jogo — quem está em alta agora. 🔥 = a render bem acima da média da época.") },
   ];
   // Teams are redrawn fresh every matchday (no persistent identity to sum
   // a season total over) — these stay per-day records, à la the Excel's
@@ -323,7 +350,9 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
                 <span style={{ width: 20, fontSize: 12, fontWeight: 800, color: i === 0 ? C.accent : i === 1 ? C.text2 : i === 2 ? C.orange : C.text3 }}>{i + 1}</span>
                 <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={10} isMe={p.isMe} photo={p.photo} injured={p.injured} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1 }}>{p.nick}</div>
+                  <div style={{ fontSize: 13, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1 }}>
+                    {activeCat.hot?.(p) && "🔥 "}{p.nick}
+                  </div>
                   {!activeCat.noBar && (
                     <div style={{ height: 3, background: C.border, borderRadius: 2, marginTop: 4, width: "85%" }}>
                       <div style={{ height: "100%", borderRadius: 2, background: p.isMe ? C.accent : playerColor(group, p), width: `${(value / playerMax) * 100}%` }} />
