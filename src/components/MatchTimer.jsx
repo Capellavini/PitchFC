@@ -84,23 +84,31 @@ export default function MatchTimer() {
   const low = t.running && remaining <= 60;
   const numColor = t.finished ? C.red : low ? C.orange : C.accent;
 
-  // "Soltar tempo" — push-to-talk start, same one-shot capture pattern as
-  // the goal-by-voice command. Only wired to start (never pause/reset):
-  // those are rare/deliberate actions worth an actual tap.
+  // "Soltar tempo" — press-and-hold start, same interaction as the
+  // goal-by-voice command in Matchday.jsx: releasing is what ends the
+  // capture, instead of trusting the browser to guess when you stopped
+  // talking (that guess is exactly what made the button feel broken).
+  // Only wired to start (never pause/reset): those are rare/deliberate
+  // actions worth an actual tap.
   const [voiceListening, setVoiceListening] = useState(false);
-  const [voiceMiss, setVoiceMiss] = useState(false);
-  const voiceStart = () => {
-    setVoiceMiss(false);
+  const [voiceMiss, setVoiceMiss] = useState(null); // null | 'miss' | 'not-allowed'
+  const voiceStopRef = useRef(null);
+  const beginVoiceStart = () => {
+    setVoiceMiss(null);
     setVoiceListening(true);
-    listenOnce({
+    voiceStopRef.current = listenOnce({
       onResult: (transcript) => {
         setVoiceListening(false);
         if (isStartTimerCommand(transcript)) start();
-        else { setVoiceMiss(true); setTimeout(() => setVoiceMiss(false), 2500); }
+        else { setVoiceMiss("miss"); setTimeout(() => setVoiceMiss(null), 2500); }
       },
-      onError: () => setVoiceListening(false),
+      onError: (error) => {
+        setVoiceListening(false);
+        if (error === "not-allowed") setVoiceMiss("not-allowed");
+      },
     });
   };
+  const endVoiceStart = () => { voiceStopRef.current?.(); voiceStopRef.current = null; };
 
   return (
     <div style={{ ...cardStyle, marginBottom: 14 }}>
@@ -168,14 +176,22 @@ export default function MatchTimer() {
           <RotateCcw size={15} /> {tr("Repor")}
         </button>
         {!t.running && voiceSupported() && (
-          <button onClick={voiceStart} title={tr("Soltar tempo (por voz)")}
-            style={{ background: voiceListening ? C.accentDim : C.card, color: voiceListening ? C.accent : C.text2, border: `1px solid ${voiceListening ? C.accentBorder : C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Mic size={16} style={voiceListening ? { animation: "tpulse 1s infinite" } : undefined} />
+          <button
+            onPointerDown={(e) => { e.preventDefault(); beginVoiceStart(); }}
+            onPointerUp={endVoiceStart}
+            onPointerLeave={endVoiceStart}
+            onContextMenu={(e) => e.preventDefault()}
+            title={tr("Mantém premido e diz \"soltar tempo\"")}
+            style={{ background: voiceListening ? C.accentDim : C.card, color: voiceListening ? C.accent : C.text2, border: `1px solid ${voiceListening ? C.accentBorder : C.border}`, borderRadius: 12, padding: "12px 18px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
+            <Mic size={18} style={voiceListening ? { animation: "tpulse 1s infinite" } : undefined} />
           </button>
         )}
       </div>
-      {voiceMiss && (
-        <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 8 }}>{tr("Não percebi — diz \"iniciar\" ou \"soltar tempo\".")}</div>
+      {voiceMiss === "not-allowed" && (
+        <div style={{ fontSize: 11, color: C.orange, textAlign: "center", marginTop: 8 }}>{tr("Permissão de microfone negada — ativa-a nas definições do browser.")}</div>
+      )}
+      {voiceMiss === "miss" && (
+        <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 8 }}>{tr("Não percebi — mantém premido enquanto dizes \"iniciar\" ou \"soltar tempo\".")}</div>
       )}
     </div>
   );

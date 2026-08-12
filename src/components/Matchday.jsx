@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, useRef, Fragment } from "react";
 import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2, LayoutGrid, ChevronDown, RotateCcw, RefreshCw, Mic, Check } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { t } from "../lib/i18n";
@@ -165,14 +165,15 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
     setPending(null);
   };
 
-  // Push-to-talk goal logging: one short capture, then a confirm step —
-  // speech recognition on a football pitch is noisy enough that
-  // auto-committing straight from the transcript would misfire goals.
-  // Which roster the recognized nick belongs to picks the scoring team
-  // automatically, so there's nothing to pre-select first.
-  const startVoiceGoal = (m) => {
+  // Push-to-talk goal logging: literally press-and-hold, not tap — a
+  // single tap left it to the browser's own silence detector to decide
+  // when you'd finished talking, which is exactly the kind of thing that
+  // silently "does nothing" on a noisy pitch. Holding gives the release
+  // as an explicit, reliable end-of-recording signal instead.
+  const voiceStopRef = useRef(null);
+  const beginVoiceGoal = (m) => {
     setVoicePending({ matchId: m.id, listening: true });
-    listenOnce({
+    voiceStopRef.current = listenOnce({
       onResult: (transcript) => {
         const parsed = parseGoalCommand(transcript, m.homeId, matchRoster(m, m.homeId), m.awayId, matchRoster(m, m.awayId));
         setVoicePending({ matchId: m.id, transcript, parsed });
@@ -180,6 +181,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
       onError: (error) => setVoicePending({ matchId: m.id, error }),
     });
   };
+  const endVoiceGoal = () => { voiceStopRef.current?.(); voiceStopRef.current = null; };
   const confirmVoiceGoal = () => {
     if (!voicePending?.parsed) return;
     const { teamId, scorerId, assistId, ownGoal } = voicePending.parsed;
@@ -367,9 +369,14 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                   scoring team, so there's no team pre-selection here. */}
               {canManage && !isPending && voiceSupported() && voicePending?.matchId !== m.id && (
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-                  <button onClick={() => startVoiceGoal(m)} title={t("Marcar golo por voz")}
-                    style={{ display: "flex", alignItems: "center", gap: 6, background: C.surface, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 20, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                    <Mic size={13} /> {t("Dizer golo")}
+                  <button
+                    onPointerDown={(e) => { e.preventDefault(); beginVoiceGoal(m); }}
+                    onPointerUp={endVoiceGoal}
+                    onPointerLeave={endVoiceGoal}
+                    onContextMenu={(e) => e.preventDefault()}
+                    title={t("Mantém premido e fala")}
+                    style={{ display: "flex", alignItems: "center", gap: 8, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 24, padding: "12px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
+                    <Mic size={17} /> {t("Mantém premido e fala")}
                   </button>
                 </div>
               )}
@@ -401,18 +408,30 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                   ) : (
                     <>
                       <div style={{ fontSize: 12, color: C.text2, marginBottom: 10 }}>
-                        {voicePending.transcript
-                          ? <>{t("Não percebi quem marcou em")} “{voicePending.transcript}”</>
-                          : t("Não ouvi nada — tenta outra vez.")}
+                        {voicePending.error === "not-allowed"
+                          ? t("Permissão de microfone negada — ativa o microfone para este site nas definições do browser.")
+                          : voicePending.transcript
+                            ? <>{t("Não percebi quem marcou em")} “{voicePending.transcript}”</>
+                            : t("Não ouvi nada — mantém premido enquanto falas.")}
                       </div>
-                      <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                        <button onClick={() => startVoiceGoal(m)}
-                          style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
-                          {t("Tentar de novo")}
-                        </button>
+                      {voicePending.error !== "not-allowed" && (
+                        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                          <button
+                            onPointerDown={(e) => { e.preventDefault(); beginVoiceGoal(m); }}
+                            onPointerUp={endVoiceGoal}
+                            onPointerLeave={endVoiceGoal}
+                            onContextMenu={(e) => e.preventDefault()}
+                            style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
+                            {t("Tentar de novo")}
+                          </button>
+                          <button onClick={() => setVoicePending(null)}
+                            style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Cancelar")}</button>
+                        </div>
+                      )}
+                      {voicePending.error === "not-allowed" && (
                         <button onClick={() => setVoicePending(null)}
-                          style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Cancelar")}</button>
-                      </div>
+                          style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Fechar")}</button>
+                      )}
                     </>
                   )}
                 </div>
