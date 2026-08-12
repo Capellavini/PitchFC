@@ -12,7 +12,21 @@ const SpeechRecognitionImpl = typeof window !== "undefined"
   ? (window.SpeechRecognition || window.webkitSpeechRecognition)
   : null;
 
-export const voiceSupported = () => Boolean(SpeechRecognitionImpl);
+// iOS exposes the webkitSpeechRecognition constructor — it just isn't
+// backed by a working service: every real-device test comes back
+// "service-not-allowed" the instant .start() is called, with no
+// permission or setting that fixes it (confirmed 2026-08-12). Since
+// Apple mandates every iOS browser use the same WebKit engine, this
+// applies to "Chrome"/etc. on iPhone/iPad too, not just Safari by name
+// — so it's detected by platform, not by browser. iPadOS 13+ reports
+// navigator.platform as "MacIntel" like a real Mac; maxTouchPoints is
+// what actually tells the two apart.
+const isIOS = typeof navigator !== "undefined" && (
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+);
+
+export const voiceSupported = () => Boolean(SpeechRecognitionImpl) && !isIOS;
 
 /** Captures speech for as long as the caller holds it open, ended by
  *  calling the returned `stop()` (push-to-talk release) — never by the
