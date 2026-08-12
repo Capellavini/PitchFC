@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Star, Shield, Share2 } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { playerColor } from "../lib/helpers";
+import { playerColor, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
@@ -29,19 +29,41 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   const iPlayed = Boolean(me) && (lastMatchday?.candidates ?? []).some((c) => c.key === myKey);
   const isMVP = Boolean(me) && mvp?.podium?.first === me.nick;
 
-  // Per-player ranking categories — opens on "Geral" (a simple weighted
+  // Per-player ranking categories — opens on "Impacto" (a simple weighted
   // composite), the rest are single-stat cuts. "Guarda-redes" isn't
   // restricted to the position field: the GR rotates match to match (see
   // Matchday.jsx), so it ranks whoever actually racked up clean
   // sheets/saves.
+  const impactoOf = (p) => (p.goals || 0) * 2 + (p.assists || 0) + (p.wins || 0) + (p.mvps || 0) * 3 + (p.cleanSheets || 0);
+
+  // Sobre-entrega/sub-entrega: where a player ranks by peer-rated OVR vs.
+  // where they rank by actual Impacto, both as a percentile within the
+  // group. A player rated 3rd-best but performing like the 10th-best is
+  // "sub-entregando" — the gap is the only new number here, everything
+  // it's built from (OVR, Impacto) already exists elsewhere. Players
+  // without 3+ peer ratings have no meaningful OVR yet, so they're left
+  // out of this one category rather than shown a misleading "0" gap.
+  const ratedGroup = group.filter((p) => !(p.ratingsCount != null && p.ratingsCount < 3));
+  const percentileRank = (list, valueOf) => {
+    const sorted = [...list].sort((a, b) => valueOf(a) - valueOf(b));
+    const pct = {};
+    sorted.forEach((p, i) => { pct[p.id] = sorted.length > 1 ? (i / (sorted.length - 1)) * 100 : 50; });
+    return pct;
+  };
+  const ovrPct = percentileRank(ratedGroup, (p) => computeOverall(p.position, p.attrs));
+  const impactoPct = percentileRank(ratedGroup, impactoOf);
+  const performanceGap = (p) => Math.round((impactoPct[p.id] ?? 0) - (ovrPct[p.id] ?? 0));
+
   const PLAYER_CATEGORIES = [
-    { id: "geral", label: t("Geral"), value: (p) => (p.goals || 0) * 2 + (p.assists || 0) + (p.wins || 0) + (p.mvps || 0) * 3 + (p.cleanSheets || 0),
+    { id: "geral", label: t("Impacto"), value: impactoOf,
       hint: t("Quem está mais completo esta época, tudo junto num só número: 2 pts por golo, 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.") },
     { id: "goals", label: `⚽ ${t("Golos")}`, value: (p) => p.goals || 0, hint: t("Total de golos marcados na época.") },
     { id: "assists", label: "🎯 Assists", value: (p) => p.assists || 0, hint: t("Total de assistências na época.") },
     { id: "mvps", label: "⭐ MVPs", value: (p) => p.mvps || 0, hint: t("Vezes eleito MVP do dia.") },
     { id: "gk", label: `🧤 ${t("Guarda-redes")}`, value: (p) => (p.cleanSheets || 0) * 3 + (p.epicSaves || 0),
       hint: t("Clean sheets (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.") },
+    { id: "gap", label: `📈 ${t("Sobre-entrega")}`, value: performanceGap, signed: true, noBar: true, suffix: "%", source: ratedGroup,
+      hint: t("Compara o ranking de avaliação (OVR dos colegas) com o ranking real de Impacto. Positivo = rende mais do que esperavam; negativo = rende menos. Só entra quem já tem 3+ avaliações.") },
   ];
   // Teams are redrawn fresh every matchday (no persistent identity to sum
   // a season total over) — these stay per-day records, à la the Excel's
@@ -96,7 +118,7 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   const attackList = [...dayTeamRows].sort((a, b) => b.gf - a.gf).slice(0, 8);
   const defenseList = [...dayTeamRows].sort((a, b) => a.ga - b.ga).slice(0, 8);
 
-  const playerList = activeCat ? [...group].sort((a, b) => activeCat.value(b) - activeCat.value(a)).slice(0, 8) : [];
+  const playerList = activeCat ? [...(activeCat.source || group)].sort((a, b) => activeCat.value(b) - activeCat.value(a)).slice(0, 8) : [];
   const playerMax = activeCat && playerList[0] ? (activeCat.value(playerList[0]) || 1) : 1;
 
   // Assigning a candidate to a rank they already hold elsewhere moves
@@ -285,20 +307,30 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
         </div>
       ) : activeCat ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 20 }}>
-          {playerList.length === 0 && <div style={{ fontSize: 12, color: C.text2 }}>{t("Ainda sem dados.")}</div>}
+          {playerList.length === 0 && (
+            <div style={{ fontSize: 12, color: C.text2 }}>
+              {activeCat.id === "gap" ? t("Ninguém tem ainda 3+ avaliações dos colegas para comparar.") : t("Ainda sem dados.")}
+            </div>
+          )}
           {playerList.map((p, i) => {
             const value = activeCat.value(p);
+            const signPrefix = activeCat.signed && value > 0 ? "+" : "";
+            const valueColor = activeCat.signed
+              ? (value > 0 ? C.green : value < 0 ? C.red : C.text2)
+              : (p.isMe ? C.accent : C.text1);
             return (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: p.isMe ? C.accentDim : C.card, border: `1px solid ${p.isMe ? C.accentBorder : C.border}`, borderRadius: 12, padding: "10px 12px" }}>
                 <span style={{ width: 20, fontSize: 12, fontWeight: 800, color: i === 0 ? C.accent : i === 1 ? C.text2 : i === 2 ? C.orange : C.text3 }}>{i + 1}</span>
                 <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={10} isMe={p.isMe} photo={p.photo} injured={p.injured} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1 }}>{p.nick}</div>
-                  <div style={{ height: 3, background: C.border, borderRadius: 2, marginTop: 4, width: "85%" }}>
-                    <div style={{ height: "100%", borderRadius: 2, background: p.isMe ? C.accent : playerColor(group, p), width: `${(value / playerMax) * 100}%` }} />
-                  </div>
+                  {!activeCat.noBar && (
+                    <div style={{ height: 3, background: C.border, borderRadius: 2, marginTop: 4, width: "85%" }}>
+                      <div style={{ height: "100%", borderRadius: 2, background: p.isMe ? C.accent : playerColor(group, p), width: `${(value / playerMax) * 100}%` }} />
+                    </div>
+                  )}
                 </div>
-                <span style={{ ...displayFont, fontSize: 17, color: p.isMe ? C.accent : C.text1 }}>{value}{activeCat.suffix || ""}</span>
+                <span style={{ ...displayFont, fontSize: 17, color: valueColor }}>{signPrefix}{value}{activeCat.suffix || ""}</span>
               </div>
             );
           })}
