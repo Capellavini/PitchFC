@@ -105,6 +105,7 @@ export default function MatchTimer() {
       onError: (error) => {
         setVoiceListening(false);
         if (error === "not-allowed") setVoiceMiss("not-allowed");
+        else if (error === "service-not-allowed") { setVoiceMiss("service-not-allowed"); setTimeout(() => setVoiceMiss(null), 5000); }
         else { setVoiceMiss({ code: error }); setTimeout(() => setVoiceMiss(null), 4000); }
       },
     });
@@ -191,6 +192,9 @@ export default function MatchTimer() {
       </div>
       {voiceMiss === "not-allowed" && (
         <div style={{ fontSize: 11, color: C.orange, textAlign: "center", marginTop: 8 }}>{tr("Permissão de microfone negada — ativa-a nas definições do browser.")}</div>
+      )}
+      {voiceMiss === "service-not-allowed" && (
+        <div style={{ fontSize: 11, color: C.orange, textAlign: "center", marginTop: 8 }}>{tr("Este browser não permite reconhecimento de voz (comum no Safari/iPhone) — experimenta no Chrome, num Android ou computador.")}</div>
       )}
       {voiceMiss === "miss" && (
         <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 8 }}>{tr("Não percebi — mantém premido enquanto dizes \"iniciar\" ou \"soltar tempo\".")}</div>

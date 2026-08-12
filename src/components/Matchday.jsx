@@ -380,9 +380,11 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                 const hint = vs && !listening && !vs.parsed
                   ? (vs.error === "not-allowed"
                       ? t("Permissão de microfone negada — ativa o microfone para este site nas definições do browser.")
-                      : vs.transcript
-                        ? `${t("Não percebi quem marcou em")} “${vs.transcript}”`
-                        : `${t("Não ouvi nada — mantém premido enquanto falas.")}${vs.error ? ` [${vs.error}]` : ""}`)
+                      : vs.error === "service-not-allowed"
+                        ? t("Este browser não permite reconhecimento de voz em páginas web (comum no Safari/iPhone) — experimenta no Chrome, num Android ou computador.")
+                        : vs.transcript
+                          ? `${t("Não percebi quem marcou em")} “${vs.transcript}”`
+                          : `${t("Não ouvi nada — mantém premido enquanto falas.")}${vs.error ? ` [${vs.error}]` : ""}`)
                   : null;
                 return (
                   <>
