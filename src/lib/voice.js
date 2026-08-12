@@ -14,24 +14,44 @@ const SpeechRecognitionImpl = typeof window !== "undefined"
 
 export const voiceSupported = () => Boolean(SpeechRecognitionImpl);
 
-/** Captures one short utterance. `onResult(transcript)` fires once on a
- *  recognized phrase, `onError(code)` on failure/no-match/permission
- *  denial, `onEnd()` always fires last (success, error or silence).
- *  Returns a `stop()` you can call to cancel early. */
+/** Captures one utterance, ended by the caller calling the returned
+ *  `stop()` (push-to-talk release) rather than by the browser's own
+ *  silence detection — Safari/iOS in particular gives up ("no-speech")
+ *  far more eagerly than Chrome, so relying on it to decide when you
+ *  stopped talking is exactly what made this feel broken. `continuous` +
+ *  `interimResults` keep the engine listening and accumulating text
+ *  across the whole hold; on stop(), Safari finalizes whatever it has —
+ *  if it never emits a final result at all, the last interim transcript
+ *  is used as a fallback instead of reporting "no-speech" for a hold
+ *  that clearly captured *something*.
+ *  `onResult(transcript)` fires once, `onError(code)` on genuine
+ *  failure/no-audio-at-all/permission denial, `onEnd()` always last. */
 export function listenOnce({ lang = "pt-PT", onResult, onError, onEnd }) {
   if (!SpeechRecognitionImpl) { onError?.("unsupported"); onEnd?.(); return () => {}; }
   const rec = new SpeechRecognitionImpl();
   rec.lang = lang;
-  rec.continuous = false;
-  rec.interimResults = false;
+  rec.continuous = true;
+  rec.interimResults = true;
   rec.maxAlternatives = 1;
   let done = false;
+  let lastTranscript = "";
   rec.onresult = (e) => {
-    done = true;
-    onResult?.(e.results[0]?.[0]?.transcript || "");
+    const res = e.results[e.results.length - 1];
+    lastTranscript = res?.[0]?.transcript || lastTranscript;
+    if (res?.isFinal) {
+      done = true;
+      onResult?.(lastTranscript);
+      try { rec.stop(); } catch { /* already stopping */ }
+    }
   };
-  rec.onerror = (e) => { onError?.(e.error); };
-  rec.onend = () => { if (!done) onError?.("no-speech"); onEnd?.(); };
+  rec.onerror = (e) => { if (!done) onError?.(e.error); };
+  rec.onend = () => {
+    if (!done) {
+      if (lastTranscript) { done = true; onResult?.(lastTranscript); }
+      else onError?.("no-speech");
+    }
+    onEnd?.();
+  };
   try { rec.start(); } catch { onError?.("start-failed"); onEnd?.(); }
   return () => { try { rec.stop(); } catch { /* already stopped */ } };
 }

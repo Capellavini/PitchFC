@@ -180,6 +180,7 @@ export default function MatchTimer() {
             onPointerDown={(e) => { e.preventDefault(); beginVoiceStart(); }}
             onPointerUp={endVoiceStart}
             onPointerLeave={endVoiceStart}
+            onPointerCancel={endVoiceStart}
             onContextMenu={(e) => e.preventDefault()}
             title={tr("Mantém premido e diz \"soltar tempo\"")}
             style={{ background: voiceListening ? C.accentDim : C.card, color: voiceListening ? C.accent : C.text2, border: `1px solid ${voiceListening ? C.accentBorder : C.border}`, borderRadius: 12, padding: "12px 18px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>

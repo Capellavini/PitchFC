@@ -366,76 +366,69 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
               {/* voice goal — push-to-talk, one capture then a confirm step
                   (never auto-commits: a pitch is noisy, misheard names are
                   a real risk). Which roster the name matches picks the
-                  scoring team, so there's no team pre-selection here. */}
-              {canManage && !isPending && voiceSupported() && voicePending?.matchId !== m.id && (
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-                  <button
-                    onPointerDown={(e) => { e.preventDefault(); beginVoiceGoal(m); }}
-                    onPointerUp={endVoiceGoal}
-                    onPointerLeave={endVoiceGoal}
-                    onContextMenu={(e) => e.preventDefault()}
-                    title={t("Mantém premido e fala")}
-                    style={{ display: "flex", alignItems: "center", gap: 8, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 24, padding: "12px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
-                    <Mic size={17} /> {t("Mantém premido e fala")}
-                  </button>
-                </div>
-              )}
-              {voicePending?.matchId === m.id && (
-                <div style={{ background: C.card, borderRadius: 12, padding: 12, marginBottom: 14, textAlign: "center" }}>
-                  {voicePending.listening ? (
-                    <div style={{ fontSize: 12, color: C.accent, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                      <Mic size={14} style={{ animation: "pulse 1.2s infinite" }} /> {t("A ouvir…")}
-                    </div>
-                  ) : voicePending.parsed ? (
-                    <>
-                      <div style={{ fontSize: 12, color: C.text2, marginBottom: 10 }}>
-                        {t("Ouvi:")} “{voicePending.transcript}”
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
-                        {voicePending.parsed.ownGoal ? t("Próprio golo de") : t("Golo de")}{" "}
-                        <span style={{ color: teamColor(voicePending.parsed.teamId) }}>{byId(voicePending.parsed.scorerId)?.nick}</span>
-                        {voicePending.parsed.assistId && <> · {t("assist.")} {byId(voicePending.parsed.assistId)?.nick}</>}
-                      </div>
-                      <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                        <button onClick={confirmVoiceGoal}
-                          style={{ background: C.greenDim, color: C.green, border: `1px solid ${C.greenBorder}`, borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                          <Check size={13} /> {t("Confirmar")}
-                        </button>
-                        <button onClick={() => setVoicePending(null)}
-                          style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Cancelar")}</button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ fontSize: 12, color: C.text2, marginBottom: 10 }}>
-                        {voicePending.error === "not-allowed"
-                          ? t("Permissão de microfone negada — ativa o microfone para este site nas definições do browser.")
-                          : voicePending.transcript
-                            ? <>{t("Não percebi quem marcou em")} “{voicePending.transcript}”</>
-                            : t("Não ouvi nada — mantém premido enquanto falas.")}
-                      </div>
-                      {voicePending.error !== "not-allowed" && (
-                        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                  scoring team, so there's no team pre-selection here.
+                  The trigger button below is the SAME element across
+                  idle/listening/retry — it must never unmount mid-press,
+                  or the finger lifting off has nothing left to fire
+                  pointerup on and the hold silently does nothing. Only
+                  swaps out for the confirm card once there's a parsed
+                  result (by then the finger has already lifted). */}
+              {(() => {
+                const vs = voicePending?.matchId === m.id ? voicePending : null;
+                const listening = Boolean(vs?.listening);
+                const showConfirm = Boolean(vs && !listening && vs.parsed);
+                const hint = vs && !listening && !vs.parsed
+                  ? (vs.error === "not-allowed"
+                      ? t("Permissão de microfone negada — ativa o microfone para este site nas definições do browser.")
+                      : vs.transcript
+                        ? `${t("Não percebi quem marcou em")} “${vs.transcript}”`
+                        : t("Não ouvi nada — mantém premido enquanto falas."))
+                  : null;
+                return (
+                  <>
+                    {canManage && !isPending && voiceSupported() && !showConfirm && (
+                      <div style={{ marginBottom: 10 }}>
+                        {hint && (
+                          <div style={{ fontSize: 11, color: vs.error === "not-allowed" ? C.orange : C.text3, textAlign: "center", marginBottom: 6 }}>{hint}</div>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "center" }}>
                           <button
                             onPointerDown={(e) => { e.preventDefault(); beginVoiceGoal(m); }}
                             onPointerUp={endVoiceGoal}
                             onPointerLeave={endVoiceGoal}
+                            onPointerCancel={endVoiceGoal}
                             onContextMenu={(e) => e.preventDefault()}
-                            style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
-                            {t("Tentar de novo")}
+                            title={t("Mantém premido e fala")}
+                            style={{ display: "flex", alignItems: "center", gap: 8, background: listening ? C.accent : C.accentDim, color: listening ? C.bg : C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 24, padding: "12px 20px", fontSize: 13, fontWeight: 800, cursor: "pointer", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
+                            <Mic size={17} style={listening ? { animation: "pulse 1s infinite" } : undefined} />
+                            {listening ? t("A ouvir…") : t("Mantém premido e fala")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {showConfirm && (
+                      <div style={{ background: C.card, borderRadius: 12, padding: 12, marginBottom: 14, textAlign: "center" }}>
+                        <div style={{ fontSize: 12, color: C.text2, marginBottom: 10 }}>
+                          {t("Ouvi:")} “{vs.transcript}”
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+                          {vs.parsed.ownGoal ? t("Próprio golo de") : t("Golo de")}{" "}
+                          <span style={{ color: teamColor(vs.parsed.teamId) }}>{byId(vs.parsed.scorerId)?.nick}</span>
+                          {vs.parsed.assistId && <> · {t("assist.")} {byId(vs.parsed.assistId)?.nick}</>}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                          <button onClick={confirmVoiceGoal}
+                            style={{ background: C.greenDim, color: C.green, border: `1px solid ${C.greenBorder}`, borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                            <Check size={13} /> {t("Confirmar")}
                           </button>
                           <button onClick={() => setVoicePending(null)}
                             style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Cancelar")}</button>
                         </div>
-                      )}
-                      {voicePending.error === "not-allowed" && (
-                        <button onClick={() => setVoicePending(null)}
-                          style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Fechar")}</button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* goal entry */}
               {canManage && !isPending && voicePending?.matchId !== m.id && (
