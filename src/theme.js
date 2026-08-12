@@ -28,31 +28,34 @@ const DARK = {
   blueBorder:   "rgba(72,149,255,0.25)",
 };
 
-// Same tokens, light surfaces. Kept legible against white (accent/green/
-// red/orange/blue are all deepened a notch from their dark-mode values —
-// the bright dark-mode lime, for instance, is nearly invisible as text
-// on a white card).
+// "Dusk Light" — a light mode that stays kin to the navy brand instead of
+// inverting to a generic white SaaS surface: bg/surface/card step up in
+// the same layered-lightness pattern as DARK (bg < surface < card), all
+// with a cool navy tint rather than neutral gray. Accent/green/orange/
+// blue are all deepened a notch from their dark-mode values — the bright
+// dark-mode lime, for instance, is nearly invisible as text on a light
+// card — chosen against this cooler ground, not plain white.
 const LIGHT = {
-  bg:           "#F4F5F7",
-  surface:      "#FFFFFF",
-  card:         "#FFFFFF",
-  border:       "#E1E4EA",
-  accent:       "#5B7A00",
-  accentDim:    "rgba(91,122,0,0.08)",
-  accentBorder: "rgba(91,122,0,0.25)",
-  text1:        "#0A0F18",
-  text2:        "#5B6474",
-  text3:        "#9AA2B0",
-  green:        "#00966B",
-  greenDim:     "rgba(0,150,107,0.10)",
-  greenBorder:  "rgba(0,150,107,0.30)",
+  bg:           "#E7ECF5",
+  surface:      "#EEF2F9",
+  card:         "#F6F8FC",
+  border:       "#C9D1E3",
+  accent:       "#6B8F00",
+  accentDim:    "rgba(107,143,0,0.10)",
+  accentBorder: "rgba(107,143,0,0.28)",
+  text1:        "#131C2E",
+  text2:        "#5B6784",
+  text3:        "#96A1BC",
+  green:        "#0B7A56",
+  greenDim:     "rgba(11,122,86,0.12)",
+  greenBorder:  "rgba(11,122,86,0.30)",
   red:          "#D81E46",
   redDim:       "rgba(216,30,70,0.08)",
-  orange:       "#C17700",
-  orangeDim:    "rgba(193,119,0,0.10)",
-  blue:         "#1F66D6",
-  blueDim:      "rgba(31,102,214,0.08)",
-  blueBorder:   "rgba(31,102,214,0.25)",
+  orange:       "#8A5A00",
+  orangeDim:    "rgba(138,90,0,0.12)",
+  blue:         "#3466C8",
+  blueDim:      "rgba(52,102,200,0.10)",
+  blueBorder:   "rgba(52,102,200,0.28)",
 };
 
 // A plain, mutable object — every component reads C.xxx fresh at render

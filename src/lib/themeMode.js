@@ -8,7 +8,7 @@
 import { applyPalette } from "../theme";
 
 const KEY = "pitch.themeMode";
-const THEME_COLOR = { dark: "#0A0F18", light: "#F4F5F7" };
+const THEME_COLOR = { dark: "#0A0F18", light: "#E7ECF5" };
 
 export const getThemeMode = () => {
   try {
