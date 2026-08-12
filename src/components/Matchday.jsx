@@ -1,8 +1,9 @@
 import { useState, Fragment } from "react";
-import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2, LayoutGrid, ChevronDown, RotateCcw, RefreshCw } from "lucide-react";
+import { Play, Plus, Flag, Shield, Swords, Trophy, X, ArrowRightCircle, Settings2, LayoutGrid, ChevronDown, RotateCcw, RefreshCw, Mic, Check } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { t } from "../lib/i18n";
 import { matchWinner } from "../lib/tournament";
+import { voiceSupported, listenOnce, parseGoalCommand } from "../lib/voice";
 import TacticsBoard from "./TacticsBoard";
 
 const MODES = [
@@ -24,6 +25,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
   const [composing, setComposing] = useState(null); // { homeId, awayId } when picking a new game
   const [tacticsTeamId, setTacticsTeamId] = useState(null); // accordion — one team's board open at a time
   const [subPicker, setSubPicker] = useState(null); // { matchId, teamId, outId? } — per-match substitution
+  const [voicePending, setVoicePending] = useState(null); // { matchId, listening?, transcript?, parsed?, error? }
 
   const list = Array.isArray(teams) ? teams : [];
   const byId = (id) => group.find((p) => p.id === id);
@@ -161,6 +163,28 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
   const confirmGoal = (assistId) => {
     onGoal(pending.matchId, { teamId: pending.teamId, scorerId: pending.scorerId, assistId });
     setPending(null);
+  };
+
+  // Push-to-talk goal logging: one short capture, then a confirm step —
+  // speech recognition on a football pitch is noisy enough that
+  // auto-committing straight from the transcript would misfire goals.
+  // Which roster the recognized nick belongs to picks the scoring team
+  // automatically, so there's nothing to pre-select first.
+  const startVoiceGoal = (m) => {
+    setVoicePending({ matchId: m.id, listening: true });
+    listenOnce({
+      onResult: (transcript) => {
+        const parsed = parseGoalCommand(transcript, m.homeId, matchRoster(m, m.homeId), m.awayId, matchRoster(m, m.awayId));
+        setVoicePending({ matchId: m.id, transcript, parsed });
+      },
+      onError: (error) => setVoicePending({ matchId: m.id, error }),
+    });
+  };
+  const confirmVoiceGoal = () => {
+    if (!voicePending?.parsed) return;
+    const { teamId, scorerId, assistId, ownGoal } = voicePending.parsed;
+    onGoal(voicePending.matchId, { teamId, scorerId, assistId, ownGoal });
+    setVoicePending(null);
   };
 
   const startCompose = () => {
@@ -337,8 +361,65 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                 <div style={{ fontSize: 13, fontWeight: 800, color: teamColor(m.awayId), textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90 }}>{teamName(m.awayId)}</div>
               </div>
 
+              {/* voice goal — push-to-talk, one capture then a confirm step
+                  (never auto-commits: a pitch is noisy, misheard names are
+                  a real risk). Which roster the name matches picks the
+                  scoring team, so there's no team pre-selection here. */}
+              {canManage && !isPending && voiceSupported() && voicePending?.matchId !== m.id && (
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                  <button onClick={() => startVoiceGoal(m)} title={t("Marcar golo por voz")}
+                    style={{ display: "flex", alignItems: "center", gap: 6, background: C.surface, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 20, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                    <Mic size={13} /> {t("Dizer golo")}
+                  </button>
+                </div>
+              )}
+              {voicePending?.matchId === m.id && (
+                <div style={{ background: C.card, borderRadius: 12, padding: 12, marginBottom: 14, textAlign: "center" }}>
+                  {voicePending.listening ? (
+                    <div style={{ fontSize: 12, color: C.accent, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Mic size={14} style={{ animation: "pulse 1.2s infinite" }} /> {t("A ouvir…")}
+                    </div>
+                  ) : voicePending.parsed ? (
+                    <>
+                      <div style={{ fontSize: 12, color: C.text2, marginBottom: 10 }}>
+                        {t("Ouvi:")} “{voicePending.transcript}”
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+                        {voicePending.parsed.ownGoal ? t("Próprio golo de") : t("Golo de")}{" "}
+                        <span style={{ color: teamColor(voicePending.parsed.teamId) }}>{byId(voicePending.parsed.scorerId)?.nick}</span>
+                        {voicePending.parsed.assistId && <> · {t("assist.")} {byId(voicePending.parsed.assistId)?.nick}</>}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                        <button onClick={confirmVoiceGoal}
+                          style={{ background: C.greenDim, color: C.green, border: `1px solid ${C.greenBorder}`, borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                          <Check size={13} /> {t("Confirmar")}
+                        </button>
+                        <button onClick={() => setVoicePending(null)}
+                          style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Cancelar")}</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 12, color: C.text2, marginBottom: 10 }}>
+                        {voicePending.transcript
+                          ? <>{t("Não percebi quem marcou em")} “{voicePending.transcript}”</>
+                          : t("Não ouvi nada — tenta outra vez.")}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                        <button onClick={() => startVoiceGoal(m)}
+                          style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                          {t("Tentar de novo")}
+                        </button>
+                        <button onClick={() => setVoicePending(null)}
+                          style={{ background: "none", color: C.text3, border: "none", fontSize: 12, cursor: "pointer" }}>{t("Cancelar")}</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* goal entry */}
-              {canManage && !isPending && (
+              {canManage && !isPending && voicePending?.matchId !== m.id && (
                 <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 14 }}>
                   {sides.map((tid) => (
                     <button key={tid} onClick={() => setPending({ matchId: m.id, teamId: tid, scorerId: null, ownGoal: false })}

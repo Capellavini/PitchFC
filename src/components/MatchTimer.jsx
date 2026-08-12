@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, Timer as TimerIcon, BellRing, Minus, Plus } from "lucide-react";
+import { Play, Pause, RotateCcw, Timer as TimerIcon, BellRing, Minus, Plus, Mic } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { usePersistentState } from "../lib/storage";
+import { voiceSupported, listenOnce, isStartTimerCommand } from "../lib/voice";
 import { t as tr } from "../lib/i18n";
 
 const PRESETS = [10, 15, 20, 30]; // minutes
@@ -83,6 +84,24 @@ export default function MatchTimer() {
   const low = t.running && remaining <= 60;
   const numColor = t.finished ? C.red : low ? C.orange : C.accent;
 
+  // "Soltar tempo" — push-to-talk start, same one-shot capture pattern as
+  // the goal-by-voice command. Only wired to start (never pause/reset):
+  // those are rare/deliberate actions worth an actual tap.
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceMiss, setVoiceMiss] = useState(false);
+  const voiceStart = () => {
+    setVoiceMiss(false);
+    setVoiceListening(true);
+    listenOnce({
+      onResult: (transcript) => {
+        setVoiceListening(false);
+        if (isStartTimerCommand(transcript)) start();
+        else { setVoiceMiss(true); setTimeout(() => setVoiceMiss(false), 2500); }
+      },
+      onError: () => setVoiceListening(false),
+    });
+  };
+
   return (
     <div style={{ ...cardStyle, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -148,7 +167,16 @@ export default function MatchTimer() {
         <button onClick={reset} style={{ background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <RotateCcw size={15} /> {tr("Repor")}
         </button>
+        {!t.running && voiceSupported() && (
+          <button onClick={voiceStart} title={tr("Soltar tempo (por voz)")}
+            style={{ background: voiceListening ? C.accentDim : C.card, color: voiceListening ? C.accent : C.text2, border: `1px solid ${voiceListening ? C.accentBorder : C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Mic size={16} style={voiceListening ? { animation: "tpulse 1s infinite" } : undefined} />
+          </button>
+        )}
       </div>
+      {voiceMiss && (
+        <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 8 }}>{tr("Não percebi — diz \"iniciar\" ou \"soltar tempo\".")}</div>
+      )}
     </div>
   );
 }
