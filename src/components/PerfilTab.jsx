@@ -12,8 +12,10 @@ import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
 import AchievementsSection from "./AchievementsSection";
+import MatchdayCalendar from "./MatchdayCalendar";
+import ProgressChart from "./ProgressChart";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, myGroups, onSwitchGroup, onBanMember }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], myGroups, onSwitchGroup, onBanMember }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -306,6 +308,15 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           ))}
         </div>
       </div>
+
+      {/* Calendar + progress — cloud only, local demo has no per-day
+          summary saved to build these from. */}
+      {cloudMode && (
+        <>
+          <MatchdayCalendar records={records} playerKey={player.uuid ?? player.id} />
+          <ProgressChart records={records} playerKey={player.uuid ?? player.id} />
+        </>
+      )}
 
       <AchievementsSection player={player} ctx={achievementsCtx} />
 

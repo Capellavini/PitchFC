@@ -27,7 +27,7 @@ export const splitWaitlist = (confirmed, spots) => {
 
 // ── Dates ────────────────────────────────────────────────
 export const WEEKDAYS_PT = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+export const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 /** Next occurrence of a weekday (0=Sunday), formatted "Sábado, 14 Jun". */
 export function nextGameDateLabel(weekday) {

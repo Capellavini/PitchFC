@@ -1014,7 +1014,7 @@ export default function PitchApp() {
     // League → Records: full per-day detail (games/stats/MVP), expandable,
     // deletable by the organizer.
     recordsView = rows.map((r) => ({
-      id: r.id, date: fmtDayMonth(r.played_on), nGames: r.n_games, totalGoals: r.total_goals, mode: r.mode,
+      id: r.id, date: fmtDayMonth(r.played_on), playedOn: r.played_on, nGames: r.n_games, totalGoals: r.total_goals, mode: r.mode,
       mvpOpen: r.mvp_open, mvpNick: r.mvp_id ? nickByKey(r.mvp_id) : null,
       runnerUpNick: r.runner_up_id ? nickByKey(r.runner_up_id) : null, thirdNick: r.third_id ? nickByKey(r.third_id) : null,
       summary: r.summary,
@@ -1219,6 +1219,7 @@ export default function PitchApp() {
             themeMode={themeMode} onThemeMode={changeTheme}
             achievementMatchdays={achievementMatchdays}
             totalGames={historyView.reduce((s, h) => s + (h.games || 1), 0)}
+            records={recordsView}
             myGroups={cloudMode ? cloud.myGroups : []}
             onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}
             onBanMember={banMember}
