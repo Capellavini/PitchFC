@@ -91,7 +91,7 @@ export default function MatchTimer() {
   // Only wired to start (never pause/reset): those are rare/deliberate
   // actions worth an actual tap.
   const [voiceListening, setVoiceListening] = useState(false);
-  const [voiceMiss, setVoiceMiss] = useState(null); // null | 'miss' | 'not-allowed'
+  const [voiceMiss, setVoiceMiss] = useState(null); // null | 'miss' | 'not-allowed' | { code }
   const voiceStopRef = useRef(null);
   const beginVoiceStart = () => {
     setVoiceMiss(null);
@@ -105,6 +105,7 @@ export default function MatchTimer() {
       onError: (error) => {
         setVoiceListening(false);
         if (error === "not-allowed") setVoiceMiss("not-allowed");
+        else { setVoiceMiss({ code: error }); setTimeout(() => setVoiceMiss(null), 4000); }
       },
     });
   };
@@ -193,6 +194,9 @@ export default function MatchTimer() {
       )}
       {voiceMiss === "miss" && (
         <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 8 }}>{tr("Não percebi — mantém premido enquanto dizes \"iniciar\" ou \"soltar tempo\".")}</div>
+      )}
+      {voiceMiss?.code && (
+        <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 8 }}>{tr("Erro do microfone:")} [{voiceMiss.code}]</div>
       )}
     </div>
   );

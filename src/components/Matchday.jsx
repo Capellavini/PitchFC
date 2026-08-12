@@ -382,7 +382,7 @@ export default function Matchday({ matchday, teams, group, onStart, onAddMatch, 
                       ? t("Permissão de microfone negada — ativa o microfone para este site nas definições do browser.")
                       : vs.transcript
                         ? `${t("Não percebi quem marcou em")} “${vs.transcript}”`
-                        : t("Não ouvi nada — mantém premido enquanto falas."))
+                        : `${t("Não ouvi nada — mantém premido enquanto falas.")}${vs.error ? ` [${vs.error}]` : ""}`)
                   : null;
                 return (
                   <>
