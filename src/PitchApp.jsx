@@ -1188,7 +1188,7 @@ export default function PitchApp() {
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
-          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} canManageTeams={canManageTeams} records={recordsView} onDeleteMatchday={deleteMatchdayRecord} />)}
+          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} canManageTeams={canManageTeams} records={recordsView} onDeleteMatchday={deleteMatchdayRecord} totalGames={historyView.reduce((s, h) => s + (h.games || 1), 0)} />)}
         {tab === "fantasy" && cloud.canSeeFantasy && (
           <FantasyTab
             group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
@@ -1218,6 +1218,7 @@ export default function PitchApp() {
             lang={lang} onLang={changeLang}
             themeMode={themeMode} onThemeMode={changeTheme}
             achievementMatchdays={achievementMatchdays}
+            totalGames={historyView.reduce((s, h) => s + (h.games || 1), 0)}
             myGroups={cloudMode ? cloud.myGroups : []}
             onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}
             onBanMember={banMember}

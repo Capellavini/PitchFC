@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Repeat, Check, Moon, Sun } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
-import { TOTAL_GAMES, POSITIONS, FEET, NATIONALITIES } from "../data";
+import { POSITIONS, FEET, NATIONALITIES } from "../data";
 import { encodePayload, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
@@ -13,7 +13,7 @@ import BtnPrimary from "./BtnPrimary";
 import SecuritySection from "./SecuritySection";
 import AchievementsSection from "./AchievementsSection";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, myGroups, onSwitchGroup, onBanMember }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, myGroups, onSwitchGroup, onBanMember }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -71,7 +71,10 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
     if (ok) setCodeDraft("");
   };
 
-  const attendance = Math.round((player.gamesPlayed / TOTAL_GAMES) * 100);
+  // Real season game count (from the group's actual matchday history),
+  // not the old fixed prototype constant — a group that's played 6 days
+  // showed a wildly wrong % against a hardcoded 15 before this.
+  const attendance = totalGames ? Math.round((player.gamesPlayed / totalGames) * 100) : 0;
 
   // Achievements context — same overall-lock rule as the FUT card (needs
   // 3+ peer ratings before the attributes/overall mean anything).

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MessageCircle, ChevronRight, ChevronDown, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2, UserMinus, Ban, ArrowDownAZ } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { TOTAL_GAMES, POSITIONS } from "../data";
+import { POSITIONS } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { openWhatsApp, inviteMessage, groupInviteMessage } from "../lib/whatsapp";
@@ -13,7 +13,7 @@ import Collapsible from "./Collapsible";
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday, totalGames }) {
   const [view, setView] = useState("squad"); // 'squad' | 'records'
   const [sortAZ, setSortAZ] = useState(false);
   const [openRecordId, setOpenRecordId] = useState(null);
@@ -30,6 +30,24 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
     try { await navigator.clipboard.writeText(inviteUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
   const sortItems = (items) => (sortAZ ? [...items].sort((a, b) => a.nick.localeCompare(b.nick, "pt")) : items);
+  // Compact day highlights for Records — computed from that day's saved
+  // per-player lines, no new data. Each award only shows if someone
+  // actually earned it (no "0 golos" Golden Boot).
+  const dayAwards = (lines) => {
+    const list = lines || [];
+    if (!list.length) return [];
+    const bestBy = (score) => list.reduce((best, l) => (score(l) > score(best || {}) ? l : best), null);
+    const goldenBoot = bestBy((l) => l.goals || 0);
+    const bestOfDay = bestBy((l) => (l.goals || 0) + (l.assists || 0));
+    const playmaker = bestBy((l) => l.assists || 0);
+    const goldenGlove = bestBy((l) => l.cleanSheets || 0);
+    return [
+      goldenBoot?.goals > 0 && ["🥇", t("Golden Boot"), goldenBoot.nick, goldenBoot.goals],
+      bestOfDay && (bestOfDay.goals || 0) + (bestOfDay.assists || 0) > 0 && ["🌟", t("Best of the Day"), bestOfDay.nick, (bestOfDay.goals || 0) + (bestOfDay.assists || 0)],
+      playmaker?.assists > 0 && ["🎯", t("Playmaker"), playmaker.nick, playmaker.assists],
+      goldenGlove?.cleanSheets > 0 && ["🧤", t("Golden Glove"), goldenGlove.nick, goldenGlove.cleanSheets],
+    ].filter(Boolean);
+  };
   const sections = [
     { label: "CONFIRMADOS",  items: sortItems(group.filter((p) => p.status === "confirmed")) },
     { label: "SEM RESPOSTA", items: sortItems(group.filter((p) => p.status === "pending"))   },
@@ -85,6 +103,17 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                     </button>
                     {open && (
                       <div style={{ padding: "0 14px 14px" }}>
+                        {dayAwards(r.summary?.lines).length > 0 && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                            {dayAwards(r.summary?.lines).map(([icon, label, nick, val]) => (
+                              <div key={label} title={label} style={{ display: "flex", alignItems: "center", gap: 5, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "4px 10px 4px 6px" }}>
+                                <span style={{ fontSize: 12 }}>{icon}</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: C.text1 }}>{nick}</span>
+                                <span style={{ fontSize: 10, color: C.text3 }}>{val}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {(r.summary?.matches ?? []).length > 0 && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
                             {r.summary.matches.map((m) => (
@@ -167,7 +196,7 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                       {p.isOrganizerPlayer && <span style={{ fontSize: 9, color: C.blue, fontWeight: 700, marginLeft: 6 }}>ORG</span>}
                       {p.isAssistant && !p.isOrganizerPlayer && <span style={{ fontSize: 9, color: C.green, fontWeight: 700, marginLeft: 6 }}>{t("AUXILIAR")}</span>}
                     </div>
-                    <div style={{ fontSize: 11, color: C.text2 }}>{t(p.position)} · {p.gamesPlayed}/{TOTAL_GAMES} {t("jogos")}</div>
+                    <div style={{ fontSize: 11, color: C.text2 }}>{t(p.position)} · {p.gamesPlayed}/{totalGames || 0} {t("jogos")}</div>
                   </div>
                   {canManageTeams && !p.isMe && (
                     <>

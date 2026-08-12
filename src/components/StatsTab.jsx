@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState } from "react";
 import { Star, Shield, Share2 } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
@@ -55,21 +55,25 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   const activeCat = PLAYER_CATEGORIES.find((c) => c.id === statMode);
   const activeMeta = ALL_CATEGORIES.find((c) => c.id === statMode);
 
-  // "Jogaram juntos": needs both players on the same team the same day —
-  // only matchdays committed after teamResults started snapshotting
-  // rosters carry this (see PitchApp.jsx endMatchday), so older days just
-  // don't match and this reads as "no data yet", not an error.
-  const togetherStats = (keyA, keyB) => {
-    let gamesTogether = 0, winsTogether = 0;
+  // "Jogaram juntos": needs EVERY selected player on the same team the
+  // same day — only matchdays committed after teamResults started
+  // snapshotting rosters carry this (see PitchApp.jsx endMatchday), so
+  // older days just don't match and this reads as "no data yet", not an
+  // error. Goals for/against come from that team's matches that day, same
+  // source as "melhor ataque/defesa (dia)" below.
+  const togetherStats = (keys) => {
+    let gamesTogether = 0, winsTogether = 0, goalsFor = 0, goalsAgainst = 0;
     matchdaySummaries.forEach((md) => {
-      const team = (md.summary?.teamResults || []).find((tm) => tm.players?.includes(keyA) && tm.players?.includes(keyB));
+      const team = (md.summary?.teamResults || []).find((tm) => keys.every((k) => tm.players?.includes(k)));
       if (!team) return;
-      gamesTogether += (md.summary?.matches || []).filter((m) => m.homeName === team.name || m.awayName === team.name).length;
+      (md.summary?.matches || []).forEach((m) => {
+        if (m.homeName === team.name) { gamesTogether++; goalsFor += m.homeGoals; goalsAgainst += m.awayGoals; }
+        else if (m.awayName === team.name) { gamesTogether++; goalsFor += m.awayGoals; goalsAgainst += m.homeGoals; }
+      });
       winsTogether += team.wins || 0;
     });
-    return { gamesTogether, winsTogether };
+    return { gamesTogether, winsTogether, goalsFor, goalsAgainst };
   };
-  const POSITION_ROWS = ["Avançado", "Médio", "Defesa", "Guarda-redes"];
 
   const dayTeamRows = [];
   matchdaySummaries.forEach((md) => {
@@ -242,68 +246,42 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
 
           {comparePicks.length < 2 ? (
             <div style={{ fontSize: 12, color: C.text2 }}>{t("Escolhe pelo menos 2 jogadores.")}</div>
-          ) : (
-            <>
-              {/* pitch — rows top→bottom like a real formation */}
-              <div style={{ borderRadius: 18, padding: 18, marginBottom: 14, background: "linear-gradient(180deg, #1D7A46 0%, #16603A 100%)", border: `1px solid ${C.border}`, position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: "50%", left: 10, right: 10, height: 1, background: "rgba(255,255,255,0.3)" }} />
-                {POSITION_ROWS.map((pos) => {
-                  const players = comparePicks.map((k) => group.find((p) => (p.uuid ?? p.id) === k)).filter((p) => p && p.position === pos);
-                  if (!players.length) return null;
-                  return (
-                    <div key={pos} style={{ display: "flex", justifyContent: "center", gap: 22, marginBottom: 16, position: "relative" }}>
-                      {players.map((p) => (
-                        <div key={p.id} style={{ textAlign: "center" }}>
-                          <Avatar name={p.name} color={playerColor(group, p)} size={46} fontSize={14} photo={p.photo} />
-                          <div style={{ fontSize: 10, fontWeight: 800, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)", marginTop: 3, maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</div>
-                        </div>
-                      ))}
+          ) : (() => {
+            const { gamesTogether, winsTogether, goalsFor, goalsAgainst } = togetherStats(comparePicks);
+            const pickedPlayers = comparePicks.map((k) => group.find((p) => (p.uuid ?? p.id) === k)).filter(Boolean);
+            return (
+              <div style={{ ...cardStyle }}>
+                <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 16 }}>
+                  {pickedPlayers.map((p) => (
+                    <div key={p.id} style={{ textAlign: "center" }}>
+                      <Avatar name={p.name} color={playerColor(group, p)} size={38} fontSize={12} photo={p.photo} />
+                      <div style={{ fontSize: 10, fontWeight: 700, color: C.text2, marginTop: 3, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</div>
                     </div>
-                  );
-                })}
-              </div>
-
-              {comparePicks.length === 2 && (() => {
-                const [a, b] = comparePicks;
-                const { gamesTogether, winsTogether } = togetherStats(a, b);
-                return (
-                  <div style={{ ...cardStyle, marginBottom: 14, textAlign: "center" }}>
-                    {gamesTogether > 0 ? (
-                      <div style={{ fontSize: 13 }}>
-                        {t("Jogaram juntos")} <strong>{gamesTogether}</strong> {gamesTogether === 1 ? t("vez") : t("vezes")} · <strong style={{ color: C.accent }}>{Math.round((winsTogether / gamesTogether) * 100)}%</strong> {t("vitórias")}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 12, color: C.text3 }}>{t("Ainda sem dados de jogos juntos — passa a contar a partir do próximo dia de jogo.")}</div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* full stat comparison */}
-              <div style={{ ...cardStyle, marginBottom: 20, overflowX: "auto" }}>
-                <div style={{ display: "grid", gridTemplateColumns: `100px repeat(${comparePicks.length}, 1fr)`, gap: 8, minWidth: 100 + comparePicks.length * 60 }}>
-                  <div />
-                  {comparePicks.map((k) => {
-                    const p = group.find((pp) => (pp.uuid ?? pp.id) === k);
-                    return <div key={k} style={{ textAlign: "center", fontSize: 11, fontWeight: 800, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p?.nick}</div>;
-                  })}
-                  {PLAYER_CATEGORIES.map((cat) => (
-                    <Fragment key={cat.id}>
-                      <div style={{ fontSize: 11, color: C.text2, alignSelf: "center" }}>{cat.label}</div>
-                      {comparePicks.map((k) => {
-                        const p = group.find((pp) => (pp.uuid ?? pp.id) === k);
-                        return (
-                          <div key={k} style={{ textAlign: "center", ...displayFont, fontSize: 15, color: C.text1, alignSelf: "center" }}>
-                            {p ? cat.value(p) : "–"}{p && cat.suffix ? cat.suffix : ""}
-                          </div>
-                        );
-                      })}
-                    </Fragment>
                   ))}
                 </div>
+
+                {gamesTogether === 0 ? (
+                  <div style={{ fontSize: 12, color: C.text3, textAlign: "center" }}>
+                    {t("Ainda sem dias em que todos jogaram juntos na mesma equipa — passa a contar a partir do próximo dia de jogo.")}
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                    {[
+                      [t("Jogos juntos"), gamesTogether, C.text1],
+                      [t("% Vitórias"), `${Math.round((winsTogether / gamesTogether) * 100)}%`, C.accent],
+                      [t("Golos marcados"), goalsFor, C.green],
+                      [t("Golos sofridos"), goalsAgainst, C.red],
+                    ].map(([label, value, color]) => (
+                      <div key={label} style={{ background: C.surface, borderRadius: 12, padding: "14px 10px", textAlign: "center" }}>
+                        <div style={{ ...displayFont, fontSize: 24, color }}>{value}</div>
+                        <div style={{ fontSize: 10, color: C.text2, marginTop: 4 }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </>
-          )}
+            );
+          })()}
         </div>
       ) : activeCat ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 20 }}>
