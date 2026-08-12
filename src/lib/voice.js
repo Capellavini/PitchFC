@@ -14,46 +14,57 @@ const SpeechRecognitionImpl = typeof window !== "undefined"
 
 export const voiceSupported = () => Boolean(SpeechRecognitionImpl);
 
-/** Captures one utterance, ended by the caller calling the returned
- *  `stop()` (push-to-talk release) rather than by the browser's own
- *  silence detection — Safari/iOS in particular gives up ("no-speech")
- *  far more eagerly than Chrome, so relying on it to decide when you
- *  stopped talking is exactly what made this feel broken. `continuous` +
- *  `interimResults` keep the engine listening and accumulating text
- *  across the whole hold; on stop(), Safari finalizes whatever it has —
- *  if it never emits a final result at all, the last interim transcript
- *  is used as a fallback instead of reporting "no-speech" for a hold
- *  that clearly captured *something*.
- *  `onResult(transcript)` fires once, `onError(code)` on genuine
- *  failure/no-audio-at-all/permission denial, `onEnd()` always last. */
+/** Captures speech for as long as the caller holds it open, ended by
+ *  calling the returned `stop()` (push-to-talk release) — never by the
+ *  browser's own silence detection. `continuous: true` was the first
+ *  attempt at this and iOS Safari doesn't cope with it well (the session
+ *  ends within a fraction of a second, way before any real hold). This
+ *  instead chains a run of short `continuous: false` sessions back to
+ *  back — the one mode every engine actually supports properly — restart-
+ *  ing a fresh one every time the current one ends on its own, for as
+ *  long as `stop()` hasn't been called yet. Whatever text the last
+ *  session captured (interim or final) is kept as a running transcript,
+ *  so a mid-sentence auto-restart doesn't lose what was already heard.
+ *  `onResult(transcript)` fires once on stop() if anything was heard,
+ *  `onError(code)` on a genuine failure (bad mic permission, unsupported)
+ *  or if stop() produced nothing at all, `onEnd()` always last. */
 export function listenOnce({ lang = "pt-PT", onResult, onError, onEnd }) {
   if (!SpeechRecognitionImpl) { onError?.("unsupported"); onEnd?.(); return () => {}; }
-  const rec = new SpeechRecognitionImpl();
-  rec.lang = lang;
-  rec.continuous = true;
-  rec.interimResults = true;
-  rec.maxAlternatives = 1;
-  let done = false;
+  let stopped = false;
   let lastTranscript = "";
-  rec.onresult = (e) => {
-    const res = e.results[e.results.length - 1];
-    lastTranscript = res?.[0]?.transcript || lastTranscript;
-    if (res?.isFinal) {
-      done = true;
-      onResult?.(lastTranscript);
-      try { rec.stop(); } catch { /* already stopping */ }
-    }
+  let currentRec = null;
+
+  const runSession = () => {
+    if (stopped) return;
+    const rec = new SpeechRecognitionImpl();
+    currentRec = rec;
+    rec.lang = lang;
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e) => {
+      const res = e.results[e.results.length - 1];
+      lastTranscript = res?.[0]?.transcript || lastTranscript;
+    };
+    rec.onerror = (e) => {
+      // "no-speech"/"aborted" between chained sessions is expected while
+      // still held (silence, or our own restart) — only a real failure
+      // should stop the chain early.
+      if (e.error !== "no-speech" && e.error !== "aborted") { stopped = true; onError?.(e.error); onEnd?.(); }
+    };
+    rec.onend = () => {
+      if (stopped) {
+        if (lastTranscript) onResult?.(lastTranscript);
+        else onError?.("no-speech");
+        onEnd?.();
+      } else {
+        runSession(); // still held — pick straight back up
+      }
+    };
+    try { rec.start(); } catch { stopped = true; onError?.("start-failed"); onEnd?.(); }
   };
-  rec.onerror = (e) => { if (!done) onError?.(e.error); };
-  rec.onend = () => {
-    if (!done) {
-      if (lastTranscript) { done = true; onResult?.(lastTranscript); }
-      else onError?.("no-speech");
-    }
-    onEnd?.();
-  };
-  try { rec.start(); } catch { onError?.("start-failed"); onEnd?.(); }
-  return () => { try { rec.stop(); } catch { /* already stopped */ } };
+  runSession();
+  return () => { stopped = true; try { currentRec?.stop(); } catch { /* already stopped */ } };
 }
 
 const stripAccents = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
