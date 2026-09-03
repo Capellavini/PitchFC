@@ -28,6 +28,18 @@ function nextGameISO(weekday, time) {
   return d.toISOString();
 }
 
+// An explicit "YYYY-MM-DD" + "HH:MM" (organizer picked a real calendar
+// date, e.g. one far out like 13/09) → ISO timestamp, local time.
+function isoFromDateTime(dateStr, time) {
+  const [y, mo, da] = dateStr.split("-").map(Number);
+  const [h, mi] = (time || "20:00").split(":").map(Number);
+  return new Date(y, mo - 1, da, h, mi, 0, 0).toISOString();
+}
+const weekdayFromDateStr = (dateStr) => {
+  const [y, mo, da] = dateStr.split("-").map(Number);
+  return new Date(y, mo - 1, da).getDay();
+};
+
 const EMPTY = {
   user: null, myPlayer: null, groupRow: null,
   players: [], game: null, attendances: [], events: [], bookings: [],
@@ -503,7 +515,11 @@ export function useCloud() {
     setData((d) => ({ ...d, players: d.players.map((p) => (p.id === playerId ? { ...p, ...fields } : p)) }));
     await supabase.from("players").update(fields).eq("id", playerId);
   };
-  const updateGroupRow = async (fields) => {
+  /** `scheduledAtIso`: an explicit kickoff timestamp, when the caller
+   *  pinned a real calendar date (possibly weeks out) rather than just
+   *  editing the weekday/time pattern — otherwise falls back to "next
+   *  occurrence of weekday", as before. */
+  const updateGroupRow = async (fields, scheduledAtIso) => {
     setData((d) => ({ ...d, groupRow: { ...d.groupRow, ...fields } }));
     const r = await supabase.from("groups").update(fields).eq("id", data.groupRow.id);
     if (r.error) {
@@ -519,7 +535,7 @@ export function useCloud() {
     if (data.game && (fields.weekday !== undefined || fields.game_time !== undefined || fields.venue !== undefined)) {
       const weekday = fields.weekday ?? data.groupRow.weekday;
       const time = fields.game_time ?? data.groupRow.game_time;
-      const gamePatch = { scheduled_at: nextGameISO(weekday, time) };
+      const gamePatch = { scheduled_at: scheduledAtIso ?? nextGameISO(weekday, time) };
       if (fields.venue !== undefined) gamePatch.venue = fields.venue;
       setData((d) => ({ ...d, game: d.game ? { ...d.game, ...gamePatch } : d.game }));
       await supabase.from("games").update(gamePatch).eq("id", data.game.id);
@@ -527,15 +543,18 @@ export function useCloud() {
   };
 
   /** First game for a group that was created with "Ainda não sei o
-   *  dia/hora" (no game row yet) — organizer picks weekday/time from the
-   *  JogoTab empty state. Everyone currently in the group starts pending
-   *  on it, same as a freshly-created group. */
-  const scheduleNextGame = async (weekday, time) => {
+   *  dia/hora" (no game row yet) — organizer picks an exact calendar date
+   *  (not just a weekday — the group's very first game is often weeks out,
+   *  where "next Saturday" is the wrong answer) from the JogoTab empty
+   *  state. Everyone currently in the group starts pending on it, same as
+   *  a freshly-created group. */
+  const scheduleNextGame = async (dateIso, time) => {
     if (!data.groupRow) return { error: "Sem grupo." };
     const groupId = data.groupRow.id;
+    const weekday = weekdayFromDateStr(dateIso);
     await supabase.from("groups").update({ weekday, game_time: time }).eq("id", groupId);
     const game = await supabase.from("games").insert({
-      group_id: groupId, scheduled_at: nextGameISO(weekday, time),
+      group_id: groupId, scheduled_at: isoFromDateTime(dateIso, time),
       venue: data.groupRow.venue, spots: data.groupRow.max_players,
       total_cost_cents: data.groupRow.monthly_price_cents,
       status: "open", recurring_rule: `weekly_${weekday}_${time}`,

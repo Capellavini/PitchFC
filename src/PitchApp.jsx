@@ -15,7 +15,7 @@ import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
-import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, isoDay, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor } from "./lib/helpers";
+import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, fmtFullDay, isoDay, toIsoDay, fromIso, dateTimeFromIso, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor } from "./lib/helpers";
 import { t, setLang, detectLang } from "./lib/i18n";
 import { getThemeMode, setThemeMode } from "./lib/themeMode";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
@@ -181,16 +181,32 @@ export default function PitchApp() {
       ? { groupName: "", venue: "", city: "", weekday: 6, time: "20:00", monthlyPrice: 0, maxPlayers: 0, recurring: false, openWeekday: 1, openTime: "17:00" }
       : settings;
 
-  const saveSettings = (form) => {
+  // `scheduledAtIso`: an explicit kickoff timestamp for the *next*
+  // occurrence, when the caller picked a real calendar date (e.g. the
+  // "Alterar" flow) rather than just editing the weekday/time pattern —
+  // otherwise the game row falls back to "next occurrence of weekday".
+  const saveSettings = (form, scheduledAtIso) => {
     if (cloudMode) {
       cloud.updateGroupRow({
         name: form.groupName, venue: form.venue, city: form.city, weekday: form.weekday, game_time: form.time,
         monthly_price_cents: Math.round(form.monthlyPrice * 100), max_players: form.maxPlayers,
         recurring: form.recurring, open_weekday: form.openWeekday, open_time: form.openTime,
-      });
+      }, scheduledAtIso);
     } else {
-      setSettings(form);
+      // Local demo has no separate "games" row — stash the pinned date
+      // (if any) alongside the weekday/time pattern; only touch it when
+      // the caller actually provided one, so a general settings edit
+      // doesn't silently clear an earlier pin.
+      setSettings(scheduledAtIso !== undefined ? { ...form, scheduledAt: scheduledAtIso } : form);
     }
+  };
+
+  // Organizer picks an exact calendar date for the next game (not just a
+  // weekday) — essential for a far-off or one-off date like "13/09",
+  // which "próximo sábado"-style weekday picking can't express.
+  const rescheduleGame = (dateIso, time) => {
+    const weekday = fromIso(dateIso).getDay();
+    saveSettings({ ...groupSettings, weekday, time }, dateTimeFromIso(dateIso, time).toISOString());
   };
 
   // Organizer adjusts how many players this game needs (default 10).
@@ -300,18 +316,25 @@ export default function PitchApp() {
   // mode can be in this state; local demo always ships with a game.
   const noGameScheduled = cloudMode && !cloud.game;
 
+  // Real kickoff timestamp — prefer the cloud game's own scheduled_at (it
+  // may have been pinned to an exact date, possibly weeks out, rather than
+  // just "next occurrence of the weekday pattern"). Used both for the
+  // header label below and to lock the Fantasy squad 8h before kickoff.
+  const kickoffAt = cloud.game?.scheduled_at
+    ? new Date(cloud.game.scheduled_at)
+    : groupSettings.scheduledAt
+      ? new Date(groupSettings.scheduledAt)
+      : nextGameDate(groupSettings.weekday, groupSettings.time);
+
   // The "next game" as the UI consumes it.
   const game = {
     ...groupSettings,
     id: gameId,
     label: groupSettings.groupName,
-    date: nextGameDateLabel(groupSettings.weekday),
+    date: fmtFullDay(toIsoDay(kickoffAt)),
     spots: groupSettings.maxPlayers,
     priceEach: groupSettings.maxPlayers > 0 ? groupSettings.monthlyPrice / groupSettings.maxPlayers : 0,
-    // Real kickoff timestamp — prefer the cloud game's own scheduled_at
-    // (it may have been shifted for this one week) over the recurring
-    // weekday/time pattern. Used to lock the Fantasy squad 8h before kickoff.
-    kickoffAt: cloud.game?.scheduled_at ? new Date(cloud.game.scheduled_at) : nextGameDate(groupSettings.weekday, groupSettings.time),
+    kickoffAt,
     noGameScheduled,
   };
 
@@ -1153,8 +1176,8 @@ export default function PitchApp() {
             togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
             canManageTeams={canManageTeams} onSetPlayerStatus={setPlayerStatus}
             inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
-            onReschedule={(weekday, time) => saveSettings({ ...groupSettings, weekday, time })}
-            onScheduleGame={cloudMode ? (weekday, time) => cloud.scheduleNextGame(weekday, time) : undefined}
+            onReschedule={rescheduleGame}
+            onScheduleGame={cloudMode ? (dateIso, time) => cloud.scheduleNextGame(dateIso, time) : undefined}
             confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
           />
         ))}

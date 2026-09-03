@@ -72,7 +72,25 @@ export function isoDay(offset = 0) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const fromIso = (iso) => new Date(`${iso}T12:00:00`);
+/** The reverse of isoDay: a Date object → local "YYYY-MM-DD", for feeding
+ *  a <input type="date"> or storing alongside isoDay-shaped values. */
+export function toIsoDay(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+export const fromIso = (iso) => new Date(`${iso}T12:00:00`);
+
+/** An isoDay ("YYYY-MM-DD") + "HH:MM" → real kickoff Date, local time
+ *  (noon-anchored isoDay parse, then the actual hour/minute applied —
+ *  avoids the DST/timezone-boundary date-shift a plain `new Date(iso)`
+ *  parse risks). Used when the organizer picks an exact calendar date
+ *  for the next game instead of "next occurrence of this weekday". */
+export function dateTimeFromIso(iso, time = "20:00") {
+  const d = fromIso(iso);
+  const [h, m] = (time || "20:00").split(":").map(Number);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
 
 /** "Sex 13" — short chip label for a day picker. */
 export const dayChipLabel = (iso) => {
