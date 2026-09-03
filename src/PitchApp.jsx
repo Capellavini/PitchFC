@@ -157,9 +157,11 @@ export default function PitchApp() {
           position: p.position, foot: p.foot, attrs: p.attrs ?? defaultAttrsFor(p.position),
           isOrganizerPlayer: p.is_organizer, isAssistant: p.is_assistant,
           isGuest: !p.user_id, injured: p.injured,
+          playerType: p.player_type || "mensalista",
           magicToken: p.magic_token,
           status: att?.status ?? "pending", paid: att?.paid ?? false,
           respondedAt: att?.responded_at ?? null,
+          priorityLocked: att?.priority_locked ?? false,
           isMe: cloud.myPlayer?.id === p.id,
           // Season stats now live on the cloud player row (shared ranking).
           goals: p.goals || 0, assists: p.assists || 0, mvps: p.mvps || 0,
@@ -1017,6 +1019,11 @@ export default function PitchApp() {
   const inviteUrl = cloudMode && cloud.groupRow?.invite_token
     ? `${window.location.origin}?join=${cloud.groupRow.invite_token}`
     : null;
+  // Second link: joining through it marks the new player as an avulso
+  // (waitlist by default) instead of a mensalista — see joinGroupByToken.
+  const inviteUrlAvulso = cloudMode && cloud.groupRow?.invite_token_avulso
+    ? `${window.location.origin}?join=${cloud.groupRow.invite_token_avulso}`
+    : null;
 
   // ── Normalized views for Stats/MVP (shared between cloud & local) ──
   const nickByKey = (key) => baseGroup.find((p) => (cloudMode ? p.uuid : p.id) === key)?.nick;
@@ -1211,7 +1218,7 @@ export default function PitchApp() {
         )}
         {tab === "grupo" && (noGroup
           ? <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
-          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} canManageTeams={canManageTeams} records={recordsView} onDeleteMatchday={deleteMatchdayRecord} totalGames={historyView.reduce((s, h) => s + (h.games || 1), 0)} />)}
+          : <GrupoTab group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode} inviteUrl={inviteUrl} inviteUrlAvulso={inviteUrlAvulso} isOrganizer={isOrganizer} onToggleAssistant={cloud.toggleAssistant} onSetPlayerType={(playerId, type) => cloud.updatePlayer(playerId, { player_type: type })} onSetAttendanceLock={(playerId, locked) => cloud.setAttendanceLock(locked, playerId, gameId)} onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus} onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember} bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} canManageTeams={canManageTeams} records={recordsView} onDeleteMatchday={deleteMatchdayRecord} totalGames={historyView.reduce((s, h) => s + (h.games || 1), 0)} />)}
         {tab === "fantasy" && cloud.canSeeFantasy && (
           <FantasyTab
             group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}

@@ -361,8 +361,18 @@ export function useCloud() {
   /** Logged-in player joins a group via its invite token. */
   const joinGroupByToken = async (token) => {
     const user = userRef.current;
-    const grp = await supabase.from("groups").select("id").eq("invite_token", token.trim()).limit(1);
-    const groupId = grp.data?.[0]?.id;
+    const trimmed = token.trim();
+    // Two links per group: the regular one (mensalista, confirmation
+    // priority) and a second one for avulsos (drop-ins, waitlist by
+    // default) — whichever the joiner clicked decides player_type.
+    let groupId, playerType = "mensalista";
+    const asMensalista = await supabase.from("groups").select("id").eq("invite_token", trimmed).limit(1);
+    groupId = asMensalista.data?.[0]?.id;
+    if (!groupId) {
+      const asAvulso = await supabase.from("groups").select("id").eq("invite_token_avulso", trimmed).limit(1);
+      groupId = asAvulso.data?.[0]?.id;
+      if (groupId) playerType = "avulso";
+    }
     if (!groupId) return { error: "Convite inválido ou expirado." };
 
     let player = data.myPlayer;
@@ -382,10 +392,10 @@ export function useCloud() {
       // elsewhere must never carry into a group they didn't create. The
       // membership-sync trigger reads these same columns, so resetting
       // them here also keeps the new player_group_memberships row correct.
-      await supabase.from("players").update({ group_id: groupId, is_organizer: false, is_assistant: false }).eq("id", player.id);
+      await supabase.from("players").update({ group_id: groupId, is_organizer: false, is_assistant: false, player_type: playerType }).eq("id", player.id);
     } else {
       const ins = await supabase.from("players").insert({
-        user_id: user.id, group_id: groupId,
+        user_id: user.id, group_id: groupId, player_type: playerType,
         name: user.user_metadata?.name ?? user.email, nick: (user.user_metadata?.name ?? "Jogador").split(" ")[0],
         email: user.email, phone: user.user_metadata?.phone ?? null,
         position: "Médio", foot: "Direito",
@@ -413,13 +423,14 @@ export function useCloud() {
     if (!data.myPlayer) return { error: "Sem sessão." };
     if (data.myPlayer.group_id === groupId) return {};
     const m = await supabase.from("player_group_memberships")
-      .select("role,banned").eq("player_id", data.myPlayer.id).eq("group_id", groupId).maybeSingle();
+      .select("role,banned,player_type").eq("player_id", data.myPlayer.id).eq("group_id", groupId).maybeSingle();
     if (!m.data) return { error: "Não pertences a esse grupo." };
     if (m.data.banned) return { error: "Foste removido deste grupo pelo organizador." };
     const r = await supabase.from("players").update({
       group_id: groupId,
       is_organizer: m.data.role === "organizer",
       is_assistant: m.data.role === "assistant",
+      player_type: m.data.player_type ?? "mensalista",
     }).eq("id", data.myPlayer.id);
     if (r.error) return { error: r.error.message };
     await refetch();
@@ -509,6 +520,14 @@ export function useCloud() {
   const setPaid = async (paid, playerId, gameId) => {
     setData((d) => ({ ...d, attendances: d.attendances.map((a) => (a.player_id === playerId ? { ...a, paid } : a)) }));
     await supabase.from("attendances").update({ paid, paid_at: paid ? new Date().toISOString() : null })
+      .eq("game_id", gameId).eq("player_id", playerId);
+  };
+  /** Organizer manually locks a confirmed avulso's spot for this game —
+   *  once locked, a mensalista confirming afterwards no longer bumps
+   *  them (see splitWaitlist in lib/helpers.js). */
+  const setAttendanceLock = async (locked, playerId, gameId) => {
+    setData((d) => ({ ...d, attendances: d.attendances.map((a) => (a.player_id === playerId && a.game_id === gameId ? { ...a, priority_locked: locked } : a)) }));
+    await supabase.from("attendances").update({ priority_locked: locked })
       .eq("game_id", gameId).eq("player_id", playerId);
   };
   const updatePlayer = async (playerId, fields) => {
@@ -1161,8 +1180,10 @@ export function useCloud() {
   /** Organizer adds a guest player (no account) — confirmed for the
    *  current game so they show up on the grid and in the draw. */
   const addManualPlayer = async ({ name, nick, position, attrs }) => {
+    // A guest the organizer types in by hand is, by definition, a drop-in
+    // — starts as an avulso (still toggleable to mensalista afterwards).
     const ins = await supabase.from("players")
-      .insert({ group_id: data.groupRow.id, name, nick, position, foot: "Direito", attrs })
+      .insert({ group_id: data.groupRow.id, name, nick, position, foot: "Direito", attrs, player_type: "avulso" })
       .select().single();
     if (data.game && ins.data) {
       await supabase.from("attendances")
@@ -1234,7 +1255,7 @@ export function useCloud() {
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup, removeMember, banMember, unbanMember,
-    setMyStatus, setPaid, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
+    setMyStatus, setPaid, setAttendanceLock, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated, fetchRoadmapContent, saveRoadmapContent,
     fetchFantasyAdminData,

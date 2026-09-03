@@ -19,9 +19,16 @@ export const fmtEUR = (n) =>
  * they're always in. When someone drops out, the next in line takes the
  * freed slot automatically (this is derived, not stored).
  */
+// Mensalistas (regular members) always outrank a not-yet-locked avulso
+// (drop-in), regardless of who confirmed first — an avulso only holds
+// their ground once the organizer has locked their spot for this game
+// (priorityLocked), at which point they compete on responded_at same as
+// everyone else. Local-demo player objects have neither field, so they
+// fall through to tier 0 — unchanged from the old behavior.
 export const splitWaitlist = (confirmed, spots) => {
+  const tier = (p) => (p.playerType === "avulso" && !p.priorityLocked ? 1 : 0);
   const ts = (p) => (p.respondedAt ? new Date(p.respondedAt).getTime() : 0);
-  const ordered = [...confirmed].sort((a, b) => ts(a) - ts(b)); // stable for ties
+  const ordered = [...confirmed].sort((a, b) => tier(a) - tier(b) || ts(a) - ts(b)); // stable for ties
   return { playing: ordered.slice(0, spots), waitlist: ordered.slice(spots) };
 };
 

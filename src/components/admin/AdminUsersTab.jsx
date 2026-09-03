@@ -79,7 +79,7 @@ export default function AdminUsersTab({ cloud, snapshot, leads, refetchGroups, r
                   <tr key={p.id}>
                     <Td>
                       <div style={{ fontWeight: 600 }}>{p.nick}</div>
-                      <div style={{ fontSize: 11, color: C.text3 }}>{p.name}{p.is_organizer && <span style={{ color: C.blue, fontWeight: 700 }}> · ORG</span>}{p.is_assistant && !p.is_organizer && <span style={{ color: C.green, fontWeight: 700 }}> · AUX</span>}{!p.user_id && <span style={{ color: C.text3 }}> · avulso</span>}</div>
+                      <div style={{ fontSize: 11, color: C.text3 }}>{p.name}{p.is_organizer && <span style={{ color: C.blue, fontWeight: 700 }}> · ORG</span>}{p.is_assistant && !p.is_organizer && <span style={{ color: C.green, fontWeight: 700 }}> · AUX</span>}{!p.user_id && <span style={{ color: C.text3 }}> · convidado</span>}{p.player_type === "avulso" && <span style={{ color: C.orange, fontWeight: 700 }}> · avulso</span>}</div>
                     </Td>
                     <Td>
                       <div>{p.email || <span style={{ color: C.text3 }}>—</span>}</div>

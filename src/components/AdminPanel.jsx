@@ -184,7 +184,8 @@ export default function AdminPanel({ fetchAdminData, actions = {}, isFantasyAdmi
                       {p.nick}
                       {p.is_organizer && <span style={{ fontSize: 8, color: C.blue, fontWeight: 700, marginLeft: 5 }}>ORG</span>}
                       {p.is_assistant && !p.is_organizer && <span style={{ fontSize: 8, color: C.green, fontWeight: 700, marginLeft: 5 }}>AUX</span>}
-                      {!p.user_id && <span style={{ fontSize: 8, color: C.text3, fontWeight: 700, marginLeft: 5 }}>AVULSO</span>}
+                      {!p.user_id && <span style={{ fontSize: 8, color: C.text3, fontWeight: 700, marginLeft: 5 }}>CONVIDADO</span>}
+                      {p.player_type === "avulso" && <span style={{ fontSize: 8, color: C.orange, fontWeight: 700, marginLeft: 5 }}>AVULSO</span>}
                     </div>
                     <div style={{ fontSize: 10, color: C.text3 }}>
                       {p.position || "—"}{att && <> · <span style={{ color: ATT_COLOR[att.status] ?? C.text3 }}>{att.status}</span></>}

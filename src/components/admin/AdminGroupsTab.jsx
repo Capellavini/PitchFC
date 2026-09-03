@@ -126,7 +126,11 @@ export default function AdminGroupsTab({ cloud, snapshot, refetchGroups }) {
                     <Td>
                       {p.is_organizer && <span style={{ fontSize: 10, color: C.blue, fontWeight: 700 }}>ORGANIZADOR</span>}
                       {p.is_assistant && !p.is_organizer && <span style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>AUXILIAR</span>}
-                      {!p.is_organizer && !p.is_assistant && <span style={{ fontSize: 10, color: C.text3 }}>{p.user_id ? "jogador" : "avulso"}</span>}
+                      {!p.is_organizer && !p.is_assistant && (
+                        <span style={{ fontSize: 10, color: C.text3 }}>
+                          {p.user_id ? "jogador" : "convidado"}{p.player_type === "avulso" && " · avulso"}
+                        </span>
+                      )}
                     </Td>
                     <Td align="right">
                       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>

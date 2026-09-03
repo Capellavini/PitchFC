@@ -553,6 +553,15 @@ const EN = {
   "O organizador está a preparar as equipas — aguarda a confirmação.": "The organizer is putting the teams together — wait for confirmation.",
   "Sorteado por": "Drawn by", "ainda por confirmar": "not confirmed yet",
   "confirmado por": "confirmed by", "Confirmado por": "Confirmed by",
+
+  // ── Mensalista / avulso ──────────────────────────────────
+  "Convidar mensalista": "Invite regular", "Convidar avulso": "Invite drop-in",
+  "Tornar mensalista": "Make regular", "Tornar avulso": "Make drop-in",
+  "AVULSO": "DROP-IN",
+  "Confirmado definitivamente pelo organizador": "Locked in by the organizer",
+  "Confirmar definitivamente (protege a vaga)": "Lock in (protects the spot)",
+  "Desbloquear vaga (volta a poder ser trocado por um mensalista)": "Unlock spot (a regular member can bump them again)",
+  "Convidado": "Guest", "Adicionar convidado (sem conta)": "Add guest (no account)",
 };
 
 const PT_BR = {
@@ -1269,6 +1278,15 @@ const IT = {
   "O organizador está a preparar as equipas — aguarda a confirmação.": "L'organizzatore sta preparando le squadre — attendi la conferma.",
   "Sorteado por": "Sorteggiato da", "ainda por confirmar": "ancora da confermare",
   "confirmado por": "confermato da", "Confirmado por": "Confermato da",
+
+  // ── Mensalista / avulso ──────────────────────────────────
+  "Convidar mensalista": "Invita abbonato", "Convidar avulso": "Invita occasionale",
+  "Tornar mensalista": "Rendi abbonato", "Tornar avulso": "Rendi occasionale",
+  "AVULSO": "OCCASIONALE",
+  "Confirmado definitivamente pelo organizador": "Confermato definitivamente dall'organizzatore",
+  "Confirmar definitivamente (protege a vaga)": "Conferma definitivamente (protegge il posto)",
+  "Desbloquear vaga (volta a poder ser trocado por um mensalista)": "Sblocca il posto (un abbonato può riprenderlo)",
+  "Convidado": "Ospite", "Adicionar convidado (sem conta)": "Aggiungi ospite (senza account)",
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR, it: IT };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircle, ChevronRight, ChevronDown, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2, UserMinus, Ban, ArrowDownAZ } from "lucide-react";
+import { MessageCircle, ChevronRight, ChevronDown, Copy, Check, ShieldCheck, UserPlus, X, UserCheck, UserX, Trash2, UserMinus, Ban, ArrowDownAZ, Repeat, Lock, Unlock } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { POSITIONS } from "../data";
 import { playerColor, computeOverall } from "../lib/helpers";
@@ -13,11 +13,11 @@ import Collapsible from "./Collapsible";
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday, totalGames }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, inviteUrlAvulso, isOrganizer, onToggleAssistant, onSetPlayerType, onSetAttendanceLock, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday, totalGames }) {
   const [view, setView] = useState("squad"); // 'squad' | 'records'
   const [sortAZ, setSortAZ] = useState(false);
   const [openRecordId, setOpenRecordId] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(null); // which link was last copied: 'mensalista' | 'avulso'
   const [guestOpen, setGuestOpen] = useState(false);
   const [guest, setGuest] = useState(EMPTY_GUEST);
   const submitGuest = () => {
@@ -26,8 +26,8 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
     setGuest(EMPTY_GUEST);
     setGuestOpen(false);
   };
-  const copyInvite = async () => {
-    try { await navigator.clipboard.writeText(inviteUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+  const copyInvite = async (url, which) => {
+    try { await navigator.clipboard.writeText(url); setCopied(which); setTimeout(() => setCopied(null), 2000); } catch { /* ignore */ }
   };
   const sortItems = (items) => (sortAZ ? [...items].sort((a, b) => a.nick.localeCompare(b.nick, "pt")) : items);
   // Compact day highlights for Records — computed from that day's saved
@@ -155,30 +155,47 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
         </div>
       ) : (
       <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: inviteUrl ? 10 : 16 }}>
         <button onClick={() => setSortAZ((s) => !s)}
           style={{ background: sortAZ ? C.accentDim : C.card, color: sortAZ ? C.accent : C.text2, border: `1px solid ${sortAZ ? C.accentBorder : C.border}`, borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
           <ArrowDownAZ size={13} /> A–Z
         </button>
         <div style={{ flex: 1 }} />
-        {inviteUrl ? (
-          <>
-            <button onClick={() => openWhatsApp(groupInviteMessage(game.groupName, inviteUrl))}
-              style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-              <MessageCircle size={13} /> {t("Convidar")}
-            </button>
-            <button onClick={copyInvite}
-              style={{ background: C.card, color: copied ? C.green : C.text2, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 10, padding: "7px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-              {copied ? <Check size={13} /> : <Copy size={13} />}
-            </button>
-          </>
-        ) : (
+        {!inviteUrl && (
           <button onClick={() => openWhatsApp(inviteMessage(game.groupName, game))}
             style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
             <MessageCircle size={13} /> {t("Convidar")}
           </button>
         )}
       </div>
+
+      {/* Two invite links: the regular one gives confirmation priority
+          (mensalista), the second one starts people on the waitlist by
+          default (avulso) — see joinGroupByToken. */}
+      {inviteUrl && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+          <button onClick={() => openWhatsApp(groupInviteMessage(game.groupName, inviteUrl))}
+            style={{ background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+            <MessageCircle size={13} /> {t("Convidar mensalista")}
+          </button>
+          <button onClick={() => copyInvite(inviteUrl, "mensalista")}
+            style={{ background: C.card, color: copied === "mensalista" ? C.green : C.text2, border: `1px solid ${copied === "mensalista" ? C.greenBorder : C.border}`, borderRadius: 10, padding: "7px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+            {copied === "mensalista" ? <Check size={13} /> : <Copy size={13} />}
+          </button>
+          {inviteUrlAvulso && (
+            <>
+              <button onClick={() => openWhatsApp(groupInviteMessage(game.groupName, inviteUrlAvulso))}
+                style={{ background: C.orangeDim, color: C.orange, border: `1px solid ${C.orange}44`, borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                <MessageCircle size={13} /> {t("Convidar avulso")}
+              </button>
+              <button onClick={() => copyInvite(inviteUrlAvulso, "avulso")}
+                style={{ background: C.card, color: copied === "avulso" ? C.green : C.text2, border: `1px solid ${copied === "avulso" ? C.greenBorder : C.border}`, borderRadius: 10, padding: "7px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                {copied === "avulso" ? <Check size={13} /> : <Copy size={13} />}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {sections.map((section) => section.items.length > 0 && (
         <div key={section.label} style={{ marginBottom: 20 }}>
@@ -195,6 +212,12 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                       {p.nick} {p.isMe && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}>{t("(tu)")}</span>}
                       {p.isOrganizerPlayer && <span style={{ fontSize: 9, color: C.blue, fontWeight: 700, marginLeft: 6 }}>ORG</span>}
                       {p.isAssistant && !p.isOrganizerPlayer && <span style={{ fontSize: 9, color: C.green, fontWeight: 700, marginLeft: 6 }}>{t("AUXILIAR")}</span>}
+                      {p.playerType === "avulso" && (
+                        <span title={p.priorityLocked ? t("Confirmado definitivamente pelo organizador") : undefined}
+                          style={{ fontSize: 9, color: C.orange, fontWeight: 700, marginLeft: 6 }}>
+                          {t("AVULSO")}{p.priorityLocked ? " 🔒" : ""}
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: C.text2 }}>{t(p.position)} · {p.gamesPlayed}/{totalGames || 0} {t("jogos")}</div>
                   </div>
@@ -240,6 +263,26 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                       <ShieldCheck size={14} color={p.isAssistant ? C.green : C.text3} />
                     </span>
                   )}
+                  {cloudMode && isOrganizer && !p.isMe && onSetPlayerType && (
+                    <span
+                      role="button"
+                      title={p.playerType === "avulso" ? t("Tornar mensalista") : t("Tornar avulso")}
+                      onClick={(e) => { e.stopPropagation(); onSetPlayerType(p.uuid, p.playerType === "avulso" ? "mensalista" : "avulso"); }}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: p.playerType === "avulso" ? C.orangeDim : C.surface, border: `1px solid ${p.playerType === "avulso" ? C.orange : C.border}`, cursor: "pointer", flexShrink: 0 }}
+                    >
+                      <Repeat size={14} color={p.playerType === "avulso" ? C.orange : C.text3} />
+                    </span>
+                  )}
+                  {cloudMode && isOrganizer && p.playerType === "avulso" && p.status === "confirmed" && onSetAttendanceLock && (
+                    <span
+                      role="button"
+                      title={p.priorityLocked ? t("Desbloquear vaga (volta a poder ser trocado por um mensalista)") : t("Confirmar definitivamente (protege a vaga)")}
+                      onClick={(e) => { e.stopPropagation(); onSetAttendanceLock(p.uuid, !p.priorityLocked); }}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, background: p.priorityLocked ? C.greenDim : C.surface, border: `1px solid ${p.priorityLocked ? C.greenBorder : C.border}`, cursor: "pointer", flexShrink: 0 }}
+                    >
+                      {p.priorityLocked ? <Lock size={14} color={C.green} /> : <Unlock size={14} color={C.text3} />}
+                    </span>
+                  )}
                   <div style={{ ...displayFont, fontSize: 15, color: locked ? C.text3 : tierColor(overall), minWidth: 26, textAlign: "center" }}>
                     {locked ? "?" : overall}
                     <div style={{ fontSize: 8, fontWeight: 700, fontStyle: "normal", letterSpacing: "0.05em", color: C.text3 }}>OVR</div>
@@ -257,7 +300,7 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
         guestOpen ? (
           <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 800 }}>{t("Jogador avulso")}</span>
+              <span style={{ fontSize: 13, fontWeight: 800 }}>{t("Convidado")}</span>
               <button onClick={() => { setGuestOpen(false); setGuest(EMPTY_GUEST); }} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex" }}><X size={16} /></button>
             </div>
             <input value={guest.name} onChange={(e) => setGuest((g) => ({ ...g, name: e.target.value }))} placeholder={t("Nome do jogador")}
@@ -280,7 +323,7 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
           </div>
         ) : (
           <button onClick={() => setGuestOpen(true)} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14, cursor: "pointer", color: C.accent, border: `1px dashed ${C.accentBorder}`, background: C.accentDim, fontWeight: 800, fontSize: 13 }}>
-            <UserPlus size={16} /> {t("Adicionar jogador avulso (sem conta)")}
+            <UserPlus size={16} /> {t("Adicionar convidado (sem conta)")}
           </button>
         )
       )}
