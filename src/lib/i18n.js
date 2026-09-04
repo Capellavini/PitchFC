@@ -312,7 +312,7 @@ const EN = {
   "Único (cada equipa joga uma vez)": "Single (each team plays once)",
   "Ida e volta (repete confronto)": "Home & away (repeat fixture)",
   "Ter fase final (play-off)": "Add a play-off stage",
-  "Quantas equipas vão à final:": "How many teams reach the final:",
+  "Quantas equipas vão à final:": "How many teams reach the play-offs:",
   "1º lugar da fase de grupos vai direto à final": "1st place from the group stage skips straight to the final",
   "Permitir grandes penalidades em caso de empate": "Allow a penalty shootout on a draw",
   "passa à próxima ronda": "advances to the next round",
@@ -562,6 +562,22 @@ const EN = {
   "Confirmar definitivamente (protege a vaga)": "Lock in (protects the spot)",
   "Desbloquear vaga (volta a poder ser trocado por um mensalista)": "Unlock spot (a regular member can bump them again)",
   "Convidado": "Guest", "Adicionar convidado (sem conta)": "Add guest (no account)",
+
+  // ── Matchday: Tournament/Fixtures/Matchday Stats sub-nav ────
+  "Torneio": "Tournament", "Jogos": "Fixtures", "Stats do Dia": "Matchday Stats",
+  "FASE FINAL": "PLAY-OFFS", "bye": "bye",
+  "Só é possível avançar para os play-offs quando todos os jogos desta fase estiverem concluídos.": "Can only advance to play-offs when all fixtures are concluded.",
+  "CONCLUÍDO": "CONCLUDED", "Concluir jogo": "Conclude game", "Concluído": "Concluded",
+  "Recolher": "Collapse", "Reabrir": "Reopen",
+  "STATS DO DIA": "MATCHDAY STATS",
+  "Ainda sem golos ou assistências registados hoje.": "No goals or assists logged yet today.",
+
+  // ── Stats tab: ranking splits ────────────────────────────
+  "Ranking Jogadores de Campo": "Onfield Ranking",
+  "O mesmo cálculo do Impacto, só que restrito a quem joga fora da baliza.": "The same Impact calculation, restricted to outfield players.",
+  "Ranking Guarda-redes": "Goalkeeper Ranking",
+  "O mesmo cálculo de Guarda-redes, só que restrito a quem joga nessa posição.": "The same Goalkeeper calculation, restricted to players in that position.",
+  "Voltar ao ranking": "Back to ranking",
 };
 
 const PT_BR = {

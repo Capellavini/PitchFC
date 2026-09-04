@@ -4,7 +4,6 @@ import { C, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
-import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import PostMatchCardModal from "./PostMatchCard";
 import WorkoutCardModal from "./WorkoutCardModal";
@@ -18,8 +17,8 @@ const RANKS = [
 
 export default function StatsTab({ group, history, matchdaySummaries = [], lastMatchday, mvp, statMode, setStatMode, groupName, onCardGenerated, social }) {
   const totalGames = history.reduce((s, h) => s + (h.games || 1), 0);
-  const lines = lastMatchday?.lines ?? [];
   const [cardStep, setCardStep] = useState(null); // null | 'pick' | 'match' | 'workout'
+  const [showCompare, setShowCompare] = useState(false); // dedicated "compare players" screen, separate from the rankings
   const [comparePicks, setComparePicks] = useState([]); // season-stable keys, 2-4 players
   const togglePick = (key) => setComparePicks((cur) =>
     cur.includes(key) ? cur.filter((k) => k !== key) : (cur.length >= 4 ? cur : [...cur, key]));
@@ -79,14 +78,20 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
     return formaOf(p) / recentGames >= seasonPerDay * 1.3;
   };
 
+  const outfieldGroup = group.filter((p) => p.position !== "Guarda-redes");
+  const goalkeeperGroup = group.filter((p) => p.position === "Guarda-redes");
   const PLAYER_CATEGORIES = [
     { id: "geral", label: t("Impacto"), value: impactoOf,
       hint: t("Quem está mais completo esta época, tudo junto num só número: golo vale mais quanto mais longe da baliza adversária é a posição (2 Avançado, 2,5 Médio, 3 Defesa, 4 Guarda-redes), 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.") },
+    { id: "onfield", label: t("Ranking Jogadores de Campo"), value: impactoOf, source: outfieldGroup,
+      hint: t("O mesmo cálculo do Impacto, só que restrito a quem joga fora da baliza.") },
     { id: "goals", label: `⚽ ${t("Golos")}`, value: (p) => p.goals || 0, hint: t("Total de golos marcados na época.") },
     { id: "assists", label: "🎯 Assists", value: (p) => p.assists || 0, hint: t("Total de assistências na época.") },
     { id: "mvps", label: "⭐ MVPs", value: (p) => p.mvps || 0, hint: t("Vezes eleito MVP do dia.") },
     { id: "gk", label: `🧤 ${t("Guarda-redes")}`, value: (p) => (p.cleanSheets || 0) * 3 + (p.epicSaves || 0),
       hint: t("Clean sheets (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.") },
+    { id: "gkRanking", label: t("Ranking Guarda-redes"), value: (p) => (p.cleanSheets || 0) * 3 + (p.epicSaves || 0), source: goalkeeperGroup,
+      hint: t("O mesmo cálculo de Guarda-redes, só que restrito a quem joga nessa posição.") },
     { id: "gap", label: `📈 ${t("Sobre-entrega")}`, value: performanceGap, signed: true, noBar: true, suffix: "%", source: ratedGroup,
       hint: t("Compara o ranking de avaliação (OVR dos colegas) com o ranking real de Impacto. Positivo = rende mais do que esperavam; negativo = rende menos. Só entra quem já tem 3+ avaliações.") },
     { id: "forma", label: `🔥 ${t("Forma (últimos 5)")}`, value: formaOf, hot: isHot,
@@ -99,8 +104,7 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
     { id: "attackDay", label: `🔥 ${t("Melhor ataque (dia)")}`, hint: t("Mais golos marcados por uma equipa num único dia de jogo.") },
     { id: "defenseDay", label: `🛡️ ${t("Melhor defesa (dia)")}`, hint: t("Menos golos sofridos por uma equipa num único dia de jogo.") },
   ];
-  const COMPARE_CATEGORY = { id: "compare", label: `🆚 ${t("Comparar jogadores")}`, hint: t("Escolhe 2 a 4 jogadores para comparar as stats e ver a % de vitórias quando jogam juntos.") };
-  const ALL_CATEGORIES = [...PLAYER_CATEGORIES, ...TEAM_CATEGORIES, COMPARE_CATEGORY];
+  const ALL_CATEGORIES = [...PLAYER_CATEGORIES, ...TEAM_CATEGORIES];
   const activeCat = PLAYER_CATEGORIES.find((c) => c.id === statMode);
   const activeMeta = ALL_CATEGORIES.find((c) => c.id === statMode);
 
@@ -145,7 +149,7 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   const attackList = [...dayTeamRows].sort((a, b) => b.gf - a.gf).slice(0, 8);
   const defenseList = [...dayTeamRows].sort((a, b) => a.ga - b.ga).slice(0, 8);
 
-  const playerList = activeCat ? [...(activeCat.source || group)].sort((a, b) => activeCat.value(b) - activeCat.value(a)).slice(0, 8) : [];
+  const playerList = activeCat ? [...(activeCat.source || group)].sort((a, b) => activeCat.value(b) - activeCat.value(a)) : [];
   const playerMax = activeCat && playerList[0] ? (activeCat.value(playerList[0]) || 1) : 1;
 
   // Assigning a candidate to a rank they already hold elsewhere moves
@@ -164,49 +168,15 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
         <div style={{ fontSize: 13, color: C.text2 }}>{t("Temporada")} · {totalGames} {totalGames === 1 ? t("jogo") : t("jogos")}</div>
       </div>
 
-      {/* LAST MATCHDAY — games + per-player stats */}
-      {lastMatchday && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>{t("ÚLTIMO DIA DE JOGO")} · {(lastMatchday.date || "").toUpperCase()}</SectionLabel>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: lines.length ? 14 : 0 }}>
-            {(lastMatchday.matches ?? []).map((m) => (
-              <div key={m.n} style={{ background: C.surface, borderRadius: 12, padding: "10px 12px", textAlign: "center", flex: 1, minWidth: 110 }}>
-                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: C.text3, marginBottom: 4 }}>{t("JOGO")} {m.n}</div>
-                <div style={{ ...displayFont, fontSize: 20 }}>
-                  <span style={{ color: C.accent }}>{m.homeGoals}</span>
-                  <span style={{ color: C.text3 }}> – </span>
-                  <span style={{ color: C.blue }}>{m.awayGoals}</span>
-                </div>
-                {(m.homeName || m.awayName) && (
-                  <div style={{ fontSize: 9, color: C.text3, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.homeName} vs {m.awayName}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          {lines.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {lines.map((l) => (
-                <div key={l.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={l.nick} color={l.color || C.text2} size={28} fontSize={10} isMe={l.isMe} photo={l.photo} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: l.isMe ? 800 : 500, color: l.isMe ? C.accent : C.text1 }}>{l.nick}</span>
-                  <span style={{ fontSize: 12, color: C.text2, display: "flex", gap: 10 }}>
-                    {l.goals > 0 && <span>⚽ {l.goals}</span>}
-                    {l.assists > 0 && <span>🎯 {l.assists}</span>}
-                    {l.cleanSheets > 0 && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Shield size={11} color={C.green} /> {l.cleanSheets}</span>}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {iPlayed && (
-            <button onClick={() => setCardStep("pick")}
-              style={{ width: "100%", marginTop: 14, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <Share2 size={15} /> {t("Gerar o meu card")}
-            </button>
-          )}
-        </div>
+      {/* Post-match card CTA — the game-by-game breakdown that used to sit
+          here moved out: it already lives in Matchday (live) and História,
+          so showing it a third time here was pure duplication. This stays
+          just as the entry point into the share-card flow. */}
+      {lastMatchday && iPlayed && (
+        <button onClick={() => setCardStep("pick")}
+          style={{ width: "100%", marginBottom: 14, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <Share2 size={15} /> {t("Gerar o meu card")}
+        </button>
       )}
 
       {cardStep === "pick" && (
@@ -270,15 +240,30 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
         </div>
       ) : null)}
 
-      {/* RANKINGS — opens on "Geral"; a dropdown picks the rest */}
-      <select value={statMode} onChange={(e) => setStatMode(e.target.value)}
-        style={{ width: "100%", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 12px", fontSize: 14, fontWeight: 800, color: C.text1, outline: "none", marginBottom: 6 }}>
-        {ALL_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-      </select>
-      {activeMeta?.hint && <div style={{ fontSize: 11, color: C.text3, marginBottom: 16 }}>{activeMeta.hint}</div>}
+      {/* RANKINGS — opens on "Impacto", lists everyone (no top-8 cap); a
+          dropdown picks the rest. Comparing players is a separate screen,
+          not one more dropdown option — it isn't a ranking. */}
+      {!showCompare && (
+        <>
+          <select value={statMode} onChange={(e) => setStatMode(e.target.value)}
+            style={{ width: "100%", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 12px", fontSize: 14, fontWeight: 800, color: C.text1, outline: "none", marginBottom: 6 }}>
+            {ALL_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </select>
+          {activeMeta?.hint && <div style={{ fontSize: 11, color: C.text3, marginBottom: 10 }}>{activeMeta.hint}</div>}
+          <button onClick={() => setShowCompare(true)}
+            style={{ width: "100%", marginBottom: 16, background: C.card, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 10, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            🆚 {t("Comparar jogadores")}
+          </button>
+        </>
+      )}
 
-      {statMode === "compare" ? (
+      {showCompare ? (
         <div style={{ marginBottom: 20 }}>
+          <button onClick={() => setShowCompare(false)}
+            style={{ background: "none", border: "none", color: C.text2, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, marginBottom: 14 }}>
+            ← {t("Voltar ao ranking")}
+          </button>
+          <div style={{ fontSize: 11, color: C.text3, marginBottom: 16 }}>{t("Escolhe 2 a 4 jogadores para comparar as stats e ver a % de vitórias quando jogam juntos.")}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
             {group.map((p) => {
               const key = p.uuid ?? p.id;
