@@ -35,6 +35,7 @@ import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
 import BottomNav from "./components/BottomNav";
+import GroupSwitcher from "./components/GroupSwitcher";
 import JogoTab from "./components/JogoTab";
 import MatchdayTab from "./components/MatchdayTab";
 import ClubeTab from "./components/ClubeTab";
@@ -1182,8 +1183,16 @@ export default function PitchApp() {
   // ── Main app ───────────────────────────────────────────
   return shell(
     <>
-      <div style={{ display: "flex", alignItems: "center", padding: "14px 16px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0" }}>
         <img src={BRAND.logo} alt="PITCH App" style={{ height: 24 }} />
+        {!noGroup && (
+          <GroupSwitcher
+            currentName={game.groupName}
+            activeGroupId={cloudMode ? cloud.groupRow?.id : null}
+            myGroups={cloudMode ? cloud.myGroups : []}
+            onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}
+          />
+        )}
       </div>
       <div style={{ paddingBottom: 80 }}>
         {tab === "jogo" && (noGroup ? (
@@ -1261,8 +1270,6 @@ export default function PitchApp() {
             achievementMatchdays={achievementMatchdays}
             totalGames={historyView.reduce((s, h) => s + (h.games || 1), 0)}
             records={recordsView}
-            myGroups={cloudMode ? cloud.myGroups : []}
-            onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}
             onBanMember={banMember}
           />
         )}

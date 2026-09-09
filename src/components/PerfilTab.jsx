@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Repeat, Check, Moon, Sun } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -15,20 +15,11 @@ import AchievementsSection from "./AchievementsSection";
 import MatchdayCalendar from "./MatchdayCalendar";
 import ProgressChart from "./ProgressChart";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], myGroups, onSwitchGroup, onBanMember }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
   const [editing, setEditing] = useState(false);
-  const [switchingId, setSwitchingId] = useState(null);
-  const [switchError, setSwitchError] = useState(null);
-  const switchGroup = async (groupId) => {
-    setSwitchError(null);
-    setSwitchingId(groupId);
-    const res = await onSwitchGroup(groupId);
-    setSwitchingId(null);
-    if (res?.error) setSwitchError(res.error);
-  };
   const [banText, setBanText] = useState("");
   const [banBusy, setBanBusy] = useState(false);
   const [banError, setBanError] = useState(null);
@@ -382,34 +373,6 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
             <div style={{ fontSize: 11, color: C.text2 }}>{t("Torna-te organizador do teu próprio jogo semanal")}</div>
           </div>
         </button>
-      )}
-
-      {/* Meus grupos: switch which membership is active — only shown once
-          there's actually something to switch to. */}
-      {isOwn && onSwitchGroup && myGroups?.length > 1 && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>{t("Meus grupos")}</SectionLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-            {myGroups.map((m) => {
-              const active = m.group_id === player.group_id;
-              const roleLabel = m.role === "organizer" ? t("Organizador") : m.role === "assistant" ? t("Auxiliar") : t("Membro");
-              const busy = switchingId === m.group_id;
-              return (
-                <button key={m.group_id} onClick={() => !active && !busy && switchGroup(m.group_id)} disabled={active || busy}
-                  style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, cursor: active ? "default" : "pointer", textAlign: "left", color: C.text1, opacity: busy ? 0.6 : 1, padding: 12 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: active ? C.greenDim : C.surface, border: `1px solid ${active ? C.green : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {active ? <Check size={16} color={C.green} /> : <Repeat size={15} color={C.text2} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{m.groups?.name}</div>
-                    <div style={{ fontSize: 11, color: C.text2 }}>{roleLabel}{m.groups?.venue ? ` · ${m.groups.venue}` : ""}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          {switchError && <div style={{ fontSize: 12, color: C.red, marginTop: 8 }}>{switchError}</div>}
-        </div>
       )}
 
       {/* Language picker */}
