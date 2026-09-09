@@ -584,7 +584,7 @@ const EN = {
   "Olá": "Hey", "Início": "Home", "Cartão": "Card",
   "jornadas seguidas": "matchdays in a row", "G+A na melhor noite": "G+A on your best night",
   "RESUMO RECENTE": "RECENT SUMMARY", "Baseado nas últimas jornadas carregadas, não a época inteira.": "Based on the most recently loaded matchdays, not the full season.",
-  "Jornadas": "Matchdays", "Assist.": "Assists", "Kudos": "Kudos",
+  "Jornadas": "Matchdays", "Assist.": "Assists",
   "Ainda sem jogos por aqui — quando jogares, a tua atividade aparece nesta tela.": "No games here yet — once you play, your activity shows up on this screen.",
 };
 

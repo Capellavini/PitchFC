@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun, CalendarClock, Heart, Flame, Trophy } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun, CalendarClock, Flame, Trophy } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -261,22 +261,23 @@ export default function PerfilTab({ group, viewPlayerId, homeFeed = [], nextGame
               <SectionLabel>{t("A TUA ATIVIDADE")}</SectionLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
                 {homeFeed.map((f) => (
-                  <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.groupName}</div>
-                      <div style={{ fontSize: 10.5, color: C.text3 }}>{f.date}</div>
+                  <div key={f.id} style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.groupName}</div>
+                        <div style={{ fontSize: 10.5, color: C.text3 }}>{f.date}</div>
+                      </div>
+                      <span style={{ fontSize: 11.5, color: C.text2, display: "flex", gap: 8, flexShrink: 0 }}>
+                        {f.goals > 0 && <span>⚽ {f.goals}</span>}
+                        {f.assists > 0 && <span>🎯 {f.assists}</span>}
+                        {f.cleanSheets > 0 && <span>🧤 {f.cleanSheets}</span>}
+                        {f.mvp && <span>⭐ MVP</span>}
+                      </span>
                     </div>
-                    <span style={{ fontSize: 11.5, color: C.text2, display: "flex", gap: 8, flexShrink: 0 }}>
-                      {f.goals > 0 && <span>⚽ {f.goals}</span>}
-                      {f.assists > 0 && <span>🎯 {f.assists}</span>}
-                      {f.cleanSheets > 0 && <span>🧤 {f.cleanSheets}</span>}
-                      {f.mvp && <span>⭐ MVP</span>}
-                    </span>
                     {onToggleKudos && (
-                      <button onClick={() => onToggleKudos(f.id, f.kudosGivenByMe)} title={t("Kudos")}
-                        style={{ display: "flex", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: 2, flexShrink: 0 }}>
-                        <Heart size={15} color={f.kudosGivenByMe ? C.red : C.text3} fill={f.kudosGivenByMe ? C.red : "none"} />
-                        {f.kudosCount > 0 && <span style={{ fontSize: 11, color: f.kudosGivenByMe ? C.red : C.text3 }}>{f.kudosCount}</span>}
+                      <button onClick={() => onToggleKudos(f.id, f.kudosGivenByMe)}
+                        style={{ alignSelf: "flex-start", background: f.kudosGivenByMe ? C.accentDim : "transparent", color: f.kudosGivenByMe ? C.accent : C.text2, border: `1px solid ${f.kudosGivenByMe ? C.accentBorder : C.border}`, borderRadius: 10, padding: "5px 11px", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>
+                        ⚽ Golaço {f.kudosCount > 0 && f.kudosCount}
                       </button>
                     )}
                   </div>
