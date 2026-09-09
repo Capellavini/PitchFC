@@ -222,6 +222,7 @@ export default function RoadmapPage({ cloud, localMode }) {
             <button onClick={() => changeLang("pt")} style={langBtnStyle(lang === "pt")}>PT</button>
             <button onClick={() => changeLang("en")} style={langBtnStyle(lang === "en")}>EN</button>
           </div>
+          <a href="/pitch-deck" style={{ fontSize: 12.5, color: C.text2, textDecoration: "none" }}>Pitch Deck</a>
           <a href="/admin" style={{ fontSize: 12.5, color: C.text2, textDecoration: "none" }}>{tt(UI.edit)}</a>
           <button onClick={cloud.signOut} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: C.text2, fontSize: 12.5, cursor: "pointer" }}><LogOut size={13} /> {tt(UI.signOut)}</button>
         </div>
