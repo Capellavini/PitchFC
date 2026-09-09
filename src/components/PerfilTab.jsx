@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun, CalendarClock } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -15,7 +15,7 @@ import AchievementsSection from "./AchievementsSection";
 import MatchdayCalendar from "./MatchdayCalendar";
 import ProgressChart from "./ProgressChart";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember }) {
+export default function PerfilTab({ group, viewPlayerId, homeFeed = [], nextGame, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -176,6 +176,48 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           </button>
         )}
       </div>
+
+      {/* Home feed: next game + recent activity across EVERY group this
+          player belongs to, not just whichever one is currently active —
+          this tab is the app's landing screen now, not just a card
+          editor, so it opens on "you" before it opens on any one group. */}
+      {isOwn && (nextGame || homeFeed.length > 0) && (
+        <>
+          {nextGame && (
+            <div style={{ ...cardStyle, marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <CalendarClock size={19} color={C.accent} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: C.text3 }}>{t("PRÓXIMO JOGO")}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nextGame.groupName}</div>
+                <div style={{ fontSize: 11, color: C.text2 }}>{nextGame.dateLabel} · {nextGame.timeLabel}{nextGame.venue ? ` · ${nextGame.venue}` : ""}</div>
+              </div>
+            </div>
+          )}
+          {homeFeed.length > 0 && (
+            <div style={{ ...cardStyle, marginBottom: 16 }}>
+              <SectionLabel>{t("A TUA ATIVIDADE")}</SectionLabel>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+                {homeFeed.map((f) => (
+                  <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.groupName}</div>
+                      <div style={{ fontSize: 10.5, color: C.text3 }}>{f.date}</div>
+                    </div>
+                    <span style={{ fontSize: 11.5, color: C.text2, display: "flex", gap: 8, flexShrink: 0 }}>
+                      {f.goals > 0 && <span>⚽ {f.goals}</span>}
+                      {f.assists > 0 && <span>🎯 {f.assists}</span>}
+                      {f.cleanSheets > 0 && <span>🧤 {f.cleanSheets}</span>}
+                      {f.mvp && <span>⭐ MVP</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* FUT card — the hero of the profile */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>

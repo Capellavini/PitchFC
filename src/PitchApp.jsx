@@ -87,7 +87,10 @@ export default function PitchApp() {
   const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
   const [lang, setLangState]    = usePersistentState("lang", detectLang());
   const [themeMode, setThemeModeState] = useState(getThemeMode());
-  const [tab, setTab]           = useState("jogo");
+  // Home is Perfil, not Jogo — the app opens on "you" (next game across
+  // every group you're in, recent activity) rather than one group's slot
+  // grid, per the "Strava do futebol" repositioning.
+  const [tab, setTab]           = useState("perfil");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
   const [statMode, setStatMode] = useState("geral");
@@ -1121,6 +1124,40 @@ export default function PitchApp() {
   // Only the organizer (or an assistant they appointed) draws/renames.
   const canManageTeams = cloudMode ? Boolean(me?.isOrganizerPlayer || me?.isAssistant) : session.role === "organizer";
 
+  // ── Cross-group home feed: "my" recent activity + next game across
+  //    every group I'm in, not just whichever one is currently active
+  //    (see useCloud.js's crossGroupGames/crossGroupMatchdays — those
+  //    two queries deliberately exclude the active group since it's
+  //    already covered by `game`/cloud.matchdays above). Local demo has
+  //    no multi-group concept, so this stays empty there. ──
+  let homeFeedView = [], nextGameAcrossGroups = null;
+  if (cloudMode) {
+    const myKey = me?.uuid;
+    const allMatchdays = [
+      ...cloud.matchdays.map((r) => ({ ...r, groupName: game.groupName })),
+      ...cloud.crossGroupMatchdays.map((r) => ({ ...r, groupName: r.groups?.name })),
+    ].sort((a, b) => (b.played_on || "").localeCompare(a.played_on || "") || (b.created_at || "").localeCompare(a.created_at || ""));
+    homeFeedView = allMatchdays
+      .map((r) => {
+        const line = (r.summary?.lines || []).find((l) => l.key === myKey);
+        if (!line) return null;
+        return { id: r.id, date: fmtDayMonth(r.played_on), groupName: r.groupName, goals: line.goals || 0, assists: line.assists || 0, cleanSheets: line.cleanSheets || 0, mvp: r.mvp_id === myKey };
+      })
+      .filter(Boolean)
+      .slice(0, 8);
+
+    const otherUpcoming = cloud.crossGroupGames
+      .map((g) => ({ groupName: g.groups?.name, scheduledAt: new Date(g.scheduled_at), venue: g.venue }))
+      .filter((g) => g.scheduledAt >= new Date());
+    const candidates = noGameScheduled ? otherUpcoming : [{ groupName: game.groupName, scheduledAt: game.kickoffAt, venue: game.venue }, ...otherUpcoming];
+    const soonest = candidates.sort((a, b) => a.scheduledAt - b.scheduledAt)[0] ?? null;
+    nextGameAcrossGroups = soonest ? {
+      groupName: soonest.groupName, venue: soonest.venue,
+      dateLabel: fmtFullDay(toIsoDay(soonest.scheduledAt)),
+      timeLabel: `${String(soonest.scheduledAt.getHours()).padStart(2, "0")}:${String(soonest.scheduledAt.getMinutes()).padStart(2, "0")}`,
+    } : null;
+  }
+
   // ── Achievements: normalized per-matchday detail (cloud keeps the full
   // season, local demo only keeps this level of detail for the day just
   // played) — feeds AchievementsSection in PerfilTab. `key` matches keyOf()
@@ -1253,6 +1290,7 @@ export default function PitchApp() {
           <PerfilTab
             key={viewPlayerId ?? "me"}
             group={displayGroup} viewPlayerId={viewPlayerId}
+            homeFeed={homeFeedView} nextGame={nextGameAcrossGroups}
             updateProfile={updateProfile} backToMe={backToMe} resetDemo={resetDemo}
             isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} onCreateGroup={noGroup ? () => setCreatingGroup(true) : null} logout={logout}
             addPeerRating={addPeerRating} cloudMode={cloudMode} onSubmitRating={cloudMode ? cloud.submitRating : null}

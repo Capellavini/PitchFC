@@ -578,6 +578,9 @@ const EN = {
   "Ranking Guarda-redes": "Goalkeeper Ranking",
   "O mesmo cálculo de Guarda-redes, só que restrito a quem joga nessa posição.": "The same Goalkeeper calculation, restricted to players in that position.",
   "Voltar ao ranking": "Back to ranking",
+
+  // ── Perfil as home: cross-group feed + group switcher ────
+  "A TUA ATIVIDADE": "YOUR ACTIVITY", "Os teus grupos": "Your groups",
 };
 
 const PT_BR = {

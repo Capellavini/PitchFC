@@ -46,6 +46,7 @@ const EMPTY = {
   matchdays: [], mvpVotes: [], ratings: [],
   posts: [], friendships: [], allPlayers: [], myGroups: [], bannedMembers: [],
   fantasyLeague: null, fantasySquads: [], fantasyScores: [], fantasyTradeOffers: [],
+  crossGroupGames: [], crossGroupMatchdays: [],
 };
 
 export function useCloud() {
@@ -96,9 +97,9 @@ export function useCloud() {
           .in("status", ["open", "full", "live"]).order("scheduled_at", { ascending: false }).limit(1),
         supabase.from("bookings").select("*, groups(name)").order("day"),
         // Every group this player has ever belonged to (see migration 36) —
-        // powers the "Meus grupos" switcher in Perfil.
+        // powers the group switcher and the cross-group home feed below.
         supabase.from("player_group_memberships")
-          .select("group_id,role,joined_at,groups(name,venue,city,weekday,game_time)")
+          .select("group_id,role,joined_at,banned,groups(name,venue,city,weekday,game_time)")
           .eq("player_id", myPlayer.id).order("joined_at"),
         // This group's banned players (organizer-only via RLS — empty for
         // everyone else) — powers the "Jogadores banidos" list in Grupo.
@@ -135,6 +136,26 @@ export function useCloud() {
           const v = await supabase.from("matchday_votes").select("*").eq("matchday_id", matchdays[0].id);
           mvpVotes = v.data ?? [];
         }
+      }
+
+      // Cross-group home feed: the active group's queries above are all
+      // scoped to `gid` (the one group_id currently on the player row) —
+      // this is the one place that looks across every group this player
+      // belongs to, for the personal "next game" + "recent activity"
+      // summary on the home/Perfil screen. Only fires when there's
+      // actually more than one group to aggregate, and skips memberships
+      // the organizer banned this player from.
+      let crossGroupGames = [], crossGroupMatchdays = [];
+      const otherGroupIds = (mg.data ?? []).filter((m) => !m.banned && m.group_id !== gid).map((m) => m.group_id);
+      if (otherGroupIds.length) {
+        const [cgq, cmq] = await Promise.all([
+          supabase.from("games").select("*, groups(name)").in("group_id", otherGroupIds)
+            .in("status", ["open", "full", "live"]).order("scheduled_at", { ascending: true }),
+          supabase.from("matchdays").select("*, groups(name)").in("group_id", otherGroupIds)
+            .order("played_on", { ascending: false }).order("created_at", { ascending: false }).limit(20),
+        ]);
+        crossGroupGames = cgq.data ?? [];
+        crossGroupMatchdays = cmq.data ?? [];
       }
 
       // Peer ratings for everyone in the roster — averaged into each
@@ -175,7 +196,7 @@ export function useCloud() {
         fantasyTradeOffers = ftoq.data ?? [];
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers });
+      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, crossGroupGames, crossGroupMatchdays });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
