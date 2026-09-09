@@ -46,7 +46,7 @@ const EMPTY = {
   matchdays: [], mvpVotes: [], ratings: [],
   posts: [], friendships: [], allPlayers: [], myGroups: [], bannedMembers: [],
   fantasyLeague: null, fantasySquads: [], fantasyScores: [], fantasyTradeOffers: [],
-  crossGroupGames: [], crossGroupMatchdays: [],
+  crossGroupGames: [], crossGroupMatchdays: [], matchdayKudos: [],
 };
 
 export function useCloud() {
@@ -158,6 +158,15 @@ export function useCloud() {
         crossGroupMatchdays = cmq.data ?? [];
       }
 
+      // Kudos on the home feed's matchday lines (active group's matchdays
+      // + the cross-group ones just fetched above).
+      let matchdayKudos = [];
+      const feedMatchdayIds = [...matchdays, ...crossGroupMatchdays].map((m) => m.id);
+      if (feedMatchdayIds.length) {
+        const kq = await supabase.from("matchday_kudos").select("*").in("matchday_id", feedMatchdayIds);
+        if (!kq.error) matchdayKudos = kq.data ?? [];
+      }
+
       // Peer ratings for everyone in the roster — averaged into each
       // player's card (gated to 3+ ratings) and listed as "who rated you".
       let ratings = [];
@@ -196,7 +205,7 @@ export function useCloud() {
         fantasyTradeOffers = ftoq.data ?? [];
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, crossGroupGames, crossGroupMatchdays });
+      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, crossGroupGames, crossGroupMatchdays, matchdayKudos });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -234,6 +243,7 @@ export function useCloud() {
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "matchdays" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "matchday_votes" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "matchday_kudos" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "post_likes" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "post_comments" }, refetch)
@@ -1248,6 +1258,19 @@ export function useCloud() {
     else await supabase.from("post_likes").insert({ post_id: postId, player_id: data.myPlayer.id });
     await refetch();
   };
+  // Kudos on a teammate's (or your own) line in a matchday — the home
+  // feed's reaction, same toggle shape as toggleLike above just keyed by
+  // (matchday, recipient) instead of (post).
+  const toggleKudos = async (matchdayId, toPlayerId, given) => {
+    if (!data.myPlayer) return;
+    if (given) {
+      await supabase.from("matchday_kudos").delete()
+        .eq("matchday_id", matchdayId).eq("to_player_id", toPlayerId).eq("from_player_id", data.myPlayer.id);
+    } else {
+      await supabase.from("matchday_kudos").insert({ matchday_id: matchdayId, to_player_id: toPlayerId, from_player_id: data.myPlayer.id });
+    }
+    await refetch();
+  };
   const addComment = async (postId, body) => {
     await supabase.from("post_comments").insert({ post_id: postId, author_id: data.myPlayer.id, body });
     await refetch();
@@ -1282,7 +1305,7 @@ export function useCloud() {
     fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, syncFantasyScores, deleteMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,
-    toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment,
+    toggleAssistant, addManualPlayer, uploadMedia, savePushSubscription, createPost, deletePost, toggleLike, addComment, toggleKudos,
     sendFriendRequest, respondFriend, removeFriend,
     createFantasyLeague, saveFantasySquad, createTradeOffer, cancelTradeOffer, respondTradeOffer,
     refetch,

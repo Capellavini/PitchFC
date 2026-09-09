@@ -1130,21 +1130,58 @@ export default function PitchApp() {
   //    two queries deliberately exclude the active group since it's
   //    already covered by `game`/cloud.matchdays above). Local demo has
   //    no multi-group concept, so this stays empty there. ──
-  let homeFeedView = [], nextGameAcrossGroups = null;
+  let homeFeedView = [], nextGameAcrossGroups = null, personalRecords = null, attendanceStreak = 0;
   if (cloudMode) {
     const myKey = me?.uuid;
     const allMatchdays = [
       ...cloud.matchdays.map((r) => ({ ...r, groupName: game.groupName })),
       ...cloud.crossGroupMatchdays.map((r) => ({ ...r, groupName: r.groups?.name })),
     ].sort((a, b) => (b.played_on || "").localeCompare(a.played_on || "") || (b.created_at || "").localeCompare(a.created_at || ""));
-    homeFeedView = allMatchdays
+
+    // Current streak: consecutive matchdays (most recent first, across
+    // every group) this player has a line in — stops at the first one
+    // they sat out (or never joined).
+    for (const md of allMatchdays) {
+      if (!(md.summary?.lines || []).some((l) => l.key === myKey)) break;
+      attendanceStreak += 1;
+    }
+
+    // Kudos already given per (matchday, recipient) — a Map keyed by
+    // "matchdayId:playerId" so the feed below can attach count + whether
+    // I've already reacted, without a second pass over matchdayKudos.
+    const kudosByLine = new Map();
+    cloud.matchdayKudos.forEach((k) => {
+      const key = `${k.matchday_id}:${k.to_player_id}`;
+      kudosByLine.set(key, [...(kudosByLine.get(key) || []), k.from_player_id]);
+    });
+
+    const myLines = allMatchdays
       .map((r) => {
         const line = (r.summary?.lines || []).find((l) => l.key === myKey);
         if (!line) return null;
-        return { id: r.id, date: fmtDayMonth(r.played_on), groupName: r.groupName, goals: line.goals || 0, assists: line.assists || 0, cleanSheets: line.cleanSheets || 0, mvp: r.mvp_id === myKey };
+        const givers = kudosByLine.get(`${r.id}:${myKey}`) || [];
+        return {
+          id: r.id, date: fmtDayMonth(r.played_on), groupName: r.groupName,
+          goals: line.goals || 0, assists: line.assists || 0, cleanSheets: line.cleanSheets || 0, mvp: r.mvp_id === myKey,
+          kudosCount: givers.length, kudosGivenByMe: givers.includes(myKey),
+        };
       })
-      .filter(Boolean)
-      .slice(0, 8);
+      .filter(Boolean);
+    homeFeedView = myLines.slice(0, 8);
+
+    // Records within the fetched window (last ~12 active-group + ~20
+    // cross-group matchdays — not a true lifetime total, see the "últimas
+    // jornadas" note in the UI). Cheap to compute, no extra query.
+    if (myLines.length) {
+      const bestNight = [...myLines].sort((a, b) => (b.goals + b.assists) - (a.goals + a.assists))[0];
+      personalRecords = {
+        bestNight,
+        totalGoals: myLines.reduce((s, l) => s + l.goals, 0),
+        totalAssists: myLines.reduce((s, l) => s + l.assists, 0),
+        mvps: myLines.filter((l) => l.mvp).length,
+        gamesInWindow: myLines.length,
+      };
+    }
 
     const otherUpcoming = cloud.crossGroupGames
       .map((g) => ({ groupName: g.groups?.name, scheduledAt: new Date(g.scheduled_at), venue: g.venue }))
@@ -1291,6 +1328,8 @@ export default function PitchApp() {
             key={viewPlayerId ?? "me"}
             group={displayGroup} viewPlayerId={viewPlayerId}
             homeFeed={homeFeedView} nextGame={nextGameAcrossGroups}
+            personalRecords={personalRecords} attendanceStreak={attendanceStreak}
+            onToggleKudos={cloudMode ? (matchdayId, given) => cloud.toggleKudos(matchdayId, me?.uuid, given) : null}
             updateProfile={updateProfile} backToMe={backToMe} resetDemo={resetDemo}
             isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} onCreateGroup={noGroup ? () => setCreatingGroup(true) : null} logout={logout}
             addPeerRating={addPeerRating} cloudMode={cloudMode} onSubmitRating={cloudMode ? cloud.submitRating : null}
