@@ -874,10 +874,10 @@ export default function PitchApp() {
     return <RoadmapPage cloud={cloud} localMode={localMode} />;
   }
 
-  // ── Pitch deck (path /pitch-deck) — full width, no shell, admin-only
-  // (real usage numbers, financial plan, the funding ask). ───────────
+  // ── Pitch deck (path /pitch-deck) — full width, no shell, public
+  // (meant to be shared by link with investors). ──────────────────────
   if (path === "/pitch-deck") {
-    return <PitchDeckPage cloud={cloud} localMode={localMode} />;
+    return <PitchDeckPage />;
   }
 
   // Default profile from the signed-up account's metadata.

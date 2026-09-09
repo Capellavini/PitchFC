@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { DollarSign, Shuffle, Phone, Link2, CircleDot, BarChart3, Gamepad2, CreditCard, MessageCircle, Smartphone, Users, User, Network, CheckCircle2, Zap, TrendingUp, Rocket } from "lucide-react";
 import { C, BRAND, displayFont } from "../theme";
 
@@ -111,63 +110,10 @@ const ASKS = [
 const fmtEUR = (n) => `€${n.toLocaleString("en-US")}`;
 const fmtK = (n) => (Math.abs(n) >= 1000 ? `€${Math.round(n / 1000)}k` : `€${n}`);
 
-export default function PitchDeckPage({ cloud, localMode }) {
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authError, setAuthError] = useState(null);
-
+// Public by design — a pitch deck is meant to be shared by link, unlike
+// /roadmap (financial detail + editing) which stays admin-gated.
+export default function PitchDeckPage() {
   const page = (children) => <div style={{ minHeight: "100vh", background: C.bg, color: C.text1, fontFamily: FONT }}>{children}</div>;
-  const centeredMessage = (title, body, action) => page(
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 380, textAlign: "center" }}>
-        <img src={BRAND.logo} alt="PITCH" style={{ height: 26, marginBottom: 24 }} />
-        <div style={{ ...displayFont, fontSize: 20, marginBottom: 10 }}>{title}</div>
-        <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.6, marginBottom: action ? 20 : 0 }}>{body}</div>
-        {action}
-      </div>
-    </div>
-  );
-
-  // Same admin-only gate as /roadmap — this page carries the same class of
-  // sensitive content (real usage numbers, financial projections, the
-  // funding ask, the founder's personal email), so it gets the same
-  // treatment: not meant to be publicly discoverable.
-  if (localMode) return centeredMessage("Pitch Deck", "A app está em modo demonstração (sem chaves Supabase configuradas). Esta página precisa de ligação à cloud.");
-  if (cloud.status === "loading") return centeredMessage("A ligar…", "A verificar sessão.");
-  if (!cloud.user) {
-    const submit = async (e) => {
-      e.preventDefault();
-      setAuthBusy(true); setAuthError(null);
-      const res = await cloud.signIn(form.email.trim(), form.password);
-      setAuthBusy(false);
-      if (res?.error) setAuthError(res.error);
-    };
-    return page(
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <form onSubmit={submit} style={{ width: "100%", maxWidth: 340 }}>
-          <img src={BRAND.logo} alt="PITCH" style={{ height: 26, marginBottom: 24, display: "block", marginLeft: "auto", marginRight: "auto" }} />
-          <div style={{ ...displayFont, fontSize: 20, textAlign: "center", marginBottom: 4 }}>Pitch Deck</div>
-          <div style={{ fontSize: 12, color: C.text2, textAlign: "center", marginBottom: 24 }}>Inicia sessão com a tua conta de administrador.</div>
-          <div style={{ marginBottom: 12 }}>
-            <input type="email" required placeholder="Email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              style={{ width: "100%", boxSizing: "border-box", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", fontSize: 14, color: C.text1, outline: "none" }} />
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <input type="password" required placeholder="Palavra-passe" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-              style={{ width: "100%", boxSizing: "border-box", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", fontSize: 14, color: C.text1, outline: "none" }} />
-          </div>
-          {authError && <div style={{ fontSize: 12, color: C.red, marginBottom: 12 }}>{authError}</div>}
-          <button type="submit" disabled={authBusy} style={{ width: "100%", background: C.accent, color: C.bg, border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 800, cursor: authBusy ? "default" : "pointer", opacity: authBusy ? 0.6 : 1 }}>
-            {authBusy ? "A entrar…" : "Entrar"}
-          </button>
-        </form>
-      </div>
-    );
-  }
-  if (!cloud.isAdmin) {
-    return centeredMessage("Sem acesso", `Sessão iniciada como ${cloud.user.email}, que não é uma conta de administrador.`,
-      <button onClick={cloud.signOut} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 18px", fontSize: 13, color: C.text2, cursor: "pointer" }}>Sair</button>);
-  }
 
   const finMax = Math.max(...FIN_ROWS.map((r) => Math.max(r.revenue, r.costs))) * 1.1;
 
@@ -450,9 +396,6 @@ export default function PitchDeckPage({ cloud, localMode }) {
         <div style={{ ...displayFont, fontSize: 24, marginBottom: 22 }}>Make sure the weekly game happens.</div>
         <a href="https://pitch-fc.vercel.app" style={{ color: C.accent, fontSize: 14, textDecoration: "none", fontWeight: 700 }}>pitch-fc.vercel.app</a>
         <div style={{ fontSize: 12.5, color: C.text3, marginTop: 10 }}>Vinicius Capella · capella.vinicius@gmail.com</div>
-        <div style={{ marginTop: 30 }}>
-          <a href="/roadmap" style={{ color: C.text3, fontSize: 12, textDecoration: "none", borderBottom: `1px dashed ${C.border}` }}>Ver o plano de negócio completo →</a>
-        </div>
       </div>
     </>
   );
