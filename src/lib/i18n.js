@@ -582,6 +582,16 @@ const EN = {
   // ── Perfil as home: cross-group feed + group switcher ────
   "A TUA ATIVIDADE": "YOUR ACTIVITY", "Os teus grupos": "Your groups",
   "Olá": "Hey", "Início": "Home", "Cartão": "Card",
+
+  // ── Teams (separate entity from Groups) ──────────────────
+  "Times": "Teams", "Elenco": "Squad", "Adicionar": "Add",
+  "Ninguém do grupo por adicionar.": "No one left in the group to add.",
+  "Um time é diferente do grupo — tem nome, OVR e elenco próprios, e pode um dia desafiar outros times. Começa com o elenco deste grupo, mas depois cresce sozinho.":
+    "A team is different from a group — it has its own name, OVR and squad, and can one day challenge other teams. It starts with this group's roster, but grows on its own from there.",
+  "Criar Time a partir deste grupo": "Create a Team from this group",
+  "Novo time": "New team", "Nome do time": "Team name",
+  "O elenco inicial vem do grupo atual — dá para adicionar ou tirar gente depois.": "The initial squad comes from the current group — you can add or remove people afterwards.",
+  "Criar": "Create", "A criar…": "Creating…",
   "jornadas seguidas": "matchdays in a row", "G+A na melhor noite": "G+A on your best night",
   "RESUMO RECENTE": "RECENT SUMMARY", "Baseado nas últimas jornadas carregadas, não a época inteira.": "Based on the most recently loaded matchdays, not the full season.",
   "Jornadas": "Matchdays", "Assist.": "Assists",

@@ -46,7 +46,7 @@ const EMPTY = {
   matchdays: [], mvpVotes: [], ratings: [],
   posts: [], friendships: [], allPlayers: [], myGroups: [], bannedMembers: [],
   fantasyLeague: null, fantasySquads: [], fantasyScores: [], fantasyTradeOffers: [],
-  crossGroupGames: [], crossGroupMatchdays: [], matchdayKudos: [],
+  crossGroupGames: [], crossGroupMatchdays: [], matchdayKudos: [], myTeams: [],
 };
 
 export function useCloud() {
@@ -167,6 +167,13 @@ export function useCloud() {
         if (!kq.error) matchdayKudos = kq.data ?? [];
       }
 
+      // Teams this player belongs to (migration 49) — a team is a
+      // separate entity from a group; tolerate the tables not existing
+      // yet (pre-migration).
+      let myTeams = [];
+      const tmq = await supabase.from("team_members").select("team_id,role,teams(id,name,logo_url,city,color,captain_id)").eq("player_id", myPlayer.id);
+      if (!tmq.error) myTeams = tmq.data ?? [];
+
       // Peer ratings for everyone in the roster — averaged into each
       // player's card (gated to 3+ ratings) and listed as "who rated you".
       let ratings = [];
@@ -205,7 +212,7 @@ export function useCloud() {
         fantasyTradeOffers = ftoq.data ?? [];
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, crossGroupGames, crossGroupMatchdays, matchdayKudos });
+      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, crossGroupGames, crossGroupMatchdays, matchdayKudos, myTeams });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -244,6 +251,8 @@ export function useCloud() {
       .on("postgres_changes", { event: "*", schema: "public", table: "matchdays" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "matchday_votes" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "matchday_kudos" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "post_likes" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "post_comments" }, refetch)
@@ -759,6 +768,58 @@ export function useCloud() {
   const saveRoadmapContent = async (roadmapData) => {
     const r = await supabase.from("roadmap_content").upsert({ id: 1, data: roadmapData, updated_at: new Date().toISOString() });
     return r.error ? { error: r.error.message } : {};
+  };
+
+  // ── Teams (migration 49) — a separate entity from Groups ───────────
+  /** Creates a team with the current player as captain. `fromGroupIds`,
+   *  when given, seeds the roster from that group's current players (the
+   *  "a group can spin up a team" flow) — from that point on the team is
+   *  independent, roster edits here never touch the group. */
+  const createTeam = async ({ name, city, color, logoUrl, fromGroupId, rosterPlayerIds }) => {
+    if (!data.myPlayer) return { error: "Sem sessão." };
+    const t = await supabase.from("teams").insert({
+      name, city: city || null, color: color || undefined, logo_url: logoUrl || null,
+      captain_id: data.myPlayer.id, founded_by_group_id: fromGroupId || null,
+    }).select().single();
+    if (t.error) return { error: t.error.message };
+    const teamId = t.data.id;
+    const memberIds = new Set([data.myPlayer.id, ...(rosterPlayerIds || [])]);
+    const rows = [...memberIds].map((playerId) => ({
+      team_id: teamId, player_id: playerId, role: playerId === data.myPlayer.id ? "captain" : "player",
+    }));
+    const m = await supabase.from("team_members").insert(rows);
+    if (m.error) return { error: m.error.message };
+    await refetch();
+    return { teamId };
+  };
+  /** Full detail for one team's page — roster joined with each player's
+   *  card fields (for OVR/position) and season-agnostic identity (nick,
+   *  photo). Not part of the main load(): most screens never need it. */
+  const fetchTeam = async (teamId) => {
+    const [t, m] = await Promise.all([
+      supabase.from("teams").select("*").eq("id", teamId).maybeSingle(),
+      supabase.from("team_members").select("player_id,role,joined_at,players(id,nick,name,photo_url,position,attrs)").eq("team_id", teamId).order("joined_at"),
+    ]);
+    if (t.error) return { error: t.error.message };
+    return { data: { ...t.data, members: m.data ?? [] } };
+  };
+  const addTeamMember = async (teamId, playerId) => {
+    const r = await supabase.from("team_members").insert({ team_id: teamId, player_id: playerId, role: "player" });
+    if (r.error) return { error: r.error.message };
+    await refetch();
+    return {};
+  };
+  const removeTeamMember = async (teamId, playerId) => {
+    const r = await supabase.from("team_members").delete().eq("team_id", teamId).eq("player_id", playerId);
+    if (r.error) return { error: r.error.message };
+    await refetch();
+    return {};
+  };
+  const updateTeam = async (teamId, fields) => {
+    const r = await supabase.from("teams").update(fields).eq("id", teamId);
+    if (r.error) return { error: r.error.message };
+    await refetch();
+    return {};
   };
 
   /** Fire-and-forget log of a post-match card being generated — feeds the
@@ -1311,6 +1372,7 @@ export function useCloud() {
     setMyStatus, setPaid, setAttendanceLock, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated, fetchRoadmapContent, saveRoadmapContent,
+    createTeam, fetchTeam, addTeamMember, removeTeamMember, updateTeam,
     fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, syncFantasyScores, deleteMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,

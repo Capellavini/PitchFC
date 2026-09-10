@@ -9,11 +9,12 @@ import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import Collapsible from "./Collapsible";
+import TeamsSection from "./TeamsSection";
 
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, inviteUrlAvulso, isOrganizer, onToggleAssistant, onSetPlayerType, onSetAttendanceLock, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday, totalGames }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, inviteUrlAvulso, isOrganizer, onToggleAssistant, onSetPlayerType, onSetAttendanceLock, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday, totalGames, myTeams = [], myPlayerId, onCreateTeam, onFetchTeam, onAddTeamMember, onRemoveTeamMember }) {
   const [view, setView] = useState("squad"); // 'squad' | 'records'
   const [sortAZ, setSortAZ] = useState(false);
   const [openRecordId, setOpenRecordId] = useState(null);
@@ -62,7 +63,7 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
       </div>
 
       <div style={{ display: "flex", background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
-        {[["squad", "Squad"], ["records", "Records"]].map(([id, label]) => {
+        {[["squad", "Squad"], ["records", "Records"], ...(onCreateTeam ? [["teams", "Teams"]] : [])].map(([id, label]) => {
           const active = view === id;
           return (
             <button key={id} onClick={() => setView(id)} style={{ flex: 1, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: "none", borderRadius: 10, padding: 9, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
@@ -153,6 +154,11 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
             </div>
           )}
         </div>
+      ) : view === "teams" ? (
+        <TeamsSection
+          myTeams={myTeams} groupRoster={group} groupName={game.groupName} myPlayerId={myPlayerId}
+          onCreateTeam={onCreateTeam} onFetchTeam={onFetchTeam} onAddTeamMember={onAddTeamMember} onRemoveTeamMember={onRemoveTeamMember}
+        />
       ) : (
       <>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: inviteUrl ? 10 : 16 }}>
