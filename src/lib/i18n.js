@@ -592,6 +592,11 @@ const EN = {
   "Novo time": "New team", "Nome do time": "Team name",
   "O elenco inicial vem do grupo atual — dá para adicionar ou tirar gente depois.": "The initial squad comes from the current group — you can add or remove people afterwards.",
   "Criar": "Create", "A criar…": "Creating…",
+
+  // ── Home: "just played" share banner ─────────────────────
+  "ACABASTE DE JOGAR": "YOU JUST PLAYED", "Dispensar": "Dismiss",
+  "novo recorde pessoal": "new personal best", "Partilhar o meu desempenho": "Share my performance",
+  "golos": "goals", "assist.": "assists",
   "jornadas seguidas": "matchdays in a row", "G+A na melhor noite": "G+A on your best night",
   "RESUMO RECENTE": "RECENT SUMMARY", "Baseado nas últimas jornadas carregadas, não a época inteira.": "Based on the most recently loaded matchdays, not the full season.",
   "Jornadas": "Matchdays", "Assist.": "Assists",

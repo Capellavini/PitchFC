@@ -1138,7 +1138,7 @@ export default function PitchApp() {
   //    two queries deliberately exclude the active group since it's
   //    already covered by `game`/cloud.matchdays above). Local demo has
   //    no multi-group concept, so this stays empty there. ──
-  let homeFeedView = [], nextGameAcrossGroups = null, personalRecords = null, attendanceStreak = 0;
+  let homeFeedView = [], nextGameAcrossGroups = null, personalRecords = null, attendanceStreak = 0, recentPerformance = null;
   if (cloudMode) {
     const myKey = me?.uuid;
     const allMatchdays = [
@@ -1188,6 +1188,21 @@ export default function PitchApp() {
         totalAssists: myLines.reduce((s, l) => s + l.assists, 0),
         mvps: myLines.filter((l) => l.mvp).length,
         gamesInWindow: myLines.length,
+      };
+    }
+
+    // The "just played" share banner on Home — the player's single most
+    // recent performance, still carrying the raw matchday row (not just
+    // the slim feed-item shape) so PostMatchCardModal can render the real
+    // share card for it, same as the Stats tab's "Gerar o meu card"
+    // already does for the active group — just no longer limited to it.
+    if (myLines[0]) {
+      const recentLine = myLines[0];
+      const row = allMatchdays.find((r) => r.id === recentLine.id);
+      recentPerformance = {
+        ...recentLine,
+        isRecord: Boolean(personalRecords && personalRecords.bestNight.id === recentLine.id && recentLine.goals + recentLine.assists > 0),
+        matchdayForCard: row ? { date: recentLine.date, mode: row.mode, ...(row.summary || {}) } : null,
       };
     }
 
@@ -1279,10 +1294,12 @@ export default function PitchApp() {
       <div style={{ paddingBottom: 80 }}>
         {tab === "home" && (
           <HomeTab
-            me={me}
+            me={me} group={displayGroup}
             homeFeed={homeFeedView} nextGame={nextGameAcrossGroups}
             personalRecords={personalRecords} attendanceStreak={attendanceStreak}
             onToggleKudos={cloudMode ? (matchdayId, given) => cloud.toggleKudos(matchdayId, me?.uuid, given) : null}
+            recentPerformance={recentPerformance}
+            onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined}
           />
         )}
         {tab === "jogo" && (noGroup ? (

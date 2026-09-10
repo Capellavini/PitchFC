@@ -1,20 +1,65 @@
-import { CalendarClock, Flame, Trophy } from "lucide-react";
+import { useState } from "react";
+import { CalendarClock, Flame, Trophy, Share2, X } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { t } from "../lib/i18n";
+import { usePersistentState } from "../lib/storage";
 import SectionLabel from "./SectionLabel";
+import PostMatchCardModal from "./PostMatchCard";
 
-/** The app's landing screen — player-first, cross-group: next game
- *  (whichever group it's in), a streak/records teaser, and an activity
- *  feed of this player's own recent performances (any group) with
- *  Golaço reactions. Used to live as a sub-tab inside Perfil ("Início");
- *  promoted to its own top-level tab so the app opens on "you" before
- *  it opens on any one group's screen — see BottomNav/PitchApp. */
-export default function HomeTab({ me, homeFeed = [], nextGame, personalRecords, attendanceStreak = 0, onToggleKudos }) {
+/** The app's landing screen — player-first, cross-group: a "just played"
+ *  share prompt when there's a fresh performance, next game (whichever
+ *  group it's in), a streak/records teaser, and an activity feed of this
+ *  player's own recent performances (any group) with Golaço reactions.
+ *  Used to live as a sub-tab inside Perfil ("Início"); promoted to its
+ *  own top-level tab so the app opens on "you" before it opens on any
+ *  one group's screen — see BottomNav/PitchApp. */
+export default function HomeTab({ me, group = [], homeFeed = [], nextGame, personalRecords, attendanceStreak = 0, onToggleKudos, recentPerformance, onCardGenerated }) {
+  // Once dismissed (or shared), a matchday's banner never comes back —
+  // this is the "have I already been shown this?" flag GPT's post-match
+  // loop needs, since only the organizer sees "Terminar dia" fire live;
+  // everyone else only finds out on their next open of the app, which is
+  // exactly when this banner should greet them.
+  const [dismissed, setDismissed] = usePersistentState("home_share_dismissed", []);
+  const [showCard, setShowCard] = useState(false);
+  const showBanner = Boolean(recentPerformance) && !dismissed.includes(recentPerformance.id);
+  const dismiss = () => setDismissed((d) => (d.includes(recentPerformance.id) ? d : [...d, recentPerformance.id]));
+
   return (
     <div style={{ padding: "0 16px" }}>
       <div style={{ padding: "20px 0 16px" }}>
         <div style={{ ...displayFont, fontSize: 22 }}>{t("Olá")}{me?.nick ? `, ${me.nick}` : ""}</div>
       </div>
+
+      {showBanner && (
+        <div style={{ ...cardStyle, marginBottom: 14, background: `linear-gradient(135deg, ${C.card} 0%, ${C.accentDim} 100%)`, border: `1px solid ${C.accentBorder}`, position: "relative" }}>
+          <button onClick={dismiss} title={t("Dispensar")}
+            style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex", padding: 2 }}>
+            <X size={15} />
+          </button>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.accent, marginBottom: 6 }}>{t("ACABASTE DE JOGAR")}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text1, marginBottom: 4 }}>{recentPerformance.groupName} · {recentPerformance.date}</div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, fontSize: 13, color: C.text2 }}>
+            {recentPerformance.goals > 0 && <span>⚽ {recentPerformance.goals} {t("golos")}</span>}
+            {recentPerformance.assists > 0 && <span>🎯 {recentPerformance.assists} {t("assist.")}</span>}
+            {recentPerformance.mvp && <span>⭐ MVP</span>}
+            {recentPerformance.isRecord && <span>🏆 {t("novo recorde pessoal")}</span>}
+            {attendanceStreak >= 2 && <span>🔥 {attendanceStreak} {t("jornadas seguidas")}</span>}
+          </div>
+          <button onClick={() => setShowCard(true)} disabled={!recentPerformance.matchdayForCard}
+            style={{ width: "100%", background: C.accent, color: C.bg, border: "none", borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: recentPerformance.matchdayForCard ? "pointer" : "default", opacity: recentPerformance.matchdayForCard ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Share2 size={15} /> {t("Partilhar o meu desempenho")}
+          </button>
+        </div>
+      )}
+
+      {showCard && recentPerformance?.matchdayForCard && me && (
+        <PostMatchCardModal
+          player={me} group={group} matchday={recentPerformance.matchdayForCard}
+          groupName={recentPerformance.groupName} isMVP={recentPerformance.mvp}
+          onClose={() => { setShowCard(false); dismiss(); }}
+          onGenerated={onCardGenerated}
+        />
+      )}
 
       {nextGame && (
         <div style={{ ...cardStyle, marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
