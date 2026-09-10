@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun, CalendarClock, Flame, Trophy } from "lucide-react";
+import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -15,20 +15,11 @@ import AchievementsSection from "./AchievementsSection";
 import MatchdayCalendar from "./MatchdayCalendar";
 import ProgressChart from "./ProgressChart";
 
-export default function PerfilTab({ group, viewPlayerId, homeFeed = [], nextGame, personalRecords, attendanceStreak = 0, onToggleKudos, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
   const [editing, setEditing] = useState(false);
-  // Perfil doubles as the app's home screen now — "Início" (social: next
-  // game, activity feed, kudos, records) is a different concern from
-  // "Cartão" (identity/settings: FUT card, editing, security, theme,
-  // logout), so they get their own sub-tabs instead of one long mixed
-  // scroll. Only relevant for your own profile; viewing a teammate's
-  // always shows their card, no sub-nav.
-  const [homeView, setHomeView] = useState("inicio"); // 'inicio' | 'cartao'
-  const showHome = isOwn && homeView === "inicio";
-  const showCard = !isOwn || homeView === "cartao";
   const [banText, setBanText] = useState("");
   const [banBusy, setBanBusy] = useState(false);
   const [banError, setBanError] = useState(null);
@@ -173,135 +164,18 @@ export default function PerfilTab({ group, viewPlayerId, homeFeed = [], nextGame
 
   return (
     <div style={{ padding: "0 16px" }}>
-      {isOwn ? (
-        <div style={{ padding: "20px 0 16px" }}>
-          <div style={{ ...displayFont, fontSize: 22, marginBottom: 14 }}>{t("Olá")}{player.nick ? `, ${player.nick}` : ""}</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[["inicio", "Início"], ["cartao", "Cartão"]].map(([id, label]) => {
-              const active = homeView === id;
-              return (
-                <button key={id} onClick={() => setHomeView(id)}
-                  style={{ flex: 1, background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 10, padding: "9px 8px", fontSize: 12.5, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
-                  {t(label)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" }}>
-          <div style={{ ...displayFont, fontSize: 22 }}>{t("Perfil")}</div>
-          <button onClick={backToMe} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, color: C.text2, cursor: "pointer" }}>
-            {t("Ver o meu")}
-          </button>
-        </div>
-      )}
-
-      {/* Início: next game + recent activity across EVERY group this
-          player belongs to (not just whichever one is currently active),
-          kudos on each performance, and a couple of lightweight personal
-          records/streak — the social, glanceable half of what used to be
-          one long mixed scroll with the card/settings below. */}
-      {showHome && (
-        <>
-          {nextGame && (
-            <div style={{ ...cardStyle, marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <CalendarClock size={19} color={C.accent} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: C.text3 }}>{t("PRÓXIMO JOGO")}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nextGame.groupName}</div>
-                <div style={{ fontSize: 11, color: C.text2 }}>{nextGame.dateLabel} · {nextGame.timeLabel}{nextGame.venue ? ` · ${nextGame.venue}` : ""}</div>
-              </div>
-            </div>
-          )}
-
-          {(attendanceStreak >= 2 || personalRecords) && (
-            <div style={{ display: "grid", gridTemplateColumns: attendanceStreak >= 2 && personalRecords ? "1fr 1fr" : "1fr", gap: 10, marginBottom: 14 }}>
-              {attendanceStreak >= 2 && (
-                <div style={{ ...cardStyle, textAlign: "center" }}>
-                  <Flame size={18} color={C.orange} style={{ marginBottom: 6 }} />
-                  <div style={{ ...displayFont, fontSize: 22 }}>{attendanceStreak}</div>
-                  <div style={{ fontSize: 10, color: C.text2, marginTop: 2 }}>{t("jornadas seguidas")}</div>
-                </div>
-              )}
-              {personalRecords && (
-                <div style={{ ...cardStyle, textAlign: "center" }}>
-                  <Trophy size={18} color={C.gold} style={{ marginBottom: 6 }} />
-                  <div style={{ ...displayFont, fontSize: 22 }}>{personalRecords.bestNight.goals + personalRecords.bestNight.assists}</div>
-                  <div style={{ fontSize: 10, color: C.text2, marginTop: 2 }}>{t("G+A na melhor noite")} · {personalRecords.bestNight.date}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {personalRecords && (
-            <div style={{ ...cardStyle, marginBottom: 14 }}>
-              <SectionLabel>{t("RESUMO RECENTE")}</SectionLabel>
-              <div style={{ fontSize: 10, color: C.text3, marginBottom: 10 }}>{t("Baseado nas últimas jornadas carregadas, não a época inteira.")}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-                {[
-                  [t("Jornadas"), personalRecords.gamesInWindow],
-                  [t("Golos"), personalRecords.totalGoals],
-                  [t("Assist."), personalRecords.totalAssists],
-                  ["MVPs", personalRecords.mvps],
-                ].map(([label, value]) => (
-                  <div key={label} style={{ background: C.surface, borderRadius: 10, padding: "10px 4px", textAlign: "center" }}>
-                    <div style={{ ...displayFont, fontSize: 17 }}>{value}</div>
-                    <div style={{ fontSize: 9, color: C.text2, marginTop: 2 }}>{label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {homeFeed.length > 0 ? (
-            <div style={{ ...cardStyle, marginBottom: 16 }}>
-              <SectionLabel>{t("A TUA ATIVIDADE")}</SectionLabel>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
-                {homeFeed.map((f) => (
-                  <div key={f.id} style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.groupName}</div>
-                        <div style={{ fontSize: 10.5, color: C.text3 }}>{f.date}</div>
-                      </div>
-                      <span style={{ fontSize: 11.5, color: C.text2, display: "flex", gap: 8, flexShrink: 0 }}>
-                        {f.goals > 0 && <span>⚽ {f.goals}</span>}
-                        {f.assists > 0 && <span>🎯 {f.assists}</span>}
-                        {f.cleanSheets > 0 && <span>🧤 {f.cleanSheets}</span>}
-                        {f.mvp && <span>⭐ MVP</span>}
-                      </span>
-                    </div>
-                    {onToggleKudos && (
-                      <button onClick={() => onToggleKudos(f.id, f.kudosGivenByMe)}
-                        style={{ alignSelf: "flex-start", background: f.kudosGivenByMe ? C.accentDim : "transparent", color: f.kudosGivenByMe ? C.accent : C.text2, border: `1px solid ${f.kudosGivenByMe ? C.accentBorder : C.border}`, borderRadius: 10, padding: "5px 11px", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>
-                        ⚽ Golaço {f.kudosCount > 0 && f.kudosCount}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : !nextGame && (
-            <div style={{ ...cardStyle, marginBottom: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 12.5, color: C.text2 }}>{t("Ainda sem jogos por aqui — quando jogares, a tua atividade aparece nesta tela.")}</div>
-            </div>
-          )}
-        </>
-      )}
-
-      {showCard && isOwn && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" }}>
+        <div style={{ ...displayFont, fontSize: 22 }}>{isOwn ? t("O Meu Cartão") : t("Perfil")}</div>
+        {isOwn ? (
           <button onClick={startEditing} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
             <Pencil size={13} /> {t("Editar")}
           </button>
-        </div>
-      )}
-
-      {showCard && (
-      <>
+        ) : (
+          <button onClick={backToMe} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, color: C.text2, cursor: "pointer" }}>
+            {t("Ver o meu")}
+          </button>
+        )}
+      </div>
 
       {/* FUT card — the hero of the profile */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
@@ -602,8 +476,6 @@ export default function PerfilTab({ group, viewPlayerId, homeFeed = [], nextGame
             {t("Repor demo")}
           </button>
         </div>
-      )}
-      </>
       )}
     </div>
   );
