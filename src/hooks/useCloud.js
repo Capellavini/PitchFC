@@ -564,6 +564,15 @@ export function useCloud() {
   const updatePlayer = async (playerId, fields) => {
     setData((d) => ({ ...d, players: d.players.map((p) => (p.id === playerId ? { ...p, ...fields } : p)) }));
     await supabase.from("players").update(fields).eq("id", playerId);
+    // player_type also lives on player_group_memberships (the per-group
+    // source of truth switchActiveGroup reads back from) — without this,
+    // an organizer flipping someone mensalista/avulso via Grupo only
+    // patched the denormalized players row, and the old value came back
+    // the next time that player switched groups and back.
+    if (fields.player_type !== undefined && data.groupRow) {
+      await supabase.from("player_group_memberships")
+        .update({ player_type: fields.player_type }).eq("player_id", playerId).eq("group_id", data.groupRow.id);
+    }
   };
   /** `scheduledAtIso`: an explicit kickoff timestamp, when the caller
    *  pinned a real calendar date (possibly weeks out) rather than just
