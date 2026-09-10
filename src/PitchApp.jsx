@@ -31,6 +31,7 @@ import LeaguePage from "./components/LeaguePage";
 import AdminDashboardPage from "./components/admin/AdminDashboardPage";
 import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
+import PitchProPage from "./components/PitchProPage";
 import AuthLanding from "./components/AuthLanding";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
@@ -882,6 +883,14 @@ export default function PitchApp() {
   // (meant to be shared by link with investors). ──────────────────────
   if (path === "/pitch-deck") {
     return <PitchDeckPage />;
+  }
+
+  // ── PITCH Pro (path /pro) — clickable demo of a Pro competition
+  // (standalone, seed data only — no real backend/tenancy yet). Public,
+  // same call as /league and /pitch-deck: needs to open with just a link
+  // for a meeting, no login friction. ─────────────────────────────────
+  if (path === "/pro") {
+    return <PitchProPage />;
   }
 
   // Default profile from the signed-up account's metadata.
