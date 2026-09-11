@@ -87,10 +87,11 @@ export default function PitchApp() {
   const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
   const [lang, setLangState]    = usePersistentState("lang", detectLang());
   const [themeMode, setThemeModeState] = useState(getThemeMode());
-  // Home is its own tab now, not Jogo or Perfil — the app opens on "you"
-  // (next game across every group you're in, recent activity) rather than
-  // one group's slot grid, per the "Strava do futebol" repositioning.
-  const [tab, setTab]           = useState("home");
+  // Opens straight on Jogo (confirmation grid) — Home exists as its own
+  // tab (Strava-style cross-group dashboard) but isn't the landing screen;
+  // the product call is that logging in should drop you straight into
+  // confirming this week's game, not a dashboard.
+  const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
   const [statMode, setStatMode] = useState("geral");
