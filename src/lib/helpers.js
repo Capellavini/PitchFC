@@ -36,40 +36,83 @@ export const splitWaitlist = (confirmed, spots) => {
 export const WEEKDAYS_PT = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 export const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-/** Next occurrence of a weekday (0=Sunday), formatted "Sábado, 14 Jun". */
-export function nextGameDateLabel(weekday) {
-  const now = new Date();
-  const d = new Date(now);
-  d.setDate(now.getDate() + ((weekday - now.getDay() + 7) % 7));
-  return `${t(WEEKDAYS_PT[weekday])}, ${d.getDate()} ${t(MONTHS_PT[d.getMonth()])}`;
+// The club plays in Portugal: every "weekday/time" the organizer sets
+// (kickoff, confirmation-open moment) means Europe/Lisbon wall-clock
+// time — not whatever timezone the viewer's own device happens to be in.
+// Getting this wrong is exactly the bug reported 2026-09-15: a player in
+// Brazil couldn't confirm because the app compared Lisbon's 17:00 against
+// his own device's clock instead of Lisbon's, off by his UTC offset.
+const GAME_TZ = "Europe/Lisbon";
+
+// Europe/Lisbon's UTC offset (minutes) at a given instant — DST-correct
+// (WET/WEST) via Intl, no hardcoded offset and no external library.
+function tzOffsetMinutes(utcMs, timeZone) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).formatToParts(new Date(utcMs)).map((p) => [p.type, p.value])
+  );
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return (asUtc - utcMs) / 60000;
 }
 
-/** Next occurrence of weekday (0=Sun) at HH:MM as a Date in the future. */
+// A real instant → its Europe/Lisbon calendar date/time/weekday.
+function lisbonParts(date = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: GAME_TZ, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", weekday: "short",
+    }).formatToParts(date).map((p) => [p.type, p.value])
+  );
+  const WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return { year: +parts.year, month: +parts.month, day: +parts.day, hour: +parts.hour, minute: +parts.minute, weekday: WD[parts.weekday] };
+}
+
+// A Europe/Lisbon wall-clock date/time (month is 1-12, day may overflow
+// the month — Date.UTC normalizes it) → the real UTC instant it refers
+// to, DST-correct.
+function lisbonWallClockToUtcMs(year, month, day, hour, minute) {
+  const naiveUtc = Date.UTC(year, month - 1, day, hour, minute);
+  return naiveUtc - tzOffsetMinutes(naiveUtc, GAME_TZ) * 60000;
+}
+
+/** Next occurrence of weekday (0=Sun) at HH:MM **in Portugal**, as a Date
+ *  (a real instant) — correct no matter what timezone the viewer is in. */
 export function nextGameDate(weekday, time = "20:00") {
-  const now = new Date();
-  const d = new Date(now);
-  d.setDate(now.getDate() + ((weekday - now.getDay() + 7) % 7));
   const [h, m] = (time || "20:00").split(":").map(Number);
-  d.setHours(h, m, 0, 0);
-  if (d < now) d.setDate(d.getDate() + 7); // game time already passed today
-  return d;
+  const now = lisbonParts();
+  const day = now.day + ((weekday - now.weekday + 7) % 7);
+  let ms = lisbonWallClockToUtcMs(now.year, now.month, day, h, m);
+  if (ms < Date.now()) ms = lisbonWallClockToUtcMs(now.year, now.month, day + 7, h, m); // already passed today
+  return new Date(ms);
+}
+
+/** Next occurrence of a weekday (0=Sunday), formatted "Sábado, 14 Jun" —
+ *  the calendar date as it falls in Portugal. */
+export function nextGameDateLabel(weekday) {
+  const p = lisbonParts(nextGameDate(weekday));
+  return `${t(WEEKDAYS_PT[weekday])}, ${p.day} ${t(MONTHS_PT[p.month - 1])}`;
 }
 
 /**
  * Recurring confirmation window: confirmations open weekly at
  * openWeekday/openTime, for the upcoming game on gameWeekday/gameTime
- * (e.g. "toda segunda às 17h abre o jogo de domingo"). Returns whether
- * they're open now plus the opening moment — derived, no backend needed.
+ * (e.g. "toda segunda às 17h abre o jogo de domingo"). Both times are
+ * Europe/Lisbon wall-clock, same as the game itself (see GAME_TZ above).
+ * Returns whether they're open now plus the opening moment — derived,
+ * no backend needed.
  */
 export function confirmationWindow(gameWeekday, gameTime, openWeekday, openTime) {
   const gameDate = nextGameDate(gameWeekday, gameTime);
-  const opensAt = new Date(gameDate);
-  let back = (gameDate.getDay() - openWeekday + 7) % 7;
+  const g = lisbonParts(gameDate);
+  let back = (g.weekday - openWeekday + 7) % 7;
   if (back === 0) back = 7; // same weekday as the game → a full week before
-  opensAt.setDate(gameDate.getDate() - back);
   const [h, m] = (openTime || "17:00").split(":").map(Number);
-  opensAt.setHours(h, m, 0, 0);
-  return { opensAt, gameDate, isOpen: new Date() >= opensAt };
+  const opensAt = new Date(lisbonWallClockToUtcMs(g.year, g.month, g.day - back, h, m));
+  return { opensAt, gameDate, isOpen: Date.now() >= opensAt.getTime() };
 }
 
 /** Local-timezone ISO day (YYYY-MM-DD), offset in days from today. */
@@ -87,16 +130,16 @@ export function toIsoDay(date) {
 
 export const fromIso = (iso) => new Date(`${iso}T12:00:00`);
 
-/** An isoDay ("YYYY-MM-DD") + "HH:MM" → real kickoff Date, local time
- *  (noon-anchored isoDay parse, then the actual hour/minute applied —
- *  avoids the DST/timezone-boundary date-shift a plain `new Date(iso)`
- *  parse risks). Used when the organizer picks an exact calendar date
- *  for the next game instead of "next occurrence of this weekday". */
+/** An isoDay ("YYYY-MM-DD") + "HH:MM" → real kickoff Date. The date is
+ *  just a calendar day (unambiguous everywhere); the time is Europe/
+ *  Lisbon wall-clock, same as everywhere else the game's schedule is
+ *  interpreted (see GAME_TZ above) — used when the organizer picks an
+ *  exact calendar date for the next game instead of "next occurrence of
+ *  this weekday". */
 export function dateTimeFromIso(iso, time = "20:00") {
-  const d = fromIso(iso);
+  const [y, mo, da] = iso.split("-").map(Number);
   const [h, m] = (time || "20:00").split(":").map(Number);
-  d.setHours(h, m, 0, 0);
-  return d;
+  return new Date(lisbonWallClockToUtcMs(y, mo, da, h, m));
 }
 
 /** "Sex 13" — short chip label for a day picker. */

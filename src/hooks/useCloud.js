@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, supabaseEnabled, isAdminEmail } from "../lib/supabase";
 import { computeRoundPoints, mvpBonus, fantasyPrice, DEFAULT_FANTASY_WEIGHTS, nextPricesPaid, squadCostBasis } from "../lib/fantasy";
+import { nextGameDate, dateTimeFromIso } from "../lib/helpers";
 
 /**
  * PR 2 of the Supabase migration: real accounts (email + password),
@@ -17,24 +18,17 @@ import { computeRoundPoints, mvpBonus, fantasyPrice, DEFAULT_FANTASY_WEIGHTS, ne
  *   'ready'        player + group resolved → full app
  */
 
-// Next occurrence of weekday (0=Sun) at HH:MM, as an ISO timestamp.
-function nextGameISO(weekday, time) {
-  const now = new Date();
-  const d = new Date(now);
-  d.setDate(now.getDate() + ((weekday - now.getDay() + 7) % 7));
-  const [h, m] = (time || "20:00").split(":").map(Number);
-  d.setHours(h, m, 0, 0);
-  if (d < now) d.setDate(d.getDate() + 7); // game time already passed today
-  return d.toISOString();
-}
+// Next occurrence of weekday (0=Sun) at HH:MM **in Portugal**, as an ISO
+// timestamp. Thin wrappers around lib/helpers' Europe/Lisbon-aware date
+// math (imported above) — used to stay in a single place after a
+// timezone bug (2026-09-15: a player abroad couldn't confirm because
+// this used to do naive local-clock arithmetic instead).
+const nextGameISO = (weekday, time) => nextGameDate(weekday, time).toISOString();
 
 // An explicit "YYYY-MM-DD" + "HH:MM" (organizer picked a real calendar
-// date, e.g. one far out like 13/09) → ISO timestamp, local time.
-function isoFromDateTime(dateStr, time) {
-  const [y, mo, da] = dateStr.split("-").map(Number);
-  const [h, mi] = (time || "20:00").split(":").map(Number);
-  return new Date(y, mo - 1, da, h, mi, 0, 0).toISOString();
-}
+// date, e.g. one far out like 13/09) → ISO timestamp, Europe/Lisbon time.
+const isoFromDateTime = (dateStr, time) => dateTimeFromIso(dateStr, time).toISOString();
+
 const weekdayFromDateStr = (dateStr) => {
   const [y, mo, da] = dateStr.split("-").map(Number);
   return new Date(y, mo - 1, da).getDay();
