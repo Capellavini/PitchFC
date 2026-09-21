@@ -597,6 +597,11 @@ const EN = {
   "ACABASTE DE JOGAR": "YOU JUST PLAYED", "Dispensar": "Dismiss",
   "novo recorde pessoal": "new personal best", "Partilhar o meu desempenho": "Share my performance",
   "golos": "goals", "assist.": "assists",
+  // ── Records: reopen a finished game ────────────────────
+  "JOGOS": "GAMES", "toca num jogo para ver os detalhes": "tap a game for details",
+  "Sem golos neste jogo": "No goals in this game", "próprio golo": "own goal",
+  "grande defesa": "great save", "GR": "GK", "baliza a zero": "clean sheet",
+  "Este dia foi encerrado antes do registo golo a golo: só há totais por jogador.": "This day was ended before goal-by-goal records existed: only per-player totals are available.",
   "jornadas seguidas": "matchdays in a row", "G+A na melhor noite": "G+A on your best night",
   "RESUMO RECENTE": "RECENT SUMMARY", "Baseado nas últimas jornadas carregadas, não a época inteira.": "Based on the most recently loaded matchdays, not the full season.",
   "Jornadas": "Matchdays", "Assist.": "Assists",

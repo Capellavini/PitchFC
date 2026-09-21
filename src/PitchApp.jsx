@@ -685,7 +685,22 @@ export default function PitchApp() {
         const p = baseGroup.find((x) => x.id === Number(pid));
         return p ? { key: keyOf(p), goals: s.goals, assists: s.assists } : null;
       }).filter(Boolean);
-      mdMatches.push({ n: m.n, homeName: home?.name ?? "—", awayName: away?.name ?? "—", homeGoals: hg, awayGoals: ag, lines: matchLines });
+      // Full per-game record (who scored/assisted, own goals, saves, in order,
+      // plus the keepers) so a finished game can be opened again later, like
+      // during the live day. Matchdays saved before this field just have
+      // `lines` and the UI falls back to that.
+      const keyOfId = (id) => { const p = id == null ? null : baseGroup.find((x) => x.id === id); return p ? keyOf(p) : null; };
+      const gameEvents = m.events.map((e) => ({
+        side: e.teamId === m.homeId ? "h" : "a",
+        type: e.type === "epicSave" ? "save" : e.ownGoal ? "og" : "goal",
+        by: keyOfId(e.type === "epicSave" ? e.playerId : e.scorerId),
+        ...(e.type !== "epicSave" && e.assistId ? { ast: keyOfId(e.assistId) } : {}),
+        ...(e.minute != null ? { min: e.minute } : {}),
+      }));
+      mdMatches.push({
+        n: m.n, homeName: home?.name ?? "—", awayName: away?.name ?? "—", homeGoals: hg, awayGoals: ag, lines: matchLines,
+        events: gameEvents, homeGk: keyOfId(m.homeGkId), awayGk: keyOfId(m.awayGkId),
+      });
     });
 
     // Waitlisted players didn't play — only the playing XI gets stats.

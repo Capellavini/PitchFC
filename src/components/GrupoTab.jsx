@@ -9,6 +9,7 @@ import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import Collapsible from "./Collapsible";
+import MatchdayGames from "./MatchdayGames";
 import TeamsSection from "./TeamsSection";
 
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
@@ -115,17 +116,7 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
                             ))}
                           </div>
                         )}
-                        {(r.summary?.matches ?? []).length > 0 && (
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                            {r.summary.matches.map((m) => (
-                              <div key={m.n} style={{ background: C.surface, borderRadius: 10, padding: "8px 10px", textAlign: "center", flex: 1, minWidth: 90 }}>
-                                <div style={{ fontSize: 9, color: C.text3, fontWeight: 800 }}>{t("JOGO")} {m.n}</div>
-                                <div style={{ ...displayFont, fontSize: 16 }}>{m.homeGoals}–{m.awayGoals}</div>
-                                <div style={{ fontSize: 9, color: C.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.homeName} vs {m.awayName}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <MatchdayGames summary={r.summary} />
                         {(r.summary?.lines ?? []).length > 0 && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: isOrganizer && cloudMode ? 12 : 0 }}>
                             {r.summary.lines.map((l) => (
