@@ -12,7 +12,7 @@ const run = (o) => decide({ game: game(o.game), spots: 10, confirmed: 5, prev: 5
 const kinds = (o) => run(o).map((e) => e.kind);
 
 test("fresh game seen for the first time -> game_open", () => {
-  assert.deepEqual(kinds({ prev: null }), ["game_open", "game_poll"]);
+  assert.deepEqual(kinds({ prev: null }), ["game_open"]);
 });
 test("old game seen for the first time (bot just installed) -> silent", () => {
   assert.deepEqual(kinds({ prev: null, game: { created_at: "2026-09-01T10:00:00Z" } }), []);

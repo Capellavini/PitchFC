@@ -1,6 +1,7 @@
 // PITCH group bot — transport + poll loop.
-// Sends only (a) state-change events, (b) its own attendance poll and (c) replies
-// to an explicit @mention / reply-to-bot. Reads votes on attendance polls.
+// Sends only (a) state-change events and (b) replies to an explicit @mention /
+// reply-to-bot. It posts a poll ONLY when an organizer asks ("@Pitch enquete"),
+// and reads votes on attendance polls.
 // Dry-run unless BOT_AUTOSEND=true.
 try { process.loadEnvFile(); } catch { /* no .env: rely on real env */ }
 
@@ -70,12 +71,10 @@ async function sendPoll(group, game) {
 async function dispatch(group, gameId, ev, ctx) {
   const now = new Date();
   const quiet = isQuietHour(cfg().quietStart, cfg().quietEnd, now);
-  if (ev.kind === "game_poll" && !cfg().gamePoll) return "skipped";
-  const spent = ev.urgent || ev.followUp ? 0 : await sentSince(group.id, startOfLisbonDayIso());
+  const spent = ev.urgent ? 0 : await sentSince(group.id, startOfLisbonDayIso());
   if (!ev.urgent && (quiet || spent >= cfg().maxPerDay)) return "blocked";
 
-  const isPoll = ev.kind === "game_poll";
-  const text = isPoll ? `[poll] ${pollContent(ctx.game, group.wa_bot_lang || "pt").name}` : render(ev.kind, { ...ctx, link: linkFor(group) }, group.wa_bot_lang || "pt");
+  const text = render(ev.kind, { ...ctx, link: linkFor(group) }, group.wa_bot_lang || "pt");
   if (!cfg().autosend) {
     if (!dryLogged.has(ev.key)) { dryLogged.add(ev.key); log(`[dry-run] ${group.name} · ${ev.kind}\n${text}\n`); }
     return "blocked"; // dry-run must not advance state, or the real run would miss it
@@ -83,8 +82,7 @@ async function dispatch(group, gameId, ev, ctx) {
   const id = await claim(group.id, gameId, ev.kind, ev.key);
   if (!id) return "skipped"; // already announced
   try {
-    if (isPoll) await sendPoll(group, ctx.game);
-    else await send(group.wa_group_jid, text);
+    await send(group.wa_group_jid, text);
     await markSent(id);
     log(`sent ${ev.kind} -> ${group.name}`);
     return "sent";

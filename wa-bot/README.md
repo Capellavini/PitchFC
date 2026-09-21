@@ -94,3 +94,16 @@ warning. Use a **dedicated chip**, never a personal number. Keep the
 - Confirming by chat ("@Pitch eu vou"): needs phone -> player matching.
 - Hosting: needs an always-on box (Railway/Fly/VPS) and a persistent volume for `auth/`.
 - Official WhatsApp Business API adapter, before this serves paying groups.
+
+## Attendance polls (only on request)
+
+The bot **never posts a poll on its own.** An organizer asks for it in the group:
+`@Pitch enquete` / `@Pitch post a poll` (one per hour at most). The poll is
+"Vais jogar <dia, hora>?" with "Eu vou / Não vou" options (bilingual for `pt+en`).
+
+Votes count on **any** attendance poll the bot saw being created, its own or a
+member's ("Eu vou" confirms, "Não vou" drops out; "Talvez", removing the vote or
+two conflicting picks do nothing). For polls made by members, Haiku first decides
+whether the poll is about the game, so a barbecue poll never confirms a spot.
+Votes are decrypted locally (Baileys rc14 has this disabled); poll secrets live in
+`data/polls.json` (gitignored). A poll created while the bot was offline cannot be read.

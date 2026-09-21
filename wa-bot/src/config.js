@@ -4,7 +4,6 @@ export const cfg = () => ({
   serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   appUrl: (process.env.APP_URL || "https://pitch-fc.vercel.app").replace(/\/$/, ""),
   autosend: process.env.BOT_AUTOSEND === "true",
-  gamePoll: process.env.BOT_GAME_POLL !== "false",   // post an attendance poll with "jogo aberto"
   maxPerDay: Number(process.env.BOT_MAX_PER_DAY || 4),
   quietStart: Number(process.env.BOT_QUIET_START ?? 23),
   quietEnd: Number(process.env.BOT_QUIET_END ?? 8),
