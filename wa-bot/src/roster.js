@@ -37,11 +37,12 @@ const norm = (t) =>
 const FILLERS = /^(ok|okay|entao|sim|pitch|pode|hey|oi|ola|please|pf|por favor)\s+|\s+(sim|la|pitch|pf|por favor|please|tambem|ai|ok)$/;
 
 const DECLINE = [
-  /^nao (vou|posso|consigo|da|conto)( poder)?( ir| jogar)?$/,
-  /^(desisto|desistir|to fora|tou fora|estou fora|fora|me tira|tira me)$/,
+  /^nao (vou|posso|consigo|da|conto)( mais)?( poder)?( mais)?( ir| jogar| dar)?( mais)?$/,
+  /^(desisto|desisti|desistir|vou desistir|to fora|tou fora|estou fora|fora|me tira|tira me|saio)( mais)?$/,
   /^cancela( a)?( minha)?( presenca| vaga)?$/,
   /^(i'?m|i am|im) out$/, /^(count me out|drop out|out|i'?ll pass|not coming)$/,
-  /^(i )?(can't|cant|cannot) (make it|come|play)$/,
+  /^(i'?m|i am|im) not (coming|going|playing)( anymore)?$/,
+  /^(i )?(can't|cant|cannot) (make it|come|play)( anymore)?$/,
 ];
 const CONFIRM = [
   /^(eu )?(vou|jogo|to dentro|tou dentro|estou dentro|dentro|confirmo|confirmado|presente|bora)$/,
@@ -55,7 +56,7 @@ export function parseIntent(text) {
   let t = norm(text);
   for (let i = 0; i < 2; i++) t = t.replace(FILLERS, "").trim();
   if (!t || t.split(" ").length > 6) return null;
-  const isEn = (re) => /'|\b(in|out|count|coming|make|drop|pass|confirm|confirmed|am|be)\b/.test(re);
+  const isEn = (s) => /'|\b(in|out|count|coming|going|playing|make|drop|pass|confirm|confirmed|am|be|anymore|not)\b/.test(s);
   for (const re of DECLINE) if (re.test(t)) return { intent: "decline", lang: isEn(t) ? "en" : "pt" };
   for (const re of CONFIRM) if (re.test(t)) return { intent: "confirm", lang: isEn(t) ? "en" : "pt" };
   return null;

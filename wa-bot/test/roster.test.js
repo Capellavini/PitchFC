@@ -9,7 +9,7 @@ test("confirm phrases (PT)", () => {
     assert.equal(intent(t), "confirm", t);
 });
 test("decline phrases (PT) — negation wins over 'vou'", () => {
-  for (const t of ["não vou", "Nao vou", "não posso", "não vou poder ir", "desisto", "tou fora", "cancela minha presença"])
+  for (const t of ["não vou", "Nao vou", "não posso", "não vou poder ir", "desisto", "tou fora", "cancela minha presença", "não vou mais", "Não vou mais poder", "não posso mais", "nao da mais", "desisti"])
     assert.equal(intent(t), "decline", t);
 });
 test("confirm / decline phrases (EN)", () => {
@@ -17,13 +17,14 @@ test("confirm / decline phrases (EN)", () => {
   assert.deepEqual(parseIntent("count me in"), { intent: "confirm", lang: "en" });
   assert.deepEqual(parseIntent("I'm out"), { intent: "decline", lang: "en" });
   assert.deepEqual(parseIntent("can't make it"), { intent: "decline", lang: "en" });
+  assert.deepEqual(parseIntent("I'm not coming anymore"), { intent: "decline", lang: "en" });
 });
 test("PT phrases report lang pt", () => {
   assert.equal(parseIntent("eu vou").lang, "pt");
   assert.equal(parseIntent("não vou").lang, "pt");
 });
 test("questions and longer sentences never trigger an action", () => {
-  for (const t of ["eu vou?", "quantas vagas faltam", "vou levar a bola", "será que eu vou", "quem vai?", "não sei se vou conseguir", "the game is in Porto", "who's out?"])
+  for (const t of ["eu vou?", "quantas vagas faltam", "vou levar a bola", "será que eu vou", "quem vai?", "não sei se vou conseguir", "the game is in Porto", "who's out?", "não vou levar a bola", "não vou mais levar a bola"])
     assert.equal(intent(t), null, t);
 });
 test("empty / mention-only text is not an action", () => {

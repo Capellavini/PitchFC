@@ -21,6 +21,7 @@ const jitter = () => 2000 + Math.random() * 6000; // look human, not a burst
 
 let sock;
 let loopStarted = false;
+let pairing = false;
 const candidate = new Map();   // gameId -> {n}: debounce, a changed count must hold for 2 polls
 const dryLogged = new Set();
 const lastAsk = new Map();     // sender -> ts, 1 answer / 20s each
@@ -147,6 +148,7 @@ async function handleAction({ group, game, spots, m, jid, intent, lang }) {
     throw e;
   }
 
+  log(`action: ${intent} ${me.nick} on game ${game.id}`);
   if (intent === "decline") return say(reply("declined", { nick: me.nick }));
   const after = splitWaitlist(await confirmedRoster(game.id, members), spots);
   const pos = after.waitlist.findIndex((p) => p.id === me.id);
@@ -161,9 +163,12 @@ async function onMessage(m) {
     const jid = m.key.remoteJid;
     if (!jid?.endsWith("@g.us") || m.key.fromMe) return;
     const inner = m.message?.ephemeralMessage?.message ?? m.message;
-    const mentioned = inner?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
+    const ctx = inner?.extendedTextMessage?.contextInfo;
     const me = [sock.user?.id, sock.user?.lid].filter(Boolean).map(bare);
-    if (!mentioned.some((j) => me.includes(bare(j)))) return;
+    // Addressed to the bot = an explicit @mention, or a reply to one of the bot's own messages.
+    const mentionedMe = (ctx?.mentionedJid ?? []).some((j) => me.includes(bare(j)));
+    const repliedToMe = !!ctx?.participant && me.includes(bare(ctx.participant));
+    if (!mentionedMe && !repliedToMe) return;
 
     const group = (await botGroups()).find((g) => g.wa_group_jid === jid);
     if (!group) return;
@@ -178,6 +183,7 @@ async function onMessage(m) {
     const game = games[0] ?? null;
     const spots = game?.spots || group.max_players || 10;
     const action = parseIntent(text);
+    log(`addressed in ${group.name}: "${text.slice(0, 60)}" -> ${action ? action.intent : "question"}`);
     if (action) return await handleAction({ group, game, spots, m, jid, ...action });
 
     const reply = await answer({ question: text, game, spots, link: linkFor(group), groupId: group.id });
@@ -194,7 +200,15 @@ async function start() {
   sock.ev.on("creds.update", saveCreds);
   sock.ev.on("messages.upsert", ({ messages: ms, type }) => { if (type === "notify") ms.forEach(onMessage); });
   sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
-    if (qr) { log("Scan this QR with the bot's phone (WhatsApp > Linked devices):"); qrcode.generate(qr, { small: true }); }
+    if (qr) {
+      const phone = (process.env.WA_PAIR_PHONE || "").replace(/D/g, "");
+      if (phone && !sock.authState.creds.registered) {
+        // Pairing code instead of a QR: WhatsApp > Linked devices > Link with phone number.
+        if (!pairing) { pairing = true; try { log(`PAIRING CODE: ${await sock.requestPairingCode(phone)}`); } catch (e) { pairing = false; log("pairing code failed:", e.message); } }
+      } else {
+        log("Scan this QR with the bot's phone (WhatsApp > Linked devices):"); qrcode.generate(qr, { small: true });
+      }
+    }
     if (connection === "open") {
       log(`connected as ${sock.user?.id} · autosend=${cfg().autosend}`);
       if (LIST_GROUPS) {
