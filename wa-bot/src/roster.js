@@ -112,6 +112,10 @@ export const actionReplies = {
     pt: ({ nick }) => `${nick}, as confirmações ainda não abriram — o teu voto não foi contado.`,
     en: ({ nick }) => `${nick}, confirmations haven't opened yet — your vote wasn't counted.`,
   },
+  vote_not_found: {
+    pt: ({ tag, link }) => `${tag} não consegui ligar o teu número a nenhum jogador do grupo, por isso o teu voto não foi contado. Confirma pelo link: ${link}`,
+    en: ({ tag, link }) => `${tag} I couldn't match your number to any player in this group, so your vote wasn't counted. Use the link: ${link}`,
+  },
   organizer_only: {
     pt: () => "Só o organizador pode pedir a enquete.",
     en: () => "Only the organizer can ask for the poll.",

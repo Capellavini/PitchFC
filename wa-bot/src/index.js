@@ -153,7 +153,7 @@ async function memberFor(group, m) {
   if (!phone) { log("could not resolve sender phone (lid unmapped)"); return { members: [], me: null }; }
   const members = await groupMembers(group.id);
   const hits = members.filter((p) => phonesMatch(p.phone, phone));
-  if (hits.length !== 1) log(`${hits.length} members match sender`);
+  if (hits.length !== 1) log(`${hits.length} members match sender (phone ends …${String(phone).slice(-4)})`);
   return { members, me: hits.length === 1 ? hits[0] : null };
 }
 
@@ -260,7 +260,15 @@ async function onPollMessage(m, inner) {
     if (r.result === "window") {
       const k = `${poll.id}|${sel.voterJid}`;
       if (!windowWarned.has(k)) { windowWarned.add(k); await send(jid, actionReplies.window_named.pt({ nick: r.me.nick })); }
-    } else if (r.result === "not_found") log("poll vote: sender not matched to a member (no reply, to keep the group quiet)");
+    } else if (r.result === "not_found") {
+      const k = `${poll.id}|${sel.voterJid}|nf`;
+      if (!windowWarned.has(k)) {
+        windowWarned.add(k);
+        const who = m.key.participant || sel.voterJid;
+        await typing(jid);
+        await sock.sendMessage(jid, { text: actionReplies.vote_not_found.pt({ tag: `@${bare(who)}`, link: linkFor(group) }), mentions: [who] });
+      }
+    }
     return true;
   }
   return true;
