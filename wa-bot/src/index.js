@@ -7,9 +7,9 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaile
 import qrcode from "qrcode-terminal";
 import pino from "pino";
 import { cfg } from "./config.js";
-import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince } from "./db.js";
-import { decide } from "./events.js";
-import { messages } from "./messages.js";
+import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays } from "./db.js";
+import { decide, decidePostGame } from "./events.js";
+import { render } from "./messages.js";
 import { isQuietHour, lisbonDayKey } from "./time.js";
 import { answer } from "./ask.js";
 
@@ -35,10 +35,38 @@ async function send(jid, text, quoted) {
   await sock.sendMessage(jid, { text }, quoted ? { quoted } : undefined);
 }
 
+// One announcement: guards -> claim -> send. Returns "sent" | "skipped" | "blocked".
+// "blocked" means "not now, retry next poll" (quiet hours, daily cap, dry-run, send error).
+async function dispatch(group, gameId, ev, ctx) {
+  const now = new Date();
+  const quiet = isQuietHour(cfg().quietStart, cfg().quietEnd, now);
+  const sentToday = ev.urgent ? 0 : await sentSince(group.id, startOfLisbonDayIso());
+  if (!ev.urgent && (quiet || sentToday >= cfg().maxPerDay)) return "blocked";
+
+  const text = render(ev.kind, { ...ctx, link: linkFor(group) }, group.wa_bot_lang || "pt");
+  if (!cfg().autosend) {
+    if (!dryLogged.has(ev.key)) { dryLogged.add(ev.key); log(`[dry-run] ${group.name} · ${ev.kind}
+${text}
+`); }
+    return "blocked"; // dry-run must not advance state, or the real run would miss it
+  }
+  const id = await claim(group.id, gameId, ev.kind, ev.key);
+  if (!id) return "skipped"; // already announced
+  try {
+    await send(group.wa_group_jid, text);
+    await markSent(id);
+    log(`sent ${ev.kind} -> ${group.name}`);
+    return "sent";
+  } catch (e) {
+    await unclaim(id); // retry next poll
+    log("send failed, will retry:", e.message);
+    return "blocked";
+  }
+}
+
 async function tickGroup(group) {
   const now = new Date();
-  const games = await upcomingGames(group.id);
-  for (const game of games) {
+  for (const game of await upcomingGames(group.id)) {
     const spots = game.spots || group.max_players || 10;
     const prev = await getPrev(game.id);
 
@@ -49,34 +77,17 @@ async function tickGroup(group) {
     }
     candidate.delete(game.id);
 
-    const events = decide({ game, spots, confirmed: game.confirmed, prev, now });
     let blocked = false;
-
-    for (const ev of events) {
-      const quiet = isQuietHour(cfg().quietStart, cfg().quietEnd, now);
-      const sentToday = ev.urgent ? 0 : await sentSince(group.id, startOfLisbonDayIso());
-      if (!ev.urgent && (quiet || sentToday >= cfg().maxPerDay)) { blocked = true; break; }
-
-      const text = messages[ev.kind]({ game, spots, confirmed: ev.ctx?.confirmed ?? game.confirmed, link: linkFor(group) });
-      if (!cfg().autosend) {
-        if (!dryLogged.has(ev.key)) { dryLogged.add(ev.key); log(`[dry-run] ${group.name} · ${ev.kind}\n${text}\n`); }
-        blocked = true; // dry-run must not advance state, or the real run would miss it
-        continue;
-      }
-      const id = await claim(group.id, game.id, ev.kind, ev.key);
-      if (!id) continue; // already announced
-      try {
-        await send(group.wa_group_jid, text);
-        await markSent(id);
-        log(`sent ${ev.kind} -> ${group.name}`);
-      } catch (e) {
-        await unclaim(id); // retry next poll
-        log("send failed, will retry:", e.message);
-        blocked = true;
-        break;
-      }
+    for (const ev of decide({ game, spots, confirmed: game.confirmed, prev, now })) {
+      const r = await dispatch(group, game.id, ev, { game, spots, confirmed: game.confirmed });
+      if (r === "blocked") { blocked = true; if (!ev.urgent) break; }
     }
     if (!blocked) await setPrev(game.id, game.confirmed);
+  }
+
+  // Post-game: one message per freshly finished matchday.
+  for (const matchday of await recentMatchdays(group.id)) {
+    for (const ev of decidePostGame({ matchday, now })) await dispatch(group, null, ev, { matchday });
   }
 }
 
@@ -112,7 +123,7 @@ async function onMessage(m) {
       .filter((g) => g.status !== "cancelled")
       .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
     const game = games[0] ?? null;
-    const reply = await answer({ question: text, game, spots: game?.spots || group.max_players || 10, link: linkFor(group) });
+    const reply = await answer({ question: text, game, spots: game?.spots || group.max_players || 10, link: linkFor(group), groupId: group.id });
     if (!reply) return;
     if (!cfg().autosend) return log(`[dry-run] @Pitch reply -> ${group.name}: ${reply}`);
     await send(jid, reply, m);

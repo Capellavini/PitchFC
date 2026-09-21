@@ -11,14 +11,21 @@ Proactive, **state-change events only** (deterministic templates, no AI):
 | Event | When |
 | --- | --- |
 | Jogo aberto | a fresh game appears (<12h old) |
-| Marco | confirmed count crosses `spots` / `spots+2` / `spots+5` (10 / 12 / 15). Jumps coalesce to the highest one |
+| Marcos (proporcionais) | confirmed crosses 80% ("faltam 2"), 100% (jogo fechado), then waiting list at 120% / 150%. For 10 spots: 8 / 10 / 12 / 15. Jumps coalesce to the highest one |
 | Abriu vaga | a **full** game drops below `spots` |
-| Lembrete | <24h to kickoff and spots still open (once) |
+| Lembrete 24h | <24h to kickoff and spots still open (once) |
+| Dia do jogo | morning of the game (from 10:00 Lisbon) until kickoff, with the count |
+| Pós-jogo | when the organizer finishes the matchday: game scores, top scorer, MVP vote link |
 | Cancelado | game cancelled (urgent: ignores quiet hours and daily cap) |
 
-Reactive: `@Pitch <pergunta>` gets a short PT-PT answer from Haiku. The model
-only sees a small DATA block read from Supabase (spots, confirmed names, link).
-Without `ANTHROPIC_API_KEY` the bot posts events only.
+**Language** is per group (`groups.wa_bot_lang`): `pt`, `en`, or `pt+en`
+(Portuguese then English in the same message; used for Goodweather).
+
+Reactive: `@Pitch <pergunta>` gets a short answer from Haiku, in the language of
+the question. It only sees a DATA block read from Supabase: next game (spots,
+confirmed names, link) and season stats (goals, assists, MVPs, games, wins,
+clean sheets, last matchday scores). Without `ANTHROPIC_API_KEY` the bot posts
+events only. It cannot confirm presence yet.
 
 ## Ban-risk guards (built in)
 
@@ -39,7 +46,7 @@ warning. Use a **dedicated chip**, never a personal number. Keep the
 
 ## Setup (test on Goodweather)
 
-1. Run `supabase/migrations/20260101005000_wa_bot.sql` in the Supabase SQL editor.
+1. Run `20260101005000_wa_bot.sql` and `20260101005100_wa_bot_lang.sql` (in `supabase/migrations/`) in the Supabase SQL editor.
 2. `cd wa-bot && npm install && cp env.example .env` and fill
    `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (server only), optionally `ANTHROPIC_API_KEY`.
 3. Put the test chip in the Goodweather WhatsApp group, then link it:

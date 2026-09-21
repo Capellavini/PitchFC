@@ -8,7 +8,7 @@ export const db = () =>
 /** Groups that opted in to the bot (jid set + enabled). Safe by default. */
 export async function botGroups() {
   const { data, error } = await db().from("groups")
-    .select("id, name, wa_group_jid, invite_token, max_players")
+    .select("id, name, wa_group_jid, wa_bot_lang, invite_token, max_players")
     .eq("wa_bot_enabled", true).not("wa_group_jid", "is", null);
   if (error) throw error;
   return data ?? [];
@@ -63,4 +63,23 @@ export async function confirmedNames(gameId) {
     .select("players(nick, name)").eq("game_id", gameId).eq("status", "confirmed")
     .order("responded_at", { ascending: true, nullsFirst: true });
   return (data ?? []).map((r) => r.players?.nick || r.players?.name).filter(Boolean);
+}
+
+/** Matchdays finished recently (post-game message). */
+export async function recentMatchdays(groupId, hours = 12) {
+  const since = new Date(Date.now() - hours * 36e5).toISOString();
+  const { data } = await db().from("matchdays")
+    .select("id, played_on, n_games, total_goals, summary, mvp_open, created_at")
+    .eq("group_id", groupId).gte("created_at", since).order("created_at", { ascending: false });
+  return data ?? [];
+}
+
+/** Season leaderboard + last matchday, as plain data for @Pitch. */
+export async function groupStats(groupId) {
+  const { data: rows } = await db().from("player_group_memberships")
+    .select("goals, assists, mvps, games_played, wins, clean_sheets, players(nick, name)")
+    .eq("group_id", groupId);
+  const players = (rows ?? []).map((r) => ({ nick: r.players?.nick || r.players?.name, ...r })).filter((p) => p.nick);
+  const last = (await recentMatchdays(groupId, 24 * 30))[0] ?? null;
+  return { players, last };
 }

@@ -12,9 +12,14 @@ export const isQuietHour = (start, end, d = new Date()) => {
 export const lisbonDayKey = (d = new Date()) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(d); // YYYY-MM-DD
 
-export const formatGameWhen = (iso) => {
+const LOCALES = { pt: "pt-PT", en: "en-GB" };
+
+export const formatGameWhen = (iso, lang = "pt") => {
   const d = new Date(iso);
-  const day = new Intl.DateTimeFormat("pt-PT", { timeZone: TZ, weekday: "long" }).format(d);
-  const time = new Intl.DateTimeFormat("pt-PT", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
-  return `${day}, ${time}`;
+  const loc = LOCALES[lang] ?? LOCALES.pt;
+  const day = new Intl.DateTimeFormat(loc, { timeZone: TZ, weekday: "long" }).format(d);
+  return `${day}, ${formatGameTime(iso)}`;
 };
+
+export const formatGameTime = (iso) =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
