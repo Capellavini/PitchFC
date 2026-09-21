@@ -83,3 +83,32 @@ export async function groupStats(groupId) {
   const last = (await recentMatchdays(groupId, 24 * 30))[0] ?? null;
   return { players, last };
 }
+
+// ── Confirm / drop out from the chat ─────────────────────────────────────
+/** Members of the group whose stored phone could match. Caller filters with phonesMatch. */
+export async function groupMembers(groupId) {
+  const { data, error } = await db().from("player_group_memberships")
+    .select("player_id, player_type, banned, players(id, nick, name, phone, magic_token)")
+    .eq("group_id", groupId).eq("banned", false);
+  if (error) throw error;
+  return (data ?? []).filter((m) => m.players).map((m) => ({
+    id: m.players.id, nick: m.players.nick || m.players.name, phone: m.players.phone,
+    token: m.players.magic_token, playerType: m.player_type,
+  }));
+}
+
+/** Confirmed roster of a game in the shape splitWaitlist expects. */
+export async function confirmedRoster(gameId, members) {
+  const { data } = await db().from("attendances")
+    .select("player_id, responded_at, priority_locked").eq("game_id", gameId).eq("status", "confirmed");
+  const type = Object.fromEntries(members.map((m) => [m.id, m.playerType]));
+  return (data ?? []).map((a) => ({
+    id: a.player_id, respondedAt: a.responded_at, priorityLocked: a.priority_locked, playerType: type[a.player_id],
+  }));
+}
+
+/** Same server function the WhatsApp magic link uses: window check, ban check, paid reset. */
+export async function setStatus(token, status, gameId) {
+  const { error } = await db().rpc("magic_set_status", { token, new_status: status, p_game_id: gameId });
+  if (error) throw error;
+}

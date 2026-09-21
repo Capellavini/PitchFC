@@ -25,7 +25,26 @@ Reactive: `@Pitch <pergunta>` gets a short answer from Haiku, in the language of
 the question. It only sees a DATA block read from Supabase: next game (spots,
 confirmed names, link) and season stats (goals, assists, MVPs, games, wins,
 clean sheets, last matchday scores). Without `ANTHROPIC_API_KEY` the bot posts
-events only. It cannot confirm presence yet.
+events only.
+
+**Confirm / drop out from the chat.** `@Pitch eu vou` / `@Pitch não vou` (or
+`@Pitch I'm in` / `I'm out`) changes the sender's own attendance for the next
+open game. Rules:
+- Strict phrases only: the whole short message must be the intent. Questions
+  ("eu vou?") and longer sentences go to the Q&A path, never to an action.
+- The player is identified by the sender's **phone number** matched against
+  `players.phone` (last 9 digits), never by anything typed in the message. No
+  match or an ambiguous match -> the bot replies with the signup link and does nothing.
+- It calls the same `magic_set_status` SQL function as the WhatsApp magic link, so
+  the confirmation window, bans and payment reset behave exactly like the app.
+- The reply says whether they are in (`c/s`) or on the waiting list (with the
+  same mensalista/avulso ordering as the app). Poll-loop events (marcos, abriu
+  vaga) then follow as usual.
+- Dry-run: logs "would confirm X" and writes nothing.
+- Caveat: WhatsApp groups may expose a privacy id (`@lid`) instead of the number.
+  The bot tries `participantAlt` and Baileys' LID mapping; if neither resolves
+  it logs `could not resolve sender phone` and asks the person to use the link.
+  Verify this in the test group before relying on it.
 
 ## Ban-risk guards (built in)
 

@@ -7,11 +7,12 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaile
 import qrcode from "qrcode-terminal";
 import pino from "pino";
 import { cfg } from "./config.js";
-import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays } from "./db.js";
+import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays, groupMembers, confirmedRoster, setStatus } from "./db.js";
 import { decide, decidePostGame } from "./events.js";
 import { render } from "./messages.js";
 import { isQuietHour, lisbonDayKey } from "./time.js";
 import { answer } from "./ask.js";
+import { parseIntent, phonesMatch, splitWaitlist, actionReplies } from "./roster.js";
 
 const LIST_GROUPS = process.argv.includes("--list-groups");
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -103,6 +104,58 @@ async function loop() {
 // -- @mention -> @Pitch answer -------------------------------------------
 const bare = (j) => j.split(":")[0].split("@")[0];
 
+// Who wrote this? In groups WhatsApp may hand us a privacy id (@lid) instead of
+// the phone number, so try every source and give up (safely) if none resolves.
+async function senderPhone(m) {
+  const cands = [m.key.participantAlt, m.key.participant, m.participant].filter(Boolean);
+  const pn = cands.find((j) => j.endsWith("@s.whatsapp.net"));
+  if (pn) return pn.split("@")[0].split(":")[0];
+  const lid = cands.find((j) => j.endsWith("@lid"));
+  if (lid) {
+    try {
+      const mapped = await sock.signalRepository?.lidMapping?.getPNForLID?.(lid);
+      if (mapped) return String(mapped).split("@")[0].split(":")[0];
+    } catch { /* fall through */ }
+  }
+  return null;
+}
+
+// "@Pitch eu vou" / "@Pitch I'm out": changes ONLY the sender's own attendance,
+// identified by phone number, through the same server rule as the magic link.
+async function handleAction({ group, game, spots, m, jid, intent, lang }) {
+  const reply = (key, ctx = {}) => actionReplies[key][lang]({ link: linkFor(group), ...ctx });
+  const say = async (text) => (cfg().autosend ? send(jid, text, m) : log(`[dry-run] @Pitch reply -> ${group.name}: ${text}`));
+
+  if (!game || !["open", "full"].includes(game.status)) return say(reply("no_game"));
+
+  const phone = await senderPhone(m);
+  if (!phone) { log("action: could not resolve sender phone (lid unmapped)"); return say(reply("not_found")); }
+  const members = await groupMembers(group.id);
+  const hits = members.filter((p) => phonesMatch(p.phone, phone));
+  if (hits.length !== 1) { log(`action: ${hits.length} members match sender`); return say(reply("not_found")); }
+  const me = hits[0];
+
+  const before = splitWaitlist(await confirmedRoster(game.id, members), spots);
+  const wasConfirmed = [...before.playing, ...before.waitlist].some((p) => p.id === me.id);
+  if (intent === "confirm" && wasConfirmed) return say(reply("already", { nick: me.nick }));
+
+  if (!cfg().autosend) return log(`[dry-run] would ${intent} ${me.nick} on game ${game.id}`);
+  try {
+    await setStatus(me.token, intent === "confirm" ? "confirmed" : "declined", game.id);
+  } catch (e) {
+    if (/ainda n.o abriram/i.test(e.message)) return say(reply("window"));
+    throw e;
+  }
+
+  if (intent === "decline") return say(reply("declined", { nick: me.nick }));
+  const after = splitWaitlist(await confirmedRoster(game.id, members), spots);
+  const pos = after.waitlist.findIndex((p) => p.id === me.id);
+  return say(pos >= 0
+    ? reply("waitlist", { nick: me.nick, pos: pos + 1 })
+    : reply("confirmed", { nick: me.nick, c: after.playing.length, s: spots }));
+}
+
+
 async function onMessage(m) {
   try {
     const jid = m.key.remoteJid;
@@ -123,7 +176,11 @@ async function onMessage(m) {
       .filter((g) => g.status !== "cancelled")
       .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
     const game = games[0] ?? null;
-    const reply = await answer({ question: text, game, spots: game?.spots || group.max_players || 10, link: linkFor(group), groupId: group.id });
+    const spots = game?.spots || group.max_players || 10;
+    const action = parseIntent(text);
+    if (action) return await handleAction({ group, game, spots, m, jid, ...action });
+
+    const reply = await answer({ question: text, game, spots, link: linkFor(group), groupId: group.id });
     if (!reply) return;
     if (!cfg().autosend) return log(`[dry-run] @Pitch reply -> ${group.name}: ${reply}`);
     await send(jid, reply, m);
