@@ -1,0 +1,66 @@
+import { createClient } from "@supabase/supabase-js";
+import { cfg } from "./config.js";
+
+let client;
+export const db = () =>
+  (client ??= createClient(cfg().supabaseUrl, cfg().serviceKey, { auth: { persistSession: false } }));
+
+/** Groups that opted in to the bot (jid set + enabled). Safe by default. */
+export async function botGroups() {
+  const { data, error } = await db().from("groups")
+    .select("id, name, wa_group_jid, invite_token, max_players")
+    .eq("wa_bot_enabled", true).not("wa_group_jid", "is", null);
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Upcoming or cancelled-but-future games with their confirmed counts. */
+export async function upcomingGames(groupId) {
+  const since = new Date(Date.now() - 6 * 36e5).toISOString();
+  const { data: games, error } = await db().from("games")
+    .select("id, status, scheduled_at, venue, spots, created_at")
+    .eq("group_id", groupId).gte("scheduled_at", since)
+    .in("status", ["open", "full", "cancelled"]);
+  if (error) throw error;
+  if (!games?.length) return [];
+  const { data: att, error: e2 } = await db().from("attendances")
+    .select("game_id, status, player_id").in("game_id", games.map((g) => g.id)).eq("status", "confirmed");
+  if (e2) throw e2;
+  const count = {};
+  for (const a of att ?? []) count[a.game_id] = (count[a.game_id] || 0) + 1;
+  return games.map((g) => ({ ...g, confirmed: count[g.id] || 0 }));
+}
+
+export async function getPrev(gameId) {
+  const { data } = await db().from("bot_game_state").select("last_confirmed").eq("game_id", gameId).maybeSingle();
+  return data ? data.last_confirmed : null;
+}
+export const setPrev = (gameId, n) =>
+  db().from("bot_game_state").upsert({ game_id: gameId, last_confirmed: n, updated_at: new Date().toISOString() });
+
+/** Claim-before-send. Returns the row id, or null if this key was already announced. */
+export async function claim(groupId, gameId, kind, key) {
+  const { data, error } = await db().from("bot_announcements")
+    .insert({ group_id: groupId, game_id: gameId, kind, dedupe_key: key }).select("id").single();
+  if (error) {
+    if (error.code === "23505") return null;
+    throw error;
+  }
+  return data.id;
+}
+export const markSent = (id) => db().from("bot_announcements").update({ status: "sent" }).eq("id", id);
+export const unclaim = (id) => db().from("bot_announcements").delete().eq("id", id);
+
+export async function sentSince(groupId, iso) {
+  const { count } = await db().from("bot_announcements")
+    .select("id", { count: "exact", head: true }).eq("group_id", groupId).gte("created_at", iso);
+  return count ?? 0;
+}
+
+/** Names of the confirmed players, for @Pitch answers. */
+export async function confirmedNames(gameId) {
+  const { data } = await db().from("attendances")
+    .select("players(nick, name)").eq("game_id", gameId).eq("status", "confirmed")
+    .order("responded_at", { ascending: true, nullsFirst: true });
+  return (data ?? []).map((r) => r.players?.nick || r.players?.name).filter(Boolean);
+}

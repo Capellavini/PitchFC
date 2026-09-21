@@ -1,0 +1,21 @@
+{
+  "name": "pitch-wa-bot",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "PITCH group-chat organizer bot (Baileys) — experimental, one test group",
+  "scripts": {
+    "start": "node src/index.js",
+    "groups": "node src/index.js --list-groups",
+    "test": "node --test test/events.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "pino": "^10.3.1",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
