@@ -11,7 +11,7 @@ import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, s
 import { decide, decidePostGame } from "./events.js";
 import { render } from "./messages.js";
 import { isQuietHour, lisbonDayKey } from "./time.js";
-import { answer } from "./ask.js";
+import { answer, classifyIntent } from "./ask.js";
 import { parseIntent, phonesMatch, splitWaitlist, actionReplies } from "./roster.js";
 
 const LIST_GROUPS = process.argv.includes("--list-groups");
@@ -182,7 +182,9 @@ async function onMessage(m) {
       .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
     const game = games[0] ?? null;
     const spots = game?.spots || group.max_players || 10;
-    const action = parseIntent(text);
+    // Strict phrases first (free, instant); otherwise let the model read natural wording.
+    let action = parseIntent(text);
+    if (!action) action = await classifyIntent(text).catch((e) => { log("intent classifier failed:", e.message); return null; });
     log(`addressed in ${group.name}: "${text.slice(0, 60)}" -> ${action ? action.intent : "question"}`);
     if (action) return await handleAction({ group, game, spots, m, jid, ...action });
 
