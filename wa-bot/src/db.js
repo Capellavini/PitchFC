@@ -88,12 +88,12 @@ export async function groupStats(groupId) {
 /** Members of the group whose stored phone could match. Caller filters with phonesMatch. */
 export async function groupMembers(groupId) {
   const { data, error } = await db().from("player_group_memberships")
-    .select("player_id, player_type, banned, players(id, nick, name, phone, magic_token)")
+    .select("player_id, player_type, banned, players(id, nick, name, phone, magic_token, is_organizer)")
     .eq("group_id", groupId).eq("banned", false);
   if (error) throw error;
   return (data ?? []).filter((m) => m.players).map((m) => ({
     id: m.players.id, nick: m.players.nick || m.players.name, phone: m.players.phone,
-    token: m.players.magic_token, playerType: m.player_type,
+    token: m.players.magic_token, playerType: m.player_type, isOrganizer: !!m.players.is_organizer,
   }));
 }
 

@@ -9,3 +9,4 @@ pitch-app.zip
 # WhatsApp bot session credentials — treat like a password
 wa-bot/auth/
 wa-bot/node_modules/
+wa-bot/data/

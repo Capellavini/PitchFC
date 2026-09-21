@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "groups": "node src/index.js --list-groups",
-    "test": "node --test test/events.test.js test/roster.test.js"
+    "test": "node --test test/events.test.js test/roster.test.js test/polls.test.js"
   },
   "engines": {
     "node": ">=22"

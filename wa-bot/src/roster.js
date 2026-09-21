@@ -62,6 +62,15 @@ export function parseIntent(text) {
   return null;
 }
 
+/** "@Pitch enquete" / "post a poll": ask the bot to post its attendance poll (organizers only). */
+export function parseCommand(text) {
+  if (!text || text.includes("?")) return null;
+  const t = norm(text);
+  if (/^(?:(?:faz|cria|manda|posta|abre|lanca)(?: uma| a)? )?enquete(?: do jogo)?$/.test(t)) return { command: "poll", lang: "pt" };
+  if (/^(?:(?:make|post|create|send)(?: a)? )?poll(?: for the game)?$/.test(t)) return { command: "poll", lang: "en" };
+  return null;
+}
+
 // ── Replies (PT-PT / EN) ──────────────────────────────────────────────────
 const left = { pt: (n) => (n === 1 ? "falta 1 vaga" : `faltam ${n} vagas`), en: (n) => (n === 1 ? "1 spot left" : `${n} spots left`) };
 
@@ -93,5 +102,13 @@ export const actionReplies = {
   window: {
     pt: () => "As confirmações ainda não abriram.",
     en: () => "Confirmations haven't opened yet.",
+  },
+  window_named: {
+    pt: ({ nick }) => `${nick}, as confirmações ainda não abriram — o teu voto não foi contado.`,
+    en: ({ nick }) => `${nick}, confirmations haven't opened yet — your vote wasn't counted.`,
+  },
+  organizer_only: {
+    pt: () => "Só o organizador pode pedir a enquete.",
+    en: () => "Only the organizer can ask for the poll.",
   },
 };

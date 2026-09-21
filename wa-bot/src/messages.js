@@ -79,6 +79,18 @@ function postgame(md, link, L) {
   return lines.join("\n");
 }
 
+/**
+ * The bot's own attendance poll. Option labels are what the vote reader maps
+ * back to confirm/decline (see optionIntent in polls.js), so keep them explicit.
+ */
+export function pollContent(game, lang = "pt") {
+  const pt = { q: `⚽ Vais jogar ${formatGameWhen(game.scheduled_at, "pt")}?`, yes: "✅ Eu vou", no: "❌ Não vou" };
+  const en = { q: `⚽ Are you playing ${formatGameWhen(game.scheduled_at, "en")}?`, yes: "✅ I'm in", no: "❌ I'm out" };
+  if (lang === "en") return { name: en.q, values: [en.yes, en.no] };
+  if (lang === "pt+en") return { name: `${pt.q} / ${en.q.replace("⚽ ", "")}`, values: [`${pt.yes} / ${en.yes.slice(2)}`, `${pt.no} / ${en.no.slice(2)}`] };
+  return { name: pt.q, values: [pt.yes, pt.no] };
+}
+
 /** Render a message for a group's language setting. */
 export function render(kind, ctx, lang = "pt") {
   const t = T[kind];

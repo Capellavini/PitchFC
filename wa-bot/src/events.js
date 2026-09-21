@@ -43,6 +43,8 @@ export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, al
   const ageH = (now - new Date(game.created_at)) / 36e5;
   if (prev === null && ageH <= openMaxAgeH) {
     out.push({ kind: "game_open", key: `game_open:${gid}` });
+    // Right after the announcement: a one-tap poll. Follow-ups don't spend the daily cap.
+    out.push({ kind: "game_poll", key: `game_poll:${gid}`, followUp: true });
   }
 
   if (prev !== null && confirmed !== prev) {
