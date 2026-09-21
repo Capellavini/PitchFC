@@ -64,10 +64,15 @@ export function parseIntent(text) {
 
 /** "@Pitch enquete" / "post a poll": ask the bot to post its attendance poll (organizers only). */
 export function parseCommand(text) {
-  if (!text || text.includes("?")) return null;
+  if (!text) return null;
   const t = norm(text);
-  if (/^(?:(?:faz|cria|manda|posta|abre|lanca)(?: uma| a)? )?enquete(?: do jogo)?$/.test(t)) return { command: "poll", lang: "pt" };
-  if (/^(?:(?:make|post|create|send)(?: a)? )?poll(?: for the game)?$/.test(t)) return { command: "poll", lang: "en" };
+  if (t.split(" ").length > 14) return null;
+  // A request = a "poll" word plus a create-verb ("crie uma enquete pro jogo dessa semana",
+  // "pode criar uma enquete?"). A bare "enquete" also counts. Asking ABOUT polls ("qual a
+  // enquete?", "a enquete esta boa") has no create-verb, so it is not a command.
+  const ptPoll = /\benquete\b/.test(t), enPoll = /\bpoll\b/.test(t);
+  if (ptPoll && (/\b(cri\w*|faz\w*|fac\w*|mand\w*|post\w*|abr\w*|lanc\w*|prepar\w*|gera\w*)\b/.test(t) || t === "enquete")) return { command: "poll", lang: "pt" };
+  if (enPoll && (/\b(creat\w*|mak\w*|post\w*|send\w*|start\w*|open\w*|set\w*)\b/.test(t) || t === "poll")) return { command: "poll", lang: "en" };
   return null;
 }
 

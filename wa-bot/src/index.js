@@ -208,13 +208,13 @@ async function handleAction({ group, game, spots, m, jid, intent, lang }) {
   }
 }
 
-// "@Pitch enquete": organizers can ask the bot to (re)post its attendance poll.
+// "@Pitch enquete": any registered member can ask the bot to post its attendance poll (max 1/hour).
 async function handlePollCommand({ group, game, m, jid, lang }) {
   const reply = (key) => actionReplies[key][lang]({});
   const say = async (text) => (cfg().autosend ? send(jid, text, m) : log(`[dry-run] @Pitch reply -> ${group.name}: ${text}`));
   if (!game) return say(reply("no_game"));
   const { me } = await memberFor(group, m);
-  if (!me?.isOrganizer) return say(reply("organizer_only"));
+  if (!me) return say(actionReplies.not_found[lang]({ link: linkFor(group) }));
   if (!cfg().autosend) return log(`[dry-run] would post attendance poll for ${game.id} (asked by ${me.nick})`);
   const id = await claim(group.id, game.id, "game_poll", `game_poll:${game.id}:manual:${Math.floor(Date.now() / 36e5)}`);
   if (!id) return log("poll already posted this hour, ignoring");

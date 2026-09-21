@@ -97,7 +97,7 @@ warning. Use a **dedicated chip**, never a personal number. Keep the
 
 ## Attendance polls (only on request)
 
-The bot **never posts a poll on its own.** An organizer asks for it in the group:
+The bot **never posts a poll on its own.** A group member asks for it in the group:
 `@Pitch enquete` / `@Pitch post a poll` (one per hour at most). The poll is
 "Vais jogar <dia, hora>?" with "Eu vou / Não vou" options (bilingual for `pt+en`).
 

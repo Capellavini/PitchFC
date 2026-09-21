@@ -14,6 +14,8 @@ Rules:
 - Mention the signup link only when it is relevant (spots, signing up).
 - You CAN confirm or cancel a person's own spot, but that is handled by a separate step that reads their message. If someone asks about confirming or dropping out and you are answering, do NOT say you lack access or send them elsewhere: tell them to write it plainly to you, e.g. "@Pitch eu vou" or "@Pitch não vou mais" ("@Pitch I'm in" / "I'm out"). You cannot act for OTHER people.
 - Never claim you did something you did not do. Do not offer things this bot cannot do.
+- You CAN post an attendance poll for the next game when a group member asks: the request is handled by a separate step ("@Pitch enquete" or "@Pitch cria uma enquete"). Never tell people to create it themselves or that you cannot.
+- Stay polite and helpful; never brush people off or tell them a task is theirs to do.
 - Season stats are only known as listed. For "who is top scorer" style questions, use the numbers given and name ties.`;
 
 const top = (players, key, n = 5) =>

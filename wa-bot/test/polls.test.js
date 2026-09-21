@@ -101,10 +101,11 @@ test("bot poll content: options are readable back as confirm / decline in every 
   }
 });
 
-test("'@Pitch enquete' / 'post a poll' are commands; questions and chatter are not", () => {
-  for (const t of ["enquete", "faz uma enquete", "Cria a enquete", "manda enquete do jogo"]) assert.equal(parseCommand(t)?.command, "poll", t);
-  for (const t of ["post a poll", "poll", "make a poll for the game"]) assert.equal(parseCommand(t)?.command, "poll", t);
-  for (const t of ["qual a enquete?", "eu vou", "a enquete está boa", ""]) assert.equal(parseCommand(t), null, t);
+test("poll requests: bare word or a create-verb; asking ABOUT polls is not a command", () => {
+  for (const t of ["enquete", "faz uma enquete", "Cria a enquete", "manda enquete do jogo", "crie uma enquete pro jogo dessa semana", "pode criar uma enquete?", "vc pode fazer uma enquete pra sábado"])
+    assert.equal(parseCommand(t)?.command, "poll", t);
+  for (const t of ["post a poll", "poll", "make a poll for the game", "can you create a poll?"]) assert.equal(parseCommand(t)?.command, "poll", t);
+  for (const t of ["qual a enquete?", "eu vou", "a enquete está boa", "", "quem votou na enquete", "the poll is great"]) assert.equal(parseCommand(t), null, t);
 });
 
 test("keyword fallback (used only when the model is unavailable)", () => {
