@@ -67,13 +67,16 @@ PITCH is a mobile-first web app that organizes a **weekly football game between 
 - **Grupo tab**: roster grouped by status with overall (OVR) chips and reliability %, invite via WhatsApp.
 - **Perfil tab**: FUT card hero (gold/silver/bronze + LENDA ≥86 tiers), full profile editing incl. attribute sliders, peer ratings (request via WhatsApp `?rate=` link → friend rates on a no-login page → code paste back; card shows 50/50 blend of self and friends), organizer group settings, logout.
 
-### Designed but needs backend
-- Magic-link confirmation (one unique URL per player per game, no auth needed)
-- Auto-substitution: when a confirmed player cancels, notify pending players automatically
-- Scheduled WhatsApp reminders (e.g., Thursday nudge to non-responders)
-- Real MB Way / payment processing
-- Post-game result + goals/assists entry by the organizer (feeds the stats)
-- Recurring game auto-creation (every Saturday 20:00)
+### Built, not yet fully live in production
+- **Magic-link confirmation** — done. `?confirm=<magic_token>` (`src/components/MagicConfirm.jsx`, wired in `src/PitchApp.jsx`) opens the Jogo screen for that player, no login. The same `magic_set_status` SQL function is reused by the WhatsApp bot's chat-confirm, so both channels behave identically (confirmation window, bans, payment reset).
+- **Auto-substitution** — code-complete, needs one-time production activation. The waiting list is derived (not stored): a `confirmed → declined` flip on a full game silently promotes the next in line. `supabase/functions/notify-next` (Edge Function) pushes that promoted player a "Entraste no jogo!" notification via a Database Webhook on `attendances` UPDATE — see `supabase/PUSH-SETUP.md` for the VAPID keys + webhook wiring still pending. The wa-bot separately announces "abriu vaga" to the group when a full game drops below `spots` (`wa-bot/src/events.js`).
+- **Scheduled WhatsApp reminders** — piloted, not scheduled-cron. The wa-bot (`wa-bot/src/events.js`) already sends "Lembrete 24h", proportional milestones (80%/100%/waitlist), and "Dia do jogo" nudges in the Fut do Burger group, but only while someone has the bot process running locally (see "wa-bot hosting" below).
+- **Post-game result + goals/assists entry by the organizer** — done, in-app (not bot). Live matchday (`src/components/Matchday.jsx` / `MatchdayTab.jsx`) records per-goal scorer/assist/own-goal/save per finished game and feeds season stats, history and MVP voting directly; see "Implemented in the prototype" above.
+- **Recurring game auto-creation** — mostly done via `pg_cron`. `reset_recurring_confirmations()` (`supabase/migrations/20260101000600_auto_reset.sql`) runs hourly, wipes last round's confirmations and rolls `scheduled_at` forward once a group's `open_weekday`/`open_time` passes. Gap: it recycles an *existing* game row — it doesn't bootstrap the first game for a brand-new group with none yet.
+- **wa-bot hosting** — genuinely not built. The bot (`wa-bot/`) only runs when someone starts `npm start` on a local machine; there's no Dockerfile/Procfile/fly.toml/Railway config in the repo. This is the real gap, not the bot's feature set.
+
+### Still genuinely not built
+- **Real MB Way / payment processing** — the "Pagar · MB Way" button (`src/components/JogoTab.jsx`) just flips `paid = true` locally (`src/PitchApp.jsx`); no Easypay/SIBS integration exists yet.
 
 ## Architecture plan
 
