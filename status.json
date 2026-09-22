@@ -2,6 +2,10 @@
   "project": "Pitch FC",
   "agent": "Leo",
   "role": "CMO",
+  "team": [
+    { "agent": "Leo", "role": "CMO" },
+    { "agent": "Cris", "role": "CTO" }
+  ],
   "updated_at": "2026-09-22",
   "headline": "Frontend completo em modo demo (localStorage); migração para Supabase em andamento PR a PR.",
   "metrics": [
