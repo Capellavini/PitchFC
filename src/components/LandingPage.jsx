@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Zap, Wallet, CalendarCheck, Trophy, IdCard, ArrowRight, Bot, BarChart3, Crown,
+  Zap, Wallet, CalendarCheck, Trophy, IdCard, ArrowRight, Bot, BarChart3, Crown, Plus, Minus,
 } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
 import { t } from "../lib/i18n";
@@ -256,6 +256,67 @@ function HowItWorksSection({ onEnter }) {
   );
 }
 
+const FAQ = [
+  {
+    q: "É grátis?",
+    a: "Sim. Criar o grupo, organizar o jogo, ver as stats e montar o teu cartão não custa nada. O único dinheiro que circula é o da mensalidade do campo, dividido entre vocês.",
+  },
+  {
+    q: "Preciso de ser exatamente 10 ou 15 jogadores?",
+    a: "Não. Tu defines o número de vagas do teu grupo — 10 é só o valor mais comum. Funciona com qualquer tamanho de grupo.",
+  },
+  {
+    q: "O meu grupo já existe no WhatsApp — preciso de recomeçar do zero?",
+    a: "Não. O PITCH entra por cima do grupo que já tens: o organizador manda um link, todos entram com a conta em segundos, e continuam a falar no mesmo grupo de sempre.",
+  },
+  {
+    q: "Só funciona ao sábado?",
+    a: "Não — o dia e a hora são definidos por ti no onboarding, qualquer dia da semana.",
+  },
+  {
+    q: "Como funciona o pagamento da mensalidade?",
+    a: "O valor é dividido automaticamente por quem confirma. Hoje o pagamento em si é feito como sempre foi (MB Way, dinheiro) e cada jogador marca que já pagou — o organizador vê tudo numa tela. Pagamento automático dentro da app está a caminho.",
+  },
+  {
+    q: "Preciso de instalar alguma coisa?",
+    a: "Não — o PITCH é uma app web, abre-se no browser do telemóvel como um site. Dá até pra «instalar» o atalho no ecrã inicial, mas não é obrigatório.",
+  },
+];
+
+function FaqSection() {
+  const [open, setOpen] = useState(0);
+  return (
+    <Section style={{ maxWidth: 760, padding: "56px 20px" }}>
+      <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", color: C.accent, marginBottom: 8 }}>{t("PERGUNTAS FREQUENTES")}</div>
+        <div style={{ ...displayFont, fontSize: "clamp(24px, 3.6vw, 32px)", color: C.text1 }}>{t("Ainda tens dúvidas?")}</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {FAQ.map((item, i) => {
+          const isOpen = open === i;
+          return (
+            <div key={item.q} style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
+              <button onClick={() => setOpen(isOpen ? null : i)} style={{
+                width: "100%", textAlign: "left", padding: "16px 18px", background: "none", border: "none",
+                cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center",
+                gap: 12, color: C.text1, fontSize: 14, fontWeight: 800,
+              }}>
+                {t(item.q)}
+                {isOpen ? <Minus size={16} color={C.accent} style={{ flexShrink: 0 }} /> : <Plus size={16} color={C.text3} style={{ flexShrink: 0 }} />}
+              </button>
+              {isOpen && (
+                <div style={{ padding: "0 18px 18px", fontSize: 13, color: C.text2, lineHeight: 1.65 }}>
+                  {t(item.a)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
 const FeatureSection = ({ n, Icon, h1, h2, text, Mock, reverse }) => (
   <Section style={{ padding: "52px 20px" }}>
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 44, flexDirection: reverse ? "row-reverse" : "row" }}>
@@ -339,6 +400,8 @@ export default function LandingPage({ onEnter, lang, onLang }) {
           <FeatureSection key={f.n} {...f} reverse={i % 2 === 1} />
         ))}
       </div>
+
+      <FaqSection />
 
       {/* FINAL CTA */}
       <div style={{ ...fieldBackdrop(0.6, 0.92) }}>
