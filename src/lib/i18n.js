@@ -646,6 +646,40 @@ const PT_BR = {
     "Crie sua conta, monte seu cartão e entre em campo.",
   "Criar conta na app": "Criar conta no app",
 
+  // ── LandingPage: feature sections (2026-09-22 revamp) ──
+  "O teu jogo de sábado,": "Seu jogo de sábado,",
+  "sem o caos do grupo.": "sem o caos do grupo.",
+  "Confirmações, dinheiro, equipas e stats — tudo num só sítio. Pra ninguém perguntar «então, jogamos ou não?» outra vez.":
+    "Confirmações, dinheiro, times e stats — tudo em um só lugar. Pra ninguém perguntar «então, vai rolar ou não?» de novo.",
+  "Confirma o jogo,": "Confirme o jogo,",
+  "não o caos.": "não o caos.",
+  "Grelha de vagas em tempo real: todos veem quem já está dentro, quem falta e quantas vagas sobram — sem precisar de percorrer o histórico do grupo pra saber se o sábado vai sair.":
+    "Grade de vagas em tempo real: todo mundo vê quem já está dentro, quem falta e quantas vagas sobram — sem precisar rolar o histórico do grupo pra saber se o sábado vai rolar.",
+  "Um assistente": "Um assistente",
+  "dentro do teu grupo.": "dentro do seu grupo.",
+  "O Pitch AI vive no teu WhatsApp e fala a língua do grupo: avisa quando abre vaga, lembra quem ainda não confirmou e faz o resumo do jogo no dia seguinte — sem ninguém precisar de escrever nada.":
+    "O Pitch AI mora no seu WhatsApp e fala a língua do grupo: avisa quando abre vaga, lembra quem ainda não confirmou e manda o resumo do jogo no dia seguinte — sem ninguém precisar escrever nada.",
+  "Sabes sempre": "Você sempre sabe",
+  "quem já pagou.": "quem já pagou.",
+  "A mensalidade do campo dividida por todos, visível num toque. Chega de perguntar «faltam quantos?» no grupo — o organizador vê tudo numa só tela, e cobra os atrasados direto pelo WhatsApp.":
+    "A mensalidade do campo dividida entre todos, visível em um toque. Chega de perguntar «faltam quantos?» no grupo — o organizador vê tudo em uma tela só, e cobra os atrasados direto pelo WhatsApp.",
+  "Sorteio justo,": "Sorteio justo,",
+  "jogo registado ao vivo.": "jogo registrado ao vivo.",
+  "As equipas saem equilibradas por posição e overall, sem discussão sobre quem ficou com o time mais fraco. Cada golo e assistência entram na hora — com cronómetro e até por comando de voz — pra ninguém decorar nada até ao fim do jogo.":
+    "Os times saem equilibrados por posição e overall, sem discussão sobre quem ficou com o time mais fraco. Cada gol e assistência entram na hora — com cronômetro e até por comando de voz — pra ninguém precisar decorar nada até o fim do jogo.",
+  "A época inteira,": "A temporada inteira,",
+  "num ranking só.": "em um ranking só.",
+  "Golos, assistências, vitórias, MVPs e defesas viram um ranking de Impacto — quem está mais completo na época, num número só. E tem ranking à parte pros guarda-redes, porque clean sheet também vale ponto.":
+    "Gols, assistências, vitórias, MVPs e defesas viram um ranking de Impacto — quem está mais completo na temporada, em um número só. E tem ranking à parte pros goleiros, porque clean sheet também vale ponto.",
+  "A tua liga fantasy,": "Sua liga fantasy,",
+  "dentro do próprio grupo.": "dentro do próprio grupo.",
+  "Monta o plantel com um orçamento, escolhe o capitão (pontos em dobro) e troca jogadores com os teus amigos. O preço de cada jogador sobe e desce com o desempenho real dele em campo — a competição acontece por cima do próprio jogo de sábado.":
+    "Monte o elenco com um orçamento, escolha o capitão (pontos em dobro) e troque jogadores com seus amigos. O preço de cada jogador sobe e desce com o desempenho real dele em campo — a competição acontece em cima do próprio jogo de sábado.",
+  "O teu jogo,": "Seu jogo,",
+  "em forma de cartão.": "em forma de cartão.",
+  "Estilo FUT: overall calculado a partir dos teus atributos, posição e foto — com tiers de ouro, prata, bronze, ou LENDA se passares de 86. É a forma de mostrar quem é quem no grupo, sem ninguém discutir quem é o melhor jogador.":
+    "Estilo FUT: overall calculado a partir dos seus atributos, posição e foto — com tiers de ouro, prata, bronze, ou LENDA se você passar de 86. É a forma de mostrar quem é quem no grupo, sem ninguém discutir quem é o melhor jogador.",
+
   // ── AuthForm / ResetPassword ───────────────────────────
   "Preenche email e palavra-passe.": "Preencha email e senha.",
   "A palavra-passe precisa de pelo menos 6 caracteres.": "A senha precisa ter pelo menos 6 caracteres.",
