@@ -1,0 +1,79 @@
+{
+  "project": "Pitch FC",
+  "agent": "Leo",
+  "role": "CMO",
+  "updated_at": "2026-09-22",
+  "headline": "Frontend completo em modo demo (localStorage); migração para Supabase em andamento PR a PR.",
+  "metrics": [
+    {
+      "label": "Stack",
+      "value": "React + Vite, PWA mobile-first"
+    },
+    {
+      "label": "Migração Supabase",
+      "value": "PR 2 de N concluído"
+    },
+    {
+      "label": "Modos de execução",
+      "value": "Cloud + Local demo (fallback automático)"
+    }
+  ],
+  "progress": [
+    {
+      "title": "Prototipo frontend (todas as tabs)",
+      "status": "done",
+      "note": "Jogo, Stats, Clube, Social, Grupo, Perfil — tudo funcional em localStorage"
+    },
+    {
+      "title": "Supabase PR 1 — roster/attendances/realtime",
+      "status": "done"
+    },
+    {
+      "title": "Supabase PR 2 — auth + groups + invites + admin events + cloud bookings",
+      "status": "done"
+    },
+    {
+      "title": "Magic-link confirmation sem login",
+      "status": "blocked",
+      "note": "depende de backend"
+    },
+    {
+      "title": "Pagamentos reais (MB Way)",
+      "status": "blocked",
+      "note": "depende de integração Easypay/SIBS"
+    },
+    {
+      "title": "Bot de WhatsApp (Baileys) — piloto no grupo Fut do Burger",
+      "status": "in_progress",
+      "note": "Anuncia eventos (jogo aberto, marcos proporcionais, vaga aberta, lembretes, pós-jogo), @Pitch com IA, confirma/desiste pelo chat e por enquete. Falta: hospedar 24/7 e ligar no Goodweather."
+    }
+  ],
+  "next_steps": [
+    "Auto-substituição quando um confirmado cancela",
+    "Lembretes automáticos via WhatsApp (nudge de quinta-feira)",
+    "Entrada de resultado pós-jogo (gols/assistências) pelo organizador",
+    "Criação automática de jogo recorrente (todo sábado 20h)"
+  ],
+  "kpis": [
+    {
+      "label": "Grupos ativos em cloud mode",
+      "why": "é o sinal mais direto de que alguém confiou o jogo real ao app, não só testou"
+    },
+    {
+      "label": "Taxa de confirmação por jogo (%)",
+      "why": "mede se o app resolve o problema central: fechar 10 jogadores sem caos no WhatsApp"
+    },
+    {
+      "label": "Retenção semana-a-semana (grupo joga de novo?)",
+      "why": "single jogo bem organizado não prova nada — o produto só ganha se o grupo volta"
+    },
+    {
+      "label": "Tempo médio até fechar o jogo (10 confirmados)",
+      "why": "proxy de fricção: quanto menor, mais o app está realmente substituindo o WhatsApp"
+    },
+    {
+      "label": "MRR (quando pagamentos reais entrarem)",
+      "why": "primeiro sinal de monetização — ainda não existe, mas já vale desenhar como vai ser medido"
+    }
+  ]
+}
