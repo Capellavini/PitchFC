@@ -647,14 +647,14 @@ const PT_BR = {
   "Criar conta na app": "Criar conta no app",
 
   // ── LandingPage: feature sections (2026-09-22 revamp) ──
-  "O teu jogo de sábado,": "Seu jogo de sábado,",
+  "O teu jogo da semana,": "Seu jogo da semana,",
   "sem o caos do grupo.": "sem o caos do grupo.",
   "Confirmações, dinheiro, equipas e stats — tudo num só sítio. Pra ninguém perguntar «então, jogamos ou não?» outra vez.":
     "Confirmações, dinheiro, times e stats — tudo em um só lugar. Pra ninguém perguntar «então, vai rolar ou não?» de novo.",
   "Confirma o jogo,": "Confirme o jogo,",
   "não o caos.": "não o caos.",
-  "Grelha de vagas em tempo real: todos veem quem já está dentro, quem falta e quantas vagas sobram — sem precisar de percorrer o histórico do grupo pra saber se o sábado vai sair.":
-    "Grade de vagas em tempo real: todo mundo vê quem já está dentro, quem falta e quantas vagas sobram — sem precisar rolar o histórico do grupo pra saber se o sábado vai rolar.",
+  "Grelha de vagas em tempo real: todos veem quem já está dentro, quem falta e quantas vagas sobram — sem precisar de percorrer o histórico do grupo pra saber se o jogo vai sair.":
+    "Grade de vagas em tempo real: todo mundo vê quem já está dentro, quem falta e quantas vagas sobram — sem precisar rolar o histórico do grupo pra saber se o jogo vai rolar.",
   "Um assistente": "Um assistente",
   "dentro do teu grupo.": "dentro do seu grupo.",
   "O Pitch AI vive no teu WhatsApp e fala a língua do grupo: avisa quando abre vaga, lembra quem ainda não confirmou e faz o resumo do jogo no dia seguinte — sem ninguém precisar de escrever nada.":
@@ -673,8 +673,8 @@ const PT_BR = {
     "Gols, assistências, vitórias, MVPs e defesas viram um ranking de Impacto — quem está mais completo na temporada, em um número só. E tem ranking à parte pros goleiros, porque clean sheet também vale ponto.",
   "A tua liga fantasy,": "Sua liga fantasy,",
   "dentro do próprio grupo.": "dentro do próprio grupo.",
-  "Monta o plantel com um orçamento, escolhe o capitão (pontos em dobro) e troca jogadores com os teus amigos. O preço de cada jogador sobe e desce com o desempenho real dele em campo — a competição acontece por cima do próprio jogo de sábado.":
-    "Monte o elenco com um orçamento, escolha o capitão (pontos em dobro) e troque jogadores com seus amigos. O preço de cada jogador sobe e desce com o desempenho real dele em campo — a competição acontece em cima do próprio jogo de sábado.",
+  "Monta o plantel com um orçamento, escolhe o capitão (pontos em dobro) e troca jogadores com os teus amigos. O preço de cada jogador sobe e desce com o desempenho real dele em campo — a competição acontece por cima do próprio jogo da semana.":
+    "Monte o elenco com um orçamento, escolha o capitão (pontos em dobro) e troque jogadores com seus amigos. O preço de cada jogador sobe e desce com o desempenho real dele em campo — a competição acontece em cima do próprio jogo da semana.",
   "O teu jogo,": "Seu jogo,",
   "em forma de cartão.": "em forma de cartão.",
   "Estilo FUT: overall calculado a partir dos teus atributos, posição e foto — com tiers de ouro, prata, bronze, ou LENDA se passares de 86. É a forma de mostrar quem é quem no grupo, sem ninguém discutir quem é o melhor jogador.":

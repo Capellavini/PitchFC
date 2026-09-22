@@ -60,7 +60,7 @@ function ChatMock() {
         <span style={{ fontSize: 13, fontWeight: 800, color: "#E9EDEF" }}>Pitch AI</span>
       </div>
       <div style={bubble}>🔥 Já são 8/10 — faltam 2. Ainda dá tempo:<br />pitch.app/j/fc-amigos</div>
-      <div style={bubble}>🔓 Abriu vaga! 9/10 para sábado às 20:00 — falta 1.</div>
+      <div style={bubble}>🔓 Abriu vaga! 9/10 pro próximo jogo às 20:00 — falta 1.</div>
       <div style={{ alignSelf: "flex-end", maxWidth: "70%", background: C.whatsapp, color: "#04140D", borderRadius: "12px 4px 12px 12px", padding: "9px 12px", fontSize: 12.5, fontWeight: 700 }}>
         @Pitch confirmo!
       </div>
@@ -171,7 +171,7 @@ const FEATURES = [
   {
     n: "01", Icon: Zap, Mock: SlotGridMock,
     h1: "Confirma o jogo,", h2: "não o caos.",
-    text: "Grelha de vagas em tempo real: todos veem quem já está dentro, quem falta e quantas vagas sobram — sem precisar de percorrer o histórico do grupo pra saber se o sábado vai sair.",
+    text: "Grelha de vagas em tempo real: todos veem quem já está dentro, quem falta e quantas vagas sobram — sem precisar de percorrer o histórico do grupo pra saber se o jogo vai sair.",
   },
   {
     n: "02", Icon: Bot, Mock: ChatMock,
@@ -196,7 +196,7 @@ const FEATURES = [
   {
     n: "06", Icon: Trophy, Mock: FantasyMock,
     h1: "A tua liga fantasy,", h2: "dentro do próprio grupo.",
-    text: "Monta o plantel com um orçamento, escolhe o capitão (pontos em dobro) e troca jogadores com os teus amigos. O preço de cada jogador sobe e desce com o desempenho real dele em campo — a competição acontece por cima do próprio jogo de sábado.",
+    text: "Monta o plantel com um orçamento, escolhe o capitão (pontos em dobro) e troca jogadores com os teus amigos. O preço de cada jogador sobe e desce com o desempenho real dele em campo — a competição acontece por cima do próprio jogo da semana.",
   },
   {
     n: "07", Icon: IdCard, Mock: CardMock,
@@ -259,7 +259,7 @@ export default function LandingPage({ onEnter, lang, onLang }) {
         <Section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 40, padding: "72px 20px" }}>
           <div style={{ flex: "1 1 340px" }}>
             <div style={{ ...displayFont, fontSize: "clamp(34px, 5.5vw, 54px)", lineHeight: 1.05, marginBottom: 16 }}>
-              {t("O teu jogo de sábado,")}<br />
+              {t("O teu jogo da semana,")}<br />
               <span style={{ color: C.accent }}>{t("sem o caos do grupo.")}</span>
             </div>
             <div style={{ fontSize: 16, color: C.text2, lineHeight: 1.6, marginBottom: 28, maxWidth: 460 }}>
