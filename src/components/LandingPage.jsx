@@ -1,5 +1,5 @@
 import {
-  Zap, Wallet, CalendarCheck, Trophy, Flame, IdCard, ArrowRight,
+  Zap, Wallet, CalendarCheck, Trophy, Flame, IdCard, ArrowRight, Bot, BarChart3,
 } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
 import { t } from "../lib/i18n";
@@ -16,11 +16,13 @@ const DEMO_PLAYER = {
 };
 
 const APP_FEATURES = [
-  { Icon: Zap,           title: "Jogos organizados",  text: "Confirmações num toque, grelha de vagas em direto e lembretes automáticos. O jogo de sábado trata-se sozinho." },
+  { Icon: Zap,           title: "Jogos organizados",  text: "Confirmações num toque e grelha de vagas em direto — todos veem quem falta pro sábado sair, sem perguntar no grupo." },
+  { Icon: Bot,           title: "Pitch AI",           text: "O teu assistente dentro do próprio grupo de WhatsApp: confirma presenças, avisa quando falta gente e alivia o trabalho de quem organiza." },
   { Icon: Wallet,        title: "Finanças do grupo",  text: "A mensalidade do campo dividida por todos. Vês quem já pagou e cobras os atrasados pelo WhatsApp." },
-  { Icon: CalendarCheck, title: "Reserva de campo",   text: "O teu horário semanal fica garantido no clube — reservas e renovações diretamente na app." },
+  { Icon: CalendarCheck, title: "Matchday ao vivo",   text: "Sorteio de equipas equilibrado, cronómetro e golo a golo em direto — marcador e assistência registados na hora, sem decorar nada pro fim." },
+  { Icon: BarChart3,     title: "Stats & ranking",    text: "Golos, assistências, vitórias, MVPs e defesas — tudo junto num ranking de Impacto da época, mais um ranking à parte pros guarda-redes." },
+  { Icon: Trophy,        title: "Pitch Manager",      text: "A tua liga fantasy dentro do grupo: o preço de cada jogador sobe e desce com o desempenho real, escolhes o capitão e trocas jogadores com os teus amigos." },
   { Icon: IdCard,        title: "O teu cartão",       text: "Estilo FUT: overall, atributos, posição e foto. O teu jogo, em cartão." },
-  { Icon: Trophy,        title: "Ratings e stats",    text: "Golos, assistências, votação MVP e fiabilidade. A época toda fica registada." },
   { Icon: Flame,         title: "Social",             text: "Partilha highlights, vota no Golo da Semana e convive com jogadores de outros grupos." },
 ];
 
