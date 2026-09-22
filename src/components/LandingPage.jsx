@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Zap, Wallet, CalendarCheck, Trophy, IdCard, ArrowRight, Bot, BarChart3, Crown,
 } from "lucide-react";
@@ -205,6 +206,56 @@ const FEATURES = [
   },
 ];
 
+const HOW_IT_WORKS = {
+  organizer: [
+    { n: "1", title: "Cria a conta e o grupo", text: "Nome do grupo, campo, dia da semana e hora, e como divides a mensalidade." },
+    { n: "2", title: "Convida a malta pelo WhatsApp", text: "Um link só — todos entram sem instalar nada a mais nem decorar palavra-passe." },
+    { n: "3", title: "O jogo organiza-se sozinho", text: "Confirmações, sorteio de equipas, pagamentos e stats — toda semana, sem esforço." },
+  ],
+  player: [
+    { n: "1", title: "Recebe o link do teu grupo", text: "O organizador manda pelo WhatsApp — é só abrir." },
+    { n: "2", title: "Cria o teu cartão", text: "Foto, posição e atributos — o teu FUT card em menos de um minuto." },
+    { n: "3", title: "Confirma e entra em jogo", text: "Um toque pra dizer que vais. Prontos, apareces na grelha." },
+  ],
+};
+
+function HowItWorksSection({ onEnter }) {
+  const [role, setRole] = useState("organizer");
+  const steps = HOW_IT_WORKS[role];
+  const tabStyle = (active) => ({
+    padding: "8px 18px", borderRadius: 9, border: "none", cursor: "pointer",
+    fontSize: 13, fontWeight: 800,
+    background: active ? C.accent : "transparent",
+    color: active ? C.bg : C.text2,
+  });
+  return (
+    <Section style={{ padding: "64px 20px" }}>
+      <div style={{ textAlign: "center", marginBottom: 36 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", color: C.accent, marginBottom: 8 }}>{t("COMO FUNCIONA")}</div>
+        <div style={{ ...displayFont, fontSize: "clamp(24px, 3.6vw, 34px)", color: C.text1 }}>{t("Do zero ao primeiro jogo")}</div>
+        <div style={{ display: "inline-flex", gap: 4, marginTop: 22, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4 }}>
+          <button onClick={() => setRole("organizer")} style={tabStyle(role === "organizer")}>{t("Sou Organizador")}</button>
+          <button onClick={() => setRole("player")} style={tabStyle(role === "player")}>{t("Sou Jogador")}</button>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, justifyContent: "center" }}>
+        {steps.map((s) => (
+          <div key={s.n} style={{ ...cardStyle, flex: "1 1 250px", maxWidth: 320, padding: 22 }}>
+            <div style={{ ...displayFont, fontSize: 26, color: C.accent, marginBottom: 10 }}>{s.n}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t(s.title)}</div>
+            <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.6 }}>{t(s.text)}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ textAlign: "center", marginTop: 32 }}>
+        <BtnPrimary onClick={onEnter} style={{ padding: "13px 26px", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 8 }}>
+          {t("Criar conta grátis")} <ArrowRight size={16} />
+        </BtnPrimary>
+      </div>
+    </Section>
+  );
+}
+
 const FeatureSection = ({ n, Icon, h1, h2, text, Mock, reverse }) => (
   <Section style={{ padding: "52px 20px" }}>
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 44, flexDirection: reverse ? "row-reverse" : "row" }}>
@@ -279,6 +330,8 @@ export default function LandingPage({ onEnter, lang, onLang }) {
           </div>
         </Section>
       </div>
+
+      <HowItWorksSection onEnter={onEnter} />
 
       {/* FEATURES — one full section per feature, alternating sides */}
       <div style={{ padding: "24px 0" }}>

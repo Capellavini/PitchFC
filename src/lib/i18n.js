@@ -680,6 +680,27 @@ const PT_BR = {
   "Estilo FUT: overall calculado a partir dos teus atributos, posição e foto — com tiers de ouro, prata, bronze, ou LENDA se passares de 86. É a forma de mostrar quem é quem no grupo, sem ninguém discutir quem é o melhor jogador.":
     "Estilo FUT: overall calculado a partir dos seus atributos, posição e foto — com tiers de ouro, prata, bronze, ou LENDA se você passar de 86. É a forma de mostrar quem é quem no grupo, sem ninguém discutir quem é o melhor jogador.",
 
+  // ── LandingPage: "Como funciona" (2026-09-22) ──────────
+  "COMO FUNCIONA": "COMO FUNCIONA",
+  "Do zero ao primeiro jogo": "Do zero ao primeiro jogo",
+  "Cria a conta e o grupo": "Crie a conta e o grupo",
+  "Nome do grupo, campo, dia da semana e hora, e como divides a mensalidade.":
+    "Nome do grupo, campo, dia da semana e horário, e como você divide a mensalidade.",
+  "Convida a malta pelo WhatsApp": "Convide a galera pelo WhatsApp",
+  "Um link só — todos entram sem instalar nada a mais nem decorar palavra-passe.":
+    "Um link só — todo mundo entra sem instalar nada a mais nem decorar senha.",
+  "O jogo organiza-se sozinho": "O jogo se organiza sozinho",
+  "Confirmações, sorteio de equipas, pagamentos e stats — toda semana, sem esforço.":
+    "Confirmações, sorteio de times, pagamentos e stats — toda semana, sem esforço.",
+  "Recebe o link do teu grupo": "Receba o link do seu grupo",
+  "O organizador manda pelo WhatsApp — é só abrir.": "O organizador manda pelo WhatsApp — é só abrir.",
+  "Cria o teu cartão": "Crie seu cartão",
+  "Foto, posição e atributos — o teu FUT card em menos de um minuto.":
+    "Foto, posição e atributos — seu cartão FUT em menos de um minuto.",
+  "Confirma e entra em jogo": "Confirme e entre em jogo",
+  "Um toque pra dizer que vais. Prontos, apareces na grelha.":
+    "Um toque pra dizer que vai. Pronto, você aparece na grade.",
+
   // ── AuthForm / ResetPassword ───────────────────────────
   "Preenche email e palavra-passe.": "Preencha email e senha.",
   "A palavra-passe precisa de pelo menos 6 caracteres.": "A senha precisa ter pelo menos 6 caracteres.",
