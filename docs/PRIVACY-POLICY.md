@@ -6,7 +6,9 @@
 
 ## 1. Quem somos
 
-O PITCH ("nós", "a app") é operado por [nome legal / Vinicius Capella, NIF a preencher], com sede em [morada a preencher]. Para qualquer questão sobre esta política ou os teus dados, contacta-nos em [email de privacidade, ex: privacidade@pitch-fc.com].
+O PITCH ("nós", "a app") é operado por Vinicius Capella, em nome individual, ainda sem empresa constituída. Para qualquer questão sobre esta política ou os teus dados, contacta-nos em [email de privacidade, ex: privacidade@pitch-fc.com].
+
+*Nota interna: esta secção deve ser atualizada assim que houver uma empresa formalmente constituída (nome legal, NIF, sede), substituindo a responsabilidade individual pela da empresa.*
 
 ## 2. Que dados recolhemos
 
