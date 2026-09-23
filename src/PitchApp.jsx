@@ -33,6 +33,7 @@ import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
 import PitchProPage from "./components/PitchProPage";
 import AuthLanding from "./components/AuthLanding";
+import FirstRunTour from "./components/FirstRunTour";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
 import BottomNav from "./components/BottomNav";
@@ -100,6 +101,11 @@ export default function PitchApp() {
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [noGroupOptIn, setNoGroupOptIn] = usePersistentState("noGroupOptIn", false);
+  // One-time orientation overlay (see FirstRunTour) — shown once per
+  // browser the first time gating resolves into the main app, then never
+  // again. Bumping the "_v1" suffix would re-show it to everyone (e.g. a
+  // future redesign), same convention as the "v2." storage prefix above.
+  const [tourSeen, setTourSeen] = usePersistentState("tourSeen_v1", false);
 
   // Mirror the persisted language into the i18n module before anything
   // renders, so every t() call below sees the current choice.
@@ -1296,6 +1302,7 @@ export default function PitchApp() {
   // ── Main app ───────────────────────────────────────────
   return shell(
     <>
+      {!tourSeen && <FirstRunTour onDone={() => setTourSeen(true)} />}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0" }}>
         <img src={BRAND.logo} alt="PITCH App" style={{ height: 24 }} />
         {!noGroup && (
