@@ -183,6 +183,13 @@ Derived values — compute, don't store: season totals (sum `game_stats`), relia
 - **Components:** small and single-purpose. Shared primitives (`Avatar`, `SectionLabel`, `BtnPrimary`, `BtnGhost`, `cardStyle`) already exist — reuse them. When splitting `PitchApp.jsx` into files, keep one component per file under `src/components/`.
 - **State:** prototype uses `useState` lifted to the root. When adding Supabase, introduce a thin data layer (`src/lib/supabase.js` + hooks like `useGame`, `useGroup`) — don't scatter queries inside components.
 - **No backend secrets in the client.** Payment webhooks and WhatsApp API calls go through Supabase Edge Functions.
+- **Every new migration that creates a table needs explicit Data API grants.** Supabase emailed (Sept 2026) that from **October 30, 2026** it stops auto-granting Data API access to new `public` schema tables on existing projects — existing tables are unaffected, but any table created after that date needs this in the same migration, or the API returns "permission denied":
+  ```sql
+  grant select on public.your_table to anon;
+  grant select, insert, update, delete on public.your_table to authenticated;
+  grant select, insert, update, delete on public.your_table to service_role;
+  ```
+  (Adjust per table — RLS still controls *which rows*, this only controls *whether the role can reach the table at all*.) None of the ~50 migrations so far include explicit grants (all rely on the auto-grant), so this is a genuinely new habit starting now, not a fix for existing tables.
 
 ## Build / run
 
