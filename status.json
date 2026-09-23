@@ -1,12 +1,12 @@
 {
   "project": "Pitch FC",
-  "agent": "Leo",
-  "role": "CMO",
+  "agent": "Cris",
+  "role": "CTO",
   "team": [
     { "agent": "Leo", "role": "CMO" },
     { "agent": "Cris", "role": "CTO" }
   ],
-  "updated_at": "2026-09-22",
+  "updated_at": "2026-09-23",
   "headline": "Frontend completo em modo demo (localStorage); migração para Supabase em andamento PR a PR.",
   "metrics": [
     {
@@ -50,9 +50,17 @@
       "title": "Bot de WhatsApp (Baileys) — piloto no grupo Fut do Burger",
       "status": "in_progress",
       "note": "Anuncia eventos (jogo aberto, marcos proporcionais, vaga aberta, lembretes, pós-jogo), @Pitch com IA, confirma/desiste pelo chat e por enquete. Falta: hospedar 24/7 e ligar no Goodweather."
+    },
+    {
+      "title": "Domínio próprio pitch-fc.com",
+      "status": "in_progress",
+      "note": "Domínio e mailbox comprados (2026-09-23); anexado ao projeto Vercel via CLI (apex + www). Falta: apontar o DNS no registrador (A record 76.76.21.21), atualizar Site URL/Redirect URLs no Supabase Auth, e configurar Resend (domínio verificado + SMTP) para os e-mails de confirmação e a futura newsletter."
     }
   ],
   "next_steps": [
+    "Apontar DNS de pitch-fc.com pro Vercel + confirmar propagação/SSL",
+    "Supabase Auth: Site URL e Redirect URLs para o domínio novo",
+    "Resend: verificar domínio (SPF/DKIM) e plugar SMTP no Supabase Auth (hoje ainda no limitador padrão do Supabase)",
     "Auto-substituição quando um confirmado cancela",
     "Lembretes automáticos via WhatsApp (nudge de quinta-feira)",
     "Entrada de resultado pós-jogo (gols/assistências) pelo organizador",

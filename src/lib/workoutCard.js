@@ -118,7 +118,7 @@ export async function renderWorkoutCard({ photoFile, playerNick, groupName, date
   ctx.textAlign = "center";
   ctx.font = "600 16px -apple-system, sans-serif";
   ctx.fillStyle = "#3D4659";
-  ctx.fillText("pitch-fc.vercel.app", W / 2, H - 34);
+  ctx.fillText("pitch-fc.com", W / 2, H - 34);
 
   return canvas.toDataURL("image/png");
 }

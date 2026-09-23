@@ -2,7 +2,7 @@
 export const cfg = () => ({
   supabaseUrl: process.env.SUPABASE_URL,
   serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  appUrl: (process.env.APP_URL || "https://pitch-fc.vercel.app").replace(/\/$/, ""),
+  appUrl: (process.env.APP_URL || "https://pitch-fc.com").replace(/\/$/, ""),
   autosend: process.env.BOT_AUTOSEND === "true",
   maxPerDay: Number(process.env.BOT_MAX_PER_DAY || 4),
   quietStart: Number(process.env.BOT_QUIET_START ?? 23),

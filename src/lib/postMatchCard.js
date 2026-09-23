@@ -297,7 +297,7 @@ export async function renderPostMatchCard({ player, myKey, color, isMVP, groupNa
   ctx.font = "600 18px -apple-system, sans-serif";
   ctx.fillStyle = "#3D4659";
   ctx.textAlign = "center";
-  ctx.fillText("pitch-fc.vercel.app", cx0, H_dyn - 56);
+  ctx.fillText("pitch-fc.com", cx0, H_dyn - 56);
 
   return canvas.toDataURL("image/png");
 }

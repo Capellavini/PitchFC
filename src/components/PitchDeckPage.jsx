@@ -394,7 +394,7 @@ export default function PitchDeckPage() {
       <div style={{ padding: "70px 22px 90px", textAlign: "center" }}>
         <img src={BRAND.logo} alt="PITCH" style={{ height: 30, marginBottom: 22 }} />
         <div style={{ ...displayFont, fontSize: 24, marginBottom: 22 }}>Make sure the weekly game happens.</div>
-        <a href="https://pitch-fc.vercel.app" style={{ color: C.accent, fontSize: 14, textDecoration: "none", fontWeight: 700 }}>pitch-fc.vercel.app</a>
+        <a href="https://pitch-fc.com" style={{ color: C.accent, fontSize: 14, textDecoration: "none", fontWeight: 700 }}>pitch-fc.com</a>
         <div style={{ fontSize: 12.5, color: C.text3, marginTop: 10 }}>Vinicius Capella · capella.vinicius@gmail.com</div>
       </div>
     </>
