@@ -701,28 +701,6 @@ const PT_BR = {
   "Um toque pra dizer que vais. Prontos, apareces na grelha.":
     "Um toque pra dizer que vai. Pronto, você aparece na grade.",
 
-  // ── LandingPage: FAQ (2026-09-22) ───────────────────────
-  "PERGUNTAS FREQUENTES": "PERGUNTAS FREQUENTES",
-  "Ainda tens dúvidas?": "Ainda tem dúvidas?",
-  "É grátis?": "É grátis?",
-  "Sim. Criar o grupo, organizar o jogo, ver as stats e montar o teu cartão não custa nada. O único dinheiro que circula é o da mensalidade do campo, dividido entre vocês.":
-    "Sim. Criar o grupo, organizar o jogo, ver as stats e montar seu cartão não custa nada. O único dinheiro que circula é o da mensalidade do campo, dividido entre vocês.",
-  "Preciso de ser exatamente 10 ou 15 jogadores?": "Preciso ser exatamente 10 ou 15 jogadores?",
-  "Não. Tu defines o número de vagas do teu grupo — 10 é só o valor mais comum. Funciona com qualquer tamanho de grupo.":
-    "Não. Você define o número de vagas do seu grupo — 10 é só o valor mais comum. Funciona com qualquer tamanho de grupo.",
-  "O meu grupo já existe no WhatsApp — preciso de recomeçar do zero?": "Meu grupo já existe no WhatsApp — preciso recomeçar do zero?",
-  "Não. O PITCH entra por cima do grupo que já tens: o organizador manda um link, todos entram com a conta em segundos, e continuam a falar no mesmo grupo de sempre.":
-    "Não. O PITCH entra por cima do grupo que vocês já têm: o organizador manda um link, todo mundo entra com a conta em segundos, e continuam falando no mesmo grupo de sempre.",
-  "Só funciona ao sábado?": "Só funciona aos sábados?",
-  "Não — o dia e a hora são definidos por ti no onboarding, qualquer dia da semana.":
-    "Não — o dia e o horário são definidos por você no cadastro, qualquer dia da semana.",
-  "Como funciona o pagamento da mensalidade?": "Como funciona o pagamento da mensalidade?",
-  "O valor é dividido automaticamente por quem confirma. Hoje o pagamento em si é feito como sempre foi (MB Way, dinheiro) e cada jogador marca que já pagou — o organizador vê tudo numa tela. Pagamento automático dentro da app está a caminho.":
-    "O valor é dividido automaticamente por quem confirma. Hoje o pagamento em si é feito como sempre foi (MB Way, dinheiro) e cada jogador marca que já pagou — o organizador vê tudo em uma tela. Pagamento automático dentro do app está a caminho.",
-  "Preciso de instalar alguma coisa?": "Preciso instalar alguma coisa?",
-  "Não — o PITCH é uma app web, abre-se no browser do telemóvel como um site. Dá até pra «instalar» o atalho no ecrã inicial, mas não é obrigatório.":
-    "Não — o PITCH é um app web, abre no navegador do celular como um site. Dá até pra «instalar» o atalho na tela inicial, mas não é obrigatório.",
-
   // ── FirstRunTour (2026-09-23) ───────────────────────────
   "Fechar": "Fechar",
   "A grelha é o essencial": "A grade é o essencial",
