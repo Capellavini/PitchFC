@@ -52,15 +52,14 @@
       "note": "Anuncia eventos (jogo aberto, marcos proporcionais, vaga aberta, lembretes, pós-jogo), @Pitch com IA, confirma/desiste pelo chat e por enquete. Falta: hospedar 24/7 e ligar no Goodweather."
     },
     {
-      "title": "Domínio próprio pitch-fc.com",
-      "status": "in_progress",
-      "note": "Domínio e mailbox comprados (2026-09-23); anexado ao projeto Vercel via CLI (apex + www). Falta: apontar o DNS no registrador (A record 76.76.21.21), atualizar Site URL/Redirect URLs no Supabase Auth, e configurar Resend (domínio verificado + SMTP) para os e-mails de confirmação e a futura newsletter."
+      "title": "Domínio próprio pitch-fc.com + e-mail transacional",
+      "status": "done",
+      "note": "DNS apontado no Vercel (apex + www, SSL ativo), Supabase Auth (Site URL/Redirect URLs) e Resend (domínio verificado, SMTP plugado no Supabase Auth) — testado ponta a ponta com envio real de e-mail (2026-09-23). Mailbox oficial: vini@pitch-fc.com."
     }
   ],
   "next_steps": [
-    "Apontar DNS de pitch-fc.com pro Vercel + confirmar propagação/SSL",
-    "Supabase Auth: Site URL e Redirect URLs para o domínio novo",
-    "Resend: verificar domínio (SPF/DKIM) e plugar SMTP no Supabase Auth (hoje ainda no limitador padrão do Supabase)",
+    "Newsletter (Beehiiv/Mailchimp, a definir com o Leo) usando o domínio já verificado",
+    "Ligar 'Confirm email' no Supabase Auth agora que o SMTP de produção está pronto",
     "Auto-substituição quando um confirmado cancela",
     "Lembretes automáticos via WhatsApp (nudge de quinta-feira)",
     "Entrada de resultado pós-jogo (gols/assistências) pelo organizador",
