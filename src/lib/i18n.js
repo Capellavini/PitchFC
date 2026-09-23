@@ -723,6 +723,22 @@ const PT_BR = {
   "Não — o PITCH é uma app web, abre-se no browser do telemóvel como um site. Dá até pra «instalar» o atalho no ecrã inicial, mas não é obrigatório.":
     "Não — o PITCH é um app web, abre no navegador do celular como um site. Dá até pra «instalar» o atalho na tela inicial, mas não é obrigatório.",
 
+  // ── FirstRunTour (2026-09-23) ───────────────────────────
+  "Fechar": "Fechar",
+  "A grelha é o essencial": "A grade é o essencial",
+  "10 lugares, preenchidos ou vazios. Confirma ou recusa num toque — é a primeira pergunta: \"temos jogo?\"":
+    "10 vagas, preenchidas ou vazias. Confirme ou recuse em um toque — é a primeira pergunta: \"vai ter jogo?\"",
+  "Matchday": "Matchday",
+  "No dia do jogo, o organizador regista golos e assistências ao vivo. É o que alimenta as tuas estatísticas.":
+    "No dia do jogo, o organizador registra gols e assistências ao vivo. É o que alimenta suas estatísticas.",
+  "Compete": "Compete",
+  "Classificações, MVP e fiabilidade da equipa — a memória do grupo, jogo após jogo.":
+    "Classificações, MVP e assiduidade do time — a memória do grupo, jogo após jogo.",
+  "O teu cartão estilo FUT. Os atributos sobem com as avaliações dos teus colegas de equipa.":
+    "Seu cartão estilo FUT. Os atributos sobem com as avaliações dos seus colegas de time.",
+  "Percebi, vamos a isto ⚽": "Entendi, bora pro jogo ⚽",
+  "Seguinte": "Próximo",
+
   // ── AuthForm / ResetPassword ───────────────────────────
   "Preenche email e palavra-passe.": "Preencha email e senha.",
   "A palavra-passe precisa de pelo menos 6 caracteres.": "A senha precisa ter pelo menos 6 caracteres.",
