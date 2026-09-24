@@ -6,7 +6,7 @@
 
 ## 1. Quem somos
 
-O PITCH ("nós", "a app") é operado por Vinicius Capella, em nome individual, ainda sem empresa constituída. Para qualquer questão sobre esta política ou os teus dados, contacta-nos em [email de privacidade, ex: privacidade@pitch-fc.com].
+O PITCH ("nós", "a app") é operado por Vinicius Capella, em nome individual, ainda sem empresa constituída. Para qualquer questão sobre esta política ou os teus dados, contacta-nos em vini@pitch-fc.com.
 
 *Nota interna: esta secção deve ser atualizada assim que houver uma empresa formalmente constituída (nome legal, NIF, sede), substituindo a responsabilidade individual pela da empresa.*
 
@@ -64,7 +64,7 @@ Ao abrigo do RGPD, tens direito a:
 - Opor-te a determinados tratamentos
 - Retirar o consentimento a qualquer momento
 
-Para exercer qualquer um destes direitos, contacta [email de privacidade]. Tens também o direito de apresentar queixa junto da Comissão Nacional de Proteção de Dados (CNPD).
+Para exercer qualquer um destes direitos, contacta vini@pitch-fc.com. Tens também o direito de apresentar queixa junto da Comissão Nacional de Proteção de Dados (CNPD).
 
 ## 8. Menores de idade
 
@@ -80,4 +80,4 @@ Podemos atualizar esta política. Alterações relevantes serão comunicadas na 
 
 ## 11. Contacto
 
-Dúvidas sobre privacidade: [email de privacidade]
+Dúvidas sobre privacidade: vini@pitch-fc.com

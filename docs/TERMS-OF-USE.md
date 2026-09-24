@@ -58,4 +58,4 @@ Estes termos regem-se pela lei portuguesa. Qualquer litígio será submetido aos
 
 ## 12. Contacto
 
-Dúvidas sobre estes termos: [email de contacto]
+Dúvidas sobre estes termos: vini@pitch-fc.com
