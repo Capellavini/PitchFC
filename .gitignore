@@ -10,3 +10,6 @@ pitch-app.zip
 wa-bot/auth/
 wa-bot/node_modules/
 wa-bot/data/
+wa-bot/.bot.pid
+wa-bot/bot-out.log
+wa-bot/bot-err.log
