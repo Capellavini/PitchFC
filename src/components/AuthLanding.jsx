@@ -2,9 +2,9 @@ import { User, Megaphone, ChevronRight, ShieldCheck } from "lucide-react";
 import { C, cardStyle, BRAND, fieldBackdrop } from "../theme";
 import { t } from "../lib/i18n";
 
-/** Entry screen — choose role. No backend yet, so "login" is a local
- *  role pick; magic-link auth replaces this when Supabase lands. */
-export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin }) {
+/** Entry screen — choose role. In cloud mode the account already exists;
+ *  `isDemo` (local demo mode only) shows the "data stays on this device" note. */
+export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin, isDemo }) {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center",
@@ -47,9 +47,11 @@ export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin }) {
         </button>
       )}
 
-      <div style={{ textAlign: "center", marginTop: 28, fontSize: 11, color: C.text3 }}>
-        {t("Versão de demonstração — os dados ficam só neste dispositivo")}
-      </div>
+      {isDemo && (
+        <div style={{ textAlign: "center", marginTop: 28, fontSize: 11, color: C.text3 }}>
+          {t("Versão de demonstração — os dados ficam só neste dispositivo")}
+        </div>
+      )}
 
       {onBack && (
         <button onClick={onBack} style={{ background: "none", border: "none", color: C.text2, fontSize: 13, cursor: "pointer", marginTop: 18, textDecoration: "underline" }}>

@@ -1091,7 +1091,7 @@ export default function PitchApp() {
     // ═══ LOCAL DEMO GATING ═══════════════════════════════
     if (!session.role) {
       if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} lang={lang} onLang={changeLang} />;
-      return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} />);
+      return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} isDemo />);
     }
     if (!session.onboarded) {
       return shell(
