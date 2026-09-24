@@ -7,8 +7,18 @@ import { t } from "../lib/i18n";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
 
-/** Player onboarding — build your FUT card with a live preview. */
-export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
+/** Player onboarding — build your FUT card with a live preview.
+ *
+ *  `quick`: minimal cartão used by the unified group-join flow (both the
+ *  ?join= link and the manual invite-code path) — only Nome + Posição are
+ *  asked (foto stays optional), everything else (idade, nacionalidade,
+ *  clube, pé, alcunha) takes a sensible default and is editable later from
+ *  o Perfil. This isn't just about fewer taps: the OVR/attributes on the
+ *  card stay locked behind "?" until 3+ peer ratings come in anyway (see
+ *  FutCard's `ratingsCount` gate), so asking for them up front was always
+ *  low-value friction — position is the one field that matters immediately,
+ *  since the balanced team draw depends on it. */
+export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia, quick = false }) {
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     ...me,
@@ -22,8 +32,13 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
   // handling/kicking/reflexes/speed/positioning) than outfield players —
   // switching position resets attrs to the matching default (there's no
   // slider here to edit them anyway; ratings unlock the real numbers).
-  const set = (key, value) => setForm((f) =>
-    key === "position" ? { ...f, position: value, attrs: defaultAttrsFor(value) } : { ...f, [key]: value });
+  // In quick mode there's no separate "alcunha" field, so the nick is
+  // kept in sync with the first word of the name as it's typed.
+  const set = (key, value) => setForm((f) => {
+    if (key === "position") return { ...f, position: value, attrs: defaultAttrsFor(value) };
+    if (quick && key === "name") return { ...f, name: value, nick: value.trim().split(" ")[0] || value };
+    return { ...f, [key]: value };
+  });
 
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];
@@ -62,7 +77,9 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
         <div style={{ ...displayFont, fontSize: 22 }}>{t("O teu cartão")}</div>
       </div>
       <div style={{ fontSize: 13, color: C.text2, marginBottom: 16, paddingLeft: 34 }}>
-        {t("Estilo FUT — o cartão atualiza enquanto preenches.")}
+        {quick
+          ? t("Só o essencial para já — completa o resto quando quiseres no Perfil.")
+          : t("Estilo FUT — o cartão atualiza enquanto preenches.")}
       </div>
 
       {/* Live preview — locked (0 ratings): a brand new card has no
@@ -71,14 +88,14 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
         <FutCard player={form} width={250} ratingsCount={0} />
       </div>
 
-      {/* Photo */}
+      {/* Photo — optional/skippable even outside quick mode. */}
       <label style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer" }}>
         <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <Camera size={19} color={C.accent} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700 }}>{form.photo ? t("Trocar fotografia") : t("Adicionar fotografia")}</div>
-          <div style={{ fontSize: 11, color: C.text2 }}>{uploading ? t("A carregar…") : t("Aparece no cartão e nos jogos")}</div>
+          <div style={{ fontSize: 11, color: C.text2 }}>{uploading ? t("A carregar…") : (quick ? t("Opcional — podes saltar") : t("Aparece no cartão e nos jogos"))}</div>
         </div>
         {form.photo && <img src={form.photo} alt="" style={{ width: 38, height: 38, borderRadius: 10, objectFit: "cover" }} />}
         <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: "none" }} />
@@ -86,38 +103,47 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia }) {
 
       {/* Identity */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
-        {[[t("Nome completo"), "name", "text"], [t("Alcunha (nome no cartão)"), "nick", "text"]].map(([label, key, type]) => (
-          <div key={key} style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{label}</div>
-            <input type={type} value={form[key]} onChange={(e) => set(key, e.target.value)}
-              style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }} />
-          </div>
-        ))}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Idade")}</div>
-            <input type="number" min="14" max="70" value={form.age} onChange={(e) => set("age", Number(e.target.value))}
-              style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Nacionalidade")}</div>
-            <select value={form.nationality} onChange={(e) => set("nationality", e.target.value)}
-              style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 8px", fontSize: 13, color: C.text1, outline: "none" }}>
-              {NATIONALITIES.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Clube do coração")}</div>
-          <input type="text" value={form.club} onChange={(e) => set("club", e.target.value)} placeholder={t("ex.: FC Porto, Real Madrid, Flamengo…")}
+        <div style={{ marginBottom: quick ? 0 : 12 }}>
+          <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Nome completo")}</div>
+          <input type="text" value={form.name} onChange={(e) => set("name", e.target.value)}
             style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }} />
         </div>
+        {!quick && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Alcunha (nome no cartão)")}</div>
+            <input type="text" value={form.nick} onChange={(e) => set("nick", e.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }} />
+          </div>
+        )}
+        {!quick && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Idade")}</div>
+                <input type="number" min="14" max="70" value={form.age} onChange={(e) => set("age", Number(e.target.value))}
+                  style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Nacionalidade")}</div>
+                <select value={form.nationality} onChange={(e) => set("nationality", e.target.value)}
+                  style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 8px", fontSize: 13, color: C.text1, outline: "none" }}>
+                  {NATIONALITIES.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Clube do coração")}</div>
+              <input type="text" value={form.club} onChange={(e) => set("club", e.target.value)} placeholder={t("ex.: FC Porto, Real Madrid, Flamengo…")}
+                style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }} />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Position + foot */}
+      {/* Position (+ foot outside quick mode) */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
         {chips(t("Posição"), "position", POSITIONS)}
-        {chips(t("Pé dominante"), "foot", FEET)}
+        {!quick && chips(t("Pé dominante"), "foot", FEET)}
       </div>
 
       <BtnPrimary onClick={() => onDone(form)} disabled={uploading} style={{ width: "100%", fontSize: 15, padding: 14, opacity: uploading ? 0.6 : 1 }}>

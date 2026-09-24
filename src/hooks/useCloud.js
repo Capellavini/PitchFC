@@ -392,6 +392,53 @@ export function useCloud() {
     return { inviteToken: grp.data.invite_token };
   };
 
+  /** Read-only invite-code check, no writes — used by the pre-group step
+   *  of a fresh signup (no player row yet), so a bad/expired code is
+   *  caught on the paste-code screen itself instead of only surfacing
+   *  after the player has already filled in their card (see
+   *  joinGroupWithProfile below, which reuses this same lookup). */
+  const resolveInviteToken = async (token) => {
+    const trimmed = token.trim();
+    const asMensalista = await supabase.from("groups").select("id").eq("invite_token", trimmed).limit(1);
+    if (asMensalista.data?.[0]?.id) return { groupId: asMensalista.data[0].id, playerType: "mensalista" };
+    const asAvulso = await supabase.from("groups").select("id").eq("invite_token_avulso", trimmed).limit(1);
+    if (asAvulso.data?.[0]?.id) return { groupId: asAvulso.data[0].id, playerType: "avulso" };
+    return { error: "Convite inválido ou expirado." };
+  };
+
+  /** Brand-new account (no player row yet) finishing the unified
+   *  group-join flow: creates the player row and the group membership in
+   *  one shot, using the fields actually entered in the quick onboarding
+   *  card — never the placeholder "Médio"/"Direito" that joinGroupByToken
+   *  falls back to when it has to invent a row with no form data at all.
+   *  `token` may be null (quick card finished with "ainda não tenho
+   *  grupo" — same as a plain createPlayerProfile). */
+  const joinGroupWithProfile = async (token, form) => {
+    if (!token) { await createPlayerProfile(form); return {}; }
+    const resolved = await resolveInviteToken(token);
+    if (resolved.error) {
+      // Token went stale between the paste-code check and now (rare) —
+      // still keep the card the player just filled in rather than losing
+      // it; they land ungrouped, same as "ainda não tenho grupo".
+      await createPlayerProfile(form);
+      return { error: resolved.error };
+    }
+    const user = userRef.current;
+    const ins = await supabase.from("players")
+      .insert(playerFields(form, { user_id: user.id, group_id: resolved.groupId, is_organizer: false, player_type: resolved.playerType }))
+      .select().single();
+    const player = ins.data;
+    const gm = await supabase.from("games").select("id").eq("group_id", resolved.groupId)
+      .in("status", ["open", "full", "live"]).order("scheduled_at", { ascending: false }).limit(1);
+    if (gm.data?.[0] && player) {
+      await supabase.from("attendances")
+        .upsert({ game_id: gm.data[0].id, player_id: player.id, status: "pending" },
+          { onConflict: "game_id,player_id", ignoreDuplicates: true });
+    }
+    await refetch();
+    return {};
+  };
+
   /** Logged-in player joins a group via its invite token. */
   const joinGroupByToken = async (token) => {
     const user = userRef.current;
@@ -1362,7 +1409,7 @@ export function useCloud() {
     canSeeFantasy: Boolean(data.user),
     signUp, signIn, signOut,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
-    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, switchActiveGroup, removeMember, banMember, unbanMember,
+    createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, resolveInviteToken, joinGroupWithProfile, switchActiveGroup, removeMember, banMember, unbanMember,
     setMyStatus, setPaid, setAttendanceLock, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
     fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated, fetchRoadmapContent, saveRoadmapContent,

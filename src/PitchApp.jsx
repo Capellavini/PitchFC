@@ -95,6 +95,13 @@ export default function PitchApp() {
   const [tab, setTab]           = useState("jogo");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
+  // Invite-code choice made in the pre-group step of a fresh signup (no
+  // player row yet) — a pasted+validated token string, or the sentinel
+  // "skip" for "ainda não tenho grupo". Only used when there's no ?join=
+  // link (that case has its own token — see joinToken below). See the
+  // needsProfile/player gating further down for how these two paths
+  // converge on the same quick onboarding card.
+  const [manualJoinChoice, setManualJoinChoice] = useState(null);
   const [statMode, setStatMode] = useState("geral");
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
@@ -137,15 +144,39 @@ export default function PitchApp() {
     return cloud.savePushSubscription(sub);
   };
 
-  // ?join=<token>: attach the logged-in user to that group.
-  const joinParam = new URLSearchParams(window.location.search).get("join");
+  // ?join=<token>: attach the logged-in user to that group. Captured once
+  // into state (not re-read from the URL each render) so it survives the
+  // replaceState below and stays available for the quick onboarding card
+  // when the account is brand new — see the effect and the needsProfile
+  // gating further down.
+  const [joinToken, setJoinToken] = useState(() => new URLSearchParams(window.location.search).get("join"));
   useEffect(() => {
-    if (!joinParam || !cloud.user) return;
-    cloud.joinGroupByToken(joinParam).finally(() => {
+    if (!joinToken || !cloud.user) return;
+    if (cloud.myPlayer) {
+      // Existing card, just accepting/switching a group via the link —
+      // no onboarding card involved, safe to join immediately (matches
+      // the pre-existing behaviour for returning players).
+      cloud.joinGroupByToken(joinToken).finally(() => {
+        window.history.replaceState({}, "", window.location.pathname);
+        setJoinToken(null);
+      });
+    } else {
+      // Brand-new account (no player row yet): strip the token from the
+      // URL now (so it doesn't leak into e.g. a shared screenshot and
+      // this effect doesn't refire), but keep it in state — the join
+      // itself happens once the quick onboarding card is submitted
+      // (joinGroupWithProfile), never with a placeholder card.
       window.history.replaceState({}, "", window.location.pathname);
-    });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joinParam, cloud.user]);
+  }, [joinToken, cloud.user, cloud.myPlayer]);
+
+  // Arriving via an invite link only ever means "join as a player" —
+  // skip the organizer/player role picker (AuthLanding) that a cold
+  // signup still needs.
+  useEffect(() => {
+    if (joinToken && cloud.status === "needsProfile" && !pendingRole) setPendingRole("player");
+  }, [joinToken, cloud.status, pendingRole]);
 
   // ?admin=1: reliable deep link to the owner panel. Consumed once into
   // state; the panel itself explains access if the viewer isn't an admin.
@@ -832,6 +863,8 @@ export default function PitchApp() {
     setAuthOpen(false);
     setPendingRole(null);
     setNoGroupOptIn(false);
+    setManualJoinChoice(null);
+    setJoinToken(null);
   };
   const backToRolePick = () => setSession({ role: null, onboarded: false });
 
@@ -844,6 +877,8 @@ export default function PitchApp() {
       setAuthOpen(false);
       setPendingRole(null);
       setNoGroupOptIn(false);
+      setManualJoinChoice(null);
+      setJoinToken(null);
     }
     return res;
   };
@@ -988,11 +1023,43 @@ export default function PitchApp() {
         return shell(<AuthLanding onPick={setPendingRole} onBack={logout} isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)} />);
       }
       if (pendingRole === "player") {
+        // Unified group-join sequence: resolve the group FIRST (either
+        // already vinculado via the ?join= link, or by pasting a code /
+        // explicitly skipping here), THEN show the quick cartão — never
+        // the other way round, which used to make a cold signup fill in
+        // a full profile before ever being asked which group they're in.
+        const needsLinkStep = !joinToken && manualJoinChoice === null;
+        if (needsLinkStep) {
+          return shell(
+            <JoinGroup
+              onJoin={async (code) => {
+                const res = await cloud.resolveInviteToken(code);
+                if (res.error) return res;
+                setManualJoinChoice(code);
+                return {};
+              }}
+              onSkip={() => setManualJoinChoice("skip")}
+              onLogout={logout}
+              isAdmin={cloud.isAdmin}
+              onOpenAdmin={() => setAdminOpen(true)}
+            />
+          );
+        }
+        const effectiveToken = joinToken || (manualJoinChoice !== "skip" ? manualJoinChoice : null);
         return shell(
           <OnboardingPlayer
+            quick
             me={profileDefaults}
-            onBack={() => setPendingRole(null)}
-            onDone={(form) => cloud.createPlayerProfile(form)}
+            onBack={() => { setPendingRole(null); setManualJoinChoice(null); }}
+            onDone={async (form) => {
+              const res = await cloud.joinGroupWithProfile(effectiveToken, form);
+              setJoinToken(null);
+              // No group attached (explicit "ainda não tenho grupo", or a
+              // token that went stale between the pre-step check and now)
+              // — skip straight to exploring the app instead of bouncing
+              // back into the needsGroup JoinGroup screen a second time.
+              if (!effectiveToken || res?.error) setNoGroupOptIn(true);
+            }}
             uploadMedia={uploadMedia}
           />
         );
