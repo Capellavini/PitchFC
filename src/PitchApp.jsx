@@ -32,6 +32,7 @@ import AdminDashboardPage from "./components/admin/AdminDashboardPage";
 import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
 import PitchProPage from "./components/PitchProPage";
+import LegalPage from "./components/LegalPage";
 import AuthLanding from "./components/AuthLanding";
 import FirstRunTour from "./components/FirstRunTour";
 import OnboardingPlayer from "./components/OnboardingPlayer";
@@ -947,6 +948,15 @@ export default function PitchApp() {
   // for a meeting, no login friction. ─────────────────────────────────
   if (path === "/pro") {
     return <PitchProPage />;
+  }
+
+  // ── Legal pages (paths /privacidade, /termos) — full width, no shell,
+  // public. Static content, see LegalPage.jsx. ────────────────────────
+  if (path === "/privacidade") {
+    return <LegalPage type="privacy" />;
+  }
+  if (path === "/termos") {
+    return <LegalPage type="terms" />;
   }
 
   // Default profile from the signed-up account's metadata.

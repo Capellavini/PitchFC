@@ -359,8 +359,12 @@ export default function LandingPage({ onEnter, lang, onLang }) {
       <div style={{ borderTop: `1px solid ${C.border}` }}>
         <Section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "24px 20px" }}>
           <img src={BRAND.logo} alt="PITCH App" style={{ height: 20, opacity: 0.7 }} />
-          <div style={{ fontSize: 12, color: C.text3 }}>
-            {t("PITCH Club · Matosinhos — Porto · versão beta")}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
+            <a href="/privacidade" style={{ fontSize: 12, color: C.text3, textDecoration: "none" }}>{t("Privacidade")}</a>
+            <a href="/termos" style={{ fontSize: 12, color: C.text3, textDecoration: "none" }}>{t("Termos")}</a>
+            <div style={{ fontSize: 12, color: C.text3 }}>
+              {t("PITCH Club · Matosinhos — Porto · versão beta")}
+            </div>
           </div>
         </Section>
       </div>
