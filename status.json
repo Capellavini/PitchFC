@@ -3,10 +3,16 @@
   "agent": "Cris",
   "role": "CTO",
   "team": [
-    { "agent": "Leo", "role": "CMO" },
-    { "agent": "Cris", "role": "CTO" }
+    {
+      "agent": "Leo",
+      "role": "CMO"
+    },
+    {
+      "agent": "Cris",
+      "role": "CTO"
+    }
   ],
-  "updated_at": "2026-09-24",
+  "updated_at": "2026-09-25",
   "headline": "Frontend completo em modo demo (localStorage); migração para Supabase em andamento PR a PR.",
   "metrics": [
     {
@@ -60,10 +66,16 @@
       "title": "Onboarding de jogador unificado (grupo primeiro, cartão mínimo depois)",
       "status": "done",
       "note": "Corrigido bug real: quem entrava por link de convite (?join=) nunca via OnboardingPlayer — ficava com cartão genérico (posição 'Médio', sem foto). Agora ambos os caminhos (link e código manual) resolvem o grupo primeiro e só depois pedem Nome+Posição (foto opcional); resto fica com default editável no Perfil. Testado ponta a ponta com contas descartáveis contra o Supabase de produção (grupo de teste apagado ao final)."
+    },
+    {
+      "title": "Plano de marketing de outubro 2026 (Leo)",
+      "status": "in_progress",
+      "note": "Personas, tom de voz, canais (Instagram/WhatsApp/newsletter Beehiiv), calendário de 4 semanas, lista de produção, KPIs (North Star: +15 grupos ativos, 250 jogadores) e orçamento ≤ €210. Aguarda aprovação do Vinicius: https://claude.ai/artifact/WpAcwXWGBrK87j5qpFPSE5"
     }
   ],
   "next_steps": [
-    "Newsletter (Beehiiv/Mailchimp, a definir com o Leo) usando o domínio já verificado",
+    "Analytics no site (Vercel/Plausible) + UTMs — P1 do plano de marketing, até 4 Out",
+    "Newsletter na Beehiiv (plataforma decidida; nome por fechar) — 1.ª edição a 8 Out",
     "Auto-substituição quando um confirmado cancela",
     "Lembretes automáticos via WhatsApp (nudge de quinta-feira)",
     "Entrada de resultado pós-jogo (gols/assistências) pelo organizador",
