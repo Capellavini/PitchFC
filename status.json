@@ -76,6 +76,7 @@
   "next_steps": [
     "Analytics no site (Vercel/Plausible) + UTMs — P1 do plano de marketing, até 4 Out",
     "Newsletter na Beehiiv (plataforma decidida; nome por fechar) — 1.ª edição a 8 Out",
+    "Highlights automáticos do jogo — spec pronta em docs/HIGHLIGHTS-FEATURE.md: lista de cortes usando os minutos de golo já capturados na súmula ao vivo, depois corte automático de vídeo (client-side via ffmpeg.wasm a prototipar) + wa-bot manda os clipes no grupo. Custo de infra estimado baixo (poucos € /mês) — candidato a feature paga.",
     "Auto-substituição quando um confirmado cancela",
     "Lembretes automáticos via WhatsApp (nudge de quinta-feira)",
     "Entrada de resultado pós-jogo (gols/assistências) pelo organizador",
