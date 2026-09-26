@@ -257,16 +257,17 @@ async function onPollMessage(m, inner) {
     const game = await nextGame(group);
     const spots = game?.spots || group.max_players || 10;
     const r = await applyAttendance({ group, game, spots, m, intent });
+    const glang = group.wa_bot_lang || "pt";
     if (r.result === "window") {
       const k = `${poll.id}|${sel.voterJid}`;
-      if (!windowWarned.has(k)) { windowWarned.add(k); await send(jid, actionReplies.window_named.pt({ nick: r.me.nick })); }
+      if (!windowWarned.has(k)) { windowWarned.add(k); await send(jid, actionReplies.window_named[glang]({ nick: r.me.nick })); }
     } else if (r.result === "not_found") {
       const k = `${poll.id}|${sel.voterJid}|nf`;
       if (!windowWarned.has(k)) {
         windowWarned.add(k);
         const who = m.key.participant || sel.voterJid;
         await typing(jid);
-        await sock.sendMessage(jid, { text: actionReplies.vote_not_found.pt({ tag: `@${bare(who)}`, link: linkFor(group) }), mentions: [who] });
+        await sock.sendMessage(jid, { text: actionReplies.vote_not_found[glang]({ tag: `@${bare(who)}`, link: linkFor(group) }), mentions: [who] });
       }
     }
     return true;
@@ -299,16 +300,22 @@ async function onMessage(m) {
     const game = await nextGame(group);
     const spots = game?.spots || group.max_players || 10;
 
+    // parseIntent/parseCommand/classifyIntent only ever tell "pt" (not
+    // specifically English) apart from "en" — they don't know about ptbr.
+    // A non-English message must reply in the group's own base language
+    // (pt or ptbr), not always Portugal Portuguese.
+    const replyLang = (detected) => (detected === "en" ? "en" : (group.wa_bot_lang || "pt"));
+
     const cmd = parseCommand(text);
-    if (cmd) return await handlePollCommand({ group, game, m, jid, lang: cmd.lang });
+    if (cmd) return await handlePollCommand({ group, game, m, jid, lang: replyLang(cmd.lang) });
 
     // Strict phrases first (free, instant); otherwise let the model read natural wording.
     let action = parseIntent(text);
     if (!action) action = await classifyIntent(text).catch((e) => { log("intent classifier failed:", e.message); return null; });
     log(`addressed in ${group.name}: "${text.slice(0, 60)}" -> ${action ? action.intent : "question"}`);
-    if (action) return await handleAction({ group, game, spots, m, jid, ...action });
+    if (action) return await handleAction({ group, game, spots, m, jid, ...action, lang: replyLang(action.lang) });
 
-    const reply = await answer({ question: text, game, spots, link: linkFor(group), groupId: group.id });
+    const reply = await answer({ question: text, game, spots, link: linkFor(group), groupId: group.id, lang: group.wa_bot_lang || "pt" });
     if (!reply) return;
     if (!cfg().autosend) return log(`[dry-run] @Pitch reply -> ${group.name}: ${reply}`);
     await send(jid, reply, m);

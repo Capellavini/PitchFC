@@ -76,48 +76,62 @@ export function parseCommand(text) {
   return null;
 }
 
-// ── Replies (PT-PT / EN) ──────────────────────────────────────────────────
-const left = { pt: (n) => (n === 1 ? "falta 1 vaga" : `faltam ${n} vagas`), en: (n) => (n === 1 ? "1 spot left" : `${n} spots left`) };
+// ── Replies (PT-PT / PT-BR / EN) ────────────────────────────────────────────
+const left = {
+  pt: (n) => (n === 1 ? "falta 1 vaga" : `faltam ${n} vagas`),
+  ptbr: (n) => (n === 1 ? "falta 1 vaga" : `faltam ${n} vagas`),
+  en: (n) => (n === 1 ? "1 spot left" : `${n} spots left`),
+};
 
 export const actionReplies = {
   confirmed: {
     pt: ({ nick, c, s }) => `✅ ${nick}, estás dentro! ${c}/${s}${c < s ? ` — ${left.pt(s - c)}` : " — jogo fechado"}.`,
+    ptbr: ({ nick, c, s }) => `✅ ${nick}, você tá dentro! ${c}/${s}${c < s ? ` — ${left.ptbr(s - c)}` : " — rachão fechado"}.`,
     en: ({ nick, c, s }) => `✅ ${nick}, you're in! ${c}/${s}${c < s ? ` — ${left.en(s - c)}` : " — game full"}.`,
   },
   waitlist: {
     pt: ({ nick, pos }) => `📋 ${nick}, ficas na lista de espera (posição ${pos}). Se alguém cair, entras por ordem.`,
+    ptbr: ({ nick, pos }) => `📋 ${nick}, você fica na lista de espera (posição ${pos}). Se alguém sair, você entra por ordem.`,
     en: ({ nick, pos }) => `📋 ${nick}, you're on the waiting list (#${pos}). If someone drops out, you move up in order.`,
   },
   already: {
     pt: ({ nick }) => `👍 ${nick}, já estavas confirmado.`,
+    ptbr: ({ nick }) => `👍 ${nick}, você já estava confirmado.`,
     en: ({ nick }) => `👍 ${nick}, you were already confirmed.`,
   },
   declined: {
     pt: ({ nick }) => `👋 ${nick}, ok, ficas de fora. Se mudares de ideias, diz "@Pitch eu vou".`,
+    ptbr: ({ nick }) => `👋 ${nick}, ok, você fica de fora. Se mudar de ideia, é só falar "@Pitch eu vou".`,
     en: ({ nick }) => `👋 ${nick}, got it, you're out. Changed your mind? Say "@Pitch I'm in".`,
   },
   no_game: {
     pt: () => "Não há jogo aberto neste momento.",
+    ptbr: () => "Não tem jogo aberto no momento.",
     en: () => "There's no open game right now.",
   },
   not_found: {
     pt: ({ link }) => `Não encontrei o teu número neste grupo. Confirma pelo link: ${link}`,
+    ptbr: ({ link }) => `Não encontrei seu número neste grupo. Confirme pelo link: ${link}`,
     en: ({ link }) => `I couldn't match your number in this group. Use the link: ${link}`,
   },
   window: {
     pt: () => "As confirmações ainda não abriram.",
+    ptbr: () => "As confirmações ainda não abriram.",
     en: () => "Confirmations haven't opened yet.",
   },
   window_named: {
     pt: ({ nick }) => `${nick}, as confirmações ainda não abriram — o teu voto não foi contado.`,
+    ptbr: ({ nick }) => `${nick}, as confirmações ainda não abriram — seu voto não foi contado.`,
     en: ({ nick }) => `${nick}, confirmations haven't opened yet — your vote wasn't counted.`,
   },
   vote_not_found: {
     pt: ({ tag, link }) => `${tag} não consegui ligar o teu número a nenhum jogador do grupo, por isso o teu voto não foi contado. Confirma pelo link: ${link}`,
+    ptbr: ({ tag, link }) => `${tag} não consegui ligar seu número a nenhum jogador do grupo, por isso seu voto não foi contado. Confirme pelo link: ${link}`,
     en: ({ tag, link }) => `${tag} I couldn't match your number to any player in this group, so your vote wasn't counted. Use the link: ${link}`,
   },
   organizer_only: {
     pt: () => "Só o organizador pode pedir a enquete.",
+    ptbr: () => "Só o organizador pode pedir a enquete.",
     en: () => "Only the organizer can ask for the poll.",
   },
 };
