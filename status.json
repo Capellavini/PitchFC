@@ -53,9 +53,14 @@
       "note": "depende de integração Easypay/SIBS"
     },
     {
-      "title": "Bot de WhatsApp (Baileys) — piloto no grupo Fut do Burger",
+      "title": "Bot de WhatsApp (Baileys) — 3 grupos ativos (Fut do Burger, Goodweather, Onze x Onze/11x11 TJ)",
       "status": "in_progress",
-      "note": "Anuncia eventos (jogo aberto, marcos proporcionais, vaga aberta, lembretes, pós-jogo), @Pitch com IA, confirma/desiste pelo chat e por enquete. Falta: hospedar 24/7 e ligar no Goodweather."
+      "note": "Anuncia eventos, @Pitch com IA, confirma/desiste pelo chat e por enquete. Falta: hospedar 24/7. Onze x Onze ligado em 2026-09-26 e expôs 3 bugs reais: (1) WhatsApp agora esconde o número de quem manda mensagem em grupo atrás de um ID interno (@lid) — o código já tenta resolver via signalRepository.lidMapping mas o cache começa vazio num grupo recém-adicionado, então falha pra muita gente até 'aprender'; fix proposto e não aplicado ainda: pré-aquecer com sock.onWhatsApp(phone) pra cada jogador ao ativar o bot num grupo, e gravar o @lid resolvido no player pra não depender do cache do Baileys sobreviver a restarts. (2) Contas duplicadas no roster (ex: um jogador com 9 linhas criadas em 3s, outros com 2) — parece corrida/duplo-clique no fluxo de entrada por convite; investigação do código começada (useCloud.js: joinGroupWithProfile/resolveInviteToken), limpeza de dados ainda não feita. (3) Idioma PT/BR pedido pro Onze x Onze: wa_bot_lang hoje só tem 'pt' (Portugal) e 'en' — não existe variante brasileira nos templates (messages.js/roster.js), precisa tradução real, não é só trocar um valor no banco."
+    },
+    {
+      "title": "Jogo recorrente: data sendo sobrescrita pelo cron sem aviso",
+      "status": "in_progress",
+      "note": "reset_recurring_confirmations() sempre recalculava scheduled_at como 'próximo slot da semana a partir de agora', ignorando se o organizador já tinha empurrado a data manualmente pra mais à frente (pular uma semana) — o cron horário reescrevia por cima. Fix commitado em supabase/migrations/20260101005400_fix_recurring_date_override.sql (só rola a data se ela ainda estiver no slot natural; preserva override manual). Falta aplicar em produção (deploy da migração) — bloqueado momentaneamente por indisponibilidade do browser. Ideia do Vinicius pra depois: campo de cadência (toda semana / a cada N semanas) na configuração do jogo recorrente, em vez de depender de empurrar a data manualmente."
     },
     {
       "title": "Domínio próprio pitch-fc.com + e-mail transacional",
