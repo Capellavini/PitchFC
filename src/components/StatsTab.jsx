@@ -15,7 +15,7 @@ const RANKS = [
   { n: 3, label: "3º lugar", color: C.bronze },
 ];
 
-export default function StatsTab({ group, history, matchdaySummaries = [], lastMatchday, mvp, statMode, setStatMode, groupName, onCardGenerated, social }) {
+export default function StatsTab({ group, history, matchdaySummaries = [], lastMatchday, mvp, statMode, setStatMode, groupName, onCardGenerated, social, embedded = false }) {
   const totalGames = history.reduce((s, h) => s + (h.games || 1), 0);
   const [cardStep, setCardStep] = useState(null); // null | 'pick' | 'match' | 'workout'
   const [showCompare, setShowCompare] = useState(false); // dedicated "compare players" screen, separate from the rankings
@@ -162,11 +162,15 @@ export default function StatsTab({ group, history, matchdaySummaries = [], lastM
   };
 
   return (
-    <div style={{ padding: "0 16px" }}>
-      <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22 }}>Stats</div>
-        <div style={{ fontSize: 13, color: C.text2 }}>{t("Temporada")} · {totalGames} {totalGames === 1 ? t("jogo") : t("jogos")}</div>
-      </div>
+    <div style={{ padding: embedded ? 0 : "0 16px" }}>
+      {embedded ? (
+        <div style={{ fontSize: 12, color: C.text2, marginBottom: 12 }}>{t("Temporada")} · {totalGames} {totalGames === 1 ? t("jogo") : t("jogos")}</div>
+      ) : (
+        <div style={{ padding: "20px 0 16px" }}>
+          <div style={{ ...displayFont, fontSize: 22 }}>Stats</div>
+          <div style={{ fontSize: 13, color: C.text2 }}>{t("Temporada")} · {totalGames} {totalGames === 1 ? t("jogo") : t("jogos")}</div>
+        </div>
+      )}
 
       {/* Post-match card CTA — the game-by-game breakdown that used to sit
           here moved out: it already lives in Matchday (live) and História,

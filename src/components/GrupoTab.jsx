@@ -15,8 +15,8 @@ import TeamsSection from "./TeamsSection";
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
 
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, inviteUrlAvulso, isOrganizer, onToggleAssistant, onSetPlayerType, onSetAttendanceLock, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday, totalGames, myTeams = [], myPlayerId, onCreateTeam, onFetchTeam, onAddTeamMember, onRemoveTeamMember }) {
-  const [view, setView] = useState("squad"); // 'squad' | 'records'
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, inviteUrlAvulso, isOrganizer, onToggleAssistant, onSetPlayerType, onSetAttendanceLock, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, bannedMembers, onUnbanMember, canManageTeams, records = [], onDeleteMatchday, totalGames, myTeams = [], myPlayerId, onCreateTeam, onFetchTeam, onAddTeamMember, onRemoveTeamMember, statsContent, initialView = "squad" }) {
+  const [view, setView] = useState(initialView); // 'squad' | 'stats' | 'records' | 'teams'
   const [sortAZ, setSortAZ] = useState(false);
   const [openRecordId, setOpenRecordId] = useState(null);
   const [copied, setCopied] = useState(null); // which link was last copied: 'mensalista' | 'avulso'
@@ -57,24 +57,27 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
   ];
 
   return (
-    <div style={{ padding: "0 16px" }}>
-      <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22 }}>League</div>
-        <div style={{ fontSize: 13, color: C.text2 }}>{group.length} {t("jogadores")} · {game.groupName}</div>
+    <div>
+      {/* Group page (Jogar → Grupos). Title/switcher live in the Jogar
+          header; this is just the group's own context line. */}
+      <div style={{ fontSize: 13, color: C.text2, marginBottom: 12 }}>
+        <span style={{ color: C.text1, fontWeight: 700 }}>{game.groupName}</span> · {group.length} {t("jogadores")}
       </div>
 
-      <div style={{ display: "flex", background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 4, marginBottom: 16, gap: 4 }}>
-        {[["squad", "Squad"], ["records", "Records"], ...(onCreateTeam ? [["teams", "Teams"]] : [])].map(([id, label]) => {
+      <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, marginBottom: 16, gap: 4 }}>
+        {[["squad", t("Plantel")], ...(statsContent ? [["stats", "Stats"]] : []), ["records", t("Histórico")], ...(onCreateTeam ? [["teams", t("Equipas")]] : [])].map(([id, label]) => {
           const active = view === id;
           return (
-            <button key={id} onClick={() => setView(id)} style={{ flex: 1, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: "none", borderRadius: 10, padding: 9, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+            <button key={id} onClick={() => setView(id)} style={{ flex: 1, minHeight: 44, background: "none", color: active ? C.text1 : C.text2, border: "none", borderBottom: `2px solid ${active ? C.accent : "transparent"}`, marginBottom: -1, fontSize: 13, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
               {label}
             </button>
           );
         })}
       </div>
 
-      {view === "records" ? (
+      {view === "stats" && statsContent ? (
+        statsContent
+      ) : view === "records" ? (
         <div style={{ marginBottom: 24 }}>
           {records.length === 0 ? (
             <div style={{ ...cardStyle, textAlign: "center", padding: "22px 20px" }}>

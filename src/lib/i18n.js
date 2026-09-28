@@ -110,6 +110,7 @@ const EN = {
 
   // ── BottomNav ──────────────────────────────────────────
   "Jogo": "Game", "Clube": "Club", "Grupo": "Squad", "Perfil": "Profile",
+  "Jogar": "Play", "Competir": "Compete", "Grupos": "Groups", "Desafios": "Challenges", "Competições": "Competitions", "Em breve": "Coming soon", "Definições": "Settings",
 
   // ── LandingPage ────────────────────────────────────────
   "O teu jogo semanal,": "Your weekly game,",
@@ -950,6 +951,7 @@ const IT = {
 
   // ── BottomNav ──────────────────────────────────────────
   "Jogo": "Partita", "Clube": "Club", "Grupo": "Gruppo", "Perfil": "Profilo",
+  "Jogar": "Gioca", "Competir": "Competi", "Grupos": "Gruppi", "Desafios": "Sfide", "Competições": "Competizioni", "Em breve": "In arrivo", "Definições": "Impostazioni",
 
   // ── LandingPage ────────────────────────────────────────
   "O teu jogo semanal,": "La tua partita settimanale,",

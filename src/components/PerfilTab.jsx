@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun } from "lucide-react";
+import { Pencil, Camera, Settings, Star, MessageCircle, Cross } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
-import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
 import { encodePayload, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
@@ -10,12 +9,16 @@ import FutCard from "./FutCard";
 import RatingForm from "./RatingForm";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
-import SecuritySection from "./SecuritySection";
+import PageHeader from "./PageHeader";
+import CareerSummary from "./CareerSummary";
 import AchievementsSection from "./AchievementsSection";
 import MatchdayCalendar from "./MatchdayCalendar";
 import ProgressChart from "./ProgressChart";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember }) {
+/** Perfil — the player's PITCH ID: FUT card, career, season, calendar/
+ *  progress, achievements. All settings/utilities live behind the gear
+ *  (SettingsScreen, rendered by PitchApp via `onOpenSettings`). */
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, isOrganizer, addPeerRating, cloudMode, onSubmitRating, uploadMedia, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember, onOpenSettings, personalRecords, attendanceStreak = 0 }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -37,16 +40,6 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
   const [codeDraft, setCodeDraft] = useState("");
   const [codeStatus, setCodeStatus] = useState(null); // 'ok' | 'error'
   const [uploading, setUploading] = useState(false);
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushMsg, setPushMsg] = useState(null); // { ok, text }
-
-  const handleEnablePush = async () => {
-    setPushBusy(true); setPushMsg(null);
-    const res = await enablePush();
-    setPushBusy(false);
-    setPushMsg(res?.error ? { ok: false, text: res.error } : { ok: true, text: t("Notificações ativadas ✓") });
-  };
-  const pushOn = pushMsg?.ok || pushPermission() === "granted";
 
   const startEditing = () => { setForm({ ...player }); setEditing(true); };
 
@@ -164,18 +157,27 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
 
   return (
     <div style={{ padding: "0 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22 }}>{isOwn ? t("O Meu Cartão") : t("Perfil")}</div>
-        {isOwn ? (
-          <button onClick={startEditing} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-            <Pencil size={13} /> {t("Editar")}
-          </button>
+      <PageHeader
+        title={isOwn ? t("Perfil") : player.nick}
+        right={isOwn ? (
+          <div style={{ display: "flex", gap: 4 }}>
+            <button onClick={startEditing} aria-label={t("Editar")} title={t("Editar")}
+              style={{ width: 44, height: 44, background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Pencil size={19} />
+            </button>
+            {onOpenSettings && (
+              <button onClick={onOpenSettings} aria-label={t("Definições")} title={t("Definições")}
+                style={{ width: 44, height: 44, background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Settings size={20} />
+              </button>
+            )}
+          </div>
         ) : (
-          <button onClick={backToMe} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, color: C.text2, cursor: "pointer" }}>
+          <button onClick={backToMe} style={{ minHeight: 44, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "0 14px", fontSize: 12, color: C.text2, cursor: "pointer" }}>
             {t("Ver o meu")}
           </button>
         )}
-      </div>
+      />
 
       {/* FUT card — the hero of the profile */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
@@ -263,22 +265,9 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
         )
       )}
 
-      {/* Contact (own profile only) */}
-      {isOwn && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>{t("CONTACTO")}</SectionLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: C.text2 }}>Email</span>
-              <span>{player.email || <span style={{ color: C.text3 }}>{t("não definido")}</span>}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: C.text2 }}>{t("Telemóvel")}</span>
-              <span>{player.phone || <span style={{ color: C.text3 }}>{t("não definido")}</span>}</span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Career (cross-group) — moved here from Home. Own profile only:
+          the data is the viewer's own feed. */}
+      {isOwn && <CareerSummary personalRecords={personalRecords} attendanceStreak={attendanceStreak} />}
 
       {/* Season stats */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
@@ -327,154 +316,6 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
             {banBusy ? t("A banir…") : t("Banir do grupo")}
           </button>
           {banError && <div style={{ fontSize: 12, color: C.red, marginTop: 8 }}>{banError}</div>}
-        </div>
-      )}
-
-      {/* Payment method (own profile only) */}
-      {isOwn && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>{t("PAGAMENTO")}</SectionLabel>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: C.blueDim, border: `1px solid ${C.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <CreditCard size={18} color={C.blue} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>MB Way</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>{player.phone}</div>
-            </div>
-            <span style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>{t("Ativo ✓")}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Organizer: group settings */}
-      {isOwn && isOrganizer && (
-        <button onClick={onEditGroup} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.blueDim, border: `1px solid ${C.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Settings size={18} color={C.blue} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Definições do grupo")}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>{t("Campo, horário, mensalidade e vagas")}</div>
-          </div>
-        </button>
-      )}
-
-      {/* Player with no group at all yet (skipped joining one): start
-          their own from here instead of being stuck with only "join via
-          invite". Not shown once already in a group. */}
-      {isOwn && onCreateGroup && (
-        <button onClick={onCreateGroup} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1, border: `1px solid ${C.accentBorder}` }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <PlusCircle size={18} color={C.accent} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Criar grupo")}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>{t("Torna-te organizador do teu próprio jogo semanal")}</div>
-          </div>
-        </button>
-      )}
-
-      {/* Language picker */}
-      {isOwn && onLang && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Globe size={18} color={C.text2} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Idioma")}</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>Português · Português (BR) · English · Italiano</div>
-            </div>
-            <select value={lang} onChange={(e) => onLang(e.target.value)}
-              style={{ background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 10px", fontSize: 12, fontWeight: 700, outline: "none", cursor: "pointer", colorScheme: "dark" }}>
-              <option value="pt">🇵🇹 PT</option>
-              <option value="pt-br">🇧🇷 PT-BR</option>
-              <option value="en">🇬🇧 EN</option>
-              <option value="it">🇮🇹 IT</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Theme picker */}
-      {isOwn && onThemeMode && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {themeMode === "light" ? <Sun size={18} color={C.text2} /> : <Moon size={18} color={C.text2} />}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Tema")}</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>{t("Escuro")} · {t("Claro")}</div>
-            </div>
-            <div style={{ display: "flex", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 3, gap: 2 }}>
-              {[["dark", Moon, "Escuro"], ["light", Sun, "Claro"]].map(([id, Icon, label]) => {
-                const active = (themeMode ?? "dark") === id;
-                return (
-                  <button key={id} onClick={() => onThemeMode(id)} title={t(label)}
-                    style={{ display: "flex", alignItems: "center", gap: 5, background: active ? C.accentDim : "none", color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : "transparent"}`, borderRadius: 8, padding: "7px 10px", fontSize: 11, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
-                    <Icon size={13} /> {t(label)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Push notifications opt-in (own profile, cloud, when configured) */}
-      {isOwn && enablePush && pushSupported() && pushConfigured() && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: pushOn ? C.greenDim : C.accentDim, border: `1px solid ${pushOn ? C.greenBorder : C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Bell size={18} color={pushOn ? C.green : C.accent} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Notificações")}</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>{pushOn ? t("Ativadas ✓ — avisamos quando entras no jogo") : t("Recebe aviso quando abrir vaga para ti")}</div>
-            </div>
-            {!pushOn && (
-              <button onClick={handleEnablePush} disabled={pushBusy} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: pushBusy ? 0.6 : 1 }}>
-                {pushBusy ? "…" : t("Ativar")}
-              </button>
-            )}
-          </div>
-          {pushMsg && !pushMsg.ok && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{pushMsg.text}</div>}
-        </div>
-      )}
-
-      {/* Account security — cloud accounts only */}
-      {isOwn && security && (
-        <SecuritySection
-          email={security.email}
-          onUpdatePassword={security.updatePassword}
-          onUpdateEmail={security.updateEmail}
-          onSignOutEverywhere={security.signOutEverywhere}
-        />
-      )}
-
-      {/* Owner-only: cross-group admin overview */}
-      {isOwn && isAdmin && (
-        <button onClick={onOpenAdmin} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1, border: `1px solid ${C.accentBorder}` }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <ShieldCheck size={18} color={C.accent} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Painel de administrador")}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>{t("Ver todos os grupos, jogadores e jogos")}</div>
-          </div>
-        </button>
-      )}
-
-      {isOwn && (
-        <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          <button onClick={logout} style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 12, color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <LogOut size={13} /> {t("Sair")}
-          </button>
-          <button onClick={resetDemo} style={{ flex: 1, background: "none", border: `1px dashed ${C.border}`, borderRadius: 12, padding: 11, fontSize: 12, color: C.text3, cursor: "pointer" }}>
-            {t("Repor demo")}
-          </button>
         </div>
       )}
     </div>

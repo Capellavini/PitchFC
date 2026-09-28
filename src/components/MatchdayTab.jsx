@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Shuffle, RotateCcw, Check, Users2 } from "lucide-react";
-import { C, cardStyle, displayFont } from "../theme";
+import { C, cardStyle } from "../theme";
 import { splitWaitlist, ini, playerColor, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import Matchday from "./Matchday";
 import MatchTimer from "./MatchTimer";
 import Collapsible from "./Collapsible";
+import PageHeader from "./PageHeader";
 
 /** One player in the lineup — same visual language as the Pitch Manager
  *  pitch (photo/initials circle, OVR badge, name below), just off the
@@ -42,7 +43,7 @@ function LineupCard({ p, group }) {
  *  after tapping "Confirmar equipas" do players see the lineup. Once
  *  confirmed, organizers see their own lineup too (they play too), with
  *  the management grid tucked into a collapsible section. */
-export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps }) {
+export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null }) {
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const confirmed = group.filter((p) => p.status === "confirmed");
   const { playing } = splitWaitlist(confirmed, game.spots);
@@ -176,12 +177,28 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
     </>
   );
 
+  const header = (
+    <PageHeader title="Matchday"
+      subtitle={matchdayProps.matchday ? `${t("Ao vivo")} · ${game.groupName}` : `${game.groupName} · ${game.date}`} />
+  );
+
+  // Cold state (regular player, nothing today): countdown + last recap
+  // instead of the controls. Organizers never get here — see PitchApp.
+  if (coldView) {
+    return (
+      <div style={{ padding: "0 16px" }}>
+        {header}
+        {prompt}
+        {coldView}
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: "0 16px" }}>
-      <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22 }}>Matchday</div>
-        <div style={{ fontSize: 13, color: C.text2 }}>{t("Sorteio, cronómetro e marcação ao vivo.")}</div>
-      </div>
+      {header}
+      {/* Pre-match: an open game I haven't answered yet goes first. */}
+      {prompt}
 
       {/* OWN LINEUP — everyone who's on a confirmed team sees it, Fantasy-card style */}
       {showOwnLineup && (
