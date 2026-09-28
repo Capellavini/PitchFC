@@ -1,64 +1,64 @@
 import { useState } from "react";
-import { Shield, Swords, Trophy } from "lucide-react";
-import { C, cardStyle } from "../theme";
+import { Users } from "lucide-react";
+import { S } from "../theme";
 import { t } from "../lib/i18n";
 import { isEnabled } from "../lib/flags";
 import PageHeader from "./PageHeader";
 import SegmentedControl from "./SegmentedControl";
-import ComingSoon from "./ComingSoon";
+import SectionLabel from "./SectionLabel";
+import Chip from "./Chip";
 import TeamsPanel from "./TeamsPanel";
 import ChallengesPanel from "./ChallengesPanel";
-import FantasyTab from "./FantasyTab";
+import Leaderboard from "./Leaderboard";
+import WeeklyPodium from "./WeeklyPodium";
+import GoalOfTheWeek from "./GoalOfTheWeek";
 
-const SUBS = [
-  { id: "equipas",     label: "Equipas" },
-  { id: "desafios",    label: "Desafios" },
-  { id: "competicoes", label: "Competições" },
-];
-
-/** Competir — "contra quem jogamos / em que competimos?" (brief §8).
- *  Equipas | Desafios | Competições. Stats and League (plantel) left
- *  this tab: they're the group's page now (Jogar → Grupos). Competições
- *  holds what was "Manager" (Pitch Manager / Fantasy), unchanged.
- *  Equipas/Desafios are flag-gated placeholders (`teams`/`challenges`)
- *  — TeamsPanel/ChallengesPanel are the files to replace. */
-export default function CompetirTab({ isAdmin, showManager, managerProps }) {
-  const [sub, setSub] = useState("competicoes");
+/** Competir (spec §2) — "who's on top?". At launch: group context
+ *  (picker only when the player has >1 group) → season leaderboards →
+ *  weekly podium → Golo da Semana. Fantasy/Pitch Manager is NOT here
+ *  any more (it lives in the group page). The Rankings | Equipas |
+ *  Desafios switcher only appears when the `teams`/`challenges` flags
+ *  are on — TeamsPanel/ChallengesPanel are the placeholders to replace.
+ *
+ *  Data comes from what PitchApp already feeds StatsTab: `group`
+ *  (season totals per player), `history` (one row per matchday),
+ *  `lastMatchday` (summary.lines) and `mvp`. */
+export default function CompetirTab({ isAdmin, group = [], history = [], lastMatchday, mvp, social, postDates, groupName, groupPicker }) {
+  const [sub, setSub] = useState("rankings");
   const teamsOn = isEnabled("teams", { isAdmin });
   const challengesOn = isEnabled("challenges", { isAdmin });
+  const subs = [
+    { id: "rankings", label: "Rankings" },
+    teamsOn && { id: "equipas", label: "Equipas" },
+    challengesOn && { id: "desafios", label: "Desafios" },
+  ].filter(Boolean);
+  const view = subs.some((s) => s.id === sub) ? sub : "rankings";
+
+  // Matchdays held this season. The local demo seeds season totals
+  // (gamesPlayed) beyond the 5 mock history rows, so never let the
+  // denominator fall below the most-attended player's count.
+  const seasonDays = Math.max(history.length, ...group.map((p) => p.gamesPlayed || 0), 0);
 
   return (
-    <div>
-      <div style={{ padding: "0 16px" }}>
-        <PageHeader title={t("Competir")} />
-        <SegmentedControl options={SUBS} value={sub} onChange={setSub} />
+    <div style={{ padding: `0 ${S.lg}px` }}>
+      <PageHeader
+        title={t("Competir")}
+        subtitle={`${t("Temporada")} · ${seasonDays} ${seasonDays === 1 ? t("dia de jogo") : t("dias de jogo")}`}
+        right={groupPicker || (groupName ? <Chip Icon={Users}>{groupName}</Chip> : null)}
+      />
 
-        {sub === "equipas" && (teamsOn ? <TeamsPanel /> : (
-          <ComingSoon Icon={Shield} title={t("Equipas")}
-            body={t("Monta a tua equipa fixa, com plantel, capitão e historial de vitórias.")} />
-        ))}
-        {sub === "desafios" && (challengesOn ? <ChallengesPanel /> : (
-          <ComingSoon Icon={Swords} title={t("Desafios")}
-            body={t("Desafia outras equipas para um jogo e fica com o resultado no historial das duas.")} />
-        ))}
-        {sub === "competicoes" && !showManager && (
-          <div style={{ ...cardStyle, marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Trophy size={19} color={C.gold} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 800 }}>PITCH League</div>
-                <div style={{ fontSize: 12, color: C.text2 }}>{t("Ligas e torneios entre equipas, com tabela, jornadas e Pitch Manager.")}</div>
-              </div>
-            </div>
-            <a href="/league" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 44, borderRadius: 12, border: `1px solid ${C.border}`, color: C.text1, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
-              {t("Saber mais")}
-            </a>
-          </div>
-        )}
-      </div>
-      {sub === "competicoes" && showManager && <FantasyTab {...managerProps} />}
+      {subs.length > 1 && <SegmentedControl options={subs} value={view} onChange={setSub} />}
+
+      {view === "rankings" && (
+        <>
+          <SectionLabel>{t("Classificação da época")}</SectionLabel>
+          <Leaderboard group={group} seasonDays={seasonDays} />
+          <WeeklyPodium lastMatchday={lastMatchday} mvp={mvp} />
+          <GoalOfTheWeek social={social} group={group} postDates={postDates} />
+        </>
+      )}
+      {view === "equipas" && <TeamsPanel />}
+      {view === "desafios" && <ChallengesPanel />}
     </div>
   );
 }

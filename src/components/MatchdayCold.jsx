@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
-import { Clock, MapPin } from "lucide-react";
-import { C, cardStyle, displayFont } from "../theme";
+import { Clock, MapPin, Users, Radio, Star } from "lucide-react";
+import { C, S, T, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
+import Chip from "./Chip";
 import SectionLabel from "./SectionLabel";
+import StatTile from "./StatTile";
 import MatchdayGames from "./MatchdayGames";
 
 const pad = (n) => String(n).padStart(2, "0");
 
 /** Matchday's "cold" state for a regular player — no game today, nothing
- *  live, nothing to answer. Shows the countdown to the next game and the
- *  last matchday's recap. (Organizers never see this: they always get
- *  the full Matchday controls — see PitchApp.) */
+ *  live, nothing to answer. An intentional resting screen: countdown to
+ *  the next game, what lights up on the day, and the last matchday's
+ *  recap. (Organizers/assistants never land here — they always get the
+ *  full Matchday controls, see PitchApp's matchdayCold.) */
 export default function MatchdayCold({ game, lastMatchday }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -24,36 +27,49 @@ export default function MatchdayCold({ game, lastMatchday }) {
   const hours = diff > 0 ? Math.floor((diff % 86400000) / 3600000) : 0;
   const mins = diff > 0 ? Math.floor((diff % 3600000) / 60000) : 0;
 
+  const lightsUp = [
+    [Users, t("Equipas sorteadas e confirmadas")],
+    [Radio, t("Marcador ao vivo, golo a golo")],
+    [Star, t("Votação MVP no fim")],
+  ];
+
   return (
     <>
-      <div style={{ ...cardStyle, marginBottom: 16 }}>
-        <SectionLabel>{t("PRÓXIMO JOGO")}</SectionLabel>
-        {diff > 0 ? (
-          <>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 12 }}>
-              {[[days, t("dias")], [pad(hours), t("horas")], [pad(mins), t("min")]].map(([v, l]) => (
-                <div key={l}>
-                  <span style={{ ...displayFont, fontSize: 40, color: C.text1 }}>{v}</span>
-                  <span style={{ fontSize: 12, color: C.text2, marginLeft: 4 }}>{l}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: C.text2 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {game.date} · {game.time}</span>
-              {game.venue && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {game.venue}</span>}
-            </div>
-          </>
-        ) : (
-          <div style={{ fontSize: 13, color: C.text2 }}>{t("Ainda não há jogo marcado.")}</div>
-        )}
-        <div style={{ fontSize: 12, color: C.text3, marginTop: 12 }}>{t("O Matchday acende no dia do jogo: equipas, marcador ao vivo e MVP.")}</div>
-      </div>
+      <section style={{ marginBottom: S.xl }}>
+        <SectionLabel>{t("Próximo jogo")}</SectionLabel>
+        <div style={{ ...cardStyle }}>
+          {diff > 0 ? (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: S.sm, marginBottom: S.md }}>
+                <StatTile value={days} label={t("dias")} size="lg" />
+                <StatTile value={pad(hours)} label={t("horas")} size="lg" />
+                <StatTile value={pad(mins)} label={t("min")} size="lg" />
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: S.sm, justifyContent: "center" }}>
+                <Chip Icon={Clock}>{game.date} · {game.time}</Chip>
+                {game.venue && <Chip Icon={MapPin}>{game.venue}</Chip>}
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: T.body, color: C.text2 }}>{t("Ainda não há jogo marcado.")}</div>
+          )}
+
+          <div style={{ borderTop: `1px solid ${C.border}`, marginTop: S.lg, paddingTop: S.md }}>
+            <div style={{ fontSize: T.meta, fontWeight: 700, color: C.text2, marginBottom: S.sm }}>{t("O Matchday acende no dia do jogo:")}</div>
+            {lightsUp.map(([Icon, label]) => (
+              <div key={label} style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: 32, fontSize: T.body, color: C.text1 }}>
+                <Icon size={16} color={C.text2} style={{ flexShrink: 0 }} /> {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {lastMatchday && (lastMatchday.matches ?? []).length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <SectionLabel>{t("ÚLTIMO MATCHDAY")} · {lastMatchday.date}</SectionLabel>
-          <MatchdayGames summary={lastMatchday} />
-        </div>
+        <section style={{ marginBottom: S.xl }}>
+          <SectionLabel>{t("Último Matchday")} · {lastMatchday.date}</SectionLabel>
+          <MatchdayGames summary={lastMatchday} framed />
+        </section>
       )}
     </>
   );

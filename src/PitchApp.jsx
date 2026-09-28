@@ -47,6 +47,13 @@ import JogoTab from "./components/JogoTab";
 import GrupoTab from "./components/GrupoTab";
 import StatsTab from "./components/StatsTab";
 import FindGamePlaceholder from "./components/FindGamePlaceholder";
+// Jogar tab (redesign v1): pushed Game Detail + Group page screens.
+import GameDetail from "./components/GameDetail";
+import GroupPage from "./components/GroupPage";
+import GroupsList from "./components/GroupsList";
+import GroupRecords from "./components/GroupRecords";
+import GroupSettings from "./components/GroupSettings";
+import FantasyTab from "./components/FantasyTab";
 import MatchdayTab from "./components/MatchdayTab";
 import MatchdayCold from "./components/MatchdayCold";
 import NextActionCard from "./components/NextActionCard";
@@ -1521,54 +1528,141 @@ export default function PitchApp() {
       <TopBar onLogoClick={() => selectTab("home")} />
       <div style={{ paddingBottom: 96 }}>
         {tab === "home" && (
+          // Home (redesign v1): one next action + last-result recap + single
+          // activity feed built from matchdays + social posts (SocialTab no
+          // longer rendered here). resultPending = kickoff passed <36h ago,
+          // nothing live and no matchday recorded today (organizer/assistant).
           <HomeTab
-            me={me} group={displayGroup}
-            homeFeed={homeFeedView} nextGame={homeNextGame} nextActions={nextActions}
+            me={me} group={displayGroup} myKey={myMvpKey}
+            nextGame={homeNextGame} nextActions={nextActions}
+            slots={hasGameContext ? {
+              spots: game.spots, groupName: game.groupName, myStatus: me?.status,
+              taken: spotsTaken.map((p) => ({ id: p.id, name: p.name || p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p) })),
+            } : null}
+            liveMatchday={Boolean(matchday)}
+            resultPending={canManageTeams && hasGameContext && !matchday && kickoffAt <= new Date() && Date.now() - kickoffAt.getTime() < 36 * 3600 * 1000 && lastMatchdayView?.date !== fmtDayMonth(isoDay(0))}
+            onOpenJogar={() => { setJogarView("jogos"); selectTab("jogar"); }}
+            onOpenMatchday={() => selectTab("matchday")}
+            feedMatchdays={cloudMode ? [
+              ...cloud.matchdays.map((r) => ({ ...r, groupName: game.groupName })),
+              ...cloud.crossGroupMatchdays.map((r) => ({ ...r, groupName: r.groups?.name })),
+            ] : null}
+            localHistory={cloudMode ? null : { lastMatchday, history: historyView, groupName: game.groupName, mvpKey: lastMatchday && !mvpVote.open ? mvpVote.votes[1] : null }}
+            social={social}
+            postTs={cloudAuthed ? Object.fromEntries(cloud.posts.map((p) => [p.id, p.created_at])) : null}
+            myGroupIds={cloudAuthed ? [cloud.groupRow?.id, ...cloud.myGroups.map((m) => m.group_id)].filter(Boolean) : ["local"]}
+            friendsEnabled={cloudAuthed}
+            kudos={cloudMode ? cloud.matchdayKudos : null}
+            onToggleKudos={cloudMode ? (matchdayId, toKey, given) => cloud.toggleKudos(matchdayId, toKey, given) : null}
             attendanceStreak={attendanceStreak}
-            onToggleKudos={cloudMode ? (matchdayId, given) => cloud.toggleKudos(matchdayId, me?.uuid, given) : null}
-            recentPerformance={recentPerformance}
+            groupName={game.groupName} lastMatchdayForWorkout={lastMatchdayView}
             onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined}
-            activityFeed={<SocialTab social={social} me={displayGroup.find((p) => p.isMe)} groupName={game.groupName} lastMatchday={lastMatchdayView} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} />}
           />
         )}
         {tab === "jogar" && (
+          // Jogar (redesign v1): Jogos | Grupos + pushed Game Detail and
+          // Group page (Plantel · Stats · Fantasy · Definições). Render
+          // functions keep every screen wired to root state.
           <JogarTab
             view={jogarView} onViewChange={setJogarView}
             headerRight={groupSwitcher}
-            jogos={noGroup ? (
+            groupEntryN={grupoEntry.n}
+            renderJogos={({ openDetail }) => noGroup ? (
               <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
             ) : (
               <JogoTab
                 group={displayGroup} game={game}
-                togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
-                canManageTeams={canManageTeams} onSetPlayerStatus={setPlayerStatus}
+                toggleMyStatus={toggleMyStatus} payMine={payMine}
                 inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
                 onReschedule={rescheduleGame}
                 onScheduleGame={cloudMode ? (dateIso, time) => cloud.scheduleNextGame(dateIso, time) : undefined}
                 confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
+                onOpenDetail={openDetail}
+                upcoming={cloudMode ? cloud.crossGroupGames
+                  .filter((g) => new Date(g.scheduled_at) >= new Date())
+                  .map((g) => {
+                    const d = new Date(g.scheduled_at);
+                    return {
+                      id: g.id, groupName: g.groups?.name, venue: g.venue,
+                      dateLabel: fmtFullDay(toIsoDay(d)),
+                      timeLabel: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+                      onOpen: cloud.switchActiveGroup ? () => cloud.switchActiveGroup(g.group_id) : undefined,
+                    };
+                  }) : []}
+                findGame={isEnabled("openGames", { isAdmin: cloud.isAdmin }) ? <FindGamePlaceholder /> : null}
+                pastGames={historyView}
+                onOpenHistory={() => goToGroupView("stats")}
               />
             )}
-            findGame={isEnabled("openGames", { isAdmin: cloud.isAdmin }) ? <FindGamePlaceholder /> : null}
-            grupos={noGroup ? (
+            renderDetail={({ onBack }) => (
+              <GameDetail
+                group={displayGroup} game={game} gameId={gameId} onBack={onBack}
+                togglePaid={togglePaid} payMine={payMine}
+                canManageTeams={canManageTeams} canManageGame={isOrganizer} onSetPlayerStatus={setPlayerStatus}
+                inviteUrl={inviteUrl}
+                material={material} onToggleMaterial={toggleMaterial} onAssignMaterial={assignMaterial} onAddMaterial={addMaterial}
+              />
+            )}
+            renderGroups={({ openGroup }) => noGroup ? (
               <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
             ) : (
-              <GrupoTab
+              <GroupsList
+                groups={cloudMode && cloud.myGroups?.filter((m) => !m.banned).length
+                  ? cloud.myGroups.filter((m) => !m.banned).map((m) => ({
+                      id: m.group_id, name: m.groups?.name, active: m.group_id === cloud.groupRow?.id,
+                      meta: [m.role === "organizer" ? t("Organizador") : m.role === "assistant" ? t("Auxiliar") : t("Membro"), m.groups?.venue].filter(Boolean).join(" · "),
+                    }))
+                  : [{ id: "current", name: game.groupName, active: true, meta: `${displayGroup.length} ${t("jogadores")}${game.venue ? ` · ${game.venue}` : ""}` }]}
+                onOpen={async (g) => {
+                  if (!g.active && cloudMode) {
+                    const res = await cloud.switchActiveGroup(g.id);
+                    if (res?.error) return res;
+                  }
+                  openGroup();
+                  return null;
+                }}
+              />
+            )}
+            renderGroupPage={({ onBack }) => (
+              <GroupPage
                 key={grupoEntry.n}
-                initialView={grupoEntry.view}
-                statsContent={<StatsTab {...statsProps} embedded />}
-                group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode}
-                inviteUrl={inviteUrl} inviteUrlAvulso={inviteUrlAvulso} isOrganizer={isOrganizer}
-                onToggleAssistant={cloud.toggleAssistant}
-                onSetPlayerType={(playerId, type) => cloud.updatePlayer(playerId, { player_type: type })}
-                onSetAttendanceLock={(playerId, locked) => cloud.setAttendanceLock(locked, playerId, gameId)}
-                onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus}
-                onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember}
-                bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember}
-                canManageTeams={canManageTeams} records={recordsView} onDeleteMatchday={deleteMatchdayRecord}
-                totalGames={totalGamesPlayed}
-                myTeams={cloudMode ? cloud.myTeams : []} myPlayerId={me?.uuid}
-                onCreateTeam={cloudMode ? cloud.createTeam : undefined} onFetchTeam={cloudMode ? cloud.fetchTeam : undefined}
-                onAddTeamMember={cloudMode ? cloud.addTeamMember : undefined} onRemoveTeamMember={cloudMode ? cloud.removeTeamMember : undefined}
+                onBack={onBack} initialView={grupoEntry.view}
+                groupName={game.groupName}
+                subtitle={`${displayGroup.length} ${t("jogadores")}${game.venue ? ` · ${game.venue}` : ""}`}
+                isOrganizer={isOrganizer}
+                plantel={
+                  <GrupoTab
+                    group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode}
+                    inviteUrl={inviteUrl} isOrganizer={isOrganizer}
+                    onToggleAssistant={cloud.toggleAssistant}
+                    onSetPlayerType={(playerId, type) => cloud.updatePlayer(playerId, { player_type: type })}
+                    onSetAttendanceLock={(playerId, locked) => cloud.setAttendanceLock(locked, playerId, gameId)}
+                    onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus}
+                    onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember}
+                    canManageTeams={canManageTeams}
+                    totalGames={totalGamesPlayed}
+                    myTeams={cloudMode ? cloud.myTeams : []} myPlayerId={me?.uuid}
+                    onCreateTeam={cloudMode ? cloud.createTeam : undefined} onFetchTeam={cloudMode ? cloud.fetchTeam : undefined}
+                    onAddTeamMember={cloudMode ? cloud.addTeamMember : undefined} onRemoveTeamMember={cloudMode ? cloud.removeTeamMember : undefined}
+                  />
+                }
+                stats={<>
+                  <StatsTab {...statsProps} embedded />
+                  <GroupRecords records={recordsView} canDelete={isOrganizer && cloudMode} onDeleteMatchday={deleteMatchdayRecord} />
+                </>}
+                fantasy={cloud.canSeeFantasy ? (
+                  <FantasyTab group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
+                    fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
+                    fantasyTradeOffers={cloud.fantasyTradeOffers} matchdays={cloud.matchdays}
+                    onCreateLeague={cloud.createFantasyLeague} onSaveSquad={cloud.saveFantasySquad}
+                    onCreateTradeOffer={cloud.createTradeOffer} onCancelTradeOffer={cloud.cancelTradeOffer}
+                    onRespondTradeOffer={cloud.respondTradeOffer} onSyncFantasy={cloud.syncFantasyScores} />
+                ) : null}
+                settings={
+                  <GroupSettings game={game} onEditGroup={() => setEditingGroup(true)}
+                    inviteUrl={inviteUrl} inviteUrlAvulso={inviteUrlAvulso}
+                    bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} />
+                }
               />
             )}
           />
@@ -1581,16 +1675,24 @@ export default function PitchApp() {
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution }}
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution,
+              // Redesign (Matchday "Assistência" button): patch one logged event in place
+              // (e.g. attach an assist to an existing goal) — keeps its position/minute,
+              // unlike remove + re-add. Same updateMatchday path as the other handlers.
+              onUpdateEvent: (matchId, eventIndex, patch) =>
+                updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: m.events.map((e, i) => (i === eventIndex ? { ...e, ...patch } : e)) } : m)) })) }}
             prompt={confirmAction ? <NextActionCard {...confirmAction} /> : null}
             coldView={matchdayCold ? <MatchdayCold game={game} lastMatchday={lastMatchdayView} /> : null}
+            mvp={mvp} lastMatchday={lastMatchdayView} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined}
           />
         ))}
         {tab === "competir" && (
           <CompetirTab
             isAdmin={cloud.isAdmin}
-            showManager={cloud.canSeeFantasy}
-            managerProps={{ group: displayGroup, me, isOrganizer, kickoffAt: game.kickoffAt, fantasyLeague: cloud.fantasyLeague, fantasySquads: cloud.fantasySquads, fantasyScores: cloud.fantasyScores, fantasyTradeOffers: cloud.fantasyTradeOffers, matchdays: cloud.matchdays, onCreateLeague: cloud.createFantasyLeague, onSaveSquad: cloud.saveFantasySquad, onCreateTradeOffer: cloud.createTradeOffer, onCancelTradeOffer: cloud.cancelTradeOffer, onRespondTradeOffer: cloud.respondTradeOffer, onSyncFantasy: cloud.syncFantasyScores }}
+            group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp}
+            social={social} groupName={game.groupName}
+            postDates={cloudMode ? Object.fromEntries(cloud.posts.map((p) => [p.id, p.created_at])) : null}
+            groupPicker={cloudMode && (cloud.myGroups?.length ?? 0) > 1 ? groupSwitcher : null}
           />
         )}
         {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (
@@ -1647,6 +1749,12 @@ export default function PitchApp() {
             onBanMember={banMember}
             onOpenSettings={() => setSettingsView("main")}
             personalRecords={personalRecords} attendanceStreak={attendanceStreak}
+            // Perfil redesign: hero meta (city · group), "Grupos e equipas"
+            // rows, and local demo's last matchday for form/records.
+            groupName={game.groupName} city={groupSettings.city}
+            myGroups={cloudMode ? cloud.myGroups : []} activeGroupId={cloudMode ? cloud.groupRow?.id : null}
+            myTeams={cloudMode ? cloud.myTeams : []}
+            localMatchday={cloudMode ? null : lastMatchday}
           />
         )}
       </div>

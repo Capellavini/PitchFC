@@ -1,16 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, Timer as TimerIcon, BellRing, Minus, Plus, Mic } from "lucide-react";
-import { C, cardStyle, displayFont } from "../theme";
+import { Play, Pause, RotateCcw, BellRing, Minus, Plus, Mic } from "lucide-react";
+import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { usePersistentState } from "../lib/storage";
 import { voiceSupported, listenOnce, isStartTimerCommand } from "../lib/voice";
 import { t as tr } from "../lib/i18n";
+import BtnGhost from "./BtnGhost";
 
 const PRESETS = [10, 15, 20, 30]; // minutes
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+const roundBtn = () => ({
+  width: 44, height: 44, borderRadius: 22, flexShrink: 0, background: "transparent", color: C.text2,
+  border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+});
+
 /** Match countdown: set the duration, start/pause, alarm at zero.
- *  Persists across refresh (stores the target end time). Device-local
- *  — whoever runs the clock keeps it on their phone. */
+ *  Persists across refresh (stores the target end time) under
+ *  "pitch.v2.matchTimer" — src/lib/matchTimer.js reads the same key to
+ *  stamp a goal's minute. Device-local: whoever runs the clock keeps it
+ *  on their phone. Compact one-card layout for the live Matchday. */
 export default function MatchTimer() {
   const [t, setT] = usePersistentState("matchTimer", {
     durationSec: 600, remainingSec: 600, running: false, endsAt: null, finished: false,
@@ -82,16 +90,15 @@ export default function MatchTimer() {
   };
 
   const low = t.running && remaining <= 60;
-  const numColor = t.finished ? C.red : low ? C.orange : C.accent;
+  const numColor = t.finished ? C.red : low ? C.orange : C.text1;
+  const pristine = !t.running && !t.finished && remaining === t.durationSec;
 
-  // "Soltar tempo" — press-and-hold start, same interaction as the
-  // goal-by-voice command in Matchday.jsx: releasing is what ends the
-  // capture, instead of trusting the browser to guess when you stopped
-  // talking (that guess is exactly what made the button feel broken).
-  // Only wired to start (never pause/reset): those are rare/deliberate
-  // actions worth an actual tap.
+  // "Soltar tempo" — press-and-hold start, same interaction as the voice
+  // goal in live scoring: releasing is what ends the capture, instead of
+  // trusting the browser to guess when you stopped talking. Only wired to
+  // start (never pause/reset): those are rare/deliberate taps.
   const [voiceListening, setVoiceListening] = useState(false);
-  const [voiceMiss, setVoiceMiss] = useState(null); // null | 'miss' | 'not-allowed' | { code }
+  const [voiceMiss, setVoiceMiss] = useState(null); // null | 'miss' | 'not-allowed' | 'service-not-allowed' | { code }
   const voiceStopRef = useRef(null);
   const beginVoiceStart = () => {
     setVoiceMiss(null);
@@ -113,94 +120,78 @@ export default function MatchTimer() {
   const endVoiceStart = () => { voiceStopRef.current?.(); voiceStopRef.current = null; };
 
   return (
-    <div style={{ ...cardStyle, marginBottom: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <TimerIcon size={15} color={C.text2} />
-        <span style={{ fontSize: 13, fontWeight: 700 }}>{tr("Cronómetro do jogo")}</span>
-        {t.finished && (
-          <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: C.red, display: "flex", alignItems: "center", gap: 4 }}>
-            <BellRing size={13} /> {tr("Fim do tempo!")}
-          </span>
-        )}
-      </div>
-
-      {/* big countdown, with +/- 1 min nudges that work even while running
-          (e.g. forgot to start it on time) */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 14 }}>
-        <button onClick={() => adjustMinutes(-1)} title={tr("Tirar 1 minuto")}
-          style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0, background: C.surface, color: C.text2, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Minus size={15} />
+    <div style={{ ...cardStyle, marginBottom: S.lg }}>
+      <style>{`@keyframes tpulse { 0%,100% { opacity: 1 } 50% { opacity: 0.45 } }`}</style>
+      <div style={{ display: "flex", alignItems: "center", gap: S.sm }}>
+        <button type="button" onClick={() => adjustMinutes(-1)} aria-label={tr("Tirar 1 minuto")} title={tr("Tirar 1 minuto")} style={roundBtn()}>
+          <Minus size={16} />
         </button>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ ...displayFont, fontSize: 56, lineHeight: 1, color: numColor, fontVariantNumeric: "tabular-nums", animation: low ? "tpulse 1s infinite" : "none" }}>
+        <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
+          <div style={{ ...displayFont, fontSize: 44, lineHeight: 1, color: numColor, fontVariantNumeric: "tabular-nums", animation: low ? "tpulse 1s infinite" : "none" }}>
             {fmt(remaining)}
           </div>
-          <style>{`@keyframes tpulse { 0%,100% { opacity: 1 } 50% { opacity: 0.45 } }`}</style>
+          <div style={{ fontSize: T.meta, color: t.finished ? C.red : C.text2, marginTop: S.xs, display: "flex", alignItems: "center", justifyContent: "center", gap: S.xs }}>
+            {t.finished ? <><BellRing size={13} /> {tr("Fim do tempo!")}</> : tr("Cronómetro do jogo")}
+          </div>
         </div>
-        <button onClick={() => adjustMinutes(1)} title={tr("Adicionar 1 minuto")}
-          style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0, background: C.surface, color: C.text2, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Plus size={15} />
+        <button type="button" onClick={() => adjustMinutes(1)} aria-label={tr("Adicionar 1 minuto")} title={tr("Adicionar 1 minuto")} style={roundBtn()}>
+          <Plus size={16} />
         </button>
       </div>
 
-      {/* presets (hidden while running to avoid mistaps) */}
-      {!t.running && (
-        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 14, flexWrap: "wrap" }}>
+      {/* presets — only before the clock has been touched (avoids mistaps mid-game) */}
+      {pristine && (
+        <div style={{ display: "flex", gap: S.sm, justifyContent: "center", marginTop: S.md, flexWrap: "wrap" }}>
           {PRESETS.map((min) => {
             const active = t.durationSec === min * 60;
             return (
-              <button key={min} onClick={() => setDuration(min)} style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: active ? 800 : 500, cursor: "pointer" }}>
+              <button key={min} type="button" onClick={() => setDuration(min)}
+                style={{ minHeight: 36, background: active ? C.accentDim : "transparent", color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: R.pill, padding: `0 ${S.md}px`, fontSize: T.meta, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
                 {min} min
               </button>
             );
           })}
-          <label style={{ display: "flex", alignItems: "center", gap: 6, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "4px 10px" }}>
-            <input type="number" min="1" max="120" value={Math.round(t.durationSec / 60)}
-              onChange={(e) => setDuration(Math.max(1, Math.min(120, Number(e.target.value) || 1)))}
-              style={{ width: 38, background: "none", border: "none", color: C.text1, fontSize: 12, outline: "none", textAlign: "center" }} />
-            <span style={{ fontSize: 11, color: C.text3 }}>min</span>
-          </label>
         </div>
       )}
 
-      {/* controls */}
-      <div style={{ display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", gap: S.sm, marginTop: S.md }}>
         {t.running ? (
-          <button onClick={pause} style={{ flex: 1, background: C.orange, color: C.bg, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <BtnGhost onClick={pause} style={{ flex: 1, color: C.orange, borderColor: `${C.orange}66` }}>
             <Pause size={16} /> {tr("Pausar")}
-          </button>
+          </BtnGhost>
         ) : (
-          <button onClick={start} style={{ flex: 1, background: C.accent, color: C.bg, border: "none", borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <BtnGhost tone="accent" onClick={start} style={{ flex: 1 }}>
             <Play size={16} /> {remaining > 0 && remaining < t.durationSec ? tr("Retomar") : tr("Iniciar")}
-          </button>
+          </BtnGhost>
         )}
-        <button onClick={reset} style={{ background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <RotateCcw size={15} /> {tr("Repor")}
-        </button>
+        <BtnGhost onClick={reset} aria-label={tr("Repor")} title={tr("Repor")} style={{ padding: `0 ${S.md}px` }}>
+          <RotateCcw size={16} />
+        </BtnGhost>
         {!t.running && voiceSupported() && (
-          <button
+          <button type="button"
             onPointerDown={(e) => { e.preventDefault(); beginVoiceStart(); }}
             onPointerUp={endVoiceStart}
             onPointerLeave={endVoiceStart}
             onPointerCancel={endVoiceStart}
             onContextMenu={(e) => e.preventDefault()}
+            aria-label={tr("Mantém premido e diz \"soltar tempo\"")}
             title={tr("Mantém premido e diz \"soltar tempo\"")}
-            style={{ background: voiceListening ? C.accentDim : C.card, color: voiceListening ? C.accent : C.text2, border: `1px solid ${voiceListening ? C.accentBorder : C.border}`, borderRadius: 12, padding: "12px 18px", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
+            style={{ minHeight: 48, minWidth: 48, background: voiceListening ? C.accentDim : "transparent", color: voiceListening ? C.accent : C.text2, border: `1px solid ${voiceListening ? C.accentBorder : C.border}`, borderRadius: R.control, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
             <Mic size={18} style={voiceListening ? { animation: "tpulse 1s infinite" } : undefined} />
           </button>
         )}
       </div>
       {voiceMiss === "not-allowed" && (
-        <div style={{ fontSize: 11, color: C.orange, textAlign: "center", marginTop: 8 }}>{tr("Permissão de microfone negada — ativa-a nas definições do browser.")}</div>
+        <div style={{ fontSize: T.meta, color: C.orange, textAlign: "center", marginTop: S.sm }}>{tr("Permissão de microfone negada — ativa-a nas definições do browser.")}</div>
       )}
       {voiceMiss === "service-not-allowed" && (
-        <div style={{ fontSize: 11, color: C.orange, textAlign: "center", marginTop: 8 }}>{tr("Este browser não permite reconhecimento de voz (comum no Safari/iPhone) — experimenta no Chrome, num Android ou computador.")}</div>
+        <div style={{ fontSize: T.meta, color: C.orange, textAlign: "center", marginTop: S.sm }}>{tr("Este browser não permite reconhecimento de voz (comum no Safari/iPhone) — experimenta no Chrome, num Android ou computador.")}</div>
       )}
       {voiceMiss === "miss" && (
-        <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 8 }}>{tr("Não percebi — mantém premido enquanto dizes \"iniciar\" ou \"soltar tempo\".")}</div>
+        <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginTop: S.sm }}>{tr("Não percebi — mantém premido enquanto dizes \"iniciar\" ou \"soltar tempo\".")}</div>
       )}
       {voiceMiss?.code && (
-        <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 8 }}>{tr("Erro do microfone:")} [{voiceMiss.code}]</div>
+        <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginTop: S.sm }}>{tr("Erro do microfone:")} [{voiceMiss.code}]</div>
       )}
     </div>
   );

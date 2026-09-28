@@ -1,116 +1,145 @@
-import { useState } from "react";
-import { CalendarClock, Share2, X } from "lucide-react";
-import { C, cardStyle } from "../theme";
+import { useMemo, useState } from "react";
+import { CalendarClock, CalendarPlus, Radio, ClipboardList } from "lucide-react";
+import { S } from "../theme";
 import { t } from "../lib/i18n";
+import { fmtDayMonth } from "../lib/helpers";
 import { usePersistentState } from "../lib/storage";
-import SectionLabel from "./SectionLabel";
+import { normalizeMatchdays, buildFeed, recentMatchday } from "../lib/homeFeed";
 import PageHeader from "./PageHeader";
+import Chip from "./Chip";
 import NextActionCard from "./NextActionCard";
+import LastResultCard from "./LastResultCard";
+import ActivityFeed from "./ActivityFeed";
 import PostMatchCardModal from "./PostMatchCard";
+import WorkoutCardModal from "./WorkoutCardModal";
 
-/** Home — "o que está a acontecer?" Cross-group, no group selector.
- *  Priority order (brief §5):
- *   1. next-action cards (confirm / pay / vote MVP), one CTA each —
- *      prepared by PitchApp as `nextActions` (NextActionCard props);
- *   2. the transient post-match recap ("Acabaste de jogar");
- *   3. activity: my own recent performances (Golaço reactions) + the
- *      Grupo | Amigos feed (`activityFeed`, the old Social tab).
- *  Career totals (streak / best night / recent summary) moved to Perfil
- *  — see CareerSummary. */
-export default function HomeTab({ me, group = [], homeFeed = [], nextGame, nextActions = [], onToggleKudos, recentPerformance, attendanceStreak = 0, onCardGenerated, activityFeed }) {
-  // Once dismissed (or shared), a matchday's banner never comes back —
-  // only the organizer sees "Terminar dia" fire live; everyone else only
-  // finds out on their next open of the app, which is exactly when this
-  // banner should greet them.
-  const [dismissed, setDismissed] = usePersistentState("home_share_dismissed", []);
+/**
+ * Home — "o que está a acontecer?" (docs/REDESIGN-SPEC.md §2). No group
+ * selector. Top to bottom:
+ *  1. ONE next-action card, the most urgent of: live matchday → confirm
+ *     → pay → vote MVP → result pending. Mini slot grid when it's about
+ *     the next game; one lime CTA. No action → the next game, quietly.
+ *  2. Last result recap if a matchday was played in the last 7 days.
+ *  3. A single chronological activity feed (my groups + friends): auto
+ *     football items first-class, manual posts allowed, ⚽ Golaço.
+ * Career/profile totals live in Perfil, not here.
+ *
+ * Data props (all prepared by PitchApp, cloud or local demo):
+ *  - nextActions   NextActionCard props in priority order (confirm, pay, mvp).
+ *  - slots         { taken, spots, groupName, myStatus } for the active game.
+ *  - nextGame      { groupName, dateLabel, timeLabel, venue } or null.
+ *  - liveMatchday / resultPending  booleans for the Matchday actions.
+ *  - feedMatchdays cloud matchday rows (with groupName) | null in demo.
+ *  - localHistory  { lastMatchday, history, mvpKey, groupName } | null in cloud.
+ *  - social, postTs, myGroupIds, friendsEnabled — feed posts + friends.
+ *  - kudos (cloud matchday_kudos rows) + onToggleKudos(mdId, toKey, given);
+ *    without onToggleKudos (demo) Golaço is kept locally.
+ */
+export default function HomeTab({
+  me, group = [], myKey, nextGame, nextActions = [], slots,
+  liveMatchday, resultPending, onOpenJogar, onOpenMatchday,
+  feedMatchdays, localHistory, social, postTs, myGroupIds = [], friendsEnabled,
+  kudos, onToggleKudos, attendanceStreak = 0, onCardGenerated, groupName, lastMatchdayForWorkout,
+}) {
   const [showCard, setShowCard] = useState(false);
-  const showBanner = Boolean(recentPerformance) && !dismissed.includes(recentPerformance.id);
-  const dismiss = () => setDismissed((d) => (d.includes(recentPerformance.id) ? d : [...d, recentPerformance.id]));
+  const [showWorkout, setShowWorkout] = useState(false);
+  const [localKudos, setLocalKudos] = usePersistentState("home_kudos", {});
+
+  // ── 1. The single most urgent action ──
+  const gameExtras = slots ? { slots, onOpen: onOpenJogar, openLabel: t("Ver jogo") } : { onOpen: onOpenJogar, openLabel: t("Ver jogo") };
+  const liveAction = liveMatchday ? {
+    id: "live", Icon: Radio, eyebrow: t("AO VIVO"),
+    title: slots?.groupName || nextGame?.groupName || t("Dia de jogo"),
+    subtitle: t("O dia de jogo está a decorrer"),
+    primaryLabel: t("Abrir Matchday"), onPrimary: onOpenMatchday,
+  } : null;
+  const resultAction = resultPending ? {
+    id: "result", Icon: ClipboardList, eyebrow: t("RESULTADO EM FALTA"),
+    title: t("Regista o resultado de hoje"),
+    subtitle: slots?.groupName,
+    primaryLabel: t("Abrir Matchday"), onPrimary: onOpenMatchday,
+  } : null;
+  const primary = [
+    liveAction,
+    ...nextActions.map((a) => (a.id === "confirm" || a.id === "pay" ? { ...a, ...gameExtras } : a)),
+    resultAction,
+  ].filter(Boolean)[0];
+
+  // ── 2 + 3. Matchdays → recap + feed ──
+  const matchdays = useMemo(
+    () => normalizeMatchdays({ cloudRows: feedMatchdays, local: localHistory, fmt: fmtDayMonth }),
+    [feedMatchdays, localHistory],
+  );
+  const recent = recentMatchday(matchdays);
+  const items = useMemo(() => buildFeed({
+    matchdays, posts: social?.posts || [], postTs, myKey, meId: social?.meId,
+    friendIds: social?.friendIds || [], myGroupIds, streak: attendanceStreak,
+  }), [matchdays, social, postTs, myKey, myGroupIds, attendanceStreak]);
+
+  const kudosFor = (item) => {
+    if (onToggleKudos) {
+      const rows = (kudos || []).filter((k) => k.matchday_id === item.md.id && k.to_player_id === item.line.key);
+      return { count: rows.length, mine: rows.some((k) => k.from_player_id === myKey) };
+    }
+    const mine = Boolean(localKudos[item.id]);
+    return { count: mine ? 1 : 0, mine };
+  };
+  const onGolaco = (item) => {
+    if (onToggleKudos) return onToggleKudos(item.md.id, item.line.key, kudosFor(item).mine);
+    setLocalKudos((m) => ({ ...m, [item.id]: !m[item.id] }));
+  };
+
+  const myStatusChip = slots?.myStatus === "confirmed" ? <Chip variant="green">{t("Estás dentro")}</Chip>
+    : slots?.myStatus === "declined" ? <Chip variant="red">{t("Não vais")}</Chip> : null;
+  const nextIsActive = nextGame && slots && nextGame.groupName === slots.groupName;
 
   return (
-    <div style={{ padding: "0 16px" }}>
+    <div style={{ padding: `0 ${S.lg}px` }}>
       <PageHeader title={`${t("Olá")}${me?.nick ? `, ${me.nick}` : ""}`} subtitle={t("O que está a acontecer")} />
 
-      {/* 1 — NEXT ACTIONS */}
-      {nextActions.map((a) => <NextActionCard key={a.id} {...a} />)}
-
-      {/* No pending action → the next game, quietly. */}
-      {nextActions.length === 0 && nextGame && (
-        <div style={{ ...cardStyle, marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <CalendarClock size={19} color={C.text2} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.text3 }}>{t("PRÓXIMO JOGO")}</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nextGame.groupName}</div>
-            <div style={{ fontSize: 12, color: C.text2 }}>{nextGame.dateLabel} · {nextGame.timeLabel}{nextGame.venue ? ` · ${nextGame.venue}` : ""}</div>
-          </div>
-        </div>
+      {/* 1 — NEXT ACTION (exactly one card) */}
+      {primary ? (
+        <NextActionCard {...primary} />
+      ) : nextGame ? (
+        <NextActionCard neutral Icon={CalendarClock}
+          eyebrow={t("PRÓXIMO JOGO")} status={nextIsActive ? myStatusChip : null}
+          title={nextGame.groupName}
+          subtitle={`${nextGame.dateLabel} · ${nextGame.timeLabel}${nextGame.venue ? ` · ${nextGame.venue}` : ""}`}
+          slots={nextIsActive ? slots : null}
+          primaryLabel={t("Ver jogo")} onPrimary={onOpenJogar} />
+      ) : (
+        <NextActionCard neutral Icon={CalendarPlus}
+          eyebrow={t("SEM JOGO MARCADO")}
+          title={t("Nada agendado por agora")}
+          subtitle={t("Quando houver jogo num dos teus grupos, aparece aqui.")}
+          primaryLabel={t("Ir para Jogar")} onPrimary={onOpenJogar} />
       )}
 
-      {/* 2 — POST-MATCH RECAP */}
-      {showBanner && (
-        <div style={{ ...cardStyle, marginBottom: 12, border: `1px solid ${C.accentBorder}`, position: "relative" }}>
-          <button onClick={dismiss} aria-label={t("Dispensar")}
-            style={{ position: "absolute", top: 4, right: 4, width: 44, height: 44, background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <X size={16} />
-          </button>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.accent, marginBottom: 6 }}>{t("ACABASTE DE JOGAR")}</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text1, marginBottom: 4 }}>{recentPerformance.groupName} · {recentPerformance.date}</div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, fontSize: 13, color: C.text2 }}>
-            {recentPerformance.goals > 0 && <span>⚽ {recentPerformance.goals} {t("golos")}</span>}
-            {recentPerformance.assists > 0 && <span>🎯 {recentPerformance.assists} {t("assist.")}</span>}
-            {recentPerformance.mvp && <span>⭐ MVP</span>}
-            {recentPerformance.isRecord && <span>🏆 {t("novo recorde pessoal")}</span>}
-            {attendanceStreak >= 2 && <span>🔥 {attendanceStreak} {t("jornadas seguidas")}</span>}
-          </div>
-          <button onClick={() => setShowCard(true)} disabled={!recentPerformance.matchdayForCard}
-            style={{ width: "100%", minHeight: 44, background: C.accent, color: C.bg, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: recentPerformance.matchdayForCard ? "pointer" : "default", opacity: recentPerformance.matchdayForCard ? 1 : 0.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <Share2 size={15} /> {t("Partilhar o meu desempenho")}
-          </button>
-        </div>
+      {/* 2 — LAST RESULT (last 7 days) */}
+      {recent && (
+        <LastResultCard md={recent} myKey={myKey}
+          onShare={me && (recent.summary?.lines || []).some((l) => l.key === myKey) ? () => setShowCard(true) : undefined} />
       )}
 
-      {showCard && recentPerformance?.matchdayForCard && me && (
+      {/* 3 — SINGLE ACTIVITY FEED */}
+      <ActivityFeed items={items} social={social} me={me}
+        kudosFor={kudosFor} onGolaco={onGolaco}
+        friendsEnabled={friendsEnabled}
+        onWorkout={me && social ? () => setShowWorkout(true) : undefined} />
+
+      {showCard && recent && me && (
         <PostMatchCardModal
-          player={me} group={group} matchday={recentPerformance.matchdayForCard}
-          groupName={recentPerformance.groupName} isMVP={recentPerformance.mvp}
-          onClose={() => { setShowCard(false); dismiss(); }}
+          player={me} group={group}
+          matchday={{ date: recent.dateLabel, mode: recent.mode, ...(recent.summary || {}) }}
+          groupName={recent.groupName} isMVP={recent.mvpKey != null && recent.mvpKey === myKey}
+          onClose={() => setShowCard(false)}
           onGenerated={onCardGenerated}
         />
       )}
-
-      {/* 3 — ACTIVITY: my own recent performances… */}
-      {homeFeed.length > 0 && (
-        <div style={{ marginTop: 8, marginBottom: 8 }}>
-          <SectionLabel>{t("A TUA ATIVIDADE")}</SectionLabel>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {homeFeed.map((f) => (
-              <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.groupName}</div>
-                  <div style={{ fontSize: 11, color: C.text3, display: "flex", gap: 8 }}>
-                    <span>{f.date}</span>
-                    {f.goals > 0 && <span>⚽ {f.goals}</span>}
-                    {f.assists > 0 && <span>🎯 {f.assists}</span>}
-                    {f.cleanSheets > 0 && <span>🧤 {f.cleanSheets}</span>}
-                    {f.mvp && <span>⭐ MVP</span>}
-                  </div>
-                </div>
-                {onToggleKudos && (
-                  <button onClick={() => onToggleKudos(f.id, f.kudosGivenByMe)}
-                    style={{ minHeight: 36, background: f.kudosGivenByMe ? C.accentDim : "transparent", color: f.kudosGivenByMe ? C.accent : C.text2, border: `1px solid ${f.kudosGivenByMe ? C.accentBorder : C.border}`, borderRadius: 10, padding: "0 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-                    ⚽ Golaço {f.kudosCount > 0 && f.kudosCount}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+      {showWorkout && (
+        <WorkoutCardModal me={me} groupName={groupName} lastMatchday={lastMatchdayForWorkout} social={social}
+          onClose={() => setShowWorkout(false)} onGenerated={onCardGenerated} />
       )}
-
-      {/* …and the Grupo | Amigos feed (the old Social tab). */}
-      {activityFeed}
     </div>
   );
 }

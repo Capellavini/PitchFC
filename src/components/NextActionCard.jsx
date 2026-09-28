@@ -1,36 +1,69 @@
-import { C, cardStyle } from "../theme";
+import { ChevronRight } from "lucide-react";
+import { C, R, S, T, TOUCH, cardStyle } from "../theme";
+import { t } from "../lib/i18n";
+import BtnPrimary from "./BtnPrimary";
+import BtnGhost from "./BtnGhost";
+import MiniSlotGrid from "./MiniSlotGrid";
 
-/** "Action required" card — Home's next-action stack and the top of
- *  Matchday pre-match. One primary CTA (lime), an optional quiet
- *  secondary action. Lime left edge marks it as needing the player
- *  (brief §20: action required = lime edge/icon). */
-export default function NextActionCard({ Icon, eyebrow, title, subtitle, primaryLabel, onPrimary, secondaryLabel, onSecondary, style }) {
+/**
+ * NextActionCard — Home's single "what needs me now?" card (also reused
+ * at the top of Matchday pre-match). Spec §3: action required = lime
+ * left edge + lime icon, ONE lime CTA; an optional quiet secondary.
+ *
+ * Props:
+ *  - Icon, eyebrow, title, subtitle — header.
+ *  - primaryLabel / onPrimary       — the one lime CTA.
+ *  - secondaryLabel / onSecondary   — quiet outlined secondary.
+ *  - slots    { taken, spots } → mini slot grid (when about the next game).
+ *  - onOpen / openLabel             — small "Ver jogo ›" link (deep link).
+ *  - status   optional node next to the eyebrow (e.g. a Chip).
+ *  - neutral  true = informational (no lime edge; CTA rendered as ghost).
+ *  - style    container overrides.
+ */
+export default function NextActionCard({ Icon, eyebrow, title, subtitle, primaryLabel, onPrimary, secondaryLabel, onSecondary, slots, onOpen, openLabel, status, neutral, style }) {
+  const tint = neutral ? C.text2 : C.accent;
   return (
-    <div style={{ ...cardStyle, borderLeft: `3px solid ${C.accent}`, marginBottom: 12, ...style }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
+    <div style={{ ...cardStyle, ...(neutral ? {} : { borderLeft: `3px solid ${C.accent}` }), marginBottom: S.lg, ...style }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: S.md, marginBottom: S.lg }}>
         {Icon && (
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: C.accentDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Icon size={19} color={C.accent} />
+          <div style={{ width: 40, height: 40, borderRadius: R.control, background: neutral ? C.surface : C.accentDim, border: neutral ? `1px solid ${C.border}` : "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Icon size={20} color={tint} />
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {eyebrow && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.accent, marginBottom: 4 }}>{eyebrow}</div>}
-          <div style={{ fontSize: 15, fontWeight: 800, color: C.text1 }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 12, color: C.text2, marginTop: 2 }}>{subtitle}</div>}
+          {(eyebrow || status) && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: S.sm, marginBottom: S.xs }}>
+              {eyebrow && <div style={{ fontSize: T.min, fontWeight: 800, letterSpacing: "0.08em", color: tint }}>{eyebrow}</div>}
+              {status}
+            </div>
+          )}
+          <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
+          {subtitle && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xxs }}>{subtitle}</div>}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={onPrimary}
-          style={{ flex: 1, minHeight: 44, background: C.accent, color: C.bg, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
-          {primaryLabel}
+
+      {slots && (
+        <div style={{ marginBottom: S.lg }}>
+          <MiniSlotGrid taken={slots.taken} spots={slots.spots} onClick={onOpen} />
+        </div>
+      )}
+
+      {primaryLabel && (
+        <div style={{ display: "flex", gap: S.sm }}>
+          {neutral
+            ? <BtnGhost block onClick={onPrimary}>{primaryLabel}</BtnGhost>
+            : <BtnPrimary block onClick={onPrimary} style={{ flex: 1 }}>{primaryLabel}</BtnPrimary>}
+          {secondaryLabel && (
+            <BtnGhost onClick={onSecondary} style={{ color: C.text2, flexShrink: 0 }}>{secondaryLabel}</BtnGhost>
+          )}
+        </div>
+      )}
+
+      {onOpen && openLabel && (
+        <button type="button" onClick={onOpen} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: S.xs, width: "100%", minHeight: TOUCH.min, marginTop: S.xs, marginBottom: -S.sm, background: "none", border: "none", color: C.text2, fontSize: T.meta, fontWeight: 700, cursor: "pointer" }}>
+          {openLabel} <ChevronRight size={14} />
         </button>
-        {secondaryLabel && (
-          <button onClick={onSecondary}
-            style={{ minHeight: 44, padding: "0 16px", background: "transparent", color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            {secondaryLabel}
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 }

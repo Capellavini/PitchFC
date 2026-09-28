@@ -1,23 +1,48 @@
 import { useState, useEffect } from "react";
 import {
-  Clock, MapPin, Check, X, MessageCircle,
-  CreditCard, Plus, Minus, Share2, Copy, ListOrdered, Lock, UserPlus, Pencil, Undo2, Cross,
+  Clock, MapPin, Check, MessageCircle, CreditCard, Plus, Minus, Share2, Copy, Lock, UserPlus, Pencil, Cross, CalendarDays, History,
 } from "lucide-react";
-import { C, cardStyle, displayFont, fieldBackdrop } from "../theme";
+import { C, S, R, T, TOUCH, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist, isoDay, toIsoDay, fmtFullDay } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { fetchGameWeather, weatherIconFor } from "../lib/weather";
-import { openWhatsApp, chargeMessage, waitlistNudgeMessage, groupInviteMessage, inviteMessage, lineupShareMessage } from "../lib/whatsapp";
-import Avatar from "./Avatar";
+import { openWhatsApp, groupInviteMessage, inviteMessage, lineupShareMessage } from "../lib/whatsapp";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
-import Collapsible from "./Collapsible";
+import Chip from "./Chip";
+import ListRow from "./ListRow";
 import ShareSheet from "./ShareSheet";
 
+const inputStyle = {
+  borderRadius: R.control, padding: "0 12px", minHeight: TOUCH.min, fontSize: T.body, outline: "none", colorScheme: "dark",
+};
+
+/** Date + time pickers shared by "Agendar primeiro jogo" and "Alterar". */
+function DateTimeInputs({ date, time, onDate, onTime }) {
+  const st = { ...inputStyle, background: C.surface, border: `1px solid ${C.border}`, color: C.text1 };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: S.sm, flexWrap: "wrap" }}>
+      <input type="date" min={isoDay()} value={date} onChange={(e) => onDate(e.target.value)} style={st} />
+      <input type="time" value={time} onChange={(e) => onTime(e.target.value)} style={st} />
+    </div>
+  );
+}
+
+/**
+ * Jogar → Jogos. The next game card is the screen: the slot grid on
+ * the field artwork answers "temos jogo?" at a glance, and my one-tap
+ * confirm/decline (or pay) lives in the same card as its single
+ * primary CTA. Everything operational — roster by status, payments,
+ * reminders, material — moved to Game Detail (`onOpenDetail`). The team
+ * draw is no longer here: it lives in Matchday pre-match.
+ * Below: my other upcoming games (other groups), optional "Encontrar
+ * jogo" (flagged), and past games.
+ */
 export default function JogoTab({
-  group, game, togglePaid, toggleMyStatus, payMine, canManageTeams,
-  inviteUrl, canManageGame, onSetSpots, onReschedule, onScheduleGame, confirmOpen = true, opensAtLabel, onSetPlayerStatus,
+  group, game, toggleMyStatus, payMine,
+  inviteUrl, canManageGame, onSetSpots, onReschedule, onScheduleGame, confirmOpen = true, opensAtLabel,
+  onOpenDetail, upcoming = [], findGame = null, pastGames = [], onOpenHistory,
 }) {
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -29,9 +54,8 @@ export default function JogoTab({
   const [draftTime, setDraftTime] = useState(game.time);
   const [weather, setWeather] = useState(null);
 
-  // Passive weather info next to date/venue — no reschedule suggestion,
-  // just "preciso de casaco?" at a glance. Silently absent if the venue
-  // can't be geocoded or the game is outside the forecast window.
+  // Passive weather info next to date/venue — silently absent if the
+  // venue can't be geocoded or the game is outside the forecast window.
   const kickoffTime = game.kickoffAt?.getTime();
   useEffect(() => {
     let cancelled = false;
@@ -43,388 +67,308 @@ export default function JogoTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.venue, game.city, kickoffTime, game.noGameScheduled]);
 
+  const extras = (
+    <>
+      {upcoming.length > 0 && (
+        <div style={{ marginTop: S.xl }}>
+          <SectionLabel>{t("OUTROS JOGOS")}</SectionLabel>
+          <div style={{ ...cardStyle, padding: "0 16px" }}>
+            {upcoming.map((g, i) => (
+              <ListRow key={g.id} divider={i > 0}
+                leading={<CalendarDays size={20} color={C.text2} />}
+                title={g.groupName}
+                meta={`${g.dateLabel} · ${g.timeLabel}${g.venue ? ` · ${g.venue}` : ""}`}
+                onClick={g.onOpen} chevron={Boolean(g.onOpen)} />
+            ))}
+          </div>
+        </div>
+      )}
+      {findGame && <div style={{ marginTop: S.xl }}>{findGame}</div>}
+      {pastGames.length > 0 && (
+        <div style={{ marginTop: S.xl }}>
+          <SectionLabel right={onOpenHistory ? (
+            <button onClick={onOpenHistory} style={{ background: "none", border: "none", color: C.text2, fontSize: T.meta, fontWeight: 700, cursor: "pointer", minHeight: TOUCH.min, padding: 0 }}>{t("Ver tudo")}</button>
+          ) : null}>{t("JOGOS ANTERIORES")}</SectionLabel>
+          <div style={{ ...cardStyle, padding: "0 16px" }}>
+            {pastGames.slice(0, 5).map((g, i) => (
+              <ListRow key={g.id} divider={i > 0}
+                leading={<History size={20} color={C.text2} />}
+                title={g.date}
+                meta={[g.games > 1 ? `${g.games} ${t("jogos")}` : null, g.confirmed ? `${g.confirmed} ${t("jogadores")}` : null, g.mvpNick ? `MVP ${g.mvpNick}` : null].filter(Boolean).join(" · ")}
+                right={<span style={{ ...displayFont, fontSize: T.cardTitle + 2, color: C.text1 }}>{g.result}</span>}
+                onClick={onOpenHistory} chevron={false} />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   // "Ainda não sei o dia/hora" at onboarding — the group exists but has
   // no game yet. Everyone sees an empty state; only the organizer gets
-  // the date/time picker to schedule the first one (reuses the same
-  // calendar+time UI as the "Alterar" reschedule flow below).
+  // the date/time picker to schedule the first one.
   if (game.noGameScheduled) {
     return (
-      <div style={{ padding: "0 16px" }}>
-        <div style={{ padding: "20px 0 16px" }}>
-          <div style={{ ...displayFont, fontSize: 22 }}>{t("Jogo")}</div>
-        </div>
+      <div style={{ padding: "0 16px 24px" }}>
         <div style={{ ...cardStyle, textAlign: "center", padding: "28px 20px" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{t("Nenhum jogo marcado")}</div>
-          <div style={{ fontSize: 12, color: C.text2, marginBottom: canManageGame ? 20 : 0 }}>
+          <div style={{ fontSize: T.cardTitle, fontWeight: 700, marginBottom: S.xs + 2 }}>{t("Nenhum jogo marcado")}</div>
+          <div style={{ fontSize: T.meta, color: C.text2, marginBottom: canManageGame ? S.lg : 0 }}>
             {canManageGame ? t("Escolhe a data e a hora do primeiro jogo do grupo.") : t("O organizador ainda não marcou o próximo jogo.")}
           </div>
           {canManageGame && onScheduleGame && (
             <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                <input type="date" min={isoDay()} value={draftDate} onChange={(e) => setDraftDate(e.target.value)}
-                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
-                <input type="time" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
-                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: S.sm }}>
+                <DateTimeInputs date={draftDate} time={draftTime} onDate={setDraftDate} onTime={setDraftTime} />
               </div>
-              <div style={{ fontSize: 11, color: C.text2, marginBottom: 18 }}>{fmtFullDay(draftDate)}</div>
-              <BtnPrimary onClick={() => onScheduleGame(draftDate, draftTime)}>{t("Agendar primeiro jogo")}</BtnPrimary>
+              <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.lg }}>{fmtFullDay(draftDate)}</div>
+              <BtnPrimary block onClick={() => onScheduleGame(draftDate, draftTime)}>{t("Agendar primeiro jogo")}</BtnPrimary>
             </>
           )}
         </div>
+        {extras}
       </div>
     );
   }
 
   const confirmed = group.filter((p) => p.status === "confirmed");
-  const declined  = group.filter((p) => p.status === "declined");
   const me        = group.find((p) => p.isMe);
   // Once the game is full, extra confirmations form an ordered waiting line.
   const { playing, waitlist } = splitWaitlist(confirmed, game.spots);
   const myWaitPos = me ? waitlist.findIndex((p) => p.id === me.id) + 1 : 0; // 1-based, 0 = not waiting
   const spotsLeft = game.spots - playing.length;
+  const full      = spotsLeft <= 0;
   const shareUrl  = inviteUrl || window.location.origin;
   const copyShare = async () => {
     try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
-  const paidCount = playing.filter((p) => p.paid).length;
-  const debtors   = playing.filter((p) => !p.paid);
   const price     = fmtEUR(game.priceEach);
+  const pending   = confirmOpen && me && me.status !== "confirmed" && me.status !== "declined";
+  const emptySlots = Math.max(0, game.spots - playing.length);
 
-  return (
-    <div style={{ padding: "0 16px" }}>
+  const iconBtn = { width: TOUCH.min, height: TOUCH.min, borderRadius: R.control, background: C.surface, border: `1px solid ${C.border}`, color: C.text1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, padding: 0 };
 
-      {/* Header */}
-      <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.text2 }}>{t("PRÓXIMO JOGO")}</div>
-              <div style={{ fontSize: 10, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>{t("RECORRENTE")}</div>
-            </div>
-            <div style={{ ...displayFont, fontSize: 24, marginBottom: 2 }}>{game.label}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: C.text2, flexWrap: "wrap" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {game.date} · {game.time}</span>
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {game.venue}</span>
-              {weather && (() => {
-                const { Icon, label } = weatherIconFor(weather.code);
-                return (
-                  <span title={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <Icon size={12} /> {weather.tMax}° <span style={{ color: C.text3 }}>/ {weather.tMin}°</span>
-                  </span>
-                );
-              })()}
-              {canManageGame && onReschedule && (
-                <button onClick={() => { setDraftDate(toIsoDay(game.kickoffAt)); setDraftTime(game.time); setRescheduling(!rescheduling); }}
-                  title={t("Alterar dia e hora do jogo")}
-                  style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700 }}>
-                  <Pencil size={12} /> {t("Alterar")}
-                </button>
-              )}
-            </div>
-          </div>
-          <button onClick={() => setShareOpen(true)} title={t("Partilhar jogo")}
-            style={{ flexShrink: 0, background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            <Share2 size={14} /> {t("Partilhar")}
-          </button>
+  // ── my status: ONE primary CTA for the card ─────────────────────
+  let myBlock;
+  if (!confirmOpen) {
+    myBlock = (
+      <div style={{ display: "flex", alignItems: "center", gap: S.md }}>
+        <Lock size={20} color={C.text2} style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: T.body, fontWeight: 700 }}>{t("Confirmações ainda fechadas")}</div>
+          <div style={{ fontSize: T.meta, color: C.text2 }}>{t("Abrem")} {opensAtLabel}. {t("Vais poder confirmar num toque.")}</div>
         </div>
       </div>
+    );
+  } else if (me?.status === "confirmed" && myWaitPos > 0) {
+    myBlock = (
+      <div style={{ display: "flex", alignItems: "center", gap: S.md }}>
+        <div style={{ ...displayFont, fontSize: T.h, color: C.orange, width: 36, textAlign: "center", flexShrink: 0 }}>{myWaitPos}º</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: T.body, fontWeight: 700 }}>{t("Estás na lista de espera")}</div>
+          <div style={{ fontSize: T.meta, color: C.text2 }}>{t("Entras automaticamente se alguém desistir. Sem pagar até entrares.")}</div>
+        </div>
+        <BtnGhost compact tone="danger" onClick={() => toggleMyStatus("declined")}>{t("Sair da lista")}</BtnGhost>
+      </div>
+    );
+  } else if (me?.status === "confirmed") {
+    myBlock = (
+      <>
+        <div style={{ display: "flex", alignItems: "center", gap: S.md, marginBottom: me.paid ? 0 : S.md }}>
+          <div style={{ width: 36, height: 36, borderRadius: 18, background: C.greenDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Check size={18} color={C.green} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: T.body, fontWeight: 700, color: C.green }}>{t("Estás dentro!")}</div>
+            <div style={{ fontSize: T.meta, color: C.text2 }}>{me.paid ? t("Pago ✓ — bom jogo!") : `${t("Falta pagar")} ${price}`}</div>
+          </div>
+          <BtnGhost compact tone="danger" onClick={() => toggleMyStatus("declined")}>{t("Cancelar")}</BtnGhost>
+        </div>
+        {!me.paid && game.priceEach > 0 && (
+          <BtnPrimary block onClick={payMine}><CreditCard size={16} /> {t("Pagar")} {price} · MB Way</BtnPrimary>
+        )}
+      </>
+    );
+  } else if (me?.status === "declined") {
+    myBlock = (
+      <div style={{ display: "flex", alignItems: "center", gap: S.md }}>
+        <div style={{ flex: 1, fontSize: T.body, color: C.text2 }}>{t("Disseste que não podes. Mudaste de ideias?")}</div>
+        <BtnGhost tone="accent" onClick={() => toggleMyStatus("confirmed")}>{t("Afinal vou!")}</BtnGhost>
+      </div>
+    );
+  } else if (me) {
+    myBlock = (
+      <>
+        <div style={{ fontSize: T.body, fontWeight: 700, marginBottom: S.md }}>
+          {!full ? t("Vais jogar?") : t("Jogo cheio — entra na lista de espera e entras se alguém desistir.")}
+        </div>
+        <div style={{ display: "flex", gap: S.sm }}>
+          <BtnPrimary onClick={() => toggleMyStatus("confirmed")} style={{ flex: 1 }}>{!full ? t("Estou dentro!") : t("Entrar na lista de espera")}</BtnPrimary>
+          <BtnGhost onClick={() => toggleMyStatus("declined")} style={{ flex: 1 }}>{t("Não posso")}</BtnGhost>
+        </div>
+      </>
+    );
+  }
 
-      {/* RESCHEDULE — organizer moves the game to another day/time */}
-      {rescheduling && canManageGame && (
-        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}` }}>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>{t("Alterar dia e hora do jogo")}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-            <input type="date" min={isoDay()} value={draftDate} onChange={(e) => setDraftDate(e.target.value)}
-              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
-            <input type="time" value={draftTime} onChange={(e) => setDraftTime(e.target.value)}
-              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, color: C.text1, outline: "none", colorScheme: "dark" }} />
-          </div>
-          <div style={{ fontSize: 11, color: C.text2, marginBottom: 12 }}>
-            {t("O próximo jogo passa para")} <b style={{ color: C.accent }}>{fmtFullDay(draftDate)} {t("às")} {draftTime}</b>{game.recurring ? t(" — e as próximas semanas também, nesse dia da semana.") : "."}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <BtnPrimary onClick={() => { onReschedule(draftDate, draftTime); setRescheduling(false); }} style={{ flex: 1 }}>
-              {t("Guardar")}
-            </BtnPrimary>
-            <button onClick={() => setRescheduling(false)}
-              style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-              {t("Cancelar")}
+  return (
+    <div style={{ padding: "0 16px 24px" }}>
+
+      {/* ── NEXT GAME — the slot grid is the hero ── */}
+      <div style={{
+        ...cardStyle, padding: 0, position: "relative", overflow: "hidden",
+        borderLeft: pending ? `3px solid ${C.accent}` : cardStyle.border,
+      }}>
+        <div style={{ ...fieldBackdrop(0.25, 0.6), padding: S.lg }}>
+          {/* header */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: S.sm, marginBottom: S.lg, position: "relative" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginBottom: S.xs }}>
+                <span style={{ fontSize: T.meta, fontWeight: 700, letterSpacing: "0.08em", color: C.text2 }}>{t("PRÓXIMO JOGO")}</span>
+                {game.recurring && <Chip style={{ height: 22, fontSize: T.min }}>{t("Semanal")}</Chip>}
+              </div>
+              <div style={{ fontSize: T.h, fontWeight: 800, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{game.label}</div>
+              <div style={{ display: "flex", alignItems: "center", columnGap: S.md, rowGap: S.xs, fontSize: T.meta, color: C.text2, flexWrap: "wrap", marginTop: S.xs }}>
+                <span style={{ display: "flex", alignItems: "center", gap: S.xs }}><Clock size={13} /> {game.date} · {game.time}</span>
+                {game.venue && <span style={{ display: "flex", alignItems: "center", gap: S.xs }}><MapPin size={13} /> {game.venue}</span>}
+                {weather && (() => {
+                  const { Icon, label } = weatherIconFor(weather.code);
+                  return (
+                    <span title={label} style={{ display: "flex", alignItems: "center", gap: S.xs }}>
+                      <Icon size={13} /> {weather.tMax}° / {weather.tMin}°
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
+            {canManageGame && onReschedule && (
+              <button onClick={() => { setDraftDate(toIsoDay(game.kickoffAt)); setDraftTime(game.time); setRescheduling(!rescheduling); }}
+                title={t("Alterar dia e hora do jogo")} aria-label={t("Alterar dia e hora do jogo")} style={iconBtn}>
+                <Pencil size={16} />
+              </button>
+            )}
+            <button onClick={() => setShareOpen(true)} title={t("Partilhar jogo")} aria-label={t("Partilhar jogo")} style={iconBtn}>
+              <Share2 size={16} />
             </button>
           </div>
-        </div>
-      )}
 
-      {/* SLOT GRID — the pitch */}
-      <div style={{
-        ...cardStyle, marginBottom: 14, position: "relative", overflow: "hidden",
-        ...fieldBackdrop(0.25, 0.55),
-        border: `1px solid ${C.blueBorder}`,
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16, position: "relative" }}>
-          <div>
-            <span style={{ ...displayFont, fontSize: 34, color: playing.length >= game.spots ? C.green : C.text1 }}>{playing.length}</span>
-            <span style={{ fontSize: 18, fontWeight: 500, color: C.text3 }}>/{game.spots}</span>
-          </div>
-          {spotsLeft > 0
-            ? <div style={{ fontSize: 13, color: C.orange, fontWeight: 700 }}>{spotsLeft} {spotsLeft === 1 ? t("vaga em aberto") : t("vagas em aberto")}</div>
-            : (
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 13, color: C.green, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}><Check size={14} /> {t("Equipa completa!")}</div>
-                {waitlist.length > 0 && <div style={{ fontSize: 11, color: C.orange, fontWeight: 700, marginTop: 2 }}>{waitlist.length} {t("na lista de espera")}</div>}
+          {/* reschedule (organizer) */}
+          {rescheduling && canManageGame && (
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.control, padding: S.md, marginBottom: S.lg, position: "relative" }}>
+              <div style={{ fontSize: T.body, fontWeight: 700, marginBottom: S.sm }}>{t("Alterar dia e hora do jogo")}</div>
+              <DateTimeInputs date={draftDate} time={draftTime} onDate={setDraftDate} onTime={setDraftTime} />
+              <div style={{ fontSize: T.meta, color: C.text2, margin: `${S.sm}px 0 ${S.md}px` }}>
+                {t("O próximo jogo passa para")} <b style={{ color: C.text1 }}>{fmtFullDay(draftDate)} {t("às")} {draftTime}</b>{game.recurring ? t(" — e as próximas semanas também, nesse dia da semana.") : "."}
               </div>
-            )
-          }
-        </div>
+              <div style={{ display: "flex", gap: S.sm }}>
+                <BtnPrimary onClick={() => { onReschedule(draftDate, draftTime); setRescheduling(false); }} style={{ flex: 1 }}>{t("Guardar")}</BtnPrimary>
+                <BtnGhost onClick={() => setRescheduling(false)} style={{ flex: 1 }}>{t("Cancelar")}</BtnGhost>
+              </div>
+            </div>
+          )}
 
-        {/* Spots control + share link — organizer only */}
-        {canManageGame && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative", flexWrap: "wrap" }}>
-            <span style={{ fontSize: 11, color: C.text2 }}>{t("Nº de jogadores:")}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => onSetSpots(game.spots - 1)} disabled={game.spots <= 2}
-                style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, color: game.spots <= 2 ? C.text3 : C.text1, border: `1px solid ${C.border}`, cursor: game.spots <= 2 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: game.spots <= 2 ? 0.4 : 1 }}>
-                <Minus size={14} />
-              </button>
-              <span style={{ ...displayFont, fontSize: 20, minWidth: 26, textAlign: "center" }}>{game.spots}</span>
-              <button onClick={() => onSetSpots(game.spots + 1)} disabled={game.spots >= 35}
-                style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, color: game.spots >= 35 ? C.text3 : C.text1, border: `1px solid ${C.border}`, cursor: game.spots >= 35 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: game.spots >= 35 ? 0.4 : 1 }}>
-                <Plus size={14} />
-              </button>
+          {/* count */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: S.md, position: "relative" }}>
+            <div>
+              <span style={{ ...displayFont, fontSize: 40, lineHeight: 1, color: full ? C.green : C.text1 }}>{playing.length}</span>
+              <span style={{ fontSize: T.h, fontWeight: 600, color: C.text2 }}>/{game.spots}</span>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              {!full
+                ? <div style={{ fontSize: T.body, color: C.orange, fontWeight: 700 }}>{spotsLeft} {spotsLeft === 1 ? t("vaga em aberto") : t("vagas em aberto")}</div>
+                : <div style={{ fontSize: T.body, color: C.green, fontWeight: 700, display: "flex", alignItems: "center", gap: S.xs, justifyContent: "flex-end" }}><Check size={15} /> {t("Equipa completa!")}</div>}
+              {waitlist.length > 0 && <div style={{ fontSize: T.meta, color: C.orange, fontWeight: 700, marginTop: 2 }}>{waitlist.length} {t("na lista de espera")}</div>}
             </div>
           </div>
-        )}
 
-        {playing.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "18px 0 6px", fontSize: 13, color: C.text2, position: "relative" }}>
-            {t("Ainda ninguém confirmou — sê o primeiro! ⚽")}
-          </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10, marginBottom: 12, position: "relative" }}>
+          {/* the grid: filled + empty squares */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: S.sm + 2, position: "relative" }}>
             {playing.map((player) => {
               const color = playerColor(group, player);
               return (
                 <div key={player.id} style={{ textAlign: "center", minWidth: 0 }}>
                   <div style={{
-                    width: "100%", aspectRatio: "1", borderRadius: 14,
-                    background: player.photo ? C.surface : player.isMe ? C.accentDim : `${color}18`,
+                    width: "100%", aspectRatio: "1", borderRadius: 14, boxSizing: "border-box",
+                    background: player.photo ? C.surface : player.isMe ? C.accentDim : `${color}22`,
                     border: `2px solid ${player.isMe ? C.accent : color}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13, fontWeight: 800, color: player.isMe ? C.accent : color,
-                    position: "relative", overflow: "visible",
+                    fontSize: T.body, fontWeight: 800, color: player.isMe ? C.accent : color, position: "relative",
                   }}>
                     {player.photo
                       ? <img src={player.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} />
                       : ini(player.name)}
                     {player.paid && (
-                      <div style={{ position: "absolute", bottom: -3, right: -3, width: 14, height: 14, borderRadius: 7, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.card}` }}>
-                        <Check size={7} strokeWidth={3} color={C.bg} />
+                      <div title={t("Pago")} style={{ position: "absolute", bottom: -4, right: -4, width: 16, height: 16, borderRadius: 8, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.card}` }}>
+                        <Check size={8} strokeWidth={3} color={C.bg} />
                       </div>
                     )}
                     {player.injured && (
                       <div title={t("Lesionado")} style={{ position: "absolute", top: -6, left: -6, width: 16, height: 16, borderRadius: 8, background: C.red, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.card}` }}>
-                        <Cross size={9} strokeWidth={3} color="#fff" />
+                        <Cross size={9} strokeWidth={3} color={C.text1} />
                       </div>
                     )}
-                    {canManageTeams && !player.isMe && (
-                      <button onClick={() => onSetPlayerStatus(player.id, "declined")} title={t("Remover do jogo")}
-                        style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 9, background: C.red, border: `2px solid ${C.card}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-                        <X size={9} strokeWidth={3} color="#fff" />
-                      </button>
-                    )}
                   </div>
-                  <div style={{ fontSize: 10, color: player.isMe ? C.accent : C.text2, marginTop: 5, fontWeight: player.isMe ? 700 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.nick}</div>
+                  <div style={{ fontSize: T.min, color: player.isMe ? C.accent : C.text2, marginTop: S.xs, fontWeight: player.isMe ? 800 : 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.nick}</div>
                 </div>
               );
             })}
+            {Array.from({ length: emptySlots }).map((_, i) => (
+              <div key={`empty-${i}`} style={{ textAlign: "center", minWidth: 0 }}>
+                <div style={{ width: "100%", aspectRatio: "1", borderRadius: 14, boxSizing: "border-box", border: `2px dashed ${C.border}`, background: `${C.bg}66`, display: "flex", alignItems: "center", justifyContent: "center", color: C.text3 }}>
+                  <Plus size={16} />
+                </div>
+                <div style={{ fontSize: T.min, color: C.text3, marginTop: S.xs }}>&nbsp;</div>
+              </div>
+            ))}
           </div>
-        )}
 
-      </div>
-
-      {/* MY STATUS + PAYMENT — gated by the recurring confirmation window.
-          Sits right under the grid (was further down, swapped with the
-          old standalone WhatsApp-share button that lived here). */}
-      {!confirmOpen ? (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Lock size={18} color={C.text2} />
+          {/* spots control — organizer only */}
+          {canManageGame && (
+            <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginTop: S.md, position: "relative" }}>
+              <span style={{ fontSize: T.meta, color: C.text2, flex: 1 }}>{t("Nº de jogadores:")}</span>
+              <button onClick={() => onSetSpots(game.spots - 1)} disabled={game.spots <= 2} aria-label="-"
+                style={{ ...iconBtn, opacity: game.spots <= 2 ? 0.4 : 1, cursor: game.spots <= 2 ? "default" : "pointer" }}><Minus size={16} /></button>
+              <span style={{ ...displayFont, fontSize: T.h, minWidth: 28, textAlign: "center" }}>{game.spots}</span>
+              <button onClick={() => onSetSpots(game.spots + 1)} disabled={game.spots >= 35} aria-label="+"
+                style={{ ...iconBtn, opacity: game.spots >= 35 ? 0.4 : 1, cursor: game.spots >= 35 ? "default" : "pointer" }}><Plus size={16} /></button>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>{t("Confirmações ainda fechadas")}</div>
-              <div style={{ fontSize: 12, color: C.text2 }}>{t("Abrem")} {opensAtLabel}. {t("Vais poder confirmar num toque.")}</div>
-            </div>
-          </div>
-        </div>
-      ) : me?.status === "confirmed" && myWaitPos > 0 ? (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, ...displayFont, fontSize: 18, color: C.accent }}>
-              {myWaitPos}º
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: C.accent }}>{t("Estás na lista de espera")}</div>
-              <div style={{ fontSize: 12, color: C.text2 }}>{t("Entras automaticamente se alguém desistir. Sem pagar até entrares.")}</div>
-            </div>
-            <button onClick={() => toggleMyStatus("declined")} style={{ background: C.redDim, border: `1px solid ${C.red}55`, borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 800, color: C.red, cursor: "pointer" }}>{t("Sair")}</button>
-          </div>
-        </div>
-      ) : me?.status === "confirmed" ? (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: me.paid ? 0 : 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: C.greenDim, border: `1px solid ${C.greenBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Check size={20} color={C.green} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>{t("Estás dentro!")}</div>
-              <div style={{ fontSize: 12, color: C.text2 }}>{me.paid ? t("Pago ✓ — bom jogo!") : `${t("Falta pagar")} ${price}`}</div>
-            </div>
-            <button onClick={() => toggleMyStatus("declined")} style={{ background: C.redDim, border: `1px solid ${C.red}55`, borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 800, color: C.red, cursor: "pointer" }}>{t("Cancelar")}</button>
-          </div>
-          {!me.paid && (
-            <BtnPrimary onClick={payMine} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <CreditCard size={16} /> {t("Pagar")} {price} · MB Way
-            </BtnPrimary>
           )}
         </div>
-      ) : me?.status === "declined" ? (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ fontSize: 13, color: C.text2, marginBottom: 12 }}>{t("Disseste que não podes. Mudaste de ideias?")}</div>
-          <BtnGhost tone="accent" onClick={() => toggleMyStatus("confirmed")} style={{ width: "100%" }}>{t("Afinal vou! Confirmar")}</BtnGhost>
-        </div>
-      ) : (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ fontSize: 13, color: C.text2, marginBottom: 12 }}>
-            {spotsLeft > 0 ? t("Vais jogar?") : t("Jogo cheio — entra na lista de espera e entras se alguém desistir.")}
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <BtnPrimary onClick={() => toggleMyStatus("confirmed")} style={{ flex: 1, fontSize: 15 }}>{spotsLeft > 0 ? t("Estou dentro!") : t("Entrar na lista de espera")}</BtnPrimary>
-            <button onClick={() => toggleMyStatus("declined")} style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 13, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>{t("Não posso")}</button>
-          </div>
-        </div>
-      )}
 
-      {/* INVITE CTA — prominent while the group is still small */}
+        {/* my status + the card's single primary CTA */}
+        {myBlock && <div style={{ padding: S.lg, borderTop: `1px solid ${C.border}` }}>{myBlock}</div>}
+
+        {/* → Game Detail */}
+        {onOpenDetail && (
+          <div style={{ padding: "0 16px" }}>
+            <ListRow onClick={onOpenDetail}
+              title={t("Detalhes do jogo")}
+              meta={t("Plantel · Pagamentos · Material")} />
+          </div>
+        )}
+      </div>
+
+      {/* INVITE — prominent while the group is still small (organizer) */}
       {canManageGame && group.length <= Math.max(6, Math.ceil(game.spots / 2)) && (
-        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}`, background: C.accentDim }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <UserPlus size={18} color={C.accent} />
+        <div style={{ ...cardStyle, marginTop: S.lg }}>
+          <div style={{ display: "flex", alignItems: "center", gap: S.md, marginBottom: S.md }}>
+            <UserPlus size={20} color={C.text2} style={{ flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 800 }}>{t("Agora convida os jogadores 📣")}</div>
-              <div style={{ fontSize: 12, color: C.text2 }}>{t("Partilha o link — quem abrir entra logo no grupo.")}</div>
+              <div style={{ fontSize: T.cardTitle, fontWeight: 700 }}>{t("Agora convida os jogadores 📣")}</div>
+              <div style={{ fontSize: T.meta, color: C.text2 }}>{t("Partilha o link — quem abrir entra logo no grupo.")}</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: S.sm }}>
             <button onClick={() => openWhatsApp(inviteUrl ? groupInviteMessage(game.groupName, shareUrl) : inviteMessage(game.groupName, game))}
-              style={{ flex: 1, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <MessageCircle size={14} /> {t("Convidar")}
+              style={{ flex: 1, minHeight: TOUCH.button, background: C.whatsapp, color: C.bg, border: "none", borderRadius: R.control, fontSize: T.body, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: S.sm }}>
+              <MessageCircle size={16} /> {t("Convidar")}
             </button>
-            <button onClick={copyShare}
-              style={{ background: C.card, color: copied ? C.green : C.text1, border: `1px solid ${copied ? C.greenBorder : C.border}`, borderRadius: 10, padding: "11px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-              {copied ? <><Check size={14} /> {t("Copiado")}</> : <><Copy size={14} /> Link</>}
-            </button>
+            <BtnGhost onClick={copyShare} style={copied ? { color: C.green, borderColor: C.greenBorder } : undefined}>
+              {copied ? <><Check size={16} /> {t("Copiado")}</> : <><Copy size={16} /> Link</>}
+            </BtnGhost>
           </div>
         </div>
       )}
 
-      {/* WAITING LINE */}
-      {waitlist.length > 0 && (
-        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.accentBorder}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <ListOrdered size={15} color={C.accent} />
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Lista de espera")} ({waitlist.length})</div>
-          </div>
-          <div style={{ fontSize: 11, color: C.text2, marginBottom: 12 }}>{t("Por ordem de confirmação. Entra automaticamente quem está em 1º se um titular desistir")}{canManageTeams ? t(" — avisa-os por WhatsApp para estarem a postos.") : "."}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {waitlist.map((p, i) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ ...displayFont, fontSize: 15, color: i === 0 ? C.accent : C.text3, width: 22, textAlign: "center" }}>{i + 1}º</div>
-                <Avatar name={p.name} color={playerColor(group, p)} size={32} fontSize={11} isMe={p.isMe} photo={p.photo} injured={p.injured} />
-                <span style={{ flex: 1, fontSize: 13, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1 }}>{p.nick}{p.isMe && <span style={{ fontSize: 10, color: C.text2, fontWeight: 400 }}> {t("(tu)")}</span>}</span>
-                {canManageTeams && !p.isMe ? (
-                  <button onClick={() => openWhatsApp(waitlistNudgeMessage(p, game, i + 1, shareUrl), p.phone)}
-                    title={`${t("Avisar")} ${p.nick}`}
-                    style={{ background: i === 0 ? C.whatsapp : "none", color: i === 0 ? C.bg : C.whatsapp, border: `1px solid ${C.whatsapp}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                    <MessageCircle size={12} /> {t("Avisar")}
-                  </button>
-                ) : (
-                  <span style={{ fontSize: 10, color: C.text3 }}>{p.position.slice(0, 3).toUpperCase()}</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* DECLINED */}
-      {declined.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <SectionLabel style={{ marginBottom: 8 }}>{t("NÃO PODEM")} ({declined.length})</SectionLabel>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {declined.map((p) => (
-              <div key={p.id} onClick={canManageTeams ? () => onSetPlayerStatus(p.id, "confirmed") : undefined}
-                title={canManageTeams ? t("Confirmar") : undefined}
-                style={{ display: "flex", alignItems: "center", gap: 6, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 10px", cursor: canManageTeams ? "pointer" : "default" }}>
-                <X size={12} color={C.red} />
-                <span style={{ fontSize: 12, color: C.text2 }}>{p.nick}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* PAYMENTS OVERVIEW */}
-      <Collapsible
-        icon={<CreditCard size={15} color={C.text2} />}
-        title={t("Pagamentos")}
-        subtitle={`${price}${t("/jogador")} · ${fmtEUR(game.monthlyPrice)} ${t("total")}`}
-        badge={`${fmtEUR(paidCount * game.priceEach)} / ${fmtEUR(playing.length * game.priceEach)}`}
-      >
-        <div style={{ height: 4, background: C.border, borderRadius: 2, marginBottom: 14 }}>
-          <div style={{ height: "100%", borderRadius: 2, background: C.green, width: `${playing.length ? (paidCount / playing.length) * 100 : 0}%`, transition: "width 0.3s" }} />
-        </div>
-
-        {debtors.length > 0 ? (
-          <>
-            <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>{t("DEVEM PAGAR")}</SectionLabel>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-              {debtors.map((p) => (
-                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} injured={p.injured} />
-                  <span style={{ flex: 1, fontSize: 13 }}>{p.nick}</span>
-                  <span style={{ fontSize: 13, color: C.orange, fontWeight: 700 }}>{price}</span>
-                  <button onClick={() => togglePaid(p.id)} style={{ background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.accent, fontWeight: 700, cursor: "pointer" }}>{t("Pago ✓")}</button>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => openWhatsApp(chargeMessage(debtors, price, game, me?.phone))} style={{ width: "100%", background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <MessageCircle size={15} /> {t("Cobrar pelo WhatsApp")}
-            </button>
-          </>
-        ) : (
-          <div style={{ textAlign: "center", padding: "8px 0", fontSize: 13, color: C.green, fontWeight: 700 }}>
-            <Check size={14} style={{ display: "inline", marginRight: 6 }} /> {t("Todos pagaram!")}
-          </div>
-        )}
-
-        {/* Organizer-only: undo a payment marked by mistake */}
-        {canManageGame && paidCount > 0 && (
-          <div style={{ marginTop: debtors.length > 0 ? 16 : 12 }}>
-            <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>{t("JÁ PAGARAM")}</SectionLabel>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {playing.filter((p) => p.paid).map((p) => (
-                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={p.name} color={playerColor(group, p)} size={30} fontSize={11} isMe={p.isMe} photo={p.photo} injured={p.injured} />
-                  <span style={{ flex: 1, fontSize: 13 }}>{p.nick}</span>
-                  <button onClick={() => togglePaid(p.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                    <Undo2 size={12} /> {t("Desfazer")}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </Collapsible>
+      {extras}
 
       {shareOpen && (
         <ShareSheet
@@ -441,7 +385,6 @@ export default function JogoTab({
           ]}
         />
       )}
-
     </div>
   );
 }
