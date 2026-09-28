@@ -10,7 +10,7 @@
  *    from scratch, invite links, admin events, realtime slot grid.
  *  - Local demo (no keys): the original localStorage prototype.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { C, BRAND } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
@@ -151,9 +151,16 @@ export default function PitchApp() {
   // when the account is brand new — see the effect and the needsProfile
   // gating further down.
   const [joinToken, setJoinToken] = useState(() => new URLSearchParams(window.location.search).get("join"));
+  // Token already handed to joinGroupByToken — this effect re-runs on every
+  // new cloud.myPlayer/cloud.user object (each refetch, incl. the one the
+  // join itself triggers), so without this it would re-issue the join
+  // until the .finally below lands.
+  const autoJoinedTokenRef = useRef(null);
   useEffect(() => {
     if (!joinToken || !cloud.user) return;
     if (cloud.myPlayer) {
+      if (autoJoinedTokenRef.current === joinToken) return;
+      autoJoinedTokenRef.current = joinToken;
       // Existing card, just accepting/switching a group via the link —
       // no onboarding card involved, safe to join immediately (matches
       // the pre-existing behaviour for returning players).
