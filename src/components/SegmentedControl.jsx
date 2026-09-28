@@ -1,19 +1,29 @@
-import { C } from "../theme";
+import { C, R, S, TOUCH } from "../theme";
 import { t } from "../lib/i18n";
 
-/** Pill segmented control (mockup: "Your games | Open games | Groups",
- *  "Teams | Challenges | Leagues"). Active pill = lime fill + dark text;
- *  inactive = outlined, muted. 44px tall so every segment is a real
- *  touch target. `options`: [{ id, label, badge? }]. */
+/**
+ * SegmentedControl — pill segments (mockup: "Your games | Open games |
+ * Groups"). Active = lime fill + dark text (lime = active state);
+ * inactive = outlined, C.text2. 44px tall so every segment is a real
+ * touch target. Scrolls horizontally instead of squashing when the
+ * labels don't fit (e.g. 4 segments in EN on a 360px phone).
+ *
+ * Props:
+ *  - options   [{ id, label, badge? }] — `label` is the PT-PT source
+ *              string (t() is applied here); `badge` shows a dot.
+ *  - value     active id.
+ *  - onChange  (id) => void.
+ *  - style     container overrides (default marginBottom 16).
+ */
 export default function SegmentedControl({ options, value, onChange, style }) {
   return (
-    <div role="tablist" style={{ display: "flex", gap: 8, marginBottom: 16, ...style }}>
+    <div role="tablist" style={{ display: "flex", gap: S.sm, marginBottom: S.lg, overflowX: "auto", scrollbarWidth: "none", ...style }}>
       {options.map((o) => {
         const active = o.id === value;
         return (
-          <button key={o.id} role="tab" aria-selected={active} onClick={() => onChange(o.id)}
+          <button key={o.id} type="button" role="tab" aria-selected={active} onClick={() => onChange(o.id)}
             style={{
-              flex: 1, minHeight: 44, borderRadius: 999, padding: "0 12px",
+              flex: "1 0 auto", minHeight: TOUCH.min, borderRadius: R.pill, padding: `0 ${S.md + 2}px`,
               background: active ? C.accent : "transparent",
               color: active ? C.bg : C.text2,
               border: `1px solid ${active ? C.accent : C.border}`,

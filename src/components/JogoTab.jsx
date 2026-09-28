@@ -290,7 +290,7 @@ export default function JogoTab({
       ) : me?.status === "declined" ? (
         <div style={{ ...cardStyle, marginBottom: 14 }}>
           <div style={{ fontSize: 13, color: C.text2, marginBottom: 12 }}>{t("Disseste que não podes. Mudaste de ideias?")}</div>
-          <BtnGhost onClick={() => toggleMyStatus("confirmed")} style={{ width: "100%" }}>{t("Afinal vou! Confirmar")}</BtnGhost>
+          <BtnGhost tone="accent" onClick={() => toggleMyStatus("confirmed")} style={{ width: "100%" }}>{t("Afinal vou! Confirmar")}</BtnGhost>
         </div>
       ) : (
         <div style={{ ...cardStyle, marginBottom: 14 }}>

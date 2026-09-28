@@ -38,6 +38,7 @@ import FirstRunTour from "./components/FirstRunTour";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
 import BottomNav from "./components/BottomNav";
+import TopBar from "./components/TopBar";
 import GroupSwitcher from "./components/GroupSwitcher";
 import HomeTab from "./components/HomeTab";
 import JogarTab from "./components/JogarTab";
@@ -107,10 +108,11 @@ export default function PitchApp() {
   const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
   const [lang, setLangState]    = usePersistentState("lang", detectLang());
   const [themeMode, setThemeModeState] = useState(getThemeMode());
-  // Opens straight on Jogar → Jogos (confirmation grid) — kept from the
-  // pre-redesign product call (logging in drops you into confirming this
-  // week's game), so existing users land where they always did.
-  const [tab, setTabRaw]        = useState("jogar");
+  // Opening tab is CONTEXTUAL (redesign spec §1): null until decided —
+  // see `openingTab` / the freeze effect below the confirmation window.
+  // Every explicit navigation goes through setTab, so once the user moves
+  // the opening logic never overrides them.
+  const [tabState, setTabRaw]   = useState(null);
   const setTab = (id) => setTabRaw(normalizeTab(id));
   // Jogar's segment (Jogos | Grupos) is lifted so Home's next-action
   // cards can deep-link into it; `grupoEntry` re-mounts GrupoTab on a
@@ -428,6 +430,26 @@ export default function PitchApp() {
   const opensAtLabel = groupSettings.recurring
     ? `${t(WEEKDAYS_PT[groupSettings.openWeekday ?? 1])} ${t("às")} ${groupSettings.openTime ?? "17:00"}`
     : null;
+
+  // ── Contextual opening tab (redesign spec §1) ──────────
+  // matchday if a matchday is live → jogar if this week's game awaits MY
+  // answer → otherwise home. Same inputs as `needsResponse`/`matchdayHot`
+  // further down (those live after the early returns, so they can't feed
+  // a hook). Until decided, `tab` falls back to the live computation so
+  // the first painted frame is already the right tab (no flash); the
+  // effect then FREEZES it the first time the main app's data is ready
+  // (local: onboarded session; cloud: status ready / no-group explore),
+  // so a matchday going live later never yanks the user away.
+  const appDataReady = (localMode && Boolean(session.role && session.onboarded)) || cloudMode || noGroup;
+  const hasGameThisWeek = !noGroup && !noGameScheduled
+    && kickoffAt.getTime() - Date.now() < 7 * 24 * 3600 * 1000
+    && kickoffAt.getTime() - Date.now() > -3 * 3600 * 1000;
+  const awaitingMyAnswer = hasGameThisWeek && confWin.isOpen && me?.status === "pending";
+  const openingTab = !noGroup && matchday ? "matchday" : awaitingMyAnswer ? "jogar" : "home";
+  const tab = tabState ?? openingTab;
+  useEffect(() => {
+    if (tabState === null && appDataReady) setTabRaw(openingTab);
+  }, [tabState, appDataReady, openingTab]);
 
   const togglePaid = (id) => {
     const player = baseGroup.find((p) => p.id === id);
@@ -902,6 +924,7 @@ export default function PitchApp() {
     setNoGroupOptIn(false);
     setManualJoinChoice(null);
     setJoinToken(null);
+    setTabRaw(null); // next login re-runs the contextual opening tab
   };
   const backToRolePick = () => setSession({ role: null, onboarded: false });
 
@@ -1494,9 +1517,8 @@ export default function PitchApp() {
     <>
       {!tourSeen && <FirstRunTour onDone={() => { setTourSeen(true); setWhatsNewSeen(true); }} />}
       {tourSeen && !whatsNewSeen && <WhatsNewSheet onDone={() => setWhatsNewSeen(true)} />}
-      <div style={{ display: "flex", alignItems: "center", padding: "14px 16px 0" }}>
-        <img src={BRAND.logo} alt="PITCH App" style={{ height: 24 }} />
-      </div>
+      {/* App header — screen agents can pass bell/avatar via actions/right. */}
+      <TopBar onLogoClick={() => selectTab("home")} />
       <div style={{ paddingBottom: 96 }}>
         {tab === "home" && (
           <HomeTab

@@ -50,6 +50,15 @@ export const setLang = (l) => {
 
 export const t = (s) => (current === "pt" ? s : (DICTS[current]?.[s] ?? s));
 
+/** Context-scoped translation, for a PT-PT word whose translation
+ *  depends on WHERE it appears. Looks up "<ctx>:<s>" first (e.g.
+ *  "nav:Perfil" → "Me" for the bottom-nav tab, while plain "Perfil"
+ *  stays "Profile" in page titles), then falls back to plain t(s).
+ *  In PT the source string is returned unchanged.
+ *  Contexts in use: "nav" (BottomNav labels), "form" (FormDots letters
+ *  V/E/D → W/D/L — single letters are too ambiguous for the global map). */
+export const tCtx = (ctx, s) => (current === "pt" ? s : (DICTS[current]?.[`${ctx}:${s}`] ?? t(s)));
+
 // Attribute names get their own map: "Defesa" the position translates to
 // "Defender", but "Defesa" the attribute is "Defending" — can't share a key.
 const ATTRS_PT = {
@@ -111,6 +120,14 @@ const EN = {
   // ── BottomNav ──────────────────────────────────────────
   "Jogo": "Game", "Clube": "Club", "Grupo": "Squad", "Perfil": "Profile",
   "Jogar": "Play", "Competir": "Compete", "Grupos": "Groups", "Desafios": "Challenges", "Competições": "Competitions", "Em breve": "Coming soon", "Definições": "Settings",
+  // Context-scoped (see tCtx): the nav's Perfil tab is "Me" in EN.
+  "nav:Perfil": "Me",
+
+  // ── Redesign primitives (Chip, FormDots, TopBar…) ──────
+  "form:V": "W", "form:E": "D", "form:D": "L",
+  "Vitória": "Win", "Empate": "Draw", "Derrota": "Loss",
+  "Forma recente": "Recent form",
+  "Competição": "Competition", "Equipa": "Team",
 
   // ── LandingPage ────────────────────────────────────────
   "O teu jogo semanal,": "Your weekly game,",

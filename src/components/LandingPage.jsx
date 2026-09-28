@@ -300,7 +300,7 @@ export default function LandingPage({ onEnter, lang, onLang }) {
             <button onClick={onEnter} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: C.text1, cursor: "pointer" }}>
               {t("Entrar")}
             </button>
-            <BtnPrimary onClick={onEnter} style={{ padding: "8px 16px", fontSize: 13 }}>{t("Criar conta")}</BtnPrimary>
+            <BtnPrimary compact onClick={onEnter} style={{ padding: "8px 16px", fontSize: 13 }}>{t("Criar conta")}</BtnPrimary>
           </div>
         </Section>
       </div>

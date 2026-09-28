@@ -80,11 +80,27 @@ export const C = {
   bronze:       "#C9824F",
 };
 
+// ── Layout + type tokens (redesign v1, docs/REDESIGN-SPEC.md §3) ──
+// Theme-independent, so plain frozen constants (unlike C, never mutated).
+/** Spacing — 8px grid. Page side margin = S.lg; between sections
+ *  S.lg–S.xl; inside dense rows S.md. */
+export const S = Object.freeze({ xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 });
+/** Radius — cards 16, buttons/inputs 12, pills/segments 999. Avatars
+ *  are circles (size / 2), not a token. */
+export const R = Object.freeze({ card: 16, control: 12, pill: 999 });
+/** Type scale (font sizes, px). displayFont (italic 900) ONLY for
+ *  `title`, scores and big stat numbers. Never go below `min`. */
+export const T = Object.freeze({ title: 30, h: 20, cardTitle: 16, body: 14, meta: 12, min: 11 });
+/** Minimum touch target / button height. */
+export const TOUCH = Object.freeze({ min: 44, button: 48 });
+
+// Shape kept stable ({background, borderRadius, border, padding}) — it's
+// spread by dozens of callers and mutated in place by applyPalette.
 export const cardStyle = {
   background: C.card,
-  borderRadius: 16,
+  borderRadius: R.card,
   border: `1px solid ${C.border}`,
-  padding: 16,
+  padding: S.lg,
 };
 
 // FIFA-ish italic display style for headings / numbers

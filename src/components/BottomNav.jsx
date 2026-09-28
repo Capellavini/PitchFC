@@ -1,12 +1,15 @@
 import { Home, Zap, Trophy, User, Swords } from "lucide-react";
 import { C } from "../theme";
-import { t } from "../lib/i18n";
+import { tCtx } from "../lib/i18n";
 
 // Phase-1 information architecture (decisões 2026-09-28): always exactly
 // 5 slots — Home · Jogar · Matchday · Competir · Perfil — with Matchday
 // as the emphasized CENTER button. Social lives inside Home now, the
 // old "Clube" tab moved behind Perfil → Definições (admin only), and
 // Stats/League moved to Jogar → Grupos.
+// Labels are PT-PT source strings rendered via tCtx("nav", …): EN shows
+// Home · Play · Matchday · Compete · Me ("nav:Perfil" → "Me", while a
+// plain t("Perfil") elsewhere stays "Profile").
 const NAV = [
   { id: "home",     Icon: Home,   label: "Home"     },
   { id: "jogar",    Icon: Zap,    label: "Jogar"    },
@@ -37,8 +40,8 @@ export default function BottomNav({ tab, onSelect, matchdayHot = false }) {
           const circleBorder = hot ? C.accent : active ? C.accentBorder : C.border;
           const iconColor = hot ? C.bg : active ? C.accent : C.text2;
           return (
-            <button key={id} onClick={() => onSelect(id)} aria-label={t(label)}
-              style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: 0, minHeight: 44 }}>
+            <button key={id} type="button" onClick={() => onSelect(id)} aria-label={tCtx("nav", label)} aria-current={active ? "page" : undefined}
+              style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: 0, minHeight: 48 }}>
               <span style={{
                 position: "relative", width: 52, height: 52, borderRadius: 26, marginTop: -22,
                 background: circleBg, border: `1px solid ${circleBorder}`,
@@ -50,15 +53,15 @@ export default function BottomNav({ tab, onSelect, matchdayHot = false }) {
                   <span style={{ position: "absolute", top: 2, right: 2, width: 10, height: 10, borderRadius: 5, background: C.red, border: `2px solid ${C.surface}` }} />
                 )}
               </span>
-              <span style={{ fontSize: 10, fontWeight: active || hot ? 800 : 500, color: active || hot ? C.accent : C.text2 }}>{t(label)}</span>
+              <span style={{ fontSize: 11, fontWeight: active || hot ? 800 : 500, color: active || hot ? C.accent : C.text2 }}>{tCtx("nav", label)}</span>
             </button>
           );
         }
         return (
-          <button key={id} onClick={() => onSelect(id)}
-            style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 4, padding: "6px 0 0", minHeight: 44 }}>
+          <button key={id} type="button" onClick={() => onSelect(id)} aria-current={active ? "page" : undefined}
+            style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 4, padding: "6px 0 0", minHeight: 48 }}>
             <Icon size={22} strokeWidth={active ? 2.5 : 1.6} color={active ? C.accent : C.text2} />
-            <span style={{ fontSize: 10, fontWeight: active ? 800 : 500, color: active ? C.accent : C.text2 }}>{t(label)}</span>
+            <span style={{ fontSize: 11, fontWeight: active ? 800 : 500, color: active ? C.accent : C.text2 }}>{tCtx("nav", label)}</span>
           </button>
         );
       })}
