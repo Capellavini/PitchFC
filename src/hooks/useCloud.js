@@ -61,7 +61,10 @@ export function useCloud() {
       const evq = await supabase.from("events").select("*").order("day");
       const events = evq.data ?? [];
 
-      const meq = await supabase.from("players").select("*").eq("user_id", user.id).limit(1);
+      // Deterministic pick (oldest) — matches ensureOwnPlayer and the
+      // keeper chosen by supabase/cleanup/2026-09-28-dedupe-players.sql.
+      const meq = await supabase.from("players").select("*").eq("user_id", user.id)
+        .order("created_at", { ascending: true }).limit(1);
       if (meq.error) throw meq.error;
       const myPlayer = meq.data[0] ?? null;
 
@@ -317,17 +320,61 @@ export function useCloud() {
     photo_url: form.photo ?? null, ...extra,
   });
 
-  /** Player signs up cold: creates a card with no group yet. */
-  const createPlayerProfile = async (form) => {
-    const user = userRef.current;
-    await supabase.from("players").insert(playerFields(form, { user_id: user.id, is_organizer: false }));
-    await refetch();
+  // ── Idempotent own-player creation ─────────────────────
+  // One account = one players row (every read resolves "me" via
+  // user_id). On 2026-09-26 a slow join + repeated taps on the onboarding
+  // button inserted up to 9 rows for the same user within ~3s, because
+  // each call blindly INSERTed. Two layers now make that impossible:
+  //  1. singleFlight: concurrent calls of the same account-creating action
+  //     share one in-flight promise instead of each running the inserts.
+  //  2. ensureOwnPlayer: select-then-insert, and if the insert still loses
+  //     a race (another tab/device), the DB's unique (user_id) constraint
+  //     (migration 20260101005600) rejects it with 23505 and we just read
+  //     back the row that won.
+  const inFlightRef = useRef(new Map());
+  const singleFlight = (key, fn) => {
+    const running = inFlightRef.current.get(key);
+    if (running) return running;
+    const p = (async () => fn())().finally(() => inFlightRef.current.delete(key));
+    inFlightRef.current.set(key, p);
+    return p;
   };
+
+  const findOwnPlayer = async (userId) => {
+    const r = await supabase.from("players").select("*").eq("user_id", userId)
+      .order("created_at", { ascending: true }).limit(1);
+    return r.data?.[0] ?? null;
+  };
+
+  /** Returns { player, created }. Never inserts a second row for the
+   *  same auth user — an existing row is returned untouched. */
+  const ensureOwnPlayer = async (fields) => {
+    const user = userRef.current;
+    if (!user) return { player: null, created: false, error: "Sem sessão." };
+    const existing = await findOwnPlayer(user.id);
+    if (existing) return { player: existing, created: false };
+    const ins = await supabase.from("players").insert({ ...fields, user_id: user.id }).select().single();
+    if (!ins.error) return { player: ins.data, created: true };
+    if (ins.error.code === "23505") {
+      const winner = await findOwnPlayer(user.id);
+      if (winner) return { player: winner, created: false };
+    }
+    return { player: null, created: false, error: ins.error.message };
+  };
+
+  /** Player signs up cold: creates a card with no group yet. */
+  const createPlayerProfileRaw = async (form) => {
+    const res = await ensureOwnPlayer(playerFields(form, { is_organizer: false }));
+    await refetch();
+    return res.error ? { error: res.error } : {};
+  };
+  const createPlayerProfile = (form) => singleFlight("own-player", () => createPlayerProfileRaw(form));
 
   /** Organizer creates the group + their own (organizer) card + the
    *  first recurring game, then lands straight in the app. */
-  const createGroupAsOrganizer = async (groupForm, profileForm) => {
-    const user = userRef.current;
+  const createGroupAsOrganizer = (groupForm, profileForm) =>
+    singleFlight("own-player", () => createGroupAsOrganizerRaw(groupForm, profileForm));
+  const createGroupAsOrganizerRaw = async (groupForm, profileForm) => {
     const grp = await supabase.from("groups").insert({
       name: groupForm.groupName, venue: groupForm.venue, city: groupForm.city, weekday: groupForm.weekday,
       game_time: groupForm.time, monthly_price_cents: Math.round(groupForm.monthlyPrice * 100),
@@ -336,9 +383,14 @@ export function useCloud() {
     if (grp.error) return { error: grp.error.message };
     const groupId = grp.data.id;
 
-    const pl = await supabase.from("players")
-      .insert(playerFields(profileForm, { user_id: user.id, group_id: groupId, is_organizer: true }))
-      .select().single();
+    const own = await ensureOwnPlayer(playerFields(profileForm, { group_id: groupId, is_organizer: true }));
+    // Account already had a row (e.g. a retry after a half-finished
+    // attempt): move that row into the new group as organizer instead of
+    // inserting a second one — same as becomeOrganizer below.
+    if (own.player && !own.created) {
+      await supabase.from("players").update({ group_id: groupId, is_organizer: true, is_assistant: false }).eq("id", own.player.id);
+    }
+    const pl = { data: own.player };
 
     // "Ainda não sei o dia/hora" — the group exists but has no game yet;
     // the organizer schedules the first one later (scheduleNextGame).
@@ -413,21 +465,26 @@ export function useCloud() {
    *  falls back to when it has to invent a row with no form data at all.
    *  `token` may be null (quick card finished with "ainda não tenho
    *  grupo" — same as a plain createPlayerProfile). */
-  const joinGroupWithProfile = async (token, form) => {
-    if (!token) { await createPlayerProfile(form); return {}; }
+  const joinGroupWithProfile = (token, form) =>
+    singleFlight("own-player", () => joinGroupWithProfileRaw(token, form));
+  const joinGroupWithProfileRaw = async (token, form) => {
+    if (!token) return createPlayerProfileRaw(form);
     const resolved = await resolveInviteToken(token);
     if (resolved.error) {
       // Token went stale between the paste-code check and now (rare) —
       // still keep the card the player just filled in rather than losing
       // it; they land ungrouped, same as "ainda não tenho grupo".
-      await createPlayerProfile(form);
+      await createPlayerProfileRaw(form);
       return { error: resolved.error };
     }
-    const user = userRef.current;
-    const ins = await supabase.from("players")
-      .insert(playerFields(form, { user_id: user.id, group_id: resolved.groupId, is_organizer: false, player_type: resolved.playerType }))
-      .select().single();
-    const player = ins.data;
+    const own = await ensureOwnPlayer(playerFields(form, { group_id: resolved.groupId, is_organizer: false, player_type: resolved.playerType }));
+    const player = own.player;
+    // A row already existed (retry, second tab…): attach it to the group
+    // instead of creating another one. Never demote/move a row that's
+    // already in this group.
+    if (player && !own.created && player.group_id !== resolved.groupId) {
+      await supabase.from("players").update({ group_id: resolved.groupId, is_organizer: false, is_assistant: false, player_type: resolved.playerType }).eq("id", player.id);
+    }
     const gm = await supabase.from("games").select("id").eq("group_id", resolved.groupId)
       .in("status", ["open", "full", "live"]).order("scheduled_at", { ascending: false }).limit(1);
     if (gm.data?.[0] && player) {
@@ -440,7 +497,9 @@ export function useCloud() {
   };
 
   /** Logged-in player joins a group via its invite token. */
-  const joinGroupByToken = async (token) => {
+  const joinGroupByToken = (token) =>
+    singleFlight("own-player", () => joinGroupByTokenRaw(token));
+  const joinGroupByTokenRaw = async (token) => {
     const user = userRef.current;
     const trimmed = token.trim();
     // Two links per group: the regular one (mensalista, confirmation
@@ -456,7 +515,10 @@ export function useCloud() {
     }
     if (!groupId) return { error: "Convite inválido ou expirado." };
 
-    let player = data.myPlayer;
+    // Read "me" fresh rather than trusting data.myPlayer: this closure can
+    // be from a render before the last refetch landed (null → we'd insert
+    // a second row for an account that already has one).
+    let player = user ? (await findOwnPlayer(user.id)) ?? data.myPlayer : data.myPlayer;
     if (player) {
       const ban = await supabase.from("player_group_memberships")
         .select("banned").eq("player_id", player.id).eq("group_id", groupId).maybeSingle();
@@ -475,13 +537,16 @@ export function useCloud() {
       // them here also keeps the new player_group_memberships row correct.
       await supabase.from("players").update({ group_id: groupId, is_organizer: false, is_assistant: false, player_type: playerType }).eq("id", player.id);
     } else {
-      const ins = await supabase.from("players").insert({
-        user_id: user.id, group_id: groupId, player_type: playerType,
+      const own = await ensureOwnPlayer({
+        group_id: groupId, player_type: playerType,
         name: user.user_metadata?.name ?? user.email, nick: (user.user_metadata?.name ?? "Jogador").split(" ")[0],
         email: user.email, phone: user.user_metadata?.phone ?? null,
         position: "Médio", foot: "Direito",
-      }).select().single();
-      player = ins.data;
+      });
+      player = own.player;
+      if (player && !own.created && player.group_id !== groupId) {
+        await supabase.from("players").update({ group_id: groupId, is_organizer: false, is_assistant: false, player_type: playerType }).eq("id", player.id);
+      }
     }
     // Attendance for the group's current game. ignoreDuplicates: if this
     // player already answered for this game, keep their answer as is.

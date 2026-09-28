@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Camera, ChevronLeft } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
@@ -20,6 +20,25 @@ import BtnPrimary from "./BtnPrimary";
  *  since the balanced team draw depends on it. */
 export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia, quick = false }) {
   const [uploading, setUploading] = useState(false);
+  // In-flight guard for the submit: in cloud mode onDone creates the
+  // player row + joins the group + refetches everything, which takes
+  // seconds on a phone while this screen stays up — every extra tap used
+  // to insert another players row (2026-09-26: one "Onze x Onze" player
+  // ended up with 9). The ref blocks re-entry synchronously (state alone
+  // can't, two taps can land before the re-render); `busy` drives the UI.
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await onDone(form);
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
   const [form, setForm] = useState({
     ...me,
     name: me.name ?? "", nick: me.nick ?? "", age: me.age ?? 25,
@@ -146,8 +165,8 @@ export default function OnboardingPlayer({ me, onDone, onBack, uploadMedia, quic
         {!quick && chips(t("Pé dominante"), "foot", FEET)}
       </div>
 
-      <BtnPrimary onClick={() => onDone(form)} disabled={uploading} style={{ width: "100%", fontSize: 15, padding: 14, opacity: uploading ? 0.6 : 1 }}>
-        {uploading ? t("A carregar foto…") : t("Criar o meu cartão ⚽")}
+      <BtnPrimary onClick={submit} disabled={uploading || busy} style={{ width: "100%", fontSize: 15, padding: 14, opacity: uploading || busy ? 0.6 : 1 }}>
+        {uploading ? t("A carregar foto…") : busy ? t("A criar…") : t("Criar o meu cartão ⚽")}
       </BtnPrimary>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronLeft, MapPin, Users, Euro } from "lucide-react";
 import { C, cardStyle, displayFont } from "../theme";
 import { WEEKDAYS_PT, fmtEUR } from "../lib/helpers";
@@ -16,6 +16,22 @@ export default function OnboardingOrganizer({ settings, onDone, onBack, isEditin
   const [form, setForm] = useState({ ...settings });
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
   const [cancelling, setCancelling] = useState(false);
+  // In-flight guard: creating a group inserts a group + player + game and
+  // refetches — a second tap meanwhile would create a second group (and,
+  // before the DB guard, a second players row for the same account).
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await onDone(form);
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
 
   const cancelGame = async () => {
     if (!window.confirm(t("Cancelar o jogo marcado? As confirmações e vagas atuais são perdidas — podes agendar um novo mais tarde na aba Jogo."))) return;
@@ -180,8 +196,8 @@ export default function OnboardingOrganizer({ settings, onDone, onBack, isEditin
         </div>
       )}
 
-      <BtnPrimary onClick={() => onDone(form)} style={{ width: "100%", fontSize: 15, padding: 14 }}>
-        {isEditing ? t("Guardar alterações") : t("Criar grupo e convidar 📣")}
+      <BtnPrimary onClick={submit} disabled={busy} style={{ width: "100%", fontSize: 15, padding: 14, opacity: busy ? 0.6 : 1 }}>
+        {busy ? t("A criar…") : isEditing ? t("Guardar alterações") : t("Criar grupo e convidar 📣")}
       </BtnPrimary>
     </div>
   );
