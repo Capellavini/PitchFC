@@ -26,17 +26,41 @@ Você atua como **orchestrator agent**: quebre pedidos grandes em sub-tarefas e 
 ### Outros orquestradores do Vinicius (outros projetos — pastas/sessões separadas, sem contexto compartilhado a menos que ele traga)
 - **Zico** — CTO da Zíar Corp Tech (`C:\Users\capel\Desktop\ziar-corp-tech`)
 - **Paolo** — CMO da MyStudy (`C:\Users\capel\MyStudy`)
-- **JARVIS** — master orchestrator (`C:\Users\capel\Desktop\JARVIS`), faz "reunião" com o Vinicius vendo números/progresso de todos os projetos
 
-**Responsabilidade extra de ambos (Leo e Cris):** manter `status.json` na raiz deste repo atualizado sempre que houver progresso relevante (métricas, marcos, bloqueios) na sua área. O JARVIS lê esse arquivo direto do disco — você não precisa enviar nada, só manter o arquivo real.
+(JARVIS/`status.json` foi descontinuado em 2026-09-28 — o Vinicius não usa mais. Não é preciso manter `status.json`.)
 
-## What this project is
+**Reunião conjunta:** o Vinicius pode abrir uma sessão com Leo **e** Cris juntos ("sala de reunião"). Nesse caso, fale como os dois — cada um na sua área, discordando quando fizer sentido — e feche com decisões claras.
 
-PITCH is a mobile-first web app that organizes a **weekly football game between a fixed group of friends** — replacing the WhatsApp group chaos.
+## Vision — "PITCH, the home of amateur football"
 
-**The core scenario:** a group of ~15 friends needs exactly 10 players every Saturday. Today this is managed via WhatsApp: chasing confirmations, finding substitutes when someone cancels, collecting €8 from each player, remembering who brings the ball. PITCH solves exactly this, nothing more (for now).
+**Esta é a visão do PITCH e sempre será** (decidido pelo Vinicius em 2026-09-28): **PITCH é a casa do futebol amador — a infraestrutura digital da vida de quem joga à bola.** Organizar o jogo, encontrar onde jogar, montar a tua equipa, desafiar outras, competir, e construir a tua identidade de jogador.
 
-**This is NOT (yet):** a court booking marketplace, a league management system, a social network, or a SaaS for court operators. Those are future phases (see "Long-term vision" at the bottom). Do not add features from those phases unless explicitly asked.
+- **"Strava do futebol"** é a camada de identidade/atividade/retenção: cada jogo gera registo permanente (PITCH ID cross-group, carreira, recordes automáticos, conquistas, calendário, forma recente) e atividade social automática. Diferença-chave vs Strava: o PITCH participa **antes, durante e depois** do jogo (organizar → Matchday → stats/identidade → próximo jogo), e o Strava não tem nada de futebol (ver `docs/STRAVA-AUDIT.md`).
+- **Social faz parte do produto, sim** — mas como camada gerada pelo futebol, não como silo de "criar conteúdo": resultados, performances, recordes, conquistas, pódios semanais, Golo da Semana, desafios de equipa. Posts manuais continuam existindo, mas são minoria. Reação nativa: ⚽ Golaço. Amizade bilateral entre jogadores (não follow assimétrico); "seguir" fica para entidades (Equipa, Liga, Venue).
+- **O objeto central é o MATCH.** Um jogo é um jogo, venha de um Grupo recorrente, de um Jogo Aberto, de um Desafio entre Equipas ou de uma Competição — todos usam o mesmo motor de Matchday.
+- **Grupo ≠ Equipa.** Grupo = comunidade recorrente que organiza futebol (equipas diferentes toda semana). Equipa = identidade competitiva com plantel, capitão, emblema, V-E-D.
+- **Não criar marketplaces vazios.** Find a Game e Find Opponent são construídos e deixados prontos, mas só ficam visíveis quando houver densidade local de grupos/equipas (atrás de feature flag).
+- **Não construir:** Stories, DMs/chat próprio, feed algorítmico complexo, follow assimétrico entre jogadores, rankings globais sem comparabilidade, excesso de badges, avaliação subjetiva por estrelas em jogos abertos, entidade "Clube" falsa.
+- **Não cobrar pelo efeito de rede** (encontrar/entrar em jogo, identidade básica, stats básicos, amigos, atividade). Monetiza-se organizador (automação, pagamentos), equipa avançada, Competições/Pitch Pro e Venues.
+
+Arquitetura de produto de referência: `docs/PRODUCT-ARCHITECTURE-BRIEF.md` (brief de 2026-09-25, adotado com os ajustes das decisões abaixo).
+
+### Decisões de 2026-09-28 (reunião Leo + Cris + Vinicius)
+- **Navegação alvo: Home · Play · Matchday (contextual) · Compete · Eu.** Social funde-se na Home (feed de atividade); tab "Clube" sai (Grupos vão para Play); Jogo vai para Play → Detalhe do jogo; Perfil vira "Eu"/PITCH ID com settings atrás de engrenagem.
+- **Matchday é contextual** — ganha destaque quando há jogo hoje/ao vivo **ou** quando há jogo aberto e o jogador ainda não confirmou/recusou. **O organizador tem sempre acesso** ao Matchday.
+- **Redesign visual** segue a linha do mockup do brief (navy + lime como cor de ação/estado ativo, menos cards dentro de cards, hierarquia vertical clara, touch targets ≥44px, um CTA primário por card). Copy continua PT-PT.
+- **Landing page fica como está** — a mensagem de aquisição continua a ser a dor do organizador ("chega de caos no WhatsApp"); "The home of amateur football" é a visão/tagline. Só o visual da landing pode acompanhar o redesign mais tarde.
+- **Pagamento real (MB Way) e WhatsApp (bot como interface do Match)** estão no roadmap core, não nas fases finais.
+- **Teams + Challenges** são programados já e deixados prontos para lançar (feature flag).
+- **Prazo:** fundação + novo formato ainda em setembro/esta semana.
+
+## What this project is today (the wedge)
+
+The wedge — and still the acquisition message — is the **weekly football game between a fixed group of friends**, replacing the WhatsApp group chaos.
+
+**The core scenario:** a group of ~15 friends needs exactly 10 players every Saturday. Today this is managed via WhatsApp: chasing confirmations, finding substitutes when someone cancels, collecting €8 from each player, remembering who brings the ball. Nail this first; every other layer (identity, social, open games, teams, competitions) grows out of it.
+
+**Still NOT in scope now:** court booking marketplace for operators, SaaS for venues, league management for third parties (Pitch Pro). Those remain future phases (see "Long-term vision").
 
 ## Current state
 
@@ -218,4 +242,4 @@ When the project grows: `npm run dev` (local), `npm run build` (production), dep
 
 ## Long-term vision (context only — do not build yet)
 
-PITCH is phase one of a larger concept ("PITCH Club / PITCH OS"): a premium football venue in Matosinhos/Porto plus a platform eventually covering court bookings, leagues and tournaments, video highlights, a player marketplace ("falta 1 jogador"), corporate events, CRM for venue operators, and SaaS licensing. The weekly-game organizer is the wedge: nail the 15-friends use case first, expand later. Keep the data model extensible (e.g., a group can have many games; a player could later belong to many groups) but do not add speculative tables or UI.
+PITCH is phase one of a larger concept ("PITCH Club / PITCH OS"): a premium football venue in Matosinhos/Porto plus a platform eventually covering court bookings, leagues and tournaments, video highlights, a player marketplace ("falta 1 jogador"), corporate events, CRM for venue operators, and SaaS licensing. The weekly-game organizer is the wedge: nail the 15-friends use case first, expand later. (Update 2026-09-28: PITCH ID, activity/social, Open Games, Teams and Challenges are now in the active roadmap — see "Vision" at the top; venue/operator SaaS and third-party league management remain future.) Keep the data model extensible (e.g., a group can have many games; a player could later belong to many groups) but do not add speculative tables or UI.
