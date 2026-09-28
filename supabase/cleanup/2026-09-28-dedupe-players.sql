@@ -222,6 +222,43 @@ end $$;
 -- 6) Delete the duplicates (nothing references them any more).
 delete from public.players where id in (select dup_id from dedupe_map);
 
+-- 7) Clone GROUPS from the organizer double-tap (Everton, 2026-09-24):
+--    12 "Continental FC" groups were created within ~31s, each holding
+--    only one of his duplicate player rows (or nobody). Keep the group his
+--    surviving (keeper) row points to; delete the others.
+--    ⚠ players.group_id is ON DELETE CASCADE — deleting a group deletes the
+--    players in it. That's why this runs AFTER the dedupe (the dups are
+--    gone, the keeper sits in the kept group) and why every delete below is
+--    guarded by "no other player/member lives in this group". Games,
+--    attendances, memberships, invites, etc. of the clones go with them
+--    via their own ON DELETE CASCADE.
+do $$
+declare
+  v_keeper constant uuid := '7b779315-5971-4ae8-93b6-4f7f91e76ff2';
+  v_keep_group uuid;
+  v_deleted int;
+begin
+  select group_id into v_keep_group from public.players where id = v_keeper;
+  if v_keep_group is null then
+    raise exception 'Everton keeper row has no group — aborting, nothing changed';
+  end if;
+
+  delete from public.groups g
+  where g.name = 'Continental FC'
+    and g.created_at >= '2026-09-24 16:54:00+00'
+    and g.created_at <  '2026-09-24 16:55:00+00'
+    and g.id <> v_keep_group
+    and not exists (select 1 from public.players p where p.group_id = g.id)
+    and not exists (select 1 from public.player_group_memberships m
+                    where m.group_id = g.id and m.player_id <> v_keeper);
+  get diagnostics v_deleted = row_count;
+  raise notice 'Continental FC: kept group %, deleted % clone group(s)', v_keep_group, v_deleted;
+
+  if v_deleted <> 11 then
+    raise exception 'expected to delete 11 Continental FC clones, got % — aborting, nothing changed', v_deleted;
+  end if;
+end $$;
+
 -- Safety net: abort (rolls everything back) if any duplicate survived.
 do $$
 begin
