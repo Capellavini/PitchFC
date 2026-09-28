@@ -25,7 +25,9 @@ export default function BottomNav({ tab, onSelect, matchdayHot = false }) {
   const pulseCss = `@keyframes pitchMdPulse{0%{box-shadow:0 0 0 0 ${C.accentBorder}}70%{box-shadow:0 0 0 12px rgba(0,0,0,0)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}`;
 
   return (
-    <nav style={{ position: "sticky", bottom: 0, zIndex: 20, background: C.surface, borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "flex-end", padding: "6px 8px calc(10px + env(safe-area-inset-bottom))" }}>
+    // Fixed (not sticky) so it stays pinned to the screen bottom even on a
+    // short screen; same 430px column as the app shell.
+    <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", zIndex: 20, background: C.surface, borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "flex-end", padding: "6px 8px calc(10px + env(safe-area-inset-bottom))" }}>
       <style>{pulseCss}</style>
       {NAV.map(({ id, Icon, label, center }) => {
         const active = tab === id;
