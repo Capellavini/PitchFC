@@ -53,7 +53,7 @@ export default function CompetirTab({ isAdmin, group = [], history = [], lastMat
         <>
           <SectionLabel>{t("Classificação da época")}</SectionLabel>
           <Leaderboard group={group} seasonDays={seasonDays} />
-          <WeeklyPodium lastMatchday={lastMatchday} mvp={mvp} />
+          <WeeklyPodium lastMatchday={lastMatchday} mvp={mvp} group={group} />
           <GoalOfTheWeek social={social} group={group} postDates={postDates} />
         </>
       )}

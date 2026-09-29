@@ -233,10 +233,10 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
             display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
           }}>
             <span style={{ ...displayFont, fontSize: 17, color: badgeColor, lineHeight: 1 }}>{overallLocked ? "?" : overall}</span>
-            <span style={{ fontSize: 9, fontWeight: 800, color: C.text2, letterSpacing: "0.04em" }}>OVR</span>
+            <span style={{ fontSize: T.min, fontWeight: 800, color: C.text2, letterSpacing: "0.02em" }}>OVR</span>
           </div>
         </div>
-        <div style={{ ...displayFont, fontSize: 28, lineHeight: 1.05, color: C.text1, textTransform: "uppercase", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ ...displayFont, fontSize: 28, lineHeight: 1.05, color: C.text1, textTransform: "uppercase", maxWidth: "100%", overflowWrap: "break-word" }}>
           {player.nick || player.name}
         </div>
         {player.name && player.nick && player.name !== player.nick && (

@@ -1,6 +1,6 @@
 import { useState, useRef, Fragment } from "react";
 import { Goal, Footprints, Hand, Star, Flag, RotateCcw, Plus, Check, X, Undo2, ArrowLeftRight, Mic, LayoutGrid, ArrowRightCircle, Swords, Trophy, Settings2 } from "lucide-react";
-import { C, R, S, T, cardStyle } from "../theme";
+import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { t, tCtx } from "../lib/i18n";
 import { playerColor } from "../lib/helpers";
 import { voiceSupported, listenOnce, parseGoalCommand } from "../lib/voice";
@@ -35,7 +35,7 @@ function ActionSquare({ Icon, label, color, onClick }) {
     <button type="button" onClick={onClick} aria-label={label}
       style={{ aspectRatio: "1 / 1", minHeight: 72, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: S.sm, background: C.card, border: `1px solid ${C.border}`, borderRadius: R.card, color: C.text1, cursor: "pointer", padding: S.xs }}>
       <Icon size={26} color={color} strokeWidth={2.25} />
-      <span style={{ fontSize: T.meta, fontWeight: 800, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ fontSize: T.meta, fontWeight: 800, maxWidth: "100%", textAlign: "center", lineHeight: 1.15, overflowWrap: "anywhere" }}>{label}</span>
     </button>
   );
 }
@@ -169,9 +169,8 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
           style={{ marginBottom: S.lg }}
         />
 
-        {!concluded && <MatchTimer />}
-
-        {/* the four big actions */}
+        {/* the four big actions — right under the score so the organizer
+            never scrolls to log a goal (timer follows) */}
         {canManage && !concluded && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: S.sm, marginBottom: S.md }}>
             <ActionSquare Icon={Goal} label={t("Golo")} color={C.accent} onClick={() => setSheet({ kind: "goal" })} />
@@ -180,6 +179,8 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
             <ActionSquare Icon={Star} label={t("MVP")} color={C.gold} onClick={() => setSheet({ kind: "mvp" })} />
           </div>
         )}
+
+        {!concluded && <MatchTimer />}
 
         {/* voice goal — optional helper, confirm step before anything is written */}
         {canManage && !concluded && voiceSupported() && (
@@ -232,8 +233,16 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
             const canAddAssist = canManage && Boolean(onUpdateEvent) && !save && !e.ownGoal && !e.assistId;
             return (
               <ListRow key={idx} divider={i > 0}
-                leading={<span style={{ fontSize: 20 }} aria-hidden>{save ? "🧤" : "⚽"}</span>}
-                title={<>{who?.nick ?? "?"}{e.minute ? <span style={{ color: C.text2, fontWeight: 600 }}> · {e.minute}'</span> : null}</>}
+                leading={
+                  <span style={{ display: "flex", alignItems: "center", gap: S.sm }}>
+                    <span style={{ ...displayFont, fontSize: T.body, color: C.text2, width: 28, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{e.minute ? `${e.minute}'` : "—"}</span>
+                    <span style={{ position: "relative", display: "flex" }}>
+                      {who ? <Avatar name={who.name} color={playerColor(group, who)} photo={who.photo} isMe={who.isMe} size={36} /> : <span style={{ width: 36, height: 36 }} />}
+                      <span aria-hidden style={{ position: "absolute", right: -5, bottom: -4, fontSize: 13, lineHeight: 1 }}>{save ? "🧤" : "⚽"}</span>
+                    </span>
+                  </span>
+                }
+                title={who?.nick ?? "?"}
                 meta={<><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: teamColor(e.teamId), marginRight: 6 }} />{teamName(e.teamId)} · {meta}</>}
                 right={canManage ? (
                   <>
@@ -325,16 +334,9 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
     <div>
       <style>{`@keyframes mdpulse { 0%,100% { opacity: 1 } 50% { opacity: 0.3 } }`}</style>
 
-      {/* status row */}
-      <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginBottom: S.lg, flexWrap: "wrap" }}>
-        <Chip variant="red">
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 7, height: 7, borderRadius: 4, background: C.red, animation: "mdpulse 1.2s infinite" }} />
-            {t("Ao vivo")}
-          </span>
-        </Chip>
-        <Chip Icon={modeChip.Icon}>{modeChip.label}</Chip>
-      </div>
+      {/* (no separate "Ao vivo" status row: the header subtitle, the
+          stepper and the LIVE dot in the score already say it; the format
+          chip sits at the end of the match switcher) */}
 
       {viewOptions.length > 1 && <SegmentedControl options={viewOptions} value={view} onChange={setView} />}
 
@@ -358,6 +360,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
                   <Plus size={14} /> {t("Novo jogo")}
                 </button>
               )}
+              <span style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center" }}><Chip Icon={modeChip.Icon}>{modeChip.label}</Chip></span>
             </div>
           )}
 

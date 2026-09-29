@@ -8,7 +8,7 @@ function TeamPanel({ team, edgeColor, side }) {
       [side === "left" ? "borderLeft" : "borderRight"]: edge,
       padding: `${S.md}px ${S.md}px ${S.lg}px`, textAlign: "center", boxSizing: "border-box",
     }}>
-      <div style={{ fontSize: T.meta, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: C.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{ fontSize: T.meta, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: C.text2, lineHeight: 1.25, overflowWrap: "break-word" }}>
         {team.name}
       </div>
       <div style={{ ...displayFont, fontSize: 64, lineHeight: 1, marginTop: S.sm, color: C.text1, fontVariantNumeric: "tabular-nums" }}>

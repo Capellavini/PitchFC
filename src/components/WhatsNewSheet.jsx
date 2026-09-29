@@ -17,7 +17,7 @@ export default function WhatsNewSheet({ onDone }) {
     <div onClick={onDone} style={{ position: "fixed", inset: 0, background: "rgba(10,15,24,0.85)", zIndex: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t("Novidades")}
         style={{ width: "100%", maxWidth: 430, background: C.bg, borderTop: `1px solid ${C.border}`, borderRadius: "20px 20px 0 0", padding: "24px 16px calc(24px + env(safe-area-inset-bottom))" }}>
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.accent, marginBottom: 8 }}>{t("NOVIDADES")}</div>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: C.accent, marginBottom: 8 }}>{t("NOVIDADES")}</div>
         <div style={{ fontSize: 22, fontWeight: 900, fontStyle: "italic", color: C.text1, marginBottom: 16 }}>{t("A app ficou mais simples")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
           {ITEMS.map(({ Icon, title, body }) => (

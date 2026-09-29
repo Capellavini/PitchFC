@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Shuffle, RotateCcw, Check, Pencil } from "lucide-react";
-import { C, R, S, T, cardStyle } from "../theme";
+import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
@@ -133,7 +133,7 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
                 <input value={tm.name} onChange={(e) => onRename(tm.id, e.target.value)} aria-label={t("Nome da equipa")}
                   style={{ flex: 1, minWidth: 0, minHeight: 36, background: "none", border: "none", borderBottom: `1px dashed ${C.border}`, color: C.text1, fontSize: T.cardTitle, fontWeight: 800, outline: "none", padding: 0 }} />
               ) : (
-                <span style={{ flex: 1, minWidth: 0, fontSize: T.cardTitle, fontWeight: 800, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tm.name}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: T.cardTitle, fontWeight: 800, color: C.text1, overflowWrap: "break-word" }}>{tm.name}</span>
               )}
               {mine && !showEditor && <Chip variant="lime">{t("A tua equipa")}</Chip>}
               {ovr != null && <span style={{ fontSize: T.meta, fontWeight: 800, color: C.text2, flexShrink: 0 }}>OVR {ovr}</span>}
@@ -150,7 +150,8 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
                 meta={t(p.position)}
                 right={
                   <>
-                    {p.position === "Guarda-redes" && <Chip>{t("GR")}</Chip>}
+                    {/* mockup lineup checklist: OVR per player, big italic */}
+                    <span title="OVR" style={{ ...displayFont, fontSize: T.cardTitle + 2, color: C.text1, minWidth: 28, textAlign: "right" }}>{computeOverall(p.position, p.attrs)}</span>
                     {teams.length > 1 && (
                       <select value={tm.id} onChange={(e) => onMove(p.id, e.target.value)} aria-label={t("Mover de equipa")}
                         style={{ ...selectStyle, color: C.text2, border: `1px solid ${C.border}`, background: C.card }}>
@@ -164,7 +165,7 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
                 {players.map((p) => (
                   <div key={p.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, minWidth: 0 }}>
                     <Avatar name={p.name} color={playerColor(group, p)} photo={p.photo} isMe={p.isMe} size={48} />
-                    <span style={{ fontSize: T.meta, fontWeight: p.isMe ? 800 : 600, color: C.text1, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+                    <span style={{ fontSize: T.meta, fontWeight: p.isMe ? 800 : 600, color: C.text1, maxWidth: "100%", textAlign: "center", overflowWrap: "anywhere", lineHeight: 1.2 }}>{p.nick}</span>
                     <span style={{ fontSize: T.min, color: C.text2, marginTop: -2 }}>{p.position === "Guarda-redes" ? t("GR") : t(p.position)}</span>
                   </div>
                 ))}

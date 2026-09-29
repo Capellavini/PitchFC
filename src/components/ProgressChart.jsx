@@ -64,7 +64,7 @@ export default function ProgressChart({ records = [], playerKey }) {
       {activePoint && (
         <div style={{ display: "flex", alignItems: "baseline", gap: S.lg, marginTop: S.md, paddingTop: S.md, borderTop: `1px solid ${C.border}` }}>
           <span style={{ fontSize: T.meta, color: C.text2, flex: 1 }}>{activePoint.date}</span>
-          <span style={{ fontSize: T.meta, color: C.text2 }}><span style={{ ...displayFont, fontSize: T.h, color: C.text1 }}>{activePoint.goals}</span> {t("golos")}</span>
+          <span style={{ fontSize: T.meta, color: C.text2 }}><span style={{ ...displayFont, fontSize: T.h, color: C.text1 }}>{activePoint.goals}</span> {activePoint.goals === 1 ? t("golo") : t("golos")}</span>
           <span style={{ fontSize: T.meta, color: C.text2 }}><span style={{ ...displayFont, fontSize: T.h, color: C.text1 }}>{activePoint.assists}</span> {t("assist.")}</span>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trophy, Flame, MessageCircle, Send, Trash2, Share2, Star } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, AVATAR_PALETTE } from "../theme";
+import { C, R, S, T, TOUCH, cardStyle, displayFont, AVATAR_PALETTE } from "../theme";
 import { t } from "../lib/i18n";
 import { openWhatsApp, sharePostMessage } from "../lib/whatsapp";
 import { nickIn, teamColorOf } from "../lib/homeFeed";
@@ -30,6 +30,23 @@ function Header({ leading, title, meta, right }) {
         {meta && <div style={{ fontSize: T.meta, color: C.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{meta}</div>}
       </div>
       {right}
+    </div>
+  );
+}
+
+/** Big display-italic numbers row (mockup "100 MATCHES" style) — the
+ *  hero of auto items, so they read as football, not system notices. */
+function BigStats({ stats }) {
+  const shown = stats.filter((s) => s.v > 0);
+  if (!shown.length) return null;
+  return (
+    <div style={{ display: "flex", gap: S.xl, flexWrap: "wrap" }}>
+      {shown.map((s) => (
+        <div key={s.label} style={{ minWidth: 0 }}>
+          <div style={{ ...displayFont, fontSize: 40, lineHeight: 1, color: s.color ?? C.text1 }}>{s.v}</div>
+          <div style={{ fontSize: T.meta, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text2, marginTop: S.xs }}>{s.label}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -69,7 +86,7 @@ function ResultBody({ md }) {
               <ScoreLine m={m} colorOf={colorOf} />
             </div>
           ))}
-          {matches.length > 3 && <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center" }}>+{matches.length - 3} {t("jogos")}</div>}
+          {matches.length > 3 && <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center" }}>+{matches.length - 3} {matches.length - 3 === 1 ? t("jogo") : t("jogos")}</div>}
         </div>
       ) : md.resultText ? (
         <div style={{ fontSize: T.h, fontWeight: 900, fontStyle: "italic", color: C.text1 }}>{md.resultText}</div>
@@ -86,7 +103,7 @@ function ResultBody({ md }) {
 }
 
 // ── Auto: standout performance (MVP / hat-trick / mine / record) ──
-function PerformanceBody({ item, kudos, onGolaco }) {
+function PerformanceBody({ item, kudos, onGolaco, nameOf }) {
   const { md, line, isMvp, mine, isRecord } = item;
   const g = line.goals || 0, a = line.assists || 0, cs = line.cleanSheets || 0;
   const who = mine ? t("Tu") : line.nick;
@@ -98,16 +115,16 @@ function PerformanceBody({ item, kudos, onGolaco }) {
   return (
     <>
       <Header
-        leading={<Avatar name={line.nick} color={line.color || colorFor(line.key)} size={40} photo={line.photo} isMe={mine} />}
+        leading={<Avatar name={nameOf ? nameOf(line) : (line.name || line.nick)} color={line.color || colorFor(line.key)} size={40} photo={line.photo} isMe={mine} />}
         title={who}
         meta={`${md.groupName ? `${md.groupName} · ` : ""}${md.dateLabel}`}
       />
-      <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: isRecord || isMvp ? C.gold : C.text1, marginBottom: S.sm }}>{headline}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: S.sm }}>
-        {g > 0 && <Chip>⚽ {g} {g === 1 ? t("golo") : t("golos")}</Chip>}
-        {a > 0 && <Chip>🎯 {a} {a === 1 ? t("assistência") : t("assistências")}</Chip>}
-        {cs > 0 && <Chip>🧤 {cs} {t("sem sofrer")}</Chip>}
-      </div>
+      <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: isRecord || isMvp ? C.gold : C.text1, marginBottom: S.md }}>{headline}</div>
+      <BigStats stats={[
+        { v: g, label: g === 1 ? t("golo") : t("golos") },
+        { v: a, label: a === 1 ? t("assistência") : t("assistências") },
+        { v: cs, label: t("sem sofrer"), color: C.green },
+      ]} />
       <Footer>
         <GolacoButton active={kudos.mine} count={kudos.count} onClick={onGolaco} />
         <ShareBtn text={`${who} · ${headline} (${md.groupName ?? ""} ${md.dateLabel})`} />
@@ -120,7 +137,11 @@ function PerformanceBody({ item, kudos, onGolaco }) {
 function MilestoneBody({ item }) {
   return (
     <>
-      <Header leading={<IconBadge Icon={Flame} color={C.orange} />} title={`${item.streak} ${t("jornadas seguidas")}`} meta={item.md?.dateLabel} />
+      <Header leading={<IconBadge Icon={Flame} color={C.orange} />} title={t("Marco")} meta={item.md?.dateLabel} />
+      <div style={{ display: "flex", alignItems: "flex-end", gap: S.md, marginBottom: S.sm }}>
+        <div style={{ ...displayFont, fontSize: 64, lineHeight: 0.9, color: C.text1 }}>{item.streak}</div>
+        <div style={{ ...displayFont, fontSize: T.h, lineHeight: 1.1, color: C.orange, textTransform: "uppercase", paddingBottom: S.xxs }}>{t("jornadas seguidas")}</div>
+      </div>
       <div style={{ fontSize: T.body, color: C.text2 }}>{t("Não falhaste nenhuma. Mantém a série viva no próximo jogo.")}</div>
     </>
   );
@@ -193,9 +214,9 @@ function PostBody({ post, social }) {
  * Props: item (lib/homeFeed buildFeed), social (post handlers),
  *        kudos { count, mine } + onGolaco (performance items).
  */
-export default function FeedItem({ item, social, kudos = { count: 0, mine: false }, onGolaco, onOpenGotw }) {
+export default function FeedItem({ item, social, kudos = { count: 0, mine: false }, onGolaco, onOpenGotw, nameOf }) {
   return (
-    <article style={{ ...cardStyle }}>
+    <article style={{ ...cardStyle, ...(item.kind === "performance" && (item.isMvp || item.isRecord) ? { borderTop: `3px solid ${C.gold}` } : {}), ...(item.kind === "milestone" ? { borderTop: `3px solid ${C.orange}` } : {}) }}>
       {item.kind === "gotw" && (
         // Golo da Semana leader: trophy banner on top of the video post
         // itself (the Golaço on it is still the vote).
@@ -214,7 +235,7 @@ export default function FeedItem({ item, social, kudos = { count: 0, mine: false
         </>
       )}
       {item.kind === "result" && <ResultBody md={item.md} />}
-      {item.kind === "performance" && <PerformanceBody item={item} kudos={kudos} onGolaco={onGolaco} />}
+      {item.kind === "performance" && <PerformanceBody item={item} kudos={kudos} onGolaco={onGolaco} nameOf={nameOf} />}
       {item.kind === "milestone" && <MilestoneBody item={item} />}
       {item.kind === "post" && <PostBody post={item.post} social={social} />}
     </article>

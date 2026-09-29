@@ -23,7 +23,7 @@ import FriendsPanel from "./FriendsPanel";
  *  - onWorkout      opens the workout card composer (optional).
  *  - onOpenGotw     opens Competir (Golo da Semana ranking) from the leader item.
  */
-export default function ActivityFeed({ items = [], social, me, kudosFor, onGolaco, friendsEnabled, onWorkout, onOpenGotw }) {
+export default function ActivityFeed({ items = [], social, me, kudosFor, onGolaco, friendsEnabled, onWorkout, onOpenGotw, nameOf }) {
   const requests = social?.requests?.length || 0;
   const [friendsOpen, setFriendsOpen] = useState(false);
 
@@ -57,7 +57,7 @@ export default function ActivityFeed({ items = [], social, me, kudosFor, onGolac
             <FeedItem key={item.id} item={item} social={social}
               kudos={item.kind === "performance" && kudosFor ? kudosFor(item) : undefined}
               onGolaco={item.kind === "performance" && onGolaco ? () => onGolaco(item) : undefined}
-              onOpenGotw={onOpenGotw} />
+              onOpenGotw={onOpenGotw} nameOf={nameOf} />
           ))}
         </div>
       )}

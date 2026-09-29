@@ -37,7 +37,7 @@ export default function NextActionCard({ Icon, eyebrow, title, subtitle, primary
               {status}
             </div>
           )}
-          <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
+          <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: C.text1, lineHeight: 1.3, overflowWrap: "break-word" }}>{title}</div>
           {subtitle && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xxs }}>{subtitle}</div>}
         </div>
       </div>

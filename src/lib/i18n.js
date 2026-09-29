@@ -771,6 +771,9 @@ const EN = {
   "Recupera jornadas em que as stats gravaram mas a pontuação Fantasy falhou": "Recovers rounds where stats saved but Fantasy scoring failed",
   "A sincronizar…": "Syncing…", "recuperada(s)": "recovered", "Tudo em dia": "All up to date", "Sincronizar": "Sync",
   "Oferta por": "Offer for",
+  // Redesign v1 polish pass
+  "Novidades": "What's new", "O meu perfil": "My profile", "clean sheet": "clean sheet",
+  "A tua noite": "Your night", "Marco": "Milestone", "Progresso do dia de jogo": "Matchday progress", "balizas a zero": "clean sheets", "vitória": "win", "vitórias": "wins",
 };
 
 const PT_BR = {

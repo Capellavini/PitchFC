@@ -135,7 +135,7 @@ function buildNight(week, date, group) {
   const lines = Object.entries(stats)
     .map(([id, s]) => {
       const p = group.find((x) => x.id === Number(id));
-      return { key: p.id, nick: p.nick, isMe: Boolean(p.isMe), color: AVATAR_PALETTE[group.indexOf(p) % AVATAR_PALETTE.length], ...s };
+      return { key: p.id, nick: p.nick, name: p.name, isMe: Boolean(p.isMe), color: AVATAR_PALETTE[group.indexOf(p) % AVATAR_PALETTE.length], ...s };
     })
     .sort((a, b) => (b.goals * 2 + b.assists) - (a.goals * 2 + a.assists));
   const candidates = playing.map((p) => ({ key: p.id, nick: p.nick, position: p.position }));

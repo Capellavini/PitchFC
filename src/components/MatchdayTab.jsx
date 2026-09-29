@@ -5,6 +5,7 @@ import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import Matchday from "./Matchday";
 import MatchdayAfter from "./MatchdayAfter";
+import MatchdayStepper from "./MatchdayStepper";
 import PageHeader from "./PageHeader";
 import SectionLabel from "./SectionLabel";
 import TeamDraw from "./TeamDraw";
@@ -44,9 +45,10 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
     : after ? `${t("Terminado")} · ${game.groupName}`
     : `${game.groupName} · ${game.date}${game.time ? ` · ${game.time}` : ""}`;
 
-  const wrap = (children) => (
+  const wrap = (children, step = null) => (
     <div style={{ padding: `0 ${S.lg}px ${S.xl}px` }}>
       <PageHeader title="Matchday" subtitle={subtitle} />
+      {step != null && <MatchdayStepper step={step} />}
       {prompt && <div style={{ marginBottom: S.xl }}>{prompt}</div>}
       {children}
     </div>
@@ -54,14 +56,15 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
 
   // ── B · live ────────────────────────────────────────────
   if (live) {
-    return wrap(<Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed} />);
+    return wrap(<Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed} />, 1);
   }
 
   // ── C · after ───────────────────────────────────────────
   if (after) {
     return wrap(
       <MatchdayAfter lastMatchday={lastMatchday} mvp={mvp} me={me} group={group} groupName={game.groupName}
-        onCardGenerated={onCardGenerated} canManage={canManageTeams} onPrepareNext={() => setForceBefore(true)} social={social} />
+        onCardGenerated={onCardGenerated} canManage={canManageTeams} onPrepareNext={() => setForceBefore(true)} social={social} />,
+      2,
     );
   }
 
@@ -80,11 +83,11 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
           {playing.length === 0 ? (
             <div style={{ fontSize: T.body, color: C.text2 }}>{t("Ainda ninguém confirmou para este jogo.")}</div>
           ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: S.sm }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: S.sm, rowGap: S.md }}>
               {playing.map((p) => (
-                <div key={p.id} title={p.nick} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, width: 52 }}>
+                <div key={p.id} title={p.nick} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, minWidth: 0 }}>
                   <Avatar name={p.name} color={playerColor(group, p)} photo={p.photo} isMe={p.isMe} injured={p.injured} size={40} />
-                  <span style={{ fontSize: T.min, color: p.isMe ? C.text1 : C.text2, fontWeight: p.isMe ? 800 : 600, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+                  <span style={{ fontSize: T.min, color: p.isMe ? C.text1 : C.text2, fontWeight: p.isMe ? 800 : 600, letterSpacing: "-0.02em", textAlign: "center", lineHeight: 1.2 }}>{p.nick}</span>
                 </div>
               ))}
             </div>
@@ -102,6 +105,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
         onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onConfirm={onConfirmTeams} />
 
       <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed} />
-    </>
+    </>,
+    0,
   );
 }

@@ -84,7 +84,7 @@ export default function MatchdayCalendar({ days = [], playerKey, playerNick }) {
           const isSelected = selectedIso === iso;
           return (
             <button key={day} disabled={!entry} onClick={() => setSelectedIso(isSelected ? null : iso)}
-              aria-label={entry ? `${day} · ${t("Jogo")}${entry.goals ? ` · ${entry.goals} ${t("golos")}` : ""}${entry.mvp ? " · MVP" : ""}` : String(day)}
+              aria-label={entry ? `${day} · ${t("Jogo")}${entry.goals ? ` · ${entry.goals} ${entry.goals === 1 ? t("golo") : t("golos")}` : ""}${entry.mvp ? " · MVP" : ""}` : String(day)}
               style={{
                 position: "relative", aspectRatio: "1", minHeight: 36, borderRadius: "50%", padding: 0,
                 border: `${isSelected ? 2 : 1}px solid ${isSelected ? C.text1 : isToday ? C.text2 : "transparent"}`,
@@ -127,9 +127,9 @@ export default function MatchdayCalendar({ days = [], playerKey, playerNick }) {
           <div style={{ fontSize: T.meta, fontWeight: 800, color: C.text2, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: S.sm }}>{selected.day.date}</div>
           <div style={{ display: "flex", gap: S.lg, flexWrap: "wrap", alignItems: "baseline" }}>
             {[
-              [line?.goals || 0, t("golos")],
+              [line?.goals || 0, line?.goals === 1 ? t("golo") : t("golos")],
               [line?.assists || 0, t("assist.")],
-              [line?.epicSaves || 0, t("defesas")],
+              [line?.epicSaves || 0, line?.epicSaves === 1 ? t("defesa") : t("defesas")],
             ].map(([v, label]) => v > 0 && (
               <span key={label} style={{ display: "flex", alignItems: "baseline", gap: S.xs }}>
                 <span style={{ ...displayFont, fontSize: T.h, color: C.text1 }}>{v}</span>
@@ -138,7 +138,7 @@ export default function MatchdayCalendar({ days = [], playerKey, playerNick }) {
             ))}
             {(line?.cleanSheets || 0) > 0 && (
               <span style={{ display: "flex", alignItems: "center", gap: S.xs, fontSize: T.meta, color: C.text2 }}>
-                <Shield size={14} color={C.green} /> {line.cleanSheets} {t("clean sheets")}
+                <Shield size={14} color={C.green} /> {line.cleanSheets} {line.cleanSheets === 1 ? t("clean sheet") : t("clean sheets")}
               </span>
             )}
             {selected.mvp && (

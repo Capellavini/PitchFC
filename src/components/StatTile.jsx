@@ -24,7 +24,7 @@ export default function StatTile({ value, label, color, size = "md", sub, align 
       <div style={{ ...displayFont, fontSize: size === "lg" ? 40 : 28, lineHeight: 1, color: color ?? C.text1, fontVariantNumeric: "tabular-nums" }}>
         {value ?? "—"}
       </div>
-      <div style={{ fontSize: T.meta, fontWeight: 700, color: C.text2, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: S.xs + 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{ fontSize: T.meta, fontWeight: 700, color: C.text2, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: S.xs + 2, lineHeight: 1.25, overflowWrap: "break-word" }}>
         {label}
       </div>
       {sub && <div style={{ fontSize: T.min, color: C.text2, marginTop: 2 }}>{sub}</div>}

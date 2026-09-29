@@ -80,6 +80,10 @@ export default function HomeTab({
     friendIds: social?.friendIds || [], myGroupIds, streak: attendanceStreak, gotwLeaderId,
   }), [matchdays, social, postTs, myKey, myGroupIds, attendanceStreak, gotwLeaderId]);
 
+  // Full name for Avatar initials (2 letters, like everywhere else) —
+  // older saved summary lines only carry the nick.
+  const nameOf = (line) => line.name || group.find((p) => (p.uuid ?? p.id) === line.key)?.name || line.nick;
+
   const kudosFor = (item) => {
     if (onToggleKudos) {
       const rows = (kudos || []).filter((k) => k.matchday_id === item.md.id && k.to_player_id === item.line.key);
@@ -130,7 +134,7 @@ export default function HomeTab({
         kudosFor={kudosFor} onGolaco={onGolaco}
         friendsEnabled={friendsEnabled}
         onWorkout={me && social ? () => setShowWorkout(true) : undefined}
-        onOpenGotw={onOpenCompetir} />
+        onOpenGotw={onOpenCompetir} nameOf={nameOf} />
 
       {showCard && recent && me && (
         <PostMatchCardModal

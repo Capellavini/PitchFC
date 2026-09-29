@@ -15,7 +15,9 @@ const PLACES = [
  *  summary.lines, already sorted by goals×2 + assists), plus the MVP
  *  result or an "MVP voting open" chip. Renders nothing if no matchday
  *  has been played yet or nobody contributed. */
-export default function WeeklyPodium({ lastMatchday, mvp }) {
+export default function WeeklyPodium({ lastMatchday, mvp, group = [] }) {
+  // Full name → the same 2-letter initials as every other Avatar (nick alone gives 1).
+  const nameOf = (l) => l.name || group.find((p) => (l.key != null && (p.uuid ?? p.id) === l.key) || p.nick === l.nick)?.name || l.nick;
   const lines = (lastMatchday?.lines || []).filter((l) => (l.goals || 0) + (l.assists || 0) + (l.cleanSheets || 0) > 0);
   if (!lastMatchday || lines.length === 0) return null;
   const top = lines.slice(0, 3);
@@ -38,7 +40,7 @@ export default function WeeklyPodium({ lastMatchday, mvp }) {
             return (
               <div key={idx} style={{ flex: 1, minWidth: 0, textAlign: "center", paddingBottom: lift }}>
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: S.sm }}>
-                  <Avatar name={l.nick} color={l.color || color} size={size} isMe={l.isMe} photo={l.photo} />
+                  <Avatar name={nameOf(l)} color={l.color || color} size={size} isMe={l.isMe} photo={l.photo} />
                 </div>
                 <div style={{ ...displayFont, fontSize: T.h, color, lineHeight: 1 }}>{t(`${idx + 1}º`)}</div>
                 <div style={{ fontSize: T.body, fontWeight: 800, color: C.text1, marginTop: S.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

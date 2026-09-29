@@ -25,7 +25,7 @@ import { C, S, T } from "../theme";
 export default function ListRow({ leading, title, meta, right, onClick, chevron = true, divider = true, accent = false, style }) {
   const inner = (
     <>
-      {leading && <div style={{ width: 40, minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{leading}</div>}
+      {leading && <div style={{ minWidth: 40, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{leading}</div>}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: T.cardTitle - 1, fontWeight: 700, color: C.text1, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
         {meta && <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{meta}</div>}

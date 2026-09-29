@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Clock, MapPin, Check, MessageCircle, CreditCard, Plus, Minus, Share2, Copy, Lock, UserPlus, Pencil, Cross, CalendarDays, History,
 } from "lucide-react";
-import { C, S, R, T, TOUCH, cardStyle, displayFont, fieldBackdrop } from "../theme";
+import { C, S, R, T, TOUCH, cardStyle, displayFont, fieldWash, BRAND } from "../theme";
 import { ini, playerColor, fmtEUR, splitWaitlist, isoDay, toIsoDay, fmtFullDay } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { fetchGameWeather, weatherIconFor } from "../lib/weather";
@@ -94,7 +94,7 @@ export default function JogoTab({
               <ListRow key={g.id} divider={i > 0}
                 leading={<History size={20} color={C.text2} />}
                 title={g.date}
-                meta={[g.games > 1 ? `${g.games} ${t("jogos")}` : null, g.confirmed ? `${g.confirmed} ${t("jogadores")}` : null, g.mvpNick ? `MVP ${g.mvpNick}` : null].filter(Boolean).join(" · ")}
+                meta={[g.games > 1 ? `${g.games} ${t("jogos")}` : null, g.confirmed ? `${g.confirmed} ${g.confirmed === 1 ? t("jogador") : t("jogadores")}` : null, g.mvpNick ? `MVP ${g.mvpNick}` : null].filter(Boolean).join(" · ")}
                 right={<span style={{ ...displayFont, fontSize: T.cardTitle + 2, color: C.text1 }}>{g.result}</span>}
                 onClick={onOpenHistory} chevron={false} />
             ))}
@@ -217,7 +217,18 @@ export default function JogoTab({
         ...cardStyle, padding: 0, position: "relative", overflow: "hidden",
         borderLeft: pending ? `3px solid ${C.accent}` : cardStyle.border,
       }}>
-        <div style={{ ...fieldBackdrop(0.25, 0.6), padding: S.lg }}>
+        {/* Lighter wash than before so the navy pitch artwork reads behind
+            the grid (the original hero); text sits on the darker top/bottom. */}
+        <div style={{ position: "relative", overflow: "hidden", padding: S.lg }}>
+          {/* portrait pitch: the landscape artwork rotated 90° (16:9 box
+              whose height = card width), lines lifted a touch so it reads
+              as a pitch like the original hero. */}
+          <img src={BRAND.field} alt="" aria-hidden="true" style={{
+            position: "absolute", top: "50%", left: "50%", width: "177.78%", aspectRatio: "16 / 9",
+            transform: "translate(-50%, -50%) rotate(90deg)", objectFit: "cover",
+            filter: "brightness(1.5) contrast(1.15)", pointerEvents: "none",
+          }} />
+          <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: fieldWash(0.3, 0.5), pointerEvents: "none" }} />
           {/* header */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: S.sm, marginBottom: S.lg, position: "relative" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -225,7 +236,7 @@ export default function JogoTab({
                 <span style={{ fontSize: T.meta, fontWeight: 700, letterSpacing: "0.08em", color: C.text2 }}>{t("PRÓXIMO JOGO")}</span>
                 {game.recurring && <Chip style={{ height: 22, fontSize: T.min }}>{t("Semanal")}</Chip>}
               </div>
-              <div style={{ fontSize: T.h, fontWeight: 800, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{game.label}</div>
+              <div style={{ fontSize: T.h, fontWeight: 800, lineHeight: 1.2, overflowWrap: "break-word" }}>{game.label}</div>
               <div style={{ display: "flex", alignItems: "center", columnGap: S.md, rowGap: S.xs, fontSize: T.meta, color: C.text2, flexWrap: "wrap", marginTop: S.xs }}>
                 <span style={{ display: "flex", alignItems: "center", gap: S.xs }}><Clock size={13} /> {game.date} · {game.time}</span>
                 {game.venue && <span style={{ display: "flex", alignItems: "center", gap: S.xs }}><MapPin size={13} /> {game.venue}</span>}
@@ -280,7 +291,7 @@ export default function JogoTab({
           </div>
 
           {/* the grid: filled + empty squares */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: S.sm + 2, position: "relative" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: S.sm, rowGap: S.md, position: "relative" }}>
             {playing.map((player) => {
               const color = playerColor(group, player);
               return (
@@ -306,7 +317,7 @@ export default function JogoTab({
                       </div>
                     )}
                   </div>
-                  <div style={{ fontSize: T.min, color: player.isMe ? C.accent : C.text2, marginTop: S.xs, fontWeight: player.isMe ? 800 : 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.nick}</div>
+                  <div style={{ fontSize: T.min, color: player.isMe ? C.accent : C.text2, marginTop: S.xs, fontWeight: player.isMe ? 800 : 600, lineHeight: 1.2, letterSpacing: "-0.02em", marginLeft: -2, marginRight: -2 }}>{player.nick}</div>
                 </div>
               );
             })}

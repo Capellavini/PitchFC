@@ -11,7 +11,7 @@
  *  - Local demo (no keys): the original localStorage prototype.
  */
 import { useEffect, useRef, useState } from "react";
-import { C, BRAND } from "./theme";
+import { C, BRAND, TOUCH } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, DEFAULT_SETTINGS, POSITIONS, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
 import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGHTS } from "./lib/fantasy";
@@ -67,7 +67,8 @@ import WhatsNewSheet from "./components/WhatsNewSheet";
 import AdminPanel from "./components/AdminPanel";
 import NoGroupState from "./components/NoGroupState";
 import BtnPrimary from "./components/BtnPrimary";
-import { CalendarCheck, CreditCard, Star, ArrowLeft } from "lucide-react";
+import { CalendarCheck, CreditCard, Star, ArrowLeft, Bell } from "lucide-react";
+import Avatar from "./components/Avatar";
 import { isEnabled } from "./lib/flags";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
@@ -166,6 +167,8 @@ export default function PitchApp() {
   // who already knew the old layout (tourSeen). A brand-new user gets the
   // (updated) tour instead, which also marks this as seen.
   const [whatsNewSeen, setWhatsNewSeen] = usePersistentState("whatsNew_nav5_v1", false);
+  // TopBar bell reopens the same "Novidades" sheet on demand.
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
 
   // Mirror the persisted language into the i18n module before anything
   // renders, so every t() call below sees the current choice.
@@ -837,7 +840,7 @@ export default function PitchApp() {
     const lines = Object.entries(stats)
       .map(([lid, s]) => {
         const p = baseGroup.find((x) => x.id === Number(lid));
-        return p ? { key: keyOf(p), nick: p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets, epicSaves: s.epicSaves, wins: s.wins } : null;
+        return p ? { key: keyOf(p), nick: p.nick, name: p.name, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets, epicSaves: s.epicSaves, wins: s.wins } : null;
       })
       .filter(Boolean)
       .sort((a, b) => (b.goals * 2 + b.assists) - (a.goals * 2 + a.assists));
@@ -1647,9 +1650,16 @@ export default function PitchApp() {
   return shell(
     <>
       {!tourSeen && <FirstRunTour onDone={() => { setTourSeen(true); setWhatsNewSeen(true); }} />}
-      {tourSeen && !whatsNewSeen && <WhatsNewSheet onDone={() => setWhatsNewSeen(true)} />}
-      {/* App header — screen agents can pass bell/avatar via actions/right. */}
-      <TopBar onLogoClick={() => selectTab("home")} />
+      {tourSeen && (!whatsNewSeen || whatsNewOpen) && <WhatsNewSheet onDone={() => { setWhatsNewSeen(true); setWhatsNewOpen(false); }} />}
+      {/* App header — logo left; bell (Novidades, red dot while unseen) + my avatar (→ Perfil) right. */}
+      <TopBar onLogoClick={() => selectTab("home")}
+        actions={[{ Icon: Bell, label: t("Novidades"), onClick: () => setWhatsNewOpen(true), badge: !whatsNewSeen }]}
+        right={me ? (
+          <button type="button" onClick={() => selectTab("perfil")} aria-label={t("O meu perfil")} title={t("O meu perfil")}
+            style={{ width: TOUCH.min, height: TOUCH.min, borderRadius: "50%", background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Avatar name={me.name || me.nick} photo={me.photo} color={playerColor(baseGroup, me)} size={32} isMe />
+          </button>
+        ) : null} />
       <div style={{ paddingBottom: 96 }}>
         {tab === "home" && (
           // Home (redesign v1): one next action + last-result recap + single

@@ -133,13 +133,20 @@ const hexToRgb = (hex) => {
  *  text staying white on a visible photo — light mode needs the wash
  *  strong enough, throughout, that dark C.text1 text stays legible even
  *  near the top where a dark-mode fade would deliberately stay sheer. */
-export const fieldBackdrop = (top = 0.35, bottom = 0.85) => {
+/** Just the theme-aware fade gradient of fieldBackdrop (no photo) — for
+ *  callers that draw the field artwork themselves (e.g. JogoTab rotates
+ *  it to a portrait pitch behind the slot grid). */
+export const fieldWash = (top = 0.35, bottom = 0.85) => {
   const rgb = hexToRgb(C.bg);
   const isLight = C.bg !== DARK.bg;
   const t = isLight ? Math.max(top, 0.82) : top;
   const b = isLight ? Math.max(bottom, 0.95) : bottom;
+  return `linear-gradient(180deg, rgba(${rgb},${t}) 0%, rgba(${rgb},${b}) 100%)`;
+};
+
+export const fieldBackdrop = (top = 0.35, bottom = 0.85) => {
   return {
-    backgroundImage: `linear-gradient(180deg, rgba(${rgb},${t}) 0%, rgba(${rgb},${b}) 100%), url(${BRAND.field})`,
+    backgroundImage: `${fieldWash(top, bottom)}, url(${BRAND.field})`,
     backgroundSize: "cover",
     backgroundPosition: "center",
   };

@@ -58,13 +58,14 @@ export default function MatchdayAfter({ lastMatchday, mvp, me, group, groupName,
         />
       ) : matches.length > 1 ? (
         <section style={{ marginBottom: S.xl }}>
-          <div style={{ ...cardStyle, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: S.sm, marginBottom: S.md }}>
+          {/* alignItems end → the three labels share a baseline even when the
+              team name wraps to 2 lines (long names like "Sem coletes"). */}
+          <div style={{ ...cardStyle, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: S.sm, alignItems: "end", marginBottom: S.md }}>
             <StatTile value={matches.length} label={t("Jogos")} />
             <StatTile value={totalGoals} label={t("Golos")} />
             <StatTile value={bestTeam?.wins
-              ? <span style={{ display: "block", fontSize: T.h, lineHeight: "28px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bestTeam.name}</span>
-              : "—"} label={t("Mais vitórias")} color={bestTeam?.wins ? (bestTeam.color || C.text1) : C.text2}
-              style={{ overflow: "hidden" }} />
+              ? <span style={{ display: "block", fontSize: (bestTeam.name || "").length > 8 ? T.cardTitle : T.h, lineHeight: 1.1, textTransform: "uppercase", overflowWrap: "anywhere", hyphens: "auto" }}>{bestTeam.name}</span>
+              : "—"} label={t("Mais vitórias")} color={bestTeam?.wins ? (bestTeam.color || C.text1) : C.text2} />
           </div>
           <MatchdayGames summary={md} framed />
         </section>
@@ -81,7 +82,7 @@ export default function MatchdayAfter({ lastMatchday, mvp, me, group, groupName,
                 title={l.nick}
                 meta={[
                   l.assists ? `${l.assists} ${t("assist.")}` : null,
-                  l.cleanSheets ? `${l.cleanSheets} ${t("baliza a zero")}` : null,
+                  l.cleanSheets ? `${l.cleanSheets} ${l.cleanSheets === 1 ? t("baliza a zero") : t("balizas a zero")}` : null,
                   l.epicSaves ? `${l.epicSaves} ${l.epicSaves === 1 ? t("defesa") : t("defesas")}` : null,
                 ].filter(Boolean).join(" · ") || null}
                 right={l.goals ? <span style={{ fontSize: T.h, fontWeight: 900, fontStyle: "italic" }}>⚽ {l.goals}</span> : null} />
