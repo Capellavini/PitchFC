@@ -23,7 +23,19 @@ export const getThemeMode = () => {
  *  in index.css) and the PWA/browser-chrome meta color. Call once on
  *  boot with the saved mode, and again whenever the user toggles it. */
 export function applyThemeMode(mode) {
-  applyPalette(mode);
+  try {
+    applyPalette(mode);
+  } catch (e) {
+    // Dev-mode-only: React's development build freezes element props
+    // (incl. a shared style object passed by reference, like cardStyle)
+    // to catch accidental mutation — this never happens in production,
+    // where that freezing is stripped out. Once an object is frozen it
+    // stays frozen for the page's lifetime, so this specific reload is
+    // the only way back — but the attribute/meta updates below and the
+    // localStorage write in setThemeMode still land, so a refresh (or
+    // any full navigation) picks up the chosen mode correctly.
+    console.warn("[theme] applyPalette couldn't update a frozen style object (dev-mode only) — reload to see the new theme.", e);
+  }
   document.documentElement.setAttribute("data-theme", mode === "light" ? "light" : "dark");
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", THEME_COLOR[mode] || THEME_COLOR.dark);
