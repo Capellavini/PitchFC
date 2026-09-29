@@ -74,17 +74,42 @@ export const C = {
   grass:        "#0E5C36",
   grassDim:     "rgba(14,160,90,0.08)",
   grassLine:    "rgba(255,255,255,0.07)",
+  // Pitch Manager (Fantasy) drawn pitch: FPL-like gradient, its line
+  // markings and the labels that sit on it.
+  pitchTop:     "#1D7A46",
+  pitchBottom:  "#16603A",
+  pitchMark:    "rgba(255,255,255,0.32)",
+  pitchStripe:  "rgba(255,255,255,0.05)",
+  onPitch:      "#FFFFFF",
   gold:         "#E8C547",
   goldDim:      "rgba(232,197,71,0.10)",
   silver:       "#C0C8D0",
   bronze:       "#C9824F",
+  // LENDA (OVR ≥ 86) champagne gold — same value FutCard/AchievementBadge use.
+  legend:       "#F2DA8A",
 };
 
+// ── Layout + type tokens (redesign v1, docs/REDESIGN-SPEC.md §3) ──
+// Theme-independent, so plain frozen constants (unlike C, never mutated).
+/** Spacing — 8px grid. Page side margin = S.lg; between sections
+ *  S.lg–S.xl; inside dense rows S.md. */
+export const S = Object.freeze({ xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 });
+/** Radius — cards 16, buttons/inputs 12, pills/segments 999. Avatars
+ *  are circles (size / 2), not a token. */
+export const R = Object.freeze({ card: 16, control: 12, pill: 999 });
+/** Type scale (font sizes, px). displayFont (italic 900) ONLY for
+ *  `title`, scores and big stat numbers. Never go below `min`. */
+export const T = Object.freeze({ title: 30, h: 20, cardTitle: 16, body: 14, meta: 12, min: 11 });
+/** Minimum touch target / button height. */
+export const TOUCH = Object.freeze({ min: 44, button: 48 });
+
+// Shape kept stable ({background, borderRadius, border, padding}) — it's
+// spread by dozens of callers and mutated in place by applyPalette.
 export const cardStyle = {
   background: C.card,
-  borderRadius: 16,
+  borderRadius: R.card,
   border: `1px solid ${C.border}`,
-  padding: 16,
+  padding: S.lg,
 };
 
 // FIFA-ish italic display style for headings / numbers
@@ -117,13 +142,20 @@ const hexToRgb = (hex) => {
  *  text staying white on a visible photo — light mode needs the wash
  *  strong enough, throughout, that dark C.text1 text stays legible even
  *  near the top where a dark-mode fade would deliberately stay sheer. */
-export const fieldBackdrop = (top = 0.35, bottom = 0.85) => {
+/** Just the theme-aware fade gradient of fieldBackdrop (no photo) — for
+ *  callers that draw the field artwork themselves (e.g. JogoTab rotates
+ *  it to a portrait pitch behind the slot grid). */
+export const fieldWash = (top = 0.35, bottom = 0.85) => {
   const rgb = hexToRgb(C.bg);
   const isLight = C.bg !== DARK.bg;
   const t = isLight ? Math.max(top, 0.82) : top;
   const b = isLight ? Math.max(bottom, 0.95) : bottom;
+  return `linear-gradient(180deg, rgba(${rgb},${t}) 0%, rgba(${rgb},${b}) 100%)`;
+};
+
+export const fieldBackdrop = (top = 0.35, bottom = 0.85) => {
   return {
-    backgroundImage: `linear-gradient(180deg, rgba(${rgb},${t}) 0%, rgba(${rgb},${b}) 100%), url(${BRAND.field})`,
+    backgroundImage: `${fieldWash(top, bottom)}, url(${BRAND.field})`,
     backgroundSize: "cover",
     backgroundPosition: "center",
   };

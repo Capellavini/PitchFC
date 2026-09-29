@@ -5,11 +5,12 @@ import { t } from "../lib/i18n";
 
 // Copy is a first draft (Cris) — Leo owns final wording/tone. Kept short
 // on purpose: this is a dismissible orientation, not a feature tour.
+// Steps follow the 5-tab nav (Home · Jogar · Matchday · Competir · Perfil).
 const STEPS = [
-  { Icon: Zap, title: "A grelha é o essencial", body: "10 lugares, preenchidos ou vazios. Confirma ou recusa num toque — é a primeira pergunta: \"temos jogo?\"" },
-  { Icon: Swords, title: "Matchday", body: "No dia do jogo, o organizador regista golos e assistências ao vivo. É o que alimenta as tuas estatísticas." },
-  { Icon: Trophy, title: "Compete", body: "Classificações, MVP e fiabilidade da equipa — a memória do grupo, jogo após jogo." },
-  { Icon: UserIcon, title: "Perfil", body: "O teu cartão estilo FUT. Os atributos sobem com as avaliações dos teus colegas de equipa." },
+  { Icon: Zap, title: "A grelha é o essencial", body: "Em Jogar: 10 lugares, preenchidos ou vazios. Confirma ou recusa num toque — é a primeira pergunta: \"temos jogo?\"" },
+  { Icon: Swords, title: "Matchday", body: "O botão do centro acende no dia do jogo: equipas, golos e assistências ao vivo. É o que alimenta as tuas estatísticas." },
+  { Icon: Trophy, title: "Grupos e Competir", body: "Em Jogar → Grupos: classificações, MVP e fiabilidade — a memória do grupo, jogo após jogo." },
+  { Icon: UserIcon, title: "Perfil", body: "O teu cartão estilo FUT e a tua carreira. Os atributos sobem com as avaliações dos teus colegas de equipa." },
 ];
 
 /** One-time orientation overlay — 3-4 dismissible cards shown after the
@@ -42,7 +43,7 @@ export default function FirstRunTour({ onDone }) {
         </div>
 
         <button onClick={() => (last ? onDone() : setStep((s) => s + 1))}
-          style={{ width: "100%", background: C.accent, color: "#0A0F18", border: "none", borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+          style={{ width: "100%", background: C.accent, color: C.bg, border: "none", borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
           {last ? t("Percebi, vamos a isto ⚽") : t("Seguinte")}
         </button>
       </div>

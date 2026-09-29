@@ -1,266 +1,141 @@
-import { useState } from "react";
-import { Shuffle, RotateCcw, Check, Users2 } from "lucide-react";
-import { C, cardStyle, displayFont } from "../theme";
-import { splitWaitlist, ini, playerColor, computeOverall } from "../lib/helpers";
+import { useEffect, useState } from "react";
+import { C, S, T, cardStyle } from "../theme";
+import { splitWaitlist, playerColor, fmtDayMonth, isoDay, toIsoDay } from "../lib/helpers";
 import { t } from "../lib/i18n";
+import Avatar from "./Avatar";
 import Matchday from "./Matchday";
-import MatchTimer from "./MatchTimer";
-import Collapsible from "./Collapsible";
+import MatchdayAfter from "./MatchdayAfter";
+import MatchdayStepper from "./MatchdayStepper";
+import OwnTeamCard from "./OwnTeamCard";
+import PageHeader from "./PageHeader";
+import SectionLabel from "./SectionLabel";
+import TeamDraw from "./TeamDraw";
 
-/** One player in the lineup — same visual language as the Pitch Manager
- *  pitch (photo/initials circle, OVR badge, name below), just off the
- *  green background since this isn't a formation. */
-function LineupCard({ p, group }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, width: 68 }}>
-      <div style={{
-        width: 54, height: 54, borderRadius: 27, flexShrink: 0, position: "relative",
-        background: p.photo ? C.surface : `${playerColor(group, p)}22`,
-        border: `2.5px solid ${p.isMe ? C.accent : playerColor(group, p)}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 16, fontWeight: 800, color: playerColor(group, p),
-        boxShadow: p.isMe ? `0 0 0 3px ${C.accentDim}` : "none",
-      }}>
-        {p.photo ? <img src={p.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 24 }} /> : ini(p.name)}
-        <span style={{ position: "absolute", bottom: -6, left: -6, fontSize: 9, fontWeight: 800, color: C.bg, background: C.accent, borderRadius: 7, padding: "1px 5px", border: `1px solid ${C.card}` }}>
-          {computeOverall(p.position, p.attrs)}
-        </span>
-      </div>
-      <span style={{ fontSize: 11, fontWeight: p.isMe ? 800 : 600, color: p.isMe ? C.accent : C.text1, maxWidth: 68, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
+/**
+ * Matchday — ONE screen, three states (docs/REDESIGN-SPEC.md §2):
+ *  A · before  — who's in (convocados), position-balanced team draw with
+ *                manual edit + "Confirmar equipas", then format + "Começar jogo".
+ *  B · live    — MatchdayLive: score, timer, Golo · Assistência · Defesa ·
+ *                MVP, timeline with undo, red "Terminar jogo".
+ *  C · after   — MatchdayAfter: final score, scorers, MVP vote/podium,
+ *                share card, Golo da Semana.
+ * Plus the cold state for a regular player with nothing today (coldView,
+ * decided in PitchApp — organizers always get the controls).
+ *
+ * "After" shows when the last saved matchday was played today, or while
+ * its MVP vote is still open and there's no new game today. A manager can
+ * jump from "after" back to "before" to prepare another round.
+ */
+export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null, mvp = null, lastMatchday = null, onCardGenerated, social }) {
+  const [forceBefore, setForceBefore] = useState(false);
+  const [liveView, setLiveView] = useState("jogo"); // equipas | jogo | stats (live state only)
+  const confirmed = group.filter((p) => p.status === "confirmed");
+  const { playing, waitlist: waiting = [] } = splitWaitlist(confirmed, game.spots);
+  const me = group.find((p) => p.isMe);
+  // "A TUA EQUIPA" hero: once the teams are confirmed and I'm on one.
+  const myTeam = teamsConfirmed && me ? (teams || []).find((tm) => tm.players.includes(me.id)) : null;
+  const ownTeam = myTeam ? <OwnTeamCard team={myTeam} group={group} confirmedByName={teamsConfirmedByName} /> : null;
+
+  const live = Boolean(matchdayProps.matchday);
+  // "Preparar o próximo jogo" only applies until the next day goes live —
+  // once that one ends, its own after-state must show.
+  useEffect(() => { if (live) setForceBefore(false); else setLiveView("jogo"); }, [live]);
+  const today = isoDay(0);
+  const gameIsToday = !game.noGameScheduled && game.kickoffAt instanceof Date && toIsoDay(game.kickoffAt) === today;
+  const hasSummary = Boolean(lastMatchday) && (lastMatchday.matches ?? []).length > 0;
+  const playedToday = hasSummary && lastMatchday.date === fmtDayMonth(today);
+  const after = !live && !forceBefore && hasSummary && (playedToday || (Boolean(mvp?.open) && !gameIsToday));
+
+  const subtitle = live ? `${t("Ao vivo")} · ${game.groupName}`
+    : after ? `${t("Terminado")} · ${game.groupName}`
+    : `${game.groupName} · ${game.date}${game.time ? ` · ${game.time}` : ""}`;
+
+  const wrap = (children, step = null, stepNav = null) => (
+    <div style={{ padding: `0 ${S.lg}px ${S.xl}px` }}>
+      <PageHeader title="Matchday" subtitle={subtitle} />
+      {step != null && <MatchdayStepper step={step} {...(stepNav || {})} />}
+      {prompt && <div style={{ marginBottom: S.xl }}>{prompt}</div>}
+      {children}
     </div>
   );
-}
 
-/** Everything about the live day itself — team draw, timer, live
- *  scoring and the running summary — split out of "Jogo" (which keeps
- *  just confirmation + payments) so the two concerns don't compete for
- *  space. Reacts to matchdayProps.matchday: shows the draw/start screen
- *  before kickoff, the live view once "Começar dia de jogo" is pressed.
- *
- *  Team draw has its own draft/confirmed step: the organizer can sortear/
- *  renomear/mover freely (saved, synced, but hidden from players) — only
- *  after tapping "Confirmar equipas" do players see the lineup. Once
- *  confirmed, organizers see their own lineup too (they play too), with
- *  the management grid tucked into a collapsible section. */
-export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps }) {
-  const [numTeams, setNumTeams] = useState(teams?.length || 2);
-  const confirmed = group.filter((p) => p.status === "confirmed");
-  const { playing } = splitWaitlist(confirmed, game.spots);
-  const resolveTeam = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
-  const teamOverall = (tm) => {
-    const players = resolveTeam(tm.players);
-    if (!players.length) return null;
-    return Math.round(players.reduce((s, p) => s + computeOverall(p.position, p.attrs), 0) / players.length);
-  };
-  // Confirmed players not on any drawn team — either they confirmed after
-  // the draw, or a teammate declining freed them up (see releaseFromTeams
-  // in PitchApp.jsx). Lets the organizer patch the gap by hand instead of
-  // redrawing everyone over one person.
-  const assignedIds = new Set((teams || []).flatMap((tm) => tm.players));
-  const unassigned = teams ? playing.filter((p) => !assignedIds.has(p.id)) : [];
+  // ── B · live ────────────────────────────────────────────
+  // The stepper is the live screen's navigation: Equipas (teams, the
+  // manager can still move players — no redraw mid-day), Jogo (scoring),
+  // Stats (day leaders + standings).
+  if (live) {
+    const liveViews = ["equipas", "jogo", "stats"];
+    return wrap(
+      liveView === "equipas" ? (
+        <>
+        {ownTeam}
+        <TeamDraw hideTeamId={myTeam?.id} group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
+          setByName={teamsSetByName} confirmedByName={teamsConfirmedByName} lockDraw
+          onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onConfirm={onConfirmTeams} />
+        </>
+      ) : (
+        <>
+        {myTeam && liveView === "jogo" && (
+          <OwnTeamCard compact team={myTeam} group={group} onOpen={() => setLiveView("equipas")} />
+        )}
+        <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed}
+          view={liveView} />
+        </>
+      ),
+      1,
+      { view: liveViews.indexOf(liveView), onSelect: (i) => setLiveView(liveViews[i]) },
+    );
+  }
 
-  const me = group.find((p) => p.isMe);
-  const myTeam = teams?.find((tm) => tm.players.includes(me?.id));
-  const showOwnLineup = teamsConfirmed && myTeam;
-  // The management grid (draw controls + team cards) is shown to whoever
-  // can edit it, and — as a read-only fallback — to a player who isn't on
-  // any team even though teams were confirmed (so they can at least see
-  // who's playing where).
-  const showGridBlock = canManageTeams || (teamsConfirmed && !myTeam);
-  const managedAndConfirmed = canManageTeams && teamsConfirmed;
+  // ── C · after ───────────────────────────────────────────
+  if (after) {
+    return wrap(
+      <MatchdayAfter lastMatchday={lastMatchday} mvp={mvp} me={me} group={group} groupName={game.groupName}
+        onCardGenerated={onCardGenerated} canManage={canManageTeams} onPrepareNext={() => setForceBefore(true)} social={social} />,
+      2,
+    );
+  }
 
-  const gridContent = (
+  // ── Cold (regular player, nothing today) ────────────────
+  if (coldView) return wrap(coldView);
+
+  // ── A · before ──────────────────────────────────────────
+  return wrap(
     <>
-      {/* number of teams — organizer/assistant only */}
-      {canManageTeams && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: C.text2 }}>{t("Equipas:")}</span>
-          {[2, 3, 4, 5, 6].map((n) => {
-            const active = numTeams === n;
-            const disabled = n > playing.length;
-            return (
-              <button key={n} onClick={() => !disabled && setNumTeams(n)} disabled={disabled}
-                style={{ width: 32, height: 32, borderRadius: 9, background: active ? C.accent : C.surface, color: active ? C.bg : disabled ? C.text3 : C.text1, border: `1px solid ${active ? C.accent : C.border}`, fontSize: 13, fontWeight: 800, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1 }}>
-                {n}
-              </button>
-            );
-          })}
-          <button
-            onClick={() => drawTeams(numTeams)}
-            disabled={playing.length < 2}
-            style={{
-              marginLeft: "auto", background: playing.length >= 2 ? C.accent : C.accentDim,
-              color: playing.length >= 2 ? C.bg : C.accent, border: `1px solid ${C.accentBorder}`,
-              borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 800,
-              cursor: playing.length >= 2 ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
-            <Shuffle size={14} /> {teams ? t("Re-sortear") : t("Sortear")}
-          </button>
-        </div>
-      )}
+      {ownTeam}
 
-      {canManageTeams && teams && (
-        <button onClick={onClearTeams}
-          style={{ width: "100%", marginBottom: 12, background: "none", color: C.text2, border: `1px dashed ${C.border}`, borderRadius: 10, padding: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <RotateCcw size={13} /> {t("Limpar sorteio")}
-        </button>
-      )}
-
-      {teams && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {teams.map((tm) => (
-            <div key={tm.id} style={{ background: C.surface, borderRadius: 12, padding: 12, minWidth: 0, overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 4, background: tm.color, flexShrink: 0 }} />
-                {canManageTeams ? (
-                  <input
-                    value={tm.name}
-                    onChange={(e) => renameTeam(tm.id, e.target.value)}
-                    style={{ flex: 1, minWidth: 0, background: "none", border: "none", borderBottom: `1px dashed ${C.border}`, color: tm.color, fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", outline: "none", padding: "2px 0" }}
-                  />
-                ) : (
-                  <span style={{ flex: 1, minWidth: 0, color: tm.color, fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tm.name}</span>
-                )}
-                {teamOverall(tm) != null && (
-                  <span style={{ fontSize: 10, fontWeight: 800, color: C.text2, flexShrink: 0 }}>OVR {teamOverall(tm)}</span>
-                )}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                {resolveTeam(tm.players).map((p) => (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: 3, background: tm.color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
-                    {canManageTeams && teams.length > 1 ? (
-                      <select
-                        value={tm.id}
-                        onChange={(e) => movePlayer(p.id, e.target.value)}
-                        title="Mover de equipa"
-                        style={{ marginLeft: "auto", background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: 9, padding: "1px 2px", outline: "none", maxWidth: 70 }}
-                      >
-                        {teams.map((tt) => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
-                      </select>
-                    ) : (
-                      <span style={{ fontSize: 9, color: C.text3, marginLeft: "auto" }}>{p.position.slice(0, 3).toUpperCase()}</span>
-                    )}
-                  </div>
-                ))}
-                {tm.players.length === 0 && <span style={{ fontSize: 11, color: C.text3 }}>{t("sem jogadores")}</span>}
-              </div>
+      {/* who's in */}
+      <section style={{ marginBottom: S.xl }}>
+        <SectionLabel right={<span style={{ fontSize: T.meta, fontWeight: 800, color: playing.length >= game.spots ? C.green : C.text2 }}>{playing.length}/{game.spots}</span>}>
+          {t("Convocados")}
+        </SectionLabel>
+        <div style={{ ...cardStyle }}>
+          {playing.length === 0 ? (
+            <div style={{ fontSize: T.body, color: C.text2 }}>{t("Ainda ninguém confirmou para este jogo.")}</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: S.sm, rowGap: S.md }}>
+              {playing.map((p) => (
+                <div key={p.id} title={p.nick} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, minWidth: 0 }}>
+                  <Avatar name={p.name} color={playerColor(group, p)} photo={p.photo} isMe={p.isMe} injured={p.injured} size={40} />
+                  <span style={{ fontSize: T.min, color: p.isMe ? C.text1 : C.text2, fontWeight: p.isMe ? 800 : 600, letterSpacing: "-0.02em", textAlign: "center", lineHeight: 1.2 }}>{p.nick}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-
-      {unassigned.length > 0 && (
-        <div style={{ marginTop: 12, background: C.orangeDim, border: `1px solid ${C.orange}44`, borderRadius: 12, padding: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: C.orange, marginBottom: 8 }}>{t("JOGADORES SEM EQUIPA")}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            {unassigned.map((p) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: p.isMe ? 800 : 500, color: p.isMe ? C.accent : C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</span>
-                {canManageTeams ? (
-                  <select defaultValue="" onChange={(e) => e.target.value && movePlayer(p.id, e.target.value)}
-                    style={{ marginLeft: "auto", background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 6, fontSize: 9, padding: "1px 2px", outline: "none", maxWidth: 90 }}>
-                    <option value="">{t("Colocar em…")}</option>
-                    {teams.map((tt) => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
-                  </select>
-                ) : (
-                  <span style={{ fontSize: 9, color: C.text3, marginLeft: "auto" }}>{p.position.slice(0, 3).toUpperCase()}</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </>
-  );
-
-  return (
-    <div style={{ padding: "0 16px" }}>
-      <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22 }}>Matchday</div>
-        <div style={{ fontSize: 13, color: C.text2 }}>{t("Sorteio, cronómetro e marcação ao vivo.")}</div>
-      </div>
-
-      {/* OWN LINEUP — everyone who's on a confirmed team sees it, Fantasy-card style */}
-      {showOwnLineup && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-            <span style={{ width: 8, height: 8, borderRadius: 4, background: myTeam.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: C.text2 }}>{t("A TUA EQUIPA")}</span>
-            <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 800, color: myTeam.color }}>{myTeam.name}</span>
-            {teamOverall(myTeam) != null && (
-              <span style={{ fontSize: 11, fontWeight: 800, color: C.text2 }}>OVR {teamOverall(myTeam)}</span>
-            )}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
-            {resolveTeam(myTeam.players).map((p) => <LineupCard key={p.id} p={p} group={group} />)}
-          </div>
-          {teamsConfirmedByName && (
-            <div style={{ fontSize: 10, color: C.text3, textAlign: "center", marginTop: 14 }}>
-              {t("Confirmado por")} {teamsConfirmedByName}
+          )}
+          {waiting.length > 0 && (
+            <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, paddingTop: S.md, borderTop: `1px solid ${C.border}` }}>
+              {waiting.length} {t("em lista de espera")}: {waiting.map((p) => p.nick).join(", ")}
             </div>
           )}
         </div>
-      )}
+      </section>
 
-      {/* MANAGEMENT — tucked away once an organizer has confirmed (they
-          still play, the hero card above already has their attention);
-          front and center otherwise, with the "Confirmar equipas" CTA. */}
-      {showGridBlock && (
-        managedAndConfirmed ? (
-          <Collapsible icon={<Users2 size={16} color={C.text2} />} title={t("Gerir equipas")}
-            subtitle={teamsConfirmedByName ? `${t("Sorteio, nomes e trocas")} · ${t("confirmado por")} ${teamsConfirmedByName}` : t("Sorteio, nomes e trocas")}>
-            {gridContent}
-          </Collapsible>
-        ) : (
-          <div style={{ ...cardStyle, marginBottom: 14 }}>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Sorteio de Equipas")}</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>
-                {!canManageTeams
-                  ? t("As equipas foram confirmadas, mas não estás em nenhuma esta ronda.")
-                  : playing.length < 2 ? t("Faltam confirmações para sortear")
-                  : t("Escolhe quantas equipas e sorteia — depois podes renomear.")}
-              </div>
-              {teams && teamsSetByName && (
-                <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, marginTop: 4 }}>
-                  {t("Sorteado por")} {teamsSetByName} — {t("ainda por confirmar")}
-                </div>
-              )}
-            </div>
-            {gridContent}
-            {canManageTeams && teams && !teamsConfirmed && (
-              <button onClick={onConfirmTeams}
-                style={{ width: "100%", marginTop: 12, background: C.accent, color: C.bg, border: "none", borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <Check size={15} /> {t("Confirmar equipas")}
-              </button>
-            )}
-          </div>
-        )
-      )}
+      <TeamDraw hideTeamId={myTeam?.id} group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
+        setByName={teamsSetByName} confirmedByName={teamsConfirmedByName}
+        onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onConfirm={onConfirmTeams} />
 
-      {/* Player with nothing to see yet: no draft, or a draft not confirmed. */}
-      {!showOwnLineup && !showGridBlock && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{t("Equipas")}</div>
-          <div style={{ fontSize: 11, color: C.text2 }}>
-            {!teams
-              ? t("Só o organizador (ou o auxiliar) pode sortear e renomear.")
-              : teamsSetByName
-                ? `${t("O organizador está a preparar as equipas — aguarda a confirmação.")} (${teamsSetByName})`
-                : t("O organizador está a preparar as equipas — aguarda a confirmação.")}
-          </div>
-        </div>
-      )}
-
-      {/* MATCH TIMER — only once the day is actually live; a countdown
-          sitting there before kickoff invited mistaps and confusion. */}
-      {matchdayProps.matchday && <MatchTimer />}
-
-      {/* LIVE MATCHDAY */}
-      <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} />
-    </div>
+      <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed} />
+    </>,
+    0,
   );
 }

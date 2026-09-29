@@ -214,6 +214,13 @@ export function computeOverall(position, attrs) {
   return Math.round(Object.keys(w).reduce((sum, k) => sum + (attrs?.[k] ?? 60) * w[k], 0));
 }
 
+/** Average OVR of a drawn team ({ players:[id] }) — null when empty. */
+export function teamOverall(team, group) {
+  const ps = (team?.players ?? []).map((id) => group.find((p) => p.id === id)).filter(Boolean);
+  if (!ps.length) return null;
+  return Math.round(ps.reduce((s, p) => s + computeOverall(p.position, p.attrs), 0) / ps.length);
+}
+
 export const POSITION_ABBR = { "Guarda-redes": "GR", "Defesa": "DEF", "Médio": "MED", "Avançado": "AVA" };
 
 // ── Peer ratings ─────────────────────────────────────────

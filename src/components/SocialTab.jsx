@@ -1,28 +1,32 @@
 import { useState } from "react";
-import { Users, Building2, UserPlus, MessageCircle, Send, ImagePlus, Video, Watch, Trash2, Check, X } from "lucide-react";
-import { C, cardStyle, displayFont } from "../theme";
+import { UserPlus, MessageCircle, Send, ImagePlus, Video, Watch, Trash2, Check, X } from "lucide-react";
+import { C, cardStyle } from "../theme";
 import { ini } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { openWhatsApp, sharePostMessage } from "../lib/whatsapp";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
+import SegmentedControl from "./SegmentedControl";
 import WorkoutCardModal from "./WorkoutCardModal";
 
+// Grupo | Amigos only — the old "Clube" scope (= the whole platform) is
+// gone: "Clube" is reserved for a future real entity (brief §16), and
+// an unscoped all-users feed isn't something we want to build.
 const SCOPES = [
-  { id: "grupo", Icon: Users,      label: "Grupo"  },
-  { id: "clube", Icon: Building2,  label: "Clube"  },
-  { id: "amigos", Icon: UserPlus,  label: "Amigos" },
+  { id: "grupo",  label: "Grupo"  },
+  { id: "amigos", label: "Amigos" },
 ];
 
 // Stable colour from an id/nick so each author has a consistent tint.
 const PALETTE = [C.accent, C.blue, C.orange, "#A78BFA", "#FF6B9D", "#2DD4BF", "#34D399", "#60A5FA"];
 const colorFor = (key = "") => PALETTE[[...String(key)].reduce((h, c) => (h + c.charCodeAt(0)) % PALETTE.length, 0)];
 
-/** Football social feed — three scopes (grupo / clube / amigos) with a
- *  friends graph. Cloud-backed when logged in; same UI for the local
- *  demo (fed normalized data by PitchApp). */
+/** Football activity feed — two scopes (grupo / amigos) with a friends
+ *  graph. No longer a tab of its own: rendered inside Home (5-tab IA,
+ *  2026-09-28). Cloud-backed when logged in; same UI for the local demo
+ *  (fed normalized data by PitchApp). */
 export default function SocialTab({ social, me, groupName, lastMatchday, onCardGenerated }) {
-  const [scope, setScope] = useState("clube");
+  const [scope, setScope] = useState("grupo");
   const [draft, setDraft] = useState("");
   const [draftMedia, setDraftMedia] = useState(null); // { url, kind: 'photo' | 'video' }
   const [uploading, setUploading] = useState(false);
@@ -35,7 +39,6 @@ export default function SocialTab({ social, me, groupName, lastMatchday, onCardG
   const { meId, myGroupId, posts, friendIds, friends, requests, candidates, sentPending, friendshipIdOf } = social;
 
   const visible = posts.filter((p) => {
-    if (scope === "clube") return true;
     if (scope === "grupo") return p.author.groupId === myGroupId;
     return p.author.id === meId || friendIds.includes(p.author.id); // amigos
   });
@@ -64,23 +67,11 @@ export default function SocialTab({ social, me, groupName, lastMatchday, onCardG
   };
 
   return (
-    <div style={{ padding: "0 16px" }}>
-      <div style={{ padding: "20px 0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22 }}>Social ⚽</div>
-        <div style={{ fontSize: 13, color: C.text2 }}>{t("A comunidade de futebol do PITCH")}</div>
-      </div>
+    <div style={{ marginTop: 16 }}>
+      <SectionLabel>{t("ATIVIDADE")}</SectionLabel>
 
       {/* scope tabs */}
-      <div style={{ display: "flex", background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 4, marginBottom: 14, gap: 4 }}>
-        {SCOPES.map(({ id, Icon, label }) => {
-          const active = scope === id;
-          return (
-            <button key={id} onClick={() => setScope(id)} style={{ flex: 1, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: "none", borderRadius: 10, padding: "9px 4px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-              <Icon size={13} /> {t(label)}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedControl options={SCOPES} value={scope} onChange={setScope} style={{ marginBottom: 12 }} />
 
       {/* composer */}
       <div style={{ ...cardStyle, marginBottom: 14 }}>
@@ -148,7 +139,7 @@ export default function SocialTab({ social, me, groupName, lastMatchday, onCardG
           {/* add-friend candidate list */}
           {addOpen && (
             <div style={{ marginBottom: 12 }}>
-              <SectionLabel style={{ marginBottom: 8 }}>{t("MEMBROS DO CLUBE")}</SectionLabel>
+              <SectionLabel style={{ marginBottom: 8 }}>{t("JOGADORES NO PITCH")}</SectionLabel>
               {candidates.length === 0 ? (
                 <div style={{ fontSize: 12, color: C.text3 }}>{t("Sem ninguém para adicionar por agora.")}</div>
               ) : (
@@ -193,10 +184,10 @@ export default function SocialTab({ social, me, groupName, lastMatchday, onCardG
       )}
 
       {/* feed */}
-      <SectionLabel>{scope === "grupo" ? t("DO TEU GRUPO") : scope === "amigos" ? t("DOS TEUS AMIGOS") : t("FEED DO CLUBE")}</SectionLabel>
+      <SectionLabel>{scope === "grupo" ? t("DO TEU GRUPO") : t("DOS TEUS AMIGOS")}</SectionLabel>
       {visible.length === 0 ? (
         <div style={{ ...cardStyle, textAlign: "center", padding: "28px 20px", color: C.text3, fontSize: 13, marginBottom: 24 }}>
-          {scope === "amigos" ? t("Sem publicações de amigos ainda.") : scope === "grupo" ? t("O teu grupo ainda não publicou nada.") : t("Ainda não há publicações. Sê o primeiro! ⚽")}
+          {scope === "amigos" ? t("Sem publicações de amigos ainda.") : t("O teu grupo ainda não publicou nada.")}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>

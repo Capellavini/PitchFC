@@ -36,7 +36,7 @@ export default function AchievementBadge({ tier, icon: Icon, name, unlocked, sel
           </div>
         )}
       </div>
-      <div style={{ fontSize: 9.5, fontWeight: 700, color: unlocked ? C.text1 : C.text3, textAlign: "center", lineHeight: 1.2 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: unlocked ? C.text1 : C.text2, textAlign: "center", lineHeight: 1.2 }}>
         {name}
       </div>
     </button>

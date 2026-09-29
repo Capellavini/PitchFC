@@ -11,8 +11,10 @@
  *  - Local demo (no keys): the original localStorage prototype.
  */
 import { useEffect, useRef, useState } from "react";
-import { C, BRAND } from "./theme";
-import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
+import { C, BRAND, TOUCH } from "./theme";
+import { INITIAL_GROUP, INITIAL_MATERIAL, DEFAULT_SETTINGS, POSITIONS, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
+import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
+import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGHTS } from "./lib/fantasy";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, fmtFullDay, isoDay, toIsoDay, fromIso, dateTimeFromIso, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor } from "./lib/helpers";
@@ -38,17 +40,35 @@ import FirstRunTour from "./components/FirstRunTour";
 import OnboardingPlayer from "./components/OnboardingPlayer";
 import OnboardingOrganizer from "./components/OnboardingOrganizer";
 import BottomNav from "./components/BottomNav";
+import TopBar from "./components/TopBar";
 import GroupSwitcher from "./components/GroupSwitcher";
 import HomeTab from "./components/HomeTab";
-import CompeteTab from "./components/CompeteTab";
+import JogarTab from "./components/JogarTab";
+import CompetirTab from "./components/CompetirTab";
 import JogoTab from "./components/JogoTab";
+import GrupoTab from "./components/GrupoTab";
+import FindGamePlaceholder from "./components/FindGamePlaceholder";
+// Jogar tab (redesign v1): pushed Game Detail + Group page screens.
+import GameDetail from "./components/GameDetail";
+import GroupPage from "./components/GroupPage";
+import GroupsList from "./components/GroupsList";
+import GroupRecords from "./components/GroupRecords";
+import GroupSettings from "./components/GroupSettings";
+import FantasyTab from "./components/FantasyTab";
 import MatchdayTab from "./components/MatchdayTab";
+import MatchdayCold from "./components/MatchdayCold";
+import NextActionCard from "./components/NextActionCard";
 import ClubeTab from "./components/ClubeTab";
 import SocialTab from "./components/SocialTab";
 import PerfilTab from "./components/PerfilTab";
+import SettingsScreen from "./components/SettingsScreen";
+import WhatsNewSheet from "./components/WhatsNewSheet";
 import AdminPanel from "./components/AdminPanel";
 import NoGroupState from "./components/NoGroupState";
 import BtnPrimary from "./components/BtnPrimary";
+import { CalendarCheck, CreditCard, Star, ArrowLeft, Bell } from "lucide-react";
+import Avatar from "./components/Avatar";
+import { isEnabled } from "./lib/flags";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 
@@ -64,12 +84,20 @@ const hashId = (uuid) => {
   return h;
 };
 
+// 5-tab IA (2026-09-28): home · jogar · matchday · competir · perfil.
+// Any caller still using a pre-redesign id lands on its new home instead
+// of a blank screen (Social → Home feed, Jogo → Jogar, Compete →
+// Competir, Clube → Perfil's settings where the admin entry lives).
+const TAB_IDS = ["home", "jogar", "matchday", "competir", "perfil"];
+const LEGACY_TABS = { jogo: "jogar", social: "home", compete: "competir", stats: "jogar", grupo: "jogar", fantasy: "competir", clube: "perfil" };
+const normalizeTab = (id) => (TAB_IDS.includes(id) ? id : LEGACY_TABS[id] ?? "home");
+
 export default function PitchApp() {
   const [session, setSession]   = usePersistentState("session", { role: null, onboarded: false });
   const [settings, setSettings] = usePersistentState("settings", DEFAULT_SETTINGS);
   const [group, setGroup]       = usePersistentState("group", INITIAL_GROUP);
   const [material, setMaterial] = usePersistentState("material", INITIAL_MATERIAL);
-  const [posts, setPosts]       = usePersistentState("posts", INITIAL_POSTS);
+  const [posts, setPosts]       = usePersistentState("posts", DEMO_POSTS);
   // teamsRaw/matchdayLocal: local-demo-only storage. In cloud mode the
   // real source of truth is cloud.game.teams / cloud.game.live_matchday
   // (synced via Supabase so every device sees the same draw/scores) —
@@ -77,9 +105,21 @@ export default function PitchApp() {
   // below, which pick whichever source applies.
   const [teamsRaw, setTeamsLocal] = usePersistentState("teams", null);
   const [teamsConfirmedLocal, setTeamsConfirmedLocal] = usePersistentState("teamsConfirmed", false);
-  const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", []);
+  const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", DEMO_PEER_RATINGS);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votes: { 1: null, 2: null, 3: null } });
-  const [history, setHistory]   = usePersistentState("history", HISTORY);
+  // Only matchdays the user ran in THIS browser. The dated demo seed
+  // (lib/demoSeed DEMO_HISTORY / DEMO_MATCHDAYS) is never persisted — it's
+  // appended live in the views below so its dates always roll with today.
+  const [history, setHistory]   = usePersistentState("history", []);
+  // Local demo seed version. v1 (redesign): dated matchdays + demo posts.
+  // Browsers that ran an older demo keep their persisted "history"/"posts"
+  // — the effect below drops ONLY the untouched old static seed (5 rows
+  // starting "7 Jun") and fills an empty feed / empty ratings with the new
+  // seed; anything the user created locally is left alone. "Repor demo"
+  // always gets the new seed.
+  const [demoSeedV, setDemoSeedV] = usePersistentState("demoSeed", 0);
+  // Pitch Manager in local demo: my own squad is editable and persisted.
+  const [demoFantasySquad, setDemoFantasySquad] = usePersistentState("demoFantasySquad", DEMO_FANTASY.mySquad);
   const [matchdayLocal, setMatchdayLocal] = usePersistentState("matchday", null);
   const [lastMatchday, setLastMatchday] = usePersistentState("lastMatchday", null);
   const [bookings, setBookings] = usePersistentState("bookings", INITIAL_BOOKINGS);
@@ -89,11 +129,19 @@ export default function PitchApp() {
   const [eventStatus, setEventStatus] = usePersistentState("eventStatus", {}); // cloud RSVP, local
   const [lang, setLangState]    = usePersistentState("lang", detectLang());
   const [themeMode, setThemeModeState] = useState(getThemeMode());
-  // Opens straight on Jogo (confirmation grid) — Home exists as its own
-  // tab (Strava-style cross-group dashboard) but isn't the landing screen;
-  // the product call is that logging in should drop you straight into
-  // confirming this week's game, not a dashboard.
-  const [tab, setTab]           = useState("jogo");
+  // Opening tab is CONTEXTUAL (redesign spec §1): null until decided —
+  // see `openingTab` / the freeze effect below the confirmation window.
+  // Every explicit navigation goes through setTab, so once the user moves
+  // the opening logic never overrides them.
+  const [tabState, setTabRaw]   = useState(null);
+  const setTab = (id) => setTabRaw(normalizeTab(id));
+  // Jogar's segment (Jogos | Grupos) is lifted so Home's next-action
+  // cards can deep-link into it; `grupoEntry` re-mounts GrupoTab on a
+  // specific sub-view (e.g. "stats" = the group's Histórico).
+  const [jogarView, setJogarView] = useState("jogos");
+  const [grupoEntry, setGrupoEntry] = useState({ view: "squad", n: 0 });
+  // Perfil → ⚙: null (profile) | "main" (settings) | "clube" (admin Clube).
+  const [settingsView, setSettingsView] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
   // Invite-code choice made in the pre-group step of a fresh signup (no
@@ -103,7 +151,6 @@ export default function PitchApp() {
   // needsProfile/player gating further down for how these two paths
   // converge on the same quick onboarding card.
   const [manualJoinChoice, setManualJoinChoice] = useState(null);
-  const [statMode, setStatMode] = useState("geral");
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -114,6 +161,12 @@ export default function PitchApp() {
   // again. Bumping the "_v1" suffix would re-show it to everyone (e.g. a
   // future redesign), same convention as the "v2." storage prefix above.
   const [tourSeen, setTourSeen] = usePersistentState("tourSeen_v1", false);
+  // One-time "Novidades" sheet for the 7→5 tab change — only for people
+  // who already knew the old layout (tourSeen). A brand-new user gets the
+  // (updated) tour instead, which also marks this as seen.
+  const [whatsNewSeen, setWhatsNewSeen] = usePersistentState("whatsNew_nav5_v1", false);
+  // TopBar bell reopens the same "Novidades" sheet on demand.
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
 
   // Mirror the persisted language into the i18n module before anything
   // renders, so every t() call below sees the current choice.
@@ -315,6 +368,13 @@ export default function PitchApp() {
   useEffect(() => {
     if (teamsRaw && !Array.isArray(teamsRaw)) setTeamsLocal(null);
     if (matchdayLocal?.matches?.some((m) => m.homeId === undefined)) setMatchdayLocal(null);
+    if (demoSeedV < 1) {
+      const oldStaticSeed = history.length === 5 && history[0]?.id === 1 && history[0]?.date === "7 Jun";
+      if (oldStaticSeed) setHistory([]);
+      if (posts.length === 0) setPosts(DEMO_POSTS);
+      if (peerRatings.length === 0) setPeerRatings(DEMO_PEER_RATINGS);
+      setDemoSeedV(1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -399,6 +459,30 @@ export default function PitchApp() {
   const opensAtLabel = groupSettings.recurring
     ? `${t(WEEKDAYS_PT[groupSettings.openWeekday ?? 1])} ${t("às")} ${groupSettings.openTime ?? "17:00"}`
     : null;
+
+  // ── Contextual opening tab (redesign spec §1) ──────────
+  // matchday if a matchday is live → jogar if this week's game awaits MY
+  // answer → otherwise home. Same inputs as `needsResponse`/`matchdayHot`
+  // further down (those live after the early returns, so they can't feed
+  // a hook). Until decided, `tab` falls back to the live computation so
+  // the first painted frame is already the right tab (no flash); the
+  // effect then FREEZES it the first time the main app's data is ready
+  // (local: onboarded session; cloud: status ready / no-group explore),
+  // so a matchday going live later never yanks the user away.
+  const appDataReady = (localMode && Boolean(session.role && session.onboarded)) || cloudMode || noGroup;
+  const hasGameThisWeek = !noGroup && !noGameScheduled
+    && kickoffAt.getTime() - Date.now() < 7 * 24 * 3600 * 1000
+    && kickoffAt.getTime() - Date.now() > -3 * 3600 * 1000;
+  const awaitingMyAnswer = hasGameThisWeek && confWin.isOpen && me?.status === "pending";
+  const openingTab = !noGroup && matchday ? "matchday" : awaitingMyAnswer ? "jogar" : "home";
+  const tab = tabState ?? openingTab;
+  // Home's "Votar MVP" on a game day lands in Competir with the ballot
+  // already expanded; any other visit shows it as a one-line card.
+  const [competirBallot, setCompetirBallot] = useState(false);
+  useEffect(() => { if (tab !== "competir") setCompetirBallot(false); }, [tab]);
+  useEffect(() => {
+    if (tabState === null && appDataReady) setTabRaw(openingTab);
+  }, [tabState, appDataReady, openingTab]);
 
   const togglePaid = (id) => {
     const player = baseGroup.find((p) => p.id === id);
@@ -758,7 +842,7 @@ export default function PitchApp() {
     const lines = Object.entries(stats)
       .map(([lid, s]) => {
         const p = baseGroup.find((x) => x.id === Number(lid));
-        return p ? { key: keyOf(p), nick: p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets, epicSaves: s.epicSaves, wins: s.wins } : null;
+        return p ? { key: keyOf(p), nick: p.nick, name: p.name, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p), goals: s.goals, assists: s.assists, cleanSheets: s.cleanSheets, epicSaves: s.epicSaves, wins: s.wins } : null;
       })
       .filter(Boolean)
       .sort((a, b) => (b.goals * 2 + b.assists) - (a.goals * 2 + a.assists));
@@ -786,8 +870,8 @@ export default function PitchApp() {
         if (!s && !played) return p;
         return { ...p, goals: p.goals + (s?.goals ?? 0), assists: p.assists + (s?.assists ?? 0), gamesPlayed: p.gamesPlayed + (played ? 1 : 0), wins: (p.wins || 0) + (s?.wins ?? 0) };
       }));
-      setHistory((h) => [{ id: Date.now(), date, confirmed: confirmed.length, result: `${totalGoals}⚽`, allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length }, ...h]);
-      setLastMatchday({ date, mode: matchday.mode, ...summary });
+      setHistory((h) => [{ id: Date.now(), date, playedOn: isoDay(0), confirmed: confirmed.length, result: `${totalGoals}⚽`, allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length }, ...h]);
+      setLastMatchday({ date, playedOn: isoDay(0), mode: matchday.mode, ...summary });
       setMvpVote({ open: true, votes: { 1: null, 2: null, 3: null } });
       setMatchdayLocal(null);
     }
@@ -861,7 +945,7 @@ export default function PitchApp() {
   const joinOpenMatch = (id) =>
     setOpenMatches((ms) => ms.map((m) => (m.id === id && m.spotsLeft > 0 ? { ...m, spotsLeft: m.spotsLeft - 1, joined: true } : m)));
 
-  const openProfile = (id) => { setViewPlayerId(id); setTab("perfil"); };
+  const openProfile = (id) => { setViewPlayerId(id); setSettingsView(null); setTab("perfil"); };
   const backToMe = () => setViewPlayerId(null);
 
   // ── Session / auth gating ──────────────────────────────
@@ -873,6 +957,7 @@ export default function PitchApp() {
     setNoGroupOptIn(false);
     setManualJoinChoice(null);
     setJoinToken(null);
+    setTabRaw(null); // next login re-runs the contextual opening tab
   };
   const backToRolePick = () => setSession({ role: null, onboarded: false });
 
@@ -1163,6 +1248,7 @@ export default function PitchApp() {
   const MVP_BALLOT_POINTS = { 1: 3, 2: 2, 3: 1 };
 
   let lastMatchdayView = null, historyView = [], matchdaySummariesView = [], recordsView = [], mvp = null;
+  let localDays = []; // local demo only — newest first, see the else-branch below
   if (cloudMode) {
     const rows = cloud.matchdays;
     // Raw per-day team results (name/color/goals) for the Stats tab's
@@ -1207,12 +1293,41 @@ export default function PitchApp() {
       mvpNick: r.mvp_id ? nickByKey(r.mvp_id) : null,
     }));
   } else {
-    lastMatchdayView = lastMatchday;
-    historyView = history.map((g) => ({ ...g, mvpNick: g.mvpId ? baseGroup.find((p) => p.id === g.mvpId)?.nick : null }));
-    if (lastMatchday) {
+    // Local demo: the user's own last matchday (if they ran one here) on
+    // top of the dated demo seed (lib/demoSeed — weekly games going back
+    // ~2 months from today). The newest seed night stands in as "last
+    // matchday" until the user plays one, with its MVP vote open.
+    const seedLatest = DEMO_MATCHDAYS[0];
+    const effLast = lastMatchday ? { ...lastMatchday, date: lastMatchday.playedOn ? fmtDayMonth(lastMatchday.playedOn) : lastMatchday.date } : (seedLatest
+      ? { date: fmtDayMonth(seedLatest.playedOn), playedOn: seedLatest.playedOn, mode: seedLatest.mode, ...seedLatest.summary }
+      : null);
+    const localMvpKey = !mvpVote.open ? mvpVote.votes[1] : null;
+    localDays = [
+      ...(lastMatchday ? [{ id: "local-last", playedOn: lastMatchday.playedOn ?? null, date: effLast.date, mode: lastMatchday.mode, summary: lastMatchday, mvpKey: localMvpKey }] : []),
+      ...DEMO_MATCHDAYS.map((d, i) => ({
+        id: d.id, playedOn: d.playedOn, date: fmtDayMonth(d.playedOn), mode: d.mode, summary: d.summary,
+        mvpKey: i === 0 && !lastMatchday ? localMvpKey : d.mvpKey,
+      })),
+    ];
+    recordsView = localDays.map((d, i) => ({
+      id: d.id, date: d.date, playedOn: d.playedOn, mode: d.mode,
+      nGames: (d.summary.matches || []).length,
+      totalGoals: (d.summary.matches || []).reduce((s, m) => s + (m.homeGoals || 0) + (m.awayGoals || 0), 0),
+      mvpOpen: i === 0 && mvpVote.open, mvpNick: d.mvpKey != null ? nickByKey(d.mvpKey) : null,
+      runnerUpNick: null, thirdNick: null,
+      summary: d.summary,
+    }));
+    matchdaySummariesView = localDays.map((d) => ({ date: d.date, summary: d.summary }));
+    lastMatchdayView = effLast;
+    // User-run rows first, then the live demo seed rows (the newest seed
+    // row's MVP comes from the local vote while it stands in as "last").
+    const userHistory = history.filter((g) => !String(g.id).startsWith("demo-"));
+    const seedHistory = DEMO_HISTORY.map((g, i) => (i === 0 && !lastMatchday ? { ...g, mvpId: localMvpKey } : g));
+    historyView = [...userHistory, ...seedHistory].map((g) => ({ ...g, date: g.playedOn ? fmtDayMonth(g.playedOn) : g.date, mvpNick: g.mvpId ? baseGroup.find((p) => p.id === g.mvpId)?.nick : null }));
+    if (effLast) {
       mvp = {
         open: mvpVote.open,
-        candidates: lastMatchday.candidates ?? [],
+        candidates: effLast.candidates ?? [],
         myVotes: mvpVote.votes,
         tally: null,
         podium: !mvpVote.open ? {
@@ -1322,6 +1437,26 @@ export default function PitchApp() {
       dateLabel: fmtFullDay(toIsoDay(soonest.scheduledAt)),
       timeLabel: `${String(soonest.scheduledAt.getHours()).padStart(2, "0")}:${String(soonest.scheduledAt.getMinutes()).padStart(2, "0")}`,
     } : null;
+  } else if (localMode && me) {
+    // Local demo: same streak / records as cloud, from the seeded days.
+    const played = (d) => (d.summary?.candidates || []).some((c) => c.key === me.id) || (d.summary?.lines || []).some((l) => l.key === me.id);
+    for (const d of localDays) {
+      if (!played(d)) break;
+      attendanceStreak += 1;
+    }
+    const myLines = localDays.filter(played).map((d) => {
+      const line = (d.summary?.lines || []).find((l) => l.key === me.id) || {};
+      return { id: d.id, date: d.date, goals: line.goals || 0, assists: line.assists || 0, mvp: d.mvpKey === me.id };
+    });
+    if (myLines.length) {
+      personalRecords = {
+        bestNight: [...myLines].sort((a, b) => (b.goals + b.assists) - (a.goals + a.assists))[0],
+        totalGoals: myLines.reduce((s, l) => s + l.goals, 0),
+        totalAssists: myLines.reduce((s, l) => s + l.assists, 0),
+        mvps: myLines.filter((l) => l.mvp).length,
+        gamesInWindow: myLines.length,
+      };
+    }
   }
 
   // ── Achievements: normalized per-matchday detail (cloud keeps the full
@@ -1330,7 +1465,7 @@ export default function PitchApp() {
   // from endMatchday (uuid in cloud, numeric id in local).
   const achievementMatchdays = cloudMode
     ? cloud.matchdays.map((r) => ({ matches: r.summary?.matches ?? [], nightLines: r.summary?.lines ?? [], mvpKey: r.mvp_id ?? null }))
-    : (lastMatchday ? [{ matches: lastMatchday.matches ?? [], nightLines: lastMatchday.lines ?? [], mvpKey: !mvpVote.open ? mvpVote.votes[1] : null }] : []);
+    : localDays.map((d) => ({ matches: d.summary?.matches ?? [], nightLines: d.summary?.lines ?? [], mvpKey: d.mvpKey ?? null }));
 
   // ── Social: normalized for SocialTab (cloud or local) ──
   let social;
@@ -1372,7 +1507,8 @@ export default function PitchApp() {
     social = {
       meId: meLocal?.id, myGroupId: "local",
       uploadMedia,
-      posts,
+      // Demo seed posts carry createdAt → live relative label ("há 20 h").
+      posts: posts.map((p) => (p.createdAt ? { ...p, time: relativeTime(p.createdAt) } : p)),
       friendIds: [], friends: [], requests: [], sentPending: [], candidates: [],
       friendshipIdOf: () => null,
       onCreatePost: (post) => setPosts((ps) => [{ id: Date.now(), author: { id: meLocal?.id, nick: meLocal?.nick, name: meLocal?.name, photo: meLocal?.photo, groupId: "local" }, mine: true, time: "agora", type: post.type, text: post.body, media: post.media_url, likes: [], liked: false, comments: [] }, ...ps]),
@@ -1383,45 +1519,295 @@ export default function PitchApp() {
     };
   }
 
+  // ── 5-tab IA: derived "what needs me?" state ───────────
+  // Shared by Home's next-action cards, Matchday's pre-match prompt and
+  // the Matchday nav button's hot/cold state.
+  const hasGameContext = !noGroup && !noGameScheduled;
+  const needsResponse = hasGameContext && confWin.isOpen && me?.status === "pending";
+  const isGameDay = hasGameContext && toIsoDay(kickoffAt) === toIsoDay(new Date());
+  const matchdayHot = Boolean(matchday) || isGameDay || needsResponse;
+  const spotsTaken = splitWaitlist(baseGroup.filter((p) => p.status === "confirmed"), game.spots).playing;
+  const iAmPlaying = Boolean(me) && spotsTaken.some((p) => p.id === me.id);
+  const myMvpKey = me ? (cloudMode ? me.uuid : me.id) : null;
+  const canVoteMvp = Boolean(mvp?.open) && (mvp.candidates || []).some((c) => c.key === myMvpKey) && !mvp.myVotes?.[1];
+
+  const confirmAction = needsResponse ? {
+    id: "confirm", Icon: CalendarCheck,
+    eyebrow: t("CONFIRMA A TUA PRESENÇA"),
+    title: game.groupName,
+    subtitle: `${game.date} · ${game.time}${game.venue ? ` · ${game.venue}` : ""}`,
+    primaryLabel: spotsTaken.length < game.spots ? t("Estou dentro!") : t("Entrar na lista de espera"),
+    onPrimary: () => toggleMyStatus("confirmed"),
+    secondaryLabel: t("Não posso"),
+    onSecondary: () => toggleMyStatus("declined"),
+    prompt: spotsTaken.length < game.spots ? t("Vais jogar?") : t("Jogo cheio — entra na lista de espera e entras se alguém desistir."),
+  } : null;
+
+  const goToGroupView = (view) => {
+    setJogarView("grupos");
+    setGrupoEntry((g) => ({ view, n: g.n + 1 }));
+    setTab("jogar");
+  };
+
+  const nextActions = [
+    confirmAction,
+    hasGameContext && iAmPlaying && !me.paid && game.priceEach > 0 ? {
+      id: "pay", Icon: CreditCard,
+      eyebrow: t("PAGAMENTO EM FALTA"),
+      title: `${fmtEUR(game.priceEach)} · ${game.groupName}`,
+      subtitle: `${game.date} · ${game.time}`,
+      primaryLabel: `${t("Pagar")} · MB Way`,
+      onPrimary: payMine,
+      owes: fmtEUR(game.priceEach),
+    } : null,
+    canVoteMvp ? {
+      id: "mvp", Icon: Star,
+      eyebrow: t("VOTAÇÃO MVP ABERTA"),
+      title: t("Quem foram os 3 melhores em campo?"),
+      subtitle: lastMatchdayView?.date ? `${game.groupName} · ${lastMatchdayView.date}` : game.groupName,
+      primaryLabel: t("Votar MVP"),
+      // MatchdayMvpVote lives in Matchday's after-state (shown while the
+      // vote is open and there's no new game today). On a game day Matchday
+      // shows the new game instead, so the open ballot is reached in Competir.
+      onPrimary: () => { if (isGameDay) { setCompetirBallot(true); selectTab("competir"); } else selectTab("matchday"); },
+    } : null,
+  ].filter(Boolean);
+
+  // Home's quiet "próximo jogo" line. Cloud has the real cross-group
+  // answer; local demo (single group) falls back to the active game.
+  const homeNextGame = nextGameAcrossGroups ?? (localMode && hasGameContext ? {
+    groupName: game.groupName, venue: game.venue, dateLabel: game.date, timeLabel: game.time,
+  } : null);
+
+  const groupSwitcher = !noGroup ? (
+    <GroupSwitcher
+      currentName={game.groupName}
+      activeGroupId={cloudMode ? cloud.groupRow?.id : null}
+      myGroups={cloudMode ? cloud.myGroups : []}
+      onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}
+    />
+  ) : null;
+
+  const totalGamesPlayed = historyView.reduce((s, h) => s + (h.games || 1), 0);
+
+  // ── Pitch Manager (Fantasy) in local demo ──────────────
+  // FantasyTab is keyed by player uuid; demo players get String(id) as
+  // uuid (and the seed lines the same keys) so the real component runs
+  // unchanged on a mock league: me + 5 rivals, rounds = seeded matchdays
+  // since the league started, my squad editable + persisted locally.
+  // Trades need other real managers → unavailable in the demo.
+  let demoFantasyProps = null;
+  if (localMode && me) {
+    const fk = (id) => String(id);
+    const fGroup = displayGroup.map((p) => ({ ...p, uuid: fk(p.id) }));
+    const startsAt = new Date(Date.now() - DEMO_FANTASY.startsWeeksAgo * 7 * 24 * 3600 * 1000 - 3600 * 1000).toISOString();
+    const fMatchdays = localDays.map((d) => ({
+      id: d.id,
+      created_at: d.playedOn ? new Date(`${d.playedOn}T21:00:00`).toISOString() : new Date().toISOString(),
+      summary: { ...d.summary, lines: (d.summary?.lines || []).map((l) => ({ ...l, key: fk(l.key) })) },
+    }));
+    const rounds = fMatchdays.filter((md) => md.created_at >= startsAt);
+    const basePaid = (ids) => Object.fromEntries(ids.map((id) => [id, DEFAULT_FANTASY_WEIGHTS.priceBase]));
+    const myIds = (demoFantasySquad.player_ids || []).map(fk);
+    const squads = [
+      { participant_id: fk(me.id), player_ids: myIds, captain_id: demoFantasySquad.captain_id != null ? fk(demoFantasySquad.captain_id) : null,
+        reserve_ids: (demoFantasySquad.reserve_ids || []).map(fk), prices_paid: demoFantasySquad.prices_paid || basePaid(myIds), budget_adjustment: 30 },
+      ...DEMO_FANTASY.rivals.filter((r) => r.participant !== me.id).map((r) => ({
+        participant_id: fk(r.participant), player_ids: r.player_ids.map(fk), captain_id: fk(r.captain_id),
+        reserve_ids: [], prices_paid: basePaid(r.player_ids.map(fk)), budget_adjustment: 0,
+      })),
+    ];
+    const scores = rounds.flatMap((md) => squads.map((s) => ({
+      participant_id: s.participant_id, matchday_id: md.id,
+      points: computeRoundPoints(s.player_ids, s.captain_id, md.summary.lines, DEFAULT_FANTASY_WEIGHTS, s.reserve_ids),
+    })));
+    const unavailable = async () => ({ error: t("Indisponível na demonstração.") });
+    demoFantasyProps = {
+      group: fGroup, me: fGroup.find((p) => p.isMe),
+      fantasyLeague: { id: "demo-league", name: "Pitch Manager", budget: DEMO_FANTASY.budget, squad_size: DEMO_FANTASY.squadSize, duration_months: 2, starts_at: startsAt, created_at: startsAt },
+      fantasySquads: squads, fantasyScores: scores, fantasyTradeOffers: [], matchdays: fMatchdays,
+      onCreateLeague: unavailable, onCreateTradeOffer: unavailable, onCancelTradeOffer: unavailable, onRespondTradeOffer: unavailable,
+      onSyncFantasy: null,
+      onSaveSquad: async (_leagueId, playerIds, captainId, reserveIds) => {
+        const ids = [...new Set(playerIds)];
+        setDemoFantasySquad((prev) => ({
+          player_ids: ids, captain_id: captainId, reserve_ids: reserveIds || [],
+          prices_paid: nextPricesPaid(prev.prices_paid || basePaid((prev.player_ids || []).map(fk)), ids, (id) => fantasyPrice(id, rounds)),
+        }));
+        return {};
+      },
+    };
+  }
+
+  // Matchday: organizers (and assistants) ALWAYS get the full controls;
+  // a regular player gets them when it's hot or the lineup is out,
+  // otherwise the cold countdown + last recap.
+  const matchdayCold = !matchdayHot && !isOrganizer && !canManageTeams && !teamsConfirmed;
+
+  const selectTab = (id) => {
+    setTab(id);
+    if (id === "perfil") { setViewPlayerId(null); setSettingsView(null); }
+  };
+
   // ── Main app ───────────────────────────────────────────
   return shell(
     <>
-      {!tourSeen && <FirstRunTour onDone={() => setTourSeen(true)} />}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0" }}>
-        <img src={BRAND.logo} alt="PITCH App" style={{ height: 24 }} />
-        {!noGroup && (
-          <GroupSwitcher
-            currentName={game.groupName}
-            activeGroupId={cloudMode ? cloud.groupRow?.id : null}
-            myGroups={cloudMode ? cloud.myGroups : []}
-            onSwitchGroup={cloudMode ? cloud.switchActiveGroup : null}
-          />
-        )}
-      </div>
-      <div style={{ paddingBottom: 80 }}>
+      {!tourSeen && <FirstRunTour onDone={() => { setTourSeen(true); setWhatsNewSeen(true); }} />}
+      {tourSeen && (!whatsNewSeen || whatsNewOpen) && <WhatsNewSheet onDone={() => { setWhatsNewSeen(true); setWhatsNewOpen(false); }} />}
+      {/* App header — logo left; bell (Novidades, red dot while unseen) + my avatar (→ Perfil) right. */}
+      <TopBar onLogoClick={() => selectTab("home")}
+        actions={[{ Icon: Bell, label: t("Novidades"), onClick: () => setWhatsNewOpen(true), badge: !whatsNewSeen }]}
+        right={me ? (
+          <button type="button" onClick={() => selectTab("perfil")} aria-label={t("O meu perfil")} title={t("O meu perfil")}
+            style={{ width: TOUCH.min, height: TOUCH.min, borderRadius: "50%", background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Avatar name={me.name || me.nick} photo={me.photo} color={playerColor(baseGroup, me)} size={32} isMe />
+          </button>
+        ) : null} />
+      <div style={{ paddingBottom: 96 }}>
         {tab === "home" && (
+          // Home (redesign v1): one next action + last-result recap + single
+          // activity feed built from matchdays + social posts (SocialTab no
+          // longer rendered here). resultPending = kickoff passed <36h ago,
+          // nothing live and no matchday recorded today (organizer/assistant).
           <HomeTab
-            me={me} group={displayGroup}
-            homeFeed={homeFeedView} nextGame={nextGameAcrossGroups}
-            personalRecords={personalRecords} attendanceStreak={attendanceStreak}
-            onToggleKudos={cloudMode ? (matchdayId, given) => cloud.toggleKudos(matchdayId, me?.uuid, given) : null}
-            recentPerformance={recentPerformance}
+            me={me} group={displayGroup} myKey={myMvpKey}
+            nextGame={homeNextGame} nextActions={nextActions}
+            slots={hasGameContext ? {
+              spots: game.spots, groupName: game.groupName, myStatus: me?.status,
+              date: game.date, time: game.time, venue: game.venue,
+              waitlist: Math.max(0, baseGroup.filter((p) => p.status === "confirmed").length - spotsTaken.length),
+              // Same shape JogoTab feeds the shared SlotGrid (photo, nick, paid, injured).
+              taken: spotsTaken.map((p) => ({ ...p, name: p.name || p.nick, color: playerColor(baseGroup, p) })),
+            } : null}
+            liveMatchday={Boolean(matchday)}
+            resultPending={canManageTeams && hasGameContext && !matchday && kickoffAt <= new Date() && Date.now() - kickoffAt.getTime() < 36 * 3600 * 1000 && lastMatchdayView?.date !== fmtDayMonth(isoDay(0))}
+            onOpenJogar={() => { setJogarView("jogos"); selectTab("jogar"); }}
+            onOpenMatchday={() => selectTab("matchday")}
+            onOpenCompetir={() => selectTab("competir")}
+            feedMatchdays={cloudMode ? [
+              ...cloud.matchdays.map((r) => ({ ...r, groupName: game.groupName })),
+              ...cloud.crossGroupMatchdays.map((r) => ({ ...r, groupName: r.groups?.name })),
+            ] : null}
+            localHistory={cloudMode ? null : { days: localDays, history: historyView, groupName: game.groupName }}
+            social={social}
+            postTs={cloudAuthed ? Object.fromEntries(cloud.posts.map((p) => [p.id, p.created_at])) : null}
+            myGroupIds={cloudAuthed ? [cloud.groupRow?.id, ...cloud.myGroups.map((m) => m.group_id)].filter(Boolean) : ["local"]}
+            friendsEnabled={cloudAuthed}
+            kudos={cloudMode ? cloud.matchdayKudos : null}
+            onToggleKudos={cloudMode ? (matchdayId, toKey, given) => cloud.toggleKudos(matchdayId, toKey, given) : null}
+            attendanceStreak={attendanceStreak}
+            groupName={game.groupName} lastMatchdayForWorkout={lastMatchdayView}
+            peerRatings={cloudMode ? cloud.ratings : null}
             onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined}
           />
         )}
-        {tab === "jogo" && (noGroup ? (
-          <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
-        ) : (
-          <JogoTab
-            group={displayGroup} game={game}
-            togglePaid={togglePaid} toggleMyStatus={toggleMyStatus} payMine={payMine}
-            canManageTeams={canManageTeams} onSetPlayerStatus={setPlayerStatus}
-            inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
-            onReschedule={rescheduleGame}
-            onScheduleGame={cloudMode ? (dateIso, time) => cloud.scheduleNextGame(dateIso, time) : undefined}
-            confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
+        {tab === "jogar" && (
+          // Jogar (redesign v1): Jogos | Grupos + pushed Game Detail and
+          // Group page (Plantel · Stats · Fantasy · Definições). Render
+          // functions keep every screen wired to root state.
+          <JogarTab
+            view={jogarView} onViewChange={setJogarView}
+            headerRight={groupSwitcher}
+            groupEntryN={grupoEntry.n}
+            renderJogos={({ openDetail }) => noGroup ? (
+              <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
+            ) : (
+              <JogoTab
+                group={displayGroup} game={game}
+                toggleMyStatus={toggleMyStatus} payMine={payMine}
+                inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
+                onReschedule={rescheduleGame}
+                onScheduleGame={cloudMode ? (dateIso, time) => cloud.scheduleNextGame(dateIso, time) : undefined}
+                confirmOpen={confWin.isOpen} opensAtLabel={opensAtLabel}
+                onOpenDetail={openDetail}
+                upcoming={cloudMode ? cloud.crossGroupGames
+                  .filter((g) => new Date(g.scheduled_at) >= new Date())
+                  .map((g) => {
+                    const d = new Date(g.scheduled_at);
+                    return {
+                      id: g.id, groupName: g.groups?.name, venue: g.venue,
+                      dateLabel: fmtFullDay(toIsoDay(d)),
+                      timeLabel: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+                      onOpen: cloud.switchActiveGroup ? () => cloud.switchActiveGroup(g.group_id) : undefined,
+                    };
+                  }) : []}
+                findGame={isEnabled("openGames", { isAdmin: cloud.isAdmin }) ? <FindGamePlaceholder /> : null}
+                pastGames={historyView}
+                onOpenHistory={() => goToGroupView("stats")}
+              />
+            )}
+            renderDetail={({ onBack }) => (
+              <GameDetail
+                group={displayGroup} game={game} gameId={gameId} onBack={onBack}
+                togglePaid={togglePaid} payMine={payMine}
+                canManageTeams={canManageTeams} canManageGame={isOrganizer} onSetPlayerStatus={setPlayerStatus}
+                inviteUrl={inviteUrl}
+                material={material} onToggleMaterial={toggleMaterial} onAssignMaterial={assignMaterial} onAddMaterial={addMaterial}
+              />
+            )}
+            renderGroups={({ openGroup }) => noGroup ? (
+              <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
+            ) : (
+              <GroupsList
+                groups={cloudMode && cloud.myGroups?.filter((m) => !m.banned).length
+                  ? cloud.myGroups.filter((m) => !m.banned).map((m) => ({
+                      id: m.group_id, name: m.groups?.name, active: m.group_id === cloud.groupRow?.id,
+                      meta: [m.role === "organizer" ? t("Organizador") : m.role === "assistant" ? t("Auxiliar") : t("Membro"), m.groups?.venue].filter(Boolean).join(" · "),
+                    }))
+                  : [{ id: "current", name: game.groupName, active: true, meta: `${displayGroup.length} ${t("jogadores")}${game.venue ? ` · ${game.venue}` : ""}` }]}
+                onOpen={async (g) => {
+                  if (!g.active && cloudMode) {
+                    const res = await cloud.switchActiveGroup(g.id);
+                    if (res?.error) return res;
+                  }
+                  openGroup();
+                  return null;
+                }}
+              />
+            )}
+            renderGroupPage={({ onBack }) => (
+              <GroupPage
+                key={grupoEntry.n}
+                onBack={onBack} initialView={grupoEntry.view}
+                groupName={game.groupName}
+                subtitle={`${displayGroup.length} ${t("jogadores")}${game.venue ? ` · ${game.venue}` : ""}`}
+                isOrganizer={isOrganizer}
+                plantel={
+                  <GrupoTab
+                    group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode}
+                    inviteUrl={inviteUrl} isOrganizer={isOrganizer}
+                    onToggleAssistant={cloud.toggleAssistant}
+                    onSetPlayerType={(playerId, type) => cloud.updatePlayer(playerId, { player_type: type })}
+                    onSetAttendanceLock={(playerId, locked) => cloud.setAttendanceLock(locked, playerId, gameId)}
+                    onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus}
+                    onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember}
+                    canManageTeams={canManageTeams}
+                    totalGames={totalGamesPlayed}
+                    myTeams={cloudMode ? cloud.myTeams : []} myPlayerId={me?.uuid}
+                    onCreateTeam={cloudMode ? cloud.createTeam : undefined} onFetchTeam={cloudMode ? cloud.fetchTeam : undefined}
+                    onAddTeamMember={cloudMode ? cloud.addTeamMember : undefined} onRemoveTeamMember={cloudMode ? cloud.removeTeamMember : undefined}
+                  />
+                }
+                stats={<GroupRecords records={recordsView} canDelete={isOrganizer && cloudMode} onDeleteMatchday={deleteMatchdayRecord} />}
+                fantasy={cloud.canSeeFantasy ? (
+                  <FantasyTab group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
+                    fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
+                    fantasyTradeOffers={cloud.fantasyTradeOffers} matchdays={cloud.matchdays}
+                    onCreateLeague={cloud.createFantasyLeague} onSaveSquad={cloud.saveFantasySquad}
+                    onCreateTradeOffer={cloud.createTradeOffer} onCancelTradeOffer={cloud.cancelTradeOffer}
+                    onRespondTradeOffer={cloud.respondTradeOffer} onSyncFantasy={cloud.syncFantasyScores} />
+                ) : demoFantasyProps ? (
+                  <FantasyTab {...demoFantasyProps} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt} />
+                ) : null}
+                settings={
+                  <GroupSettings game={game} onEditGroup={() => setEditingGroup(true)}
+                    inviteUrl={inviteUrl} inviteUrlAvulso={inviteUrlAvulso}
+                    bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} />
+                }
+              />
+            )}
           />
-        ))}
+        )}
         {tab === "matchday" && (noGroup ? (
           <NoGroupState onJoinGroup={() => setNoGroupOptIn(false)} />
         ) : (
@@ -1430,42 +1816,57 @@ export default function PitchApp() {
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution }}
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution,
+              // Redesign (Matchday "Assistência" button): patch one logged event in place
+              // (e.g. attach an assist to an existing goal) — keeps its position/minute,
+              // unlike remove + re-add. Same updateMatchday path as the other handlers.
+              onUpdateEvent: (matchId, eventIndex, patch) =>
+                updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: m.events.map((e, i) => (i === eventIndex ? { ...e, ...patch } : e)) } : m)) })) }}
+            prompt={confirmAction ? <NextActionCard {...confirmAction} /> : null}
+            coldView={matchdayCold ? <MatchdayCold game={game} lastMatchday={lastMatchdayView} /> : null}
+            mvp={mvp} lastMatchday={lastMatchdayView} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined}
+            social={social}
           />
         ))}
-        {tab === "clube" && cloud.isAdmin && (
-          <ClubeTab
-            bookings={cloudBookings} toggleBooking={toggleBooking}
-            events={cloudEvents} rsvpEvent={rsvpEvent} payEvent={payEvent}
-            openMatches={openMatches} joinOpenMatch={joinOpenMatch}
-            ownOpenSpots={Math.max(0, game.spots - baseGroup.filter((p) => p.status === "confirmed").length)}
-            ownPublished={ownPublished} publishOwnGame={() => setOwnPublished((v) => !v)}
-            game={game}
+        {tab === "competir" && (
+          <CompetirTab
             isAdmin={cloud.isAdmin}
-            onCreateEvent={cloud.createEvent}
-            onDeleteEvent={cloud.deleteEvent}
+            group={displayGroup} history={historyView} matchdaySummaries={matchdaySummariesView} lastMatchday={lastMatchdayView} mvp={mvp}
+            social={social} groupName={game.groupName}
+            postDates={cloudMode ? Object.fromEntries(cloud.posts.map((p) => [p.id, p.created_at])) : null}
+            groupPicker={cloudMode && (cloud.myGroups?.length ?? 0) > 1 ? groupSwitcher : null}
+            openBallot={competirBallot}
           />
         )}
-        {tab === "social" && <SocialTab social={social} me={displayGroup.find((p) => p.isMe)} groupName={game.groupName} lastMatchday={lastMatchdayView} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined} />}
-        {tab === "compete" && (
-          <CompeteTab
-            showManager={cloud.canSeeFantasy}
-            noGroup={noGroup}
-            onJoinGroup={() => setNoGroupOptIn(false)}
-            statsProps={{ group: displayGroup, history: historyView, matchdaySummaries: matchdaySummariesView, lastMatchday: lastMatchdayView, mvp, statMode, setStatMode, groupName: game.groupName, onCardGenerated: cloudMode ? cloud.logCardGenerated : undefined, social }}
-            leagueProps={{ group: displayGroup, game, openProfile, cloudMode, inviteUrl, inviteUrlAvulso, isOrganizer, onToggleAssistant: cloud.toggleAssistant, onSetPlayerType: (playerId, type) => cloud.updatePlayer(playerId, { player_type: type }), onSetAttendanceLock: (playerId, locked) => cloud.setAttendanceLock(locked, playerId, gameId), onAddManualPlayer: addManualPlayer, onSetPlayerStatus: setPlayerStatus, onRemoveGuestPlayer: removeGuestPlayer, onRemoveMember: removeMember, bannedMembers: cloudMode ? cloud.bannedMembers : [], onUnbanMember: unbanMember, canManageTeams, records: recordsView, onDeleteMatchday: deleteMatchdayRecord, totalGames: historyView.reduce((s, h) => s + (h.games || 1), 0), myTeams: cloudMode ? cloud.myTeams : [], myPlayerId: me?.uuid, onCreateTeam: cloudMode ? cloud.createTeam : undefined, onFetchTeam: cloudMode ? cloud.fetchTeam : undefined, onAddTeamMember: cloudMode ? cloud.addTeamMember : undefined, onRemoveTeamMember: cloudMode ? cloud.removeTeamMember : undefined }}
-            managerProps={{ group: displayGroup, me, isOrganizer, kickoffAt: game.kickoffAt, fantasyLeague: cloud.fantasyLeague, fantasySquads: cloud.fantasySquads, fantasyScores: cloud.fantasyScores, fantasyTradeOffers: cloud.fantasyTradeOffers, matchdays: cloud.matchdays, onCreateLeague: cloud.createFantasyLeague, onSaveSquad: cloud.saveFantasySquad, onCreateTradeOffer: cloud.createTradeOffer, onCancelTradeOffer: cloud.cancelTradeOffer, onRespondTradeOffer: cloud.respondTradeOffer, onSyncFantasy: cloud.syncFantasyScores }}
-          />
+        {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (
+          <div>
+            <div style={{ padding: "12px 16px 0" }}>
+              <button onClick={() => setSettingsView("main")} aria-label={t("Voltar")}
+                style={{ width: 44, height: 44, marginLeft: -10, background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ArrowLeft size={20} />
+              </button>
+            </div>
+            <ClubeTab
+              bookings={cloudBookings} toggleBooking={toggleBooking}
+              events={cloudEvents} rsvpEvent={rsvpEvent} payEvent={payEvent}
+              openMatches={openMatches} joinOpenMatch={joinOpenMatch}
+              ownOpenSpots={Math.max(0, game.spots - baseGroup.filter((p) => p.status === "confirmed").length)}
+              ownPublished={ownPublished} publishOwnGame={() => setOwnPublished((v) => !v)}
+              game={game}
+              isAdmin={cloud.isAdmin}
+              onCreateEvent={cloud.createEvent}
+              onDeleteEvent={cloud.deleteEvent}
+            />
+          </div>
         )}
-        {tab === "perfil" && (
-          <PerfilTab
-            key={viewPlayerId ?? "me"}
-            group={displayGroup} viewPlayerId={viewPlayerId}
-            updateProfile={updateProfile} backToMe={backToMe} resetDemo={resetDemo}
-            isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)} onCreateGroup={noGroup ? () => setCreatingGroup(true) : null} logout={logout}
-            addPeerRating={addPeerRating} cloudMode={cloudMode} onSubmitRating={cloudMode ? cloud.submitRating : null}
-            isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)}
-            uploadMedia={uploadMedia} onToggleInjured={toggleInjured}
+        {tab === "perfil" && (settingsView === "main" || (settingsView === "clube" && !cloud.isAdmin)) && me && (
+          <SettingsScreen
+            player={me}
+            onBack={() => setSettingsView(null)}
+            isOrganizer={isOrganizer} onEditGroup={() => setEditingGroup(true)}
+            onCreateGroup={noGroup ? () => setCreatingGroup(true) : null}
+            lang={lang} onLang={changeLang}
+            themeMode={themeMode} onThemeMode={changeTheme}
             enablePush={cloudAuthed ? enablePush : null}
             security={cloud.user ? {
               email: cloud.user.email,
@@ -1473,17 +1874,36 @@ export default function PitchApp() {
               updateEmail: cloud.updateEmail,
               signOutEverywhere,
             } : null}
-            lang={lang} onLang={changeLang}
-            themeMode={themeMode} onThemeMode={changeTheme}
+            isAdmin={cloud.isAdmin} onOpenAdmin={() => setAdminOpen(true)} onOpenClube={() => setSettingsView("clube")}
+            logout={logout} resetDemo={resetDemo}
+          />
+        )}
+        {tab === "perfil" && !settingsView && (
+          <PerfilTab
+            key={viewPlayerId ?? "me"}
+            group={displayGroup} viewPlayerId={viewPlayerId}
+            updateProfile={updateProfile} backToMe={backToMe}
+            isOrganizer={isOrganizer}
+            addPeerRating={addPeerRating} cloudMode={cloudMode} onSubmitRating={cloudMode ? cloud.submitRating : null}
+            uploadMedia={uploadMedia} onToggleInjured={toggleInjured}
             achievementMatchdays={achievementMatchdays}
-            totalGames={historyView.reduce((s, h) => s + (h.games || 1), 0)}
+            totalGames={totalGamesPlayed}
             records={recordsView}
             onBanMember={banMember}
+            onOpenSettings={() => setSettingsView("main")}
+            personalRecords={personalRecords} attendanceStreak={attendanceStreak}
+            // Perfil redesign: hero meta (city · group), "Grupos e equipas"
+            // rows, and local demo's last matchday for form/records.
+            groupName={game.groupName} city={groupSettings.city}
+            myGroups={cloudMode ? cloud.myGroups : []} activeGroupId={cloudMode ? cloud.groupRow?.id : null}
+            myTeams={cloudMode ? cloud.myTeams : []}
+            localMatchday={cloudMode ? null : lastMatchdayView}
           />
         )}
       </div>
 
-      <BottomNav tab={tab} showClube={cloud.isAdmin} onSelect={(id) => { setTab(id); if (id === "perfil") setViewPlayerId(null); }} />
+      <BottomNav tab={tab} matchdayHot={matchdayHot} onSelect={selectTab} />
     </>
   );
 }
+

@@ -50,6 +50,15 @@ export const setLang = (l) => {
 
 export const t = (s) => (current === "pt" ? s : (DICTS[current]?.[s] ?? s));
 
+/** Context-scoped translation, for a PT-PT word whose translation
+ *  depends on WHERE it appears. Looks up "<ctx>:<s>" first (e.g.
+ *  "nav:Perfil" → "Me" for the bottom-nav tab, while plain "Perfil"
+ *  stays "Profile" in page titles), then falls back to plain t(s).
+ *  In PT the source string is returned unchanged.
+ *  Contexts in use: "nav" (BottomNav labels), "form" (FormDots letters
+ *  V/E/D → W/D/L — single letters are too ambiguous for the global map). */
+export const tCtx = (ctx, s) => (current === "pt" ? s : (DICTS[current]?.[`${ctx}:${s}`] ?? t(s)));
+
 // Attribute names get their own map: "Defesa" the position translates to
 // "Defender", but "Defesa" the attribute is "Defending" — can't share a key.
 const ATTRS_PT = {
@@ -89,6 +98,25 @@ const ATTR_ABBR_DICTS = { "pt-br": ATTR_ABBR_PT_BR, en: ATTR_ABBR_EN, it: ATTR_A
 export const attrAbbr = (k) => (current === "pt" ? ATTR_ABBR_PT[k] : (ATTR_ABBR_DICTS[current]?.[k] ?? ATTR_ABBR_PT[k]));
 
 const EN = {
+  // ── Home (redesign v1): next action, recap, activity feed ──
+  "Jogo completo": "Game full", "vaga livre": "spot left", "vagas livres": "spots left",
+  "Ver jogo": "View game", "Último resultado": "Latest result", "Tu": "You",
+  "Resultado": "Result", "Novo recorde pessoal": "New personal best", "MVP da jornada": "Matchday MVP",
+  "Hat-trick!": "Hat-trick!", "A tua jornada": "Your matchday", "Grande jornada": "Big night",
+  "golo": "goal", "assistência": "assist", "assistências": "assists", "sem sofrer": "clean sheet",
+  "Não falhaste nenhuma. Mantém a série viva no próximo jogo.": "You haven't missed one. Keep the streak alive next game.",
+  "uma publicação": "a post", "Enviar": "Send", "Partilha um momento…": "Share a moment…",
+  "Pedidos de amizade": "Friend requests", "Jogadores no PITCH": "Players on PITCH",
+  "Ainda sem amigos. Adiciona quem joga contigo para veres a atividade deles aqui.": "No friends yet. Add the people you play with to see their activity here.",
+  "pedido": "request", "pedidos": "requests", "Atividade": "Activity",
+  "A atividade começa no primeiro jogo": "Activity starts with your first game",
+  "Resultados, golos, MVPs e recordes do teu grupo e dos teus amigos aparecem aqui automaticamente.": "Results, goals, MVPs and records from your groups and friends show up here automatically.",
+  "AO VIVO": "LIVE", "O dia de jogo está a decorrer": "The matchday is under way", "Abrir Matchday": "Open Matchday",
+  "RESULTADO EM FALTA": "RESULT MISSING", "Regista o resultado de hoje": "Log today's result",
+  "Estás dentro": "You're in", "Não vais": "You're out", "O que está a acontecer": "What's happening",
+  "SEM JOGO MARCADO": "NO GAME SCHEDULED", "Nada agendado por agora": "Nothing scheduled yet",
+  "Quando houver jogo num dos teus grupos, aparece aqui.": "When one of your groups has a game, it shows up here.",
+  "Ir para Jogar": "Go to Play",
   // ── Dates ──────────────────────────────────────────────
   "Domingo": "Sunday", "Segunda": "Monday", "Terça": "Tuesday", "Quarta": "Wednesday",
   "Quinta": "Thursday", "Sexta": "Friday", "Sábado": "Saturday",
@@ -103,6 +131,29 @@ const EN = {
   "jogo": "game", "jogos": "games", "jogadores": "players", "jogador": "player",
   "(tu)": "(you)", "não definido": "not set", "Entrar": "Log in", "Criar conta": "Sign up",
 
+  // ── Jogar tab (redesign v1): Jogos, Game Detail, Group page ──
+  "jogar:Jogos": "Games", "group:Grupo": "Group",
+  "OUTROS JOGOS": "OTHER GAMES", "Ver tudo": "See all", "JOGOS ANTERIORES": "PAST GAMES",
+  "Escolhe a data e a hora do primeiro jogo do grupo.": "Pick the date and time of the group's first game.",
+  "Afinal vou!": "I'm in after all!", "Sair da lista": "Leave list", "Semanal": "Weekly", "Partilhar jogo": "Share game",
+  " — e as próximas semanas também, nesse dia da semana.": " — and the following weeks too, on that weekday.",
+  "Detalhes do jogo": "Game details", "Plantel · Pagamentos · Material": "Squad · Payments · Kit",
+  "Enviar lista no WhatsApp": "Send list on WhatsApp", "Confirmados, vagas e preço": "Confirmed, spots and price",
+  "Pagos": "Paid", "Não pode": "Can't make it", "de": "of", "Ainda ninguém confirmou.": "No one has confirmed yet.",
+  "Material": "Kit", "Sem material na lista.": "No kit on the list.", "Ninguém atribuído": "Unassigned", "Ninguém": "No one",
+  "Adicionar item (ex.: Coletes)": "Add item (e.g. Bibs)", "Bola": "Ball", "Coletes": "Bibs", "Bomba de ar": "Air pump",
+  "Monta a tua equipa de fantasia com os jogadores do grupo e pontua com os jogos reais. Cria conta para jogar.": "Build your fantasy team from the group's players and score with the real games. Sign up to play.",
+  "Golden Boot": "Golden Boot", "Best of the Day": "Best of the Day", "Playmaker": "Playmaker", "Golden Glove": "Golden Glove",
+  "Histórico": "History", "sem votos": "no votes", "Apagar este dia de jogo": "Delete this matchday",
+  "Link mensalista": "Regular link", "Prioridade nas confirmações": "Priority when confirming",
+  "Link avulso": "Drop-in link", "Entra na lista de espera por defeito": "Starts on the waiting list by default",
+  "Campo": "Pitch", "Jogo avulso": "One-off game", "Vagas por jogo": "Spots per game", "Convites": "Invites",
+  "Copiar link": "Copy link", "Jogadores banidos": "Banned players", "Bloqueados de voltar a entrar": "Blocked from rejoining",
+  "Desbanir": "Unban", "Remover do grupo": "Remove from group", "Desbloquear vaga": "Unlock spot",
+  "Confirmar definitivamente": "Confirm for good", "fiabilidade": "reliability", "Gerir jogador": "Manage player",
+  "ENCONTRAR JOGO": "FIND A GAME", "Jogos abertos perto de ti": "Open games near you",
+  "Grupos com vagas livres para hoje e esta semana — entra num jogo com um toque.": "Groups with free spots today and this week — join a game in one tap.",
+
   // Positions & feet (stored values stay PT; only display is translated)
   "Guarda-redes": "Goalkeeper", "Defesa": "Defender", "Médio": "Midfielder", "Avançado": "Forward",
   "Direito": "Right", "Esquerdo": "Left", "Ambos": "Both",
@@ -110,6 +161,15 @@ const EN = {
 
   // ── BottomNav ──────────────────────────────────────────
   "Jogo": "Game", "Clube": "Club", "Grupo": "Squad", "Perfil": "Profile",
+  "Jogar": "Play", "Competir": "Compete", "Grupos": "Groups", "Desafios": "Challenges", "Competições": "Competitions", "Em breve": "Coming soon", "Definições": "Settings",
+  // Context-scoped (see tCtx): the nav's Perfil tab is "Me" in EN.
+  "nav:Perfil": "Me",
+
+  // ── Redesign primitives (Chip, FormDots, TopBar…) ──────
+  "form:V": "W", "form:E": "D", "form:D": "L",
+  "Vitória": "Win", "Empate": "Draw", "Derrota": "Loss",
+  "Forma recente": "Recent form",
+  "Competição": "Competition", "Equipa": "Team",
 
   // ── LandingPage ────────────────────────────────────────
   "O teu jogo semanal,": "Your weekly game,",
@@ -256,6 +316,7 @@ const EN = {
     "You get in automatically if someone drops out. No payment until you're in.",
   "Estás dentro!": "You're in!",
   "Pago ✓ — bom jogo!": "Paid ✓ — have a good game!", "Falta pagar": "Still to pay",
+  "Estás dentro — só falta a tua parte.": "You're in — just your share left to pay.",
   "Pagar": "Pay",
   "Disseste que não podes. Mudaste de ideias?": "You said you can't make it. Changed your mind?",
   "Afinal vou! Confirmar": "I'm in after all! Confirm",
@@ -483,6 +544,11 @@ const EN = {
   "Oferta": "Offer",
   "Selecionados": "Selected",
   "Banco": "Bank",
+  "Suplente": "Reserve", "Suplentes": "Reserves", "Tornar capitão": "Make captain", "Já é o capitão": "Already captain",
+  "O capitão pontua a dobrar.": "The captain scores double.", "Toca num jogador no campo para o enviar para o banco.": "Tap a player on the pitch to bench them.",
+  "Pontos": "Points", "na última jornada": "last round", "A minha equipa": "My team", "Liga": "League", "Mercado": "Market",
+  "Terminada": "Ended", "Trancada": "Locked", "Ainda sem equipa": "No team yet", "Montar equipa": "Build my team", "ver cartão": "view card", "Managers com este jogador": "Managers who own this player",
+  "Ainda sem capitão — toca num jogador no campo e escolhe «Tornar capitão».": "No captain yet — tap a player on the pitch and choose “Make captain”.",
   "Ofertas de troca": "Trade offers",
   "recebidas": "received", "enviadas": "sent",
   "RECEBIDAS": "RECEIVED", "ENVIADAS": "SENT",
@@ -596,7 +662,7 @@ const EN = {
   // ── Home: "just played" share banner ─────────────────────
   "ACABASTE DE JOGAR": "YOU JUST PLAYED", "Dispensar": "Dismiss",
   "novo recorde pessoal": "new personal best", "Partilhar o meu desempenho": "Share my performance",
-  "golos": "goals", "assist.": "assists",
+  "golos": "goals", "assist.": "ast.",
   // ── Records: reopen a finished game ────────────────────
   "JOGOS": "GAMES", "toca num jogo para ver os detalhes": "tap a game for details",
   "Sem golos neste jogo": "No goals in this game", "próprio golo": "own goal",
@@ -605,7 +671,129 @@ const EN = {
   "jornadas seguidas": "matchdays in a row", "G+A na melhor noite": "G+A on your best night",
   "RESUMO RECENTE": "RECENT SUMMARY", "Baseado nas últimas jornadas carregadas, não a época inteira.": "Based on the most recently loaded matchdays, not the full season.",
   "Jornadas": "Matchdays", "Assist.": "Assists",
+
+  // ── Perfil / Definições (redesign v1) ─────────────────────
+  "Resumo": "Summary", "Conquistas": "Achievements", "Calendário": "Calendar",
+  "Organizador": "Organizer", "Auxiliar": "Assistant", "Membro": "Member", "Plantel": "Squad",
+  "Editar perfil": "Edit profile", "últimos": "last", "Grupos e equipas": "Groups & teams", "Ativo": "Active",
+  "BANIR JOGADOR": "BAN PLAYER", "Impede": "Prevents",
+  "de voltar a entrar neste grupo, mesmo com um novo convite. Escreve o nick dele para confirmar:": "from rejoining this group, even with a new invite. Type their nickname to confirm:",
+  "A banir…": "Banning…", "Banir do grupo": "Ban from group",
+  "Golos / jogo": "Goals / game", "Assist. / jogo": "Assists / game",
+  "Todos os teus grupos · últimas jornadas carregadas, não a época inteira.": "All your groups · latest matchdays loaded, not the whole season.",
+  "CONTA": "ACCOUNT", "GRUPO": "GROUP", "PREFERÊNCIAS": "PREFERENCES",
+  "Admin · Clube": "Admin · Club", "Reservas de campo, eventos e jogos abertos": "Pitch bookings, events and open games",
+  "Mais golos num jogo": "Most goals in a game", "Maior série a marcar": "Longest scoring streak",
+  "dias de jogo seguidos com golo": "matchdays in a row with a goal", "G+A por jogo": "G+A per game",
+  "na época": "this season", "Melhor noite": "Best night", "golos + assistências": "goals + assists",
+  "Presenças seguidas": "Attendance streak", "jornadas sem falhar": "matchdays without missing", "RECORDES": "RECORDS",
+  "Mês anterior": "Previous month", "Mês seguinte": "Next month", "golo": "goal",
+  "Os dias em que jogas aparecem aqui, a verde-lima.": "The days you play show up here, in lime.",
+  "defesas": "saves", "MVP do dia": "MVP of the day", "Jogou, sem golos/assistências registados.": "Played, no goals/assists recorded.",
+  "Progresso": "Progress", "Precisas de pelo menos 2 dias de jogo para ver a tendência.": "You need at least 2 matchdays to see the trend.",
+  "G+A por dia jogado": "G+A per matchday played", "por desbloquear": "locked",
+
+  // ── Matchday (redesign v1) ───────────────────────────────
+  "action:Defesa": "Save", "Assistência": "Assist", "MVP": "MVP", "LIVE": "LIVE", "Ao vivo": "Live", "Terminado": "Finished",
+  "Convocados": "Called up", "Ainda ninguém confirmou para este jogo.": "Nobody has confirmed for this game yet.", "em lista de espera": "on the waiting list",
+  "Confirmadas": "Confirmed", "Rascunho": "Draft", "Equipas em preparação": "Teams being prepared", "Equipas por sortear": "Teams not drawn yet",
+  "Sorteio equilibrado": "Balanced draw", "Equilibrado por posição. Depois podes renomear e trocar jogadores.": "Balanced by position. You can rename teams and swap players afterwards.",
+  "Número de equipas": "Number of teams", "Sortear equipas": "Draw teams", "Nome da equipa": "Team name", "A tua equipa": "Your team", "tu": "you", "Outras equipas": "Other teams",
+  "Mover de equipa": "Move to team", "Jogadores sem equipa": "Players without a team", "Colocar em…": "Put in…",
+  "Concluir edição": "Done editing", "Editar equipas": "Edit teams",
+  "Formato e apito inicial": "Format and kick-off", "Sorteia e confirma as equipas para começar.": "Draw and confirm the teams to start.",
+  "Formato": "Format", "Começar jogo": "Start match",
+  "Golo de que equipa?": "Goal for which team?", "Próprio golo a favor de": "Own goal in favour of", "quem marcou?": "who scored?",
+  "↩ Golo normal": "↩ Normal goal", "Foi próprio golo?": "Own goal?", "Assistência para que golo?": "Assist for which goal?",
+  "Não há golos sem assistência neste jogo. Regista primeiro o golo — a assistência vem logo a seguir.": "No goals without an assist in this match. Log the goal first — the assist comes right after.",
+  "Registar golo": "Log goal", "golo de": "goal by", "Defesa de que equipa?": "Save for which team?", "Grande defesa": "Great save",
+  "Candidatos a MVP": "MVP contenders", "A votação MVP abre para todos quando terminares o jogo. Para já, quem está a brilhar:": "MVP voting opens for everyone when you end the match. For now, who's shining:",
+  "Substituição": "Substitution", "subst.": "subs", "Quem entra?": "Who comes on?", "Quem sai?": "Who goes off?", "Desfazer substituição": "Undo substitution", "Fechar": "Close",
+  "Permissão de microfone negada — ativa o microfone para este site nas definições do browser.": "Microphone permission denied — enable the microphone for this site in your browser settings.",
+  "Este browser não permite reconhecimento de voz em páginas web (comum no Safari/iPhone) — experimenta no Chrome, num Android ou computador.": "This browser doesn't allow speech recognition on web pages (common on Safari/iPhone) — try Chrome on Android or a computer.",
+  "Não percebi quem marcou em": "Couldn't tell who scored in", "Não ouvi nada — mantém premido enquanto falas.": "Didn't hear anything — keep holding while you speak.",
+  "Ouvi:": "I heard:", "Próprio golo de": "Own goal by", "Golo de": "Goal by", "A ouvir…": "Listening…", "Golo por voz — mantém premido e fala": "Voice goal — hold and speak",
+  "Desfazer último": "Undo last", "Lances": "Events", "Ainda sem lances. Usa os botões acima para registar.": "No events yet. Use the buttons above to log them.",
+  "Ainda sem lances.": "No events yet.", "sem assistência": "no assist", "corrigir": "fix",
+  "Clean sheets e defesas espetaculares do GR escolhido contam ao terminar o dia.": "Clean sheets and great saves for the chosen GK count when the day ends.",
+  "Tática": "Tactics", "Stats do dia": "Matchday stats", "defesa": "save", "Terminar jogo": "End match",
+  "Fecha o dia: as stats entram na época e abre a votação MVP.": "Closes the day: stats go into the season and MVP voting opens.",
+  "Cancelar dia de jogo (começou errado)": "Cancel matchday (started by mistake)", "Fase final": "Knockout stage",
+  "Mais vitórias": "Most wins", "Golos e assistências": "Goals and assists", "O teu card do jogo": "Your match card",
+  "Os teus golos e assistências, pronto para o WhatsApp e Instagram.": "Your goals and assists, ready for WhatsApp and Instagram.",
+  "Submeter ao Golo da Semana": "Submit to Goal of the Week", "Preparar o próximo jogo": "Prepare the next match",
+  "Votaste": "Voted", "Votação MVP": "MVP vote", "Sem candidatos neste dia.": "No candidates for this day.",
+  "Próximo jogo": "Next match", "dias": "days", "horas": "hours", "min": "min", "Ainda não há jogo marcado.": "No match scheduled yet.",
+  "O Matchday acende no dia do jogo:": "Matchday lights up on game day:", "Equipas sorteadas e confirmadas": "Teams drawn and confirmed",
+  "Marcador ao vivo, golo a golo": "Live score, goal by goal", "Votação MVP no fim": "MVP vote at the end", "Último Matchday": "Last matchday",
+  "Mantém premido e diz \"soltar tempo\"": "Hold and say \"start time\"", "Permissão de microfone negada — ativa-a nas definições do browser.": "Microphone permission denied — enable it in your browser settings.",
+  "Este browser não permite reconhecimento de voz (comum no Safari/iPhone) — experimenta no Chrome, num Android ou computador.": "This browser doesn't support speech recognition (common on Safari/iPhone) — try Chrome on Android or a computer.",
+  "Não percebi — mantém premido enquanto dizes \"iniciar\" ou \"soltar tempo\".": "Didn't catch that — hold while you say \"start\" or \"start time\".",
+  "Erro do microfone:": "Microphone error:",
+  "Balizas a zero e defesas espetaculares do GR escolhido contam ao terminar o dia.": "Clean sheets and great saves for the chosen GK count when the day ends.",
+  "Autogolo": "Own goal", "a favor de": "for", "quem marcou na própria baliza?": "who put it in their own net?", "Tipo de golo": "Goal type",
+  "Conta para os": "Counts for", "Escolhe o jogador dos": "Pick the player from", "não entra nos golos dele.": "it doesn't count as their goal.",
+  "Foi um adversário a marcar na própria baliza? Escolhe Autogolo.": "Did an opponent put it in their own net? Pick Own goal.",
+  "A decorrer": "Running", "Em pausa": "Paused", "Configurar cronómetro": "Timer settings",
+  "Balizas a zero": "Clean sheets", "autogolo": "own goal",
+  // Competir — full season stats (moved from the group's StatsTab)
+  // Home feed — identity items
+  "Conquista desbloqueada": "Achievement unlocked", "O teu card chegou ao nível Lenda.": "Your card reached Legend tier.",
+  "O card chegou ao nível Lenda.": "Their card reached Legend tier.", "Overall 86+ pela avaliação dos colegas": "86+ overall from teammates' ratings",
+  "Ver": "View", "Mais": "More", "Mais rankings": "More rankings", "Forma": "Form", "Jogadores de campo": "Outfield players", "Só guarda-redes": "Goalkeepers only",
+  "Sofridos": "Conceded", "Como se calcula?": "How is it calculated?", "Stats lado a lado e % de vitórias juntos": "Stats side by side and win % together",
+  "Quem está mais completo esta época, tudo junto num só número: golo vale mais quanto mais longe da baliza adversária é a posição (2 Avançado, 2,5 Médio, 3 Defesa, 4 Guarda-redes), 1 por assistência, 1 por vitória, 3 por MVP, 1 por baliza a zero.": "Who's the most complete player this season, all in one number: a goal is worth more the further the position is from the opponent's goal (2 Forward, 2.5 Midfielder, 3 Defender, 4 Goalkeeper), 1 per assist, 1 per win, 3 per MVP, 1 per clean sheet.",
+  "Balizas a zero (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.": "Clean sheets (worth 3×) and great saves — counts who actually kept, not just who plays in goal.",
+
+  // ── Competir (redesign v1) ───────────────────────────────
+  "Rankings": "Rankings", "Classificação da época": "Season standings", "Fiabilidade %": "Reliability %",
+  "dias de jogo": "matchdays", "dia de jogo": "matchday", "Ninguém pontuou ainda nesta categoria.": "Nobody has scored in this category yet.",
+  "Ver menos": "Show less", "Ver todos": "See all", "Jogador": "Player", "Ainda sem dias de jogo registados.": "No matchdays recorded yet.",
+  "Pódio da jornada": "Matchday podium", "Votação MVP aberta": "MVP voting open",
+  "Golo da Semana": "Goal of the Week", "últimos 7 dias": "last 7 days",
+  "Ainda não há golos em vídeo esta semana. Publica o teu no feed — o vídeo com mais ⚽ Golaço ganha.": "No goal videos this week yet. Post yours in the feed — the video with the most ⚽ Golaço wins.",
+  "O teu ⚽ Golaço é o voto. Ganha o vídeo com mais Golaços.": "Your ⚽ Golaço is your vote. The video with the most Golaços wins.",
   "Ainda sem jogos por aqui — quando jogares, a tua atividade aparece nesta tela.": "No games here yet — once you play, your activity shows up on this screen.",
+
+  // ── Redesign v1 integration (Home actions, feed, Matchday after, demo) ──
+  "CONFIRMA A TUA PRESENÇA": "CONFIRM YOUR SPOT", "PAGAMENTO EM FALTA": "PAYMENT DUE",
+  "VOTAÇÃO MVP ABERTA": "MVP VOTING OPEN", "Votar MVP": "Vote MVP",
+  "1º": "1st", "2º": "2nd", "3º": "3rd",
+  "lidera com": "leads with", "Ver ranking": "See ranking",
+  "Publicado no feed — o vídeo com mais ⚽ Golaço ganha.": "Posted to the feed — the video with the most ⚽ Golaço wins.",
+  "Escolhe \"Vídeo\" e publica o teu golo. Os vídeos do grupo dos últimos 7 dias entram no Golo da Semana.": "Pick \"Video\" and post your goal. Group videos from the last 7 days enter Goal of the Week.",
+  "Descreve o golo…": "Describe the goal…",
+  "Indisponível na demonstração.": "Not available in the demo.",
+  "Cancelar o dia de jogo em curso? Todos os golos e resultados registados até agora são apagados. As stats da época não são afetadas — ainda não foram gravadas.": "Cancel the matchday in progress? Every goal and result logged so far is deleted. Season stats aren't affected — they haven't been saved yet.",
+  "Apagar o dia de jogo de": "Delete the matchday of",
+  "As stats desse dia são retiradas da época de cada jogador. Esta ação não pode ser desfeita.": "That day's stats are removed from each player's season. This can't be undone.",
+  "As stats da época foram gravadas, mas a pontuação da Fantasy falhou para este dia. Vai a Manager e usa \"Sincronizar\" para recuperar esta ronda.": "Season stats were saved, but Fantasy scoring failed for this day. Go to Manager and use \"Sync\" to recover this round.",
+  // Stats (group page)
+  "Impacto": "Impact", "Sobre-entrega": "Over-delivery", "Forma (últimos 5)": "Form (last 5)",
+  "Melhor ataque (dia)": "Best attack (day)", "Melhor defesa (dia)": "Best defence (day)",
+  "Quem está mais completo esta época, tudo junto num só número: golo vale mais quanto mais longe da baliza adversária é a posição (2 Avançado, 2,5 Médio, 3 Defesa, 4 Guarda-redes), 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.": "Who's the most complete player this season, all in one number: a goal is worth more the further the position is from the opponent's goal (2 Forward, 2.5 Midfielder, 3 Defender, 4 Goalkeeper), 1 per assist, 1 per win, 3 per MVP, 1 per clean sheet.",
+  "Total de golos marcados na época.": "Total goals scored this season.",
+  "Total de assistências na época.": "Total assists this season.",
+  "Vezes eleito MVP do dia.": "Times voted matchday MVP.",
+  "Clean sheets (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.": "Clean sheets (worth 3×) and great saves — counts who actually kept, not just who plays in goal.",
+  "Compara o ranking de avaliação (OVR dos colegas) com o ranking real de Impacto. Positivo = rende mais do que esperavam; negativo = rende menos. Só entra quem já tem 3+ avaliações.": "Compares the rating ranking (teammates' OVR) with the real Impact ranking. Positive = delivering more than expected; negative = less. Only players with 3+ ratings.",
+  "O mesmo cálculo do Impacto, mas só dos últimos 5 dias de jogo — quem está em alta agora. 🔥 = a render bem acima da média da época.": "Same as Impact, but only the last 5 matchdays — who's hot right now. 🔥 = performing well above their season average.",
+  "Mais golos marcados por uma equipa num único dia de jogo.": "Most goals scored by a team in a single matchday.",
+  "Menos golos sofridos por uma equipa num único dia de jogo.": "Fewest goals conceded by a team in a single matchday.",
+  "Comparar jogadores": "Compare players",
+  "Escolhe 2 a 4 jogadores para comparar as stats e ver a % de vitórias quando jogam juntos.": "Pick 2 to 4 players to compare stats and see the win % when they play together.",
+  "Escolhe pelo menos 2 jogadores.": "Pick at least 2 players.",
+  "Ainda sem dias em que todos jogaram juntos na mesma equipa — passa a contar a partir do próximo dia de jogo.": "No days yet where they all played on the same team — it starts counting from the next matchday.",
+  "Jogos juntos": "Games together", "% Vitórias": "Win %", "Golos marcados": "Goals scored", "Golos sofridos": "Goals conceded",
+  "Ninguém tem ainda 3+ avaliações dos colegas para comparar.": "Nobody has 3+ teammate ratings to compare yet.",
+  "Ainda sem dados.": "No data yet.",
+  // Fantasy
+  "Recupera jornadas em que as stats gravaram mas a pontuação Fantasy falhou": "Recovers rounds where stats saved but Fantasy scoring failed",
+  "A sincronizar…": "Syncing…", "recuperada(s)": "recovered", "Tudo em dia": "All up to date", "Sincronizar": "Sync",
+  "Oferta por": "Offer for",
+  // Redesign v1 polish pass
+  "Novidades": "What's new", "O meu perfil": "My profile", "clean sheet": "clean sheet",
+  "A tua noite": "Your night", "Marco": "Milestone", "Progresso do dia de jogo": "Matchday progress", "balizas a zero": "clean sheets", "vitória": "win", "vitórias": "wins",
 };
 
 const PT_BR = {
@@ -950,6 +1138,7 @@ const IT = {
 
   // ── BottomNav ──────────────────────────────────────────
   "Jogo": "Partita", "Clube": "Club", "Grupo": "Gruppo", "Perfil": "Profilo",
+  "Jogar": "Gioca", "Competir": "Competi", "Grupos": "Gruppi", "Desafios": "Sfide", "Competições": "Competizioni", "Em breve": "In arrivo", "Definições": "Impostazioni",
 
   // ── LandingPage ────────────────────────────────────────
   "O teu jogo semanal,": "La tua partita settimanale,",

@@ -1,24 +1,58 @@
 import { useState } from "react";
-import { Pencil, CreditCard, Camera, Settings, LogOut, Star, MessageCircle, ShieldCheck, Bell, Globe, Cross, PlusCircle, Moon, Sun } from "lucide-react";
-import { C, cardStyle, displayFont } from "../theme";
-import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
+import { Pencil, Camera, Settings, Cross, ArrowLeft, Users, Shield } from "lucide-react";
+import { C, S, R, T, TOUCH, cardStyle, displayFont } from "../theme";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
-import { encodePayload, computeOverall } from "../lib/helpers";
-import { t } from "../lib/i18n";
+import { encodePayload, computeOverall, playerColor } from "../lib/helpers";
+import { t, tCtx } from "../lib/i18n";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
+import { formFor, careerRecordsFor } from "../lib/profileStats";
 import FutCard from "./FutCard";
 import RatingForm from "./RatingForm";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
-import SecuritySection from "./SecuritySection";
+import BtnGhost from "./BtnGhost";
+import PageHeader from "./PageHeader";
+import Avatar from "./Avatar";
+import Chip from "./Chip";
+import ListRow from "./ListRow";
+import StatTile from "./StatTile";
+import FormDots from "./FormDots";
+import SegmentedControl from "./SegmentedControl";
+import CareerSummary from "./CareerSummary";
+import PeerRatingsCard from "./PeerRatingsCard";
 import AchievementsSection from "./AchievementsSection";
 import MatchdayCalendar from "./MatchdayCalendar";
 import ProgressChart from "./ProgressChart";
 
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, resetDemo, isOrganizer, onEditGroup, onCreateGroup, logout, addPeerRating, cloudMode, onSubmitRating, isAdmin, onOpenAdmin, uploadMedia, enablePush, security, lang, onLang, themeMode, onThemeMode, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember }) {
+const SEGMENTS = [
+  { id: "resumo", label: "Resumo" },
+  { id: "stats", label: "Stats" },
+  { id: "conquistas", label: "Conquistas" },
+  { id: "calendario", label: "Calendário" },
+];
+
+// Same thresholds as FutCard's tiers, but only C tokens (badge on the hero).
+const tierColor = (overall) => (overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze);
+
+const iconDisc = (Icon) => (
+  <span style={{ width: 40, height: 40, borderRadius: "50%", background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <Icon size={18} color={C.text2} />
+  </span>
+);
+
+const roleLabel = (role) => (role === "organizer" ? t("Organizador") : role === "assistant" ? t("Auxiliar") : t("Membro"));
+
+/** Perfil (EN "Me") — the player's PITCH ID (spec §2): hero (avatar +
+ *  OVR badge, NAME, position · city · group), 4-stat row, then a
+ *  segmented Resumo | Stats | Conquistas | Calendário. Settings live
+ *  behind the gear (SettingsScreen, rendered by PitchApp via
+ *  `onOpenSettings`). Viewing someone else's profile (openProfile) hides
+ *  gear/edit and shows the cloud RatingForm instead of the ratings card. */
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, isOrganizer, addPeerRating, cloudMode, onSubmitRating, uploadMedia, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember, onOpenSettings, personalRecords, attendanceStreak = 0, groupName, city, myGroups = [], activeGroupId, myTeams = [], localMatchday }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
+  const [section, setSection] = useState("resumo");
   const [editing, setEditing] = useState(false);
   const [banText, setBanText] = useState("");
   const [banBusy, setBanBusy] = useState(false);
@@ -33,20 +67,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
     else setBanText("");
   };
   const [form, setForm] = useState(player);
-  const [codeOpen, setCodeOpen] = useState(false);
-  const [codeDraft, setCodeDraft] = useState("");
-  const [codeStatus, setCodeStatus] = useState(null); // 'ok' | 'error'
   const [uploading, setUploading] = useState(false);
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushMsg, setPushMsg] = useState(null); // { ok, text }
-
-  const handleEnablePush = async () => {
-    setPushBusy(true); setPushMsg(null);
-    const res = await enablePush();
-    setPushBusy(false);
-    setPushMsg(res?.error ? { ok: false, text: res.error } : { ok: true, text: t("Notificações ativadas ✓") });
-  };
-  const pushOn = pushMsg?.ok || pushPermission() === "granted";
 
   const startEditing = () => { setForm({ ...player }); setEditing(true); };
 
@@ -58,27 +79,33 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
     openWhatsApp(rateRequestMessage(player.nick, `${window.location.origin}?rate=${encodeURIComponent(payload)}`));
   };
 
-  const submitCode = () => {
-    const ok = addPeerRating(codeDraft);
-    setCodeStatus(ok ? "ok" : "error");
-    if (ok) setCodeDraft("");
-  };
+  // Real season game count (from the group's actual matchday history).
+  const attendance = totalGames ? Math.min(100, Math.round((player.gamesPlayed / totalGames) * 100)) : 0;
+  const gp = player.gamesPlayed || 0;
+  const perGame = (n) => (gp ? ((n || 0) / gp).toFixed(1) : "0");
 
-  // Real season game count (from the group's actual matchday history),
-  // not the old fixed prototype constant — a group that's played 6 days
-  // showed a wildly wrong % against a hardcoded 15 before this.
-  const attendance = totalGames ? Math.round((player.gamesPlayed / totalGames) * 100) : 0;
-
-  // Achievements context — same overall-lock rule as the FUT card (needs
-  // 3+ peer ratings before the attributes/overall mean anything).
+  // Same overall-lock rule as the FUT card (3+ peer ratings).
   const overallLocked = player.ratingsCount != null && player.ratingsCount < 3;
+  const overall = overallLocked ? 0 : computeOverall(player.position, player.attrs);
+  const playerKey = cloudMode ? player.uuid : player.id;
   const achievementsCtx = {
     attendancePct: attendance,
     matchdays: achievementMatchdays ?? [],
-    playerKey: cloudMode ? player.uuid : player.id,
-    overall: overallLocked ? 0 : computeOverall(player.position, player.attrs),
+    playerKey,
+    overall,
     isLeader: Boolean(player.isOrganizerPlayer || player.isAssistant),
   };
+
+  // Normalized matchday list (newest first) for form / records /
+  // calendar / progress. Cloud keeps the whole season; local demo passes
+  // its dated seed + the last matchday played in this browser as
+  // `records` too (PitchApp's localDays). `localMatchday` is only the
+  // fallback for an empty list.
+  const days = cloudMode || records.length
+    ? records.map((r) => ({ date: r.date, playedOn: r.playedOn, mvpNick: r.mvpNick, summary: r.summary }))
+    : (localMatchday ? [{ date: localMatchday.date, summary: localMatchday }] : []);
+  const form5 = formFor(days, playerKey).slice(-5);
+  const career = careerRecordsFor(days, playerKey);
 
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];
@@ -90,36 +117,38 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
     if (res?.url) setForm((f) => ({ ...f, photo: res.url }));
   };
 
+  const labelStyle = { fontSize: T.meta, fontWeight: 700, color: C.text2, marginBottom: S.xs + 2 };
+  const inputStyle = { width: "100%", minHeight: TOUCH.min, boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.control, padding: `0 ${S.md}px`, fontSize: T.body, color: C.text1, outline: "none" };
+
   const field = (label, key, type = "text") => (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{label}</div>
+    <div style={{ marginBottom: S.md }}>
+      <div style={labelStyle}>{label}</div>
       <input
         type={type}
         value={form[key] ?? ""}
         onChange={(e) => setForm({ ...form, [key]: type === "number" ? Number(e.target.value) : e.target.value })}
-        style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none" }}
+        style={inputStyle}
       />
     </div>
   );
 
   const selectField = (label, key, options) => (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{label}</div>
-      <select value={form[key] ?? ""} onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-        style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 8px", fontSize: 13, color: C.text1, outline: "none" }}>
+    <div style={{ marginBottom: S.md }}>
+      <div style={labelStyle}>{label}</div>
+      <select value={form[key] ?? ""} onChange={(e) => setForm({ ...form, [key]: e.target.value })} style={{ ...inputStyle, padding: `0 ${S.sm}px` }}>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </div>
   );
 
   const chips = (label, key, options) => (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, color: C.text2, marginBottom: 6 }}>{label}</div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+    <div style={{ marginBottom: S.md }}>
+      <div style={labelStyle}>{label}</div>
+      <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>
         {options.map((opt) => {
           const active = form[key] === opt;
           return (
-            <button key={opt} onClick={() => setForm({ ...form, [key]: opt })} style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "6px 13px", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" }}>
+            <button key={opt} onClick={() => setForm({ ...form, [key]: opt })} style={{ minHeight: 40, background: active ? C.accent : "transparent", color: active ? C.bg : C.text2, border: `1px solid ${active ? C.accent : C.border}`, borderRadius: R.pill, padding: `0 ${S.md + 2}px`, fontSize: T.meta + 1, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
               {t(opt)}
             </button>
           );
@@ -130,19 +159,22 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
 
   if (editing) {
     return (
-      <div style={{ padding: "0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22, padding: "20px 0 16px" }}>{t("Editar Perfil")}</div>
+      <div style={{ padding: `0 ${S.lg}px ${S.xl}px` }}>
+        <button onClick={() => { setForm(player); setEditing(false); }} aria-label={t("Voltar")}
+          style={{ marginTop: S.md, width: TOUCH.min, height: TOUCH.min, marginLeft: -10, background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <ArrowLeft size={20} />
+        </button>
+        <PageHeader title={t("Editar perfil")} style={{ paddingTop: S.xs }} />
 
-        <label style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer" }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Camera size={19} color={C.accent} />
-          </div>
-          <div style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{uploading ? t("A carregar…") : form.photo ? t("Trocar fotografia") : t("Adicionar fotografia")}</div>
-          {form.photo && <img src={form.photo} alt="" style={{ width: 38, height: 38, borderRadius: 10, objectFit: "cover" }} />}
+        <label style={{ ...cardStyle, display: "flex", alignItems: "center", gap: S.md, marginBottom: S.lg, cursor: "pointer" }}>
+          {form.photo
+            ? <img src={form.photo} alt="" style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover" }} />
+            : <span style={{ width: 48, height: 48, borderRadius: "50%", background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}><Camera size={20} color={C.text2} /></span>}
+          <div style={{ flex: 1, fontSize: T.body, fontWeight: 700 }}>{uploading ? t("A carregar…") : form.photo ? t("Trocar fotografia") : t("Adicionar fotografia")}</div>
           <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: "none" }} />
         </label>
 
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
+        <div style={{ ...cardStyle, marginBottom: S.lg }}>
           {field(t("Nome completo"), "name")}
           {field(t("Alcunha (nome no cartão)"), "nick")}
           {field("Email", "email", "email")}
@@ -154,329 +186,203 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           {chips(t("Pé dominante"), "foot", FEET)}
         </div>
 
-        <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          <BtnPrimary onClick={() => { updateProfile(form); setEditing(false); }} disabled={uploading} style={{ flex: 1, opacity: uploading ? 0.6 : 1 }}>{uploading ? t("A carregar…") : t("Guardar")}</BtnPrimary>
-          <button onClick={() => { setForm(player); setEditing(false); }} style={{ flex: 1, background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>{t("Cancelar")}</button>
+        <div style={{ display: "flex", gap: S.sm }}>
+          <BtnPrimary onClick={() => { updateProfile(form); setEditing(false); }} disabled={uploading} style={{ flex: 1 }}>{uploading ? t("A carregar…") : t("Guardar")}</BtnPrimary>
+          <BtnGhost onClick={() => { setForm(player); setEditing(false); }} style={{ flex: 1 }}>{t("Cancelar")}</BtnGhost>
         </div>
       </div>
     );
   }
 
+  // ── Hero ──────────────────────────────────────────────
+  const heroMeta = [t(player.position || "Médio"), city, groupName].filter(Boolean).join(" · ");
+  const badgeColor = overallLocked ? C.text2 : tierColor(overall);
+
+  // Groups (own profile, cloud: every membership; otherwise the current
+  // group, which is the only one we know the viewed player belongs to).
+  const groupRows = isOwn && myGroups.length
+    ? myGroups.map((m) => ({ id: m.group_id, name: m.groups?.name ?? "—", meta: [roleLabel(m.role), m.groups?.venue].filter(Boolean).join(" · "), active: m.group_id === activeGroupId }))
+    : (groupName ? [{ id: "current", name: groupName, meta: player.isOrganizerPlayer ? t("Organizador") : player.isAssistant ? t("Auxiliar") : t("Membro"), active: true }] : []);
+  const teamRows = isOwn ? myTeams.filter((m) => m.teams).map((m) => ({ id: m.team_id, name: m.teams.name, meta: [m.role === "captain" ? t("Capitão") : t("Plantel"), m.teams.city].filter(Boolean).join(" · ") })) : [];
+
   return (
-    <div style={{ padding: "0 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" }}>
-        <div style={{ ...displayFont, fontSize: 22 }}>{isOwn ? t("O Meu Cartão") : t("Perfil")}</div>
+    <div style={{ padding: `0 ${S.lg}px ${S.xl}px` }}>
+      {/* Top row — back (someone else's profile) / gear (own) */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: TOUCH.min, paddingTop: S.md }}>
         {isOwn ? (
-          <button onClick={startEditing} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-            <Pencil size={13} /> {t("Editar")}
-          </button>
+          <h1 style={{ ...displayFont, fontSize: T.title, lineHeight: 1.05, color: C.text1, margin: 0 }}>{t("Perfil")}</h1>
         ) : (
-          <button onClick={backToMe} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: "8px 14px", fontSize: 12, color: C.text2, cursor: "pointer" }}>
-            {t("Ver o meu")}
+          <button onClick={backToMe} style={{ minHeight: TOUCH.min, marginLeft: -10, background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", alignItems: "center", gap: S.xs + 2, fontSize: T.body, fontWeight: 700, padding: `0 ${S.sm}px` }}>
+            <ArrowLeft size={20} /> {t("Ver o meu")}
+          </button>
+        )}
+        {isOwn && onOpenSettings && (
+          <button onClick={onOpenSettings} aria-label={t("Definições")} title={t("Definições")}
+            style={{ width: TOUCH.min, height: TOUCH.min, marginRight: -10, background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Settings size={22} />
           </button>
         )}
       </div>
 
-      {/* FUT card — the hero of the profile */}
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-        <FutCard player={player} width={280} ratingsCount={player.ratingsCount} />
-      </div>
-      <div style={{ textAlign: "center", fontSize: 12, color: C.text2, marginBottom: isOwn ? 10 : 16 }}>
-        {player.name} · @{player.nick.toLowerCase()}
-      </div>
-
-      {isOwn && (
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <button onClick={() => onToggleInjured(!player.injured)}
-            style={{
-              background: player.injured ? C.redDim : C.surface, color: player.injured ? C.red : C.text2,
-              border: `1px solid ${player.injured ? C.red : C.border}`, borderRadius: 12,
-              padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 6,
-            }}>
-            <Cross size={13} /> {player.injured ? t("Remover lesão") : t("Marcar como lesionado")}
-          </button>
-        </div>
-      )}
-
-      {/* Ratings: own profile shows status + who's rated you; someone
-          else's profile (cloud) lets you rate them right here. */}
-      {isOwn ? (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>{t("AVALIAÇÃO DOS AMIGOS")}</SectionLabel>
-          <div style={{ fontSize: 12, color: C.text2, marginBottom: 14 }}>
-            {(player.ratingsCount ?? 0) >= 3
-              ? t("O cartão mostra a média das avaliações que recebeste.")
-              : `${t("Faltam")} ${Math.max(0, 3 - (player.ratingsCount ?? 0))} ${t("avaliações para desbloquear o teu cartão.")}`}
-          </div>
-
-          <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>{t("QUEM JÁ TE AVALIOU")}</SectionLabel>
-          {player.raters?.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: cloudMode ? 0 : 14 }}>
-              {player.raters.map((r, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                  <Star size={12} color={C.gold} /> {r.nick}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ fontSize: 12, color: C.text3, marginBottom: cloudMode ? 0 : 14 }}>
-              {t("Ainda ninguém te avaliou.")}
-            </div>
-          )}
-
-          {!cloudMode && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={requestRating} style={{ flex: 1.4, background: C.whatsapp, color: C.bg, border: "none", borderRadius: 12, padding: 11, fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <MessageCircle size={14} /> {t("Pedir avaliação")}
-                </button>
-                <button onClick={() => { setCodeOpen(!codeOpen); setCodeStatus(null); }} style={{ flex: 1, background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <Star size={14} /> {t("Inserir código")}
-                </button>
-              </div>
-
-              {codeOpen && (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input value={codeDraft} onChange={(e) => { setCodeDraft(e.target.value); setCodeStatus(null); }} placeholder={t("Cola aqui o código recebido…")}
-                      style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 12, color: C.text1, outline: "none", fontFamily: "monospace" }} />
-                    <button onClick={submitCode} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "0 14px", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
-                      {t("Adicionar")}
-                    </button>
-                  </div>
-                  {codeStatus === "ok" && <div style={{ fontSize: 11, color: C.green, marginTop: 6 }}>{t("Avaliação adicionada — o teu cartão já reflete a opinião ✓")}</div>}
-                  {codeStatus === "error" && <div style={{ fontSize: 11, color: C.red, marginTop: 6 }}>{t("Código inválido — confirma que copiaste tudo.")}</div>}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        cloudMode && onSubmitRating && (
-          <RatingForm
-            nick={player.nick}
-            position={player.position}
-            existing={player.myRatingAttrs}
-            onSubmit={(attrs) => onSubmitRating(player.uuid, attrs)}
-          />
-        )
-      )}
-
-      {/* Contact (own profile only) */}
-      {isOwn && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>{t("CONTACTO")}</SectionLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: C.text2 }}>Email</span>
-              <span>{player.email || <span style={{ color: C.text3 }}>{t("não definido")}</span>}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: C.text2 }}>{t("Telemóvel")}</span>
-              <span>{player.phone || <span style={{ color: C.text3 }}>{t("não definido")}</span>}</span>
-            </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: `${S.lg}px 0 ${S.xl}px` }}>
+        <div style={{ position: "relative", marginBottom: S.md }}>
+          <Avatar name={player.name || player.nick} photo={player.photo} color={playerColor(group, player)} size={104} fontSize={38} injured={player.injured} />
+          <div title={overallLocked ? `${player.ratingsCount ?? 0}/3 ${t("avaliações")}` : "OVR"} style={{
+            position: "absolute", bottom: -6, right: -10, minWidth: 44, height: 30, padding: `0 ${S.sm}px`, boxSizing: "border-box",
+            borderRadius: R.pill, background: C.bg, border: `2px solid ${badgeColor}`,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+          }}>
+            <span style={{ ...displayFont, fontSize: 17, color: badgeColor, lineHeight: 1 }}>{overallLocked ? "?" : overall}</span>
+            <span style={{ fontSize: T.min, fontWeight: 800, color: C.text2, letterSpacing: "0.02em" }}>OVR</span>
           </div>
         </div>
-      )}
-
-      {/* Season stats */}
-      <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <SectionLabel>{t("TEMPORADA")}</SectionLabel>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          {[
-            { label: t("Jogos"),        value: player.gamesPlayed },
-            { label: t("Golos"),        value: player.goals       },
-            { label: t("Assistências"), value: player.assists     },
-            { label: "MVPs",            value: player.mvps        },
-            { label: t("Presença"),     value: `${attendance}%`   },
-            { label: t("G+A / jogo"),   value: player.gamesPlayed ? ((player.goals + player.assists) / player.gamesPlayed).toFixed(1) : "0" },
-          ].map((s) => (
-            <div key={s.label} style={{ background: C.surface, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
-              <div style={{ ...displayFont, fontSize: 22, lineHeight: 1.1 }}>{s.value}</div>
-              <div style={{ fontSize: 10, color: C.text2, marginTop: 3 }}>{s.label}</div>
-            </div>
-          ))}
+        <div style={{ ...displayFont, fontSize: 28, lineHeight: 1.05, color: C.text1, textTransform: "uppercase", maxWidth: "100%", overflowWrap: "break-word" }}>
+          {player.nick || player.name}
         </div>
+        {player.name && player.nick && player.name !== player.nick && (
+          <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{player.name}</div>
+        )}
+        <div style={{ fontSize: T.body - 1, color: C.text2, marginTop: S.xs }}>{heroMeta}</div>
+
+        {isOwn && (
+          <div style={{ display: "flex", gap: S.sm, marginTop: S.lg, flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
+            <BtnGhost compact onClick={startEditing} style={{ minHeight: TOUCH.min }}>
+              <Pencil size={15} /> {t("Editar perfil")}
+            </BtnGhost>
+            <Chip variant={player.injured ? "red" : "neutral"} Icon={Cross} onClick={() => onToggleInjured(!player.injured)}>
+              {player.injured ? t("Remover lesão") : t("Marcar como lesionado")}
+            </Chip>
+          </div>
+        )}
       </div>
 
-      {/* Calendar + progress — cloud only, local demo has no per-day
-          summary saved to build these from. */}
-      {cloudMode && (
+      {/* 4-stat row — one card, tiles inside */}
+      <div style={{ ...cardStyle, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: S.sm, padding: `${S.lg}px ${S.sm}px`, marginBottom: S.xl }}>
+        <StatTile value={gp} label={t("Jogos")} />
+        <StatTile value={player.goals ?? 0} label={t("Golos")} />
+        <StatTile value={player.assists ?? 0} label={t("Assist.")} />
+        <StatTile value={player.mvps ?? 0} label="MVP" />
+      </div>
+
+      <SegmentedControl options={SEGMENTS} value={section} onChange={setSection} />
+
+      {section === "resumo" && (
         <>
-          <MatchdayCalendar records={records} playerKey={player.uuid ?? player.id} />
-          <ProgressChart records={records} playerKey={player.uuid ?? player.id} />
+          {/* FUT card — our personality, stays prominent */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: S.xl }}>
+            <FutCard player={player} width={280} ratingsCount={player.ratingsCount} />
+          </div>
+
+          {isOwn ? (
+            <PeerRatingsCard player={player} cloudMode={cloudMode} onRequest={requestRating} addPeerRating={addPeerRating} />
+          ) : (
+            cloudMode && onSubmitRating && (
+              <div style={{ marginBottom: S.lg }}>
+                <RatingForm
+                  nick={player.nick}
+                  position={player.position}
+                  existing={player.myRatingAttrs}
+                  onSubmit={(attrs) => onSubmitRating(player.uuid, attrs)}
+                />
+              </div>
+            )
+          )}
+
+          {/* Recent form — only when each game's team is known (see formFor) */}
+          {form5.length > 0 && (
+            <div style={{ marginBottom: S.lg }}>
+              <SectionLabel right={<span style={{ fontSize: T.meta, color: C.text2 }}>{t("últimos")} {form5.length} {form5.length === 1 ? t("jogo") : t("jogos")}</span>}>
+                {t("Forma recente")}
+              </SectionLabel>
+              <div style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: S.md }}>
+                <FormDots results={form5} size={32} />
+                <span style={{ fontSize: T.meta, fontWeight: 700, color: C.text2, whiteSpace: "nowrap" }}>
+                  {["V", "E", "D"].map((r) => `${form5.filter((x) => x === r).length}${tCtx("form", r)}`).join(" · ")}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <CareerSummary
+            records={career}
+            gaPerGame={perGame((player.goals || 0) + (player.assists || 0))}
+            gamesPlayed={gp}
+            personalRecords={isOwn ? personalRecords : null}
+            attendanceStreak={isOwn ? attendanceStreak : 0}
+          />
+
+          {(groupRows.length > 0 || teamRows.length > 0) && (
+            <div style={{ marginBottom: S.lg }}>
+              <SectionLabel>{teamRows.length ? t("Grupos e equipas") : t("Grupos")}</SectionLabel>
+              <div style={{ ...cardStyle, padding: `0 ${S.lg}px` }}>
+                {groupRows.map((g, i) => (
+                  <ListRow key={`g${g.id}`} divider={i > 0} leading={iconDisc(Users)} title={g.name} meta={g.meta}
+                    right={g.active && groupRows.length > 1 ? <Chip variant="green">{t("Ativo")}</Chip> : null} />
+                ))}
+                {teamRows.map((tm, i) => (
+                  <ListRow key={`t${tm.id}`} divider={groupRows.length + i > 0} leading={iconDisc(Shield)} title={tm.name} meta={tm.meta}
+                    right={<Chip>{t("Equipa")}</Chip>} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Ban — organizer-only, viewing a teammate's profile. Kept off
+              the roster list on purpose (see onRemoveMember there) so this
+              stronger, harder-to-undo action isn't a one-tap icon. */}
+          {!isOwn && isOrganizer && onBanMember && !player.isGuest && !player.isOrganizerPlayer && (
+            <div style={{ marginTop: S.xl }}>
+              <SectionLabel style={{ color: C.red }}>{t("BANIR JOGADOR")}</SectionLabel>
+              <div style={{ ...cardStyle }}>
+                <div style={{ fontSize: T.meta + 1, color: C.text2, marginBottom: S.md, lineHeight: 1.5 }}>
+                  {t("Impede")} {player.nick} {t("de voltar a entrar neste grupo, mesmo com um novo convite. Escreve o nick dele para confirmar:")}
+                </div>
+                <input value={banText} onChange={(e) => setBanText(e.target.value)} placeholder={player.nick}
+                  style={{ ...inputStyle, marginBottom: S.md }} />
+                <BtnGhost tone="danger" block onClick={submitBan} disabled={!banMatches || banBusy}>
+                  {banBusy ? t("A banir…") : t("Banir do grupo")}
+                </BtnGhost>
+                {banError && <div style={{ fontSize: T.meta, color: C.red, marginTop: S.sm }}>{banError}</div>}
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      <AchievementsSection player={player} ctx={achievementsCtx} />
-
-      {/* Ban — organizer-only, viewing a teammate's own profile. Kept off
-          the roster list on purpose (see onRemoveMember there instead) so
-          this stronger, harder-to-undo action isn't a one-tap icon. */}
-      {!isOwn && isOrganizer && onBanMember && !player.isGuest && !player.isOrganizerPlayer && (
-        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${C.red}44` }}>
-          <SectionLabel style={{ color: C.red }}>{t("BANIR JOGADOR")}</SectionLabel>
-          <div style={{ fontSize: 12, color: C.text2, marginBottom: 10, lineHeight: 1.5 }}>
-            {t("Impede")} {player.nick} {t("de voltar a entrar neste grupo, mesmo com um novo convite. Escreve o nick dele para confirmar:")}
+      {section === "stats" && (
+        <>
+          <SectionLabel>{t("TEMPORADA")}</SectionLabel>
+          <div style={{ ...cardStyle, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: S.lg, columnGap: S.sm, padding: `${S.lg}px ${S.sm}px`, marginBottom: S.lg }}>
+            <StatTile value={`${attendance}%`} label={t("Presença")} color={attendance >= 90 ? C.green : undefined} />
+            <StatTile value={perGame((player.goals || 0) + (player.assists || 0))} label={t("G+A / jogo")} />
+            <StatTile value={player.wins ?? "—"} label={t("Vitórias")} />
+            <StatTile value={perGame(player.goals)} label={t("Golos / jogo")} />
+            <StatTile value={perGame(player.assists)} label={t("Assist. / jogo")} />
+            <StatTile value={player.cleanSheets ?? 0} label={t("Balizas a zero")} />
           </div>
-          <input value={banText} onChange={(e) => setBanText(e.target.value)} placeholder={player.nick}
-            style={{ width: "100%", boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text1, outline: "none", marginBottom: 10 }} />
-          <button onClick={submitBan} disabled={!banMatches || banBusy}
-            style={{ width: "100%", background: banMatches ? C.redDim : C.surface, color: banMatches ? C.red : C.text3, border: `1px solid ${banMatches ? C.red : C.border}`, borderRadius: 10, padding: 11, fontSize: 13, fontWeight: 700, cursor: banMatches && !banBusy ? "pointer" : "default", opacity: banBusy ? 0.6 : 1 }}>
-            {banBusy ? t("A banir…") : t("Banir do grupo")}
-          </button>
-          {banError && <div style={{ fontSize: 12, color: C.red, marginTop: 8 }}>{banError}</div>}
-        </div>
+
+          {isOwn && personalRecords && (
+            <>
+              <SectionLabel>{t("RESUMO RECENTE")}</SectionLabel>
+              <div style={{ ...cardStyle, marginBottom: S.lg, padding: `${S.lg}px ${S.sm}px ${S.md}px` }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: S.sm }}>
+                  <StatTile value={personalRecords.gamesInWindow} label={t("Jornadas")} />
+                  <StatTile value={personalRecords.totalGoals} label={t("Golos")} />
+                  <StatTile value={personalRecords.totalAssists} label={t("Assist.")} />
+                  <StatTile value={personalRecords.mvps} label="MVP" />
+                </div>
+                <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, textAlign: "center" }}>{t("Todos os teus grupos · últimas jornadas carregadas, não a época inteira.")}</div>
+              </div>
+            </>
+          )}
+
+          <ProgressChart records={days} playerKey={playerKey} />
+        </>
       )}
 
-      {/* Payment method (own profile only) */}
-      {isOwn && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <SectionLabel>{t("PAGAMENTO")}</SectionLabel>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: C.blueDim, border: `1px solid ${C.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <CreditCard size={18} color={C.blue} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>MB Way</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>{player.phone}</div>
-            </div>
-            <span style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>{t("Ativo ✓")}</span>
-          </div>
-        </div>
-      )}
+      {section === "conquistas" && <AchievementsSection player={player} ctx={achievementsCtx} />}
 
-      {/* Organizer: group settings */}
-      {isOwn && isOrganizer && (
-        <button onClick={onEditGroup} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.blueDim, border: `1px solid ${C.blueBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Settings size={18} color={C.blue} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Definições do grupo")}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>{t("Campo, horário, mensalidade e vagas")}</div>
-          </div>
-        </button>
-      )}
-
-      {/* Player with no group at all yet (skipped joining one): start
-          their own from here instead of being stuck with only "join via
-          invite". Not shown once already in a group. */}
-      {isOwn && onCreateGroup && (
-        <button onClick={onCreateGroup} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1, border: `1px solid ${C.accentBorder}` }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <PlusCircle size={18} color={C.accent} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Criar grupo")}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>{t("Torna-te organizador do teu próprio jogo semanal")}</div>
-          </div>
-        </button>
-      )}
-
-      {/* Language picker */}
-      {isOwn && onLang && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Globe size={18} color={C.text2} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Idioma")}</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>Português · Português (BR) · English · Italiano</div>
-            </div>
-            <select value={lang} onChange={(e) => onLang(e.target.value)}
-              style={{ background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 10px", fontSize: 12, fontWeight: 700, outline: "none", cursor: "pointer", colorScheme: "dark" }}>
-              <option value="pt">🇵🇹 PT</option>
-              <option value="pt-br">🇧🇷 PT-BR</option>
-              <option value="en">🇬🇧 EN</option>
-              <option value="it">🇮🇹 IT</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Theme picker */}
-      {isOwn && onThemeMode && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {themeMode === "light" ? <Sun size={18} color={C.text2} /> : <Moon size={18} color={C.text2} />}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Tema")}</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>{t("Escuro")} · {t("Claro")}</div>
-            </div>
-            <div style={{ display: "flex", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 3, gap: 2 }}>
-              {[["dark", Moon, "Escuro"], ["light", Sun, "Claro"]].map(([id, Icon, label]) => {
-                const active = (themeMode ?? "dark") === id;
-                return (
-                  <button key={id} onClick={() => onThemeMode(id)} title={t(label)}
-                    style={{ display: "flex", alignItems: "center", gap: 5, background: active ? C.accentDim : "none", color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : "transparent"}`, borderRadius: 8, padding: "7px 10px", fontSize: 11, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
-                    <Icon size={13} /> {t(label)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Push notifications opt-in (own profile, cloud, when configured) */}
-      {isOwn && enablePush && pushSupported() && pushConfigured() && (
-        <div style={{ ...cardStyle, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: pushOn ? C.greenDim : C.accentDim, border: `1px solid ${pushOn ? C.greenBorder : C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Bell size={18} color={pushOn ? C.green : C.accent} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Notificações")}</div>
-              <div style={{ fontSize: 11, color: C.text2 }}>{pushOn ? t("Ativadas ✓ — avisamos quando entras no jogo") : t("Recebe aviso quando abrir vaga para ti")}</div>
-            </div>
-            {!pushOn && (
-              <button onClick={handleEnablePush} disabled={pushBusy} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: pushBusy ? 0.6 : 1 }}>
-                {pushBusy ? "…" : t("Ativar")}
-              </button>
-            )}
-          </div>
-          {pushMsg && !pushMsg.ok && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{pushMsg.text}</div>}
-        </div>
-      )}
-
-      {/* Account security — cloud accounts only */}
-      {isOwn && security && (
-        <SecuritySection
-          email={security.email}
-          onUpdatePassword={security.updatePassword}
-          onUpdateEmail={security.updateEmail}
-          onSignOutEverywhere={security.signOutEverywhere}
-        />
-      )}
-
-      {/* Owner-only: cross-group admin overview */}
-      {isOwn && isAdmin && (
-        <button onClick={onOpenAdmin} style={{ ...cardStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, marginBottom: 14, cursor: "pointer", textAlign: "left", color: C.text1, border: `1px solid ${C.accentBorder}` }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <ShieldCheck size={18} color={C.accent} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Painel de administrador")}</div>
-            <div style={{ fontSize: 11, color: C.text2 }}>{t("Ver todos os grupos, jogadores e jogos")}</div>
-          </div>
-        </button>
-      )}
-
-      {isOwn && (
-        <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-          <button onClick={logout} style={{ flex: 1, background: "none", border: `1px solid ${C.border}`, borderRadius: 12, padding: 11, fontSize: 12, color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <LogOut size={13} /> {t("Sair")}
-          </button>
-          <button onClick={resetDemo} style={{ flex: 1, background: "none", border: `1px dashed ${C.border}`, borderRadius: 12, padding: 11, fontSize: 12, color: C.text3, cursor: "pointer" }}>
-            {t("Repor demo")}
-          </button>
-        </div>
-      )}
+      {section === "calendario" && <MatchdayCalendar days={days} playerKey={playerKey} playerNick={player.nick} />}
     </div>
   );
 }

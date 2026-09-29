@@ -17,7 +17,7 @@ export default function NoGroupState({ onJoinGroup }) {
         </div>
         <div style={{ ...displayFont, fontSize: 22, marginBottom: 8 }}>{t("Ainda sem grupo")}</div>
         <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.6, marginBottom: 20 }}>
-          {t("Entra num grupo com o link de convite do teu organizador para veres o jogo, a grelha de vagas, o sorteio e as stats. Entretanto, podes na mesma criar o teu cartão e ver o Clube e o Social.")}
+          {t("Entra num grupo com o link de convite do teu organizador para veres o jogo, a grelha de vagas, o sorteio e as stats. Entretanto, podes na mesma criar o teu cartão e acompanhar a atividade na Home.")}
         </div>
         <BtnPrimary onClick={onJoinGroup} style={{ width: "100%", fontSize: 14, padding: 13 }}>
           {t("Entrar num grupo")}

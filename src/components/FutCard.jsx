@@ -128,7 +128,7 @@ export default function FutCard({ player, width = 260, ratingsCount }) {
       {/* Locked caption — how many ratings still needed */}
       {locked && (
         <div style={{ textAlign: "center", marginTop: 8 * scale, position: "relative" }}>
-          <span style={{ fontSize: 9 * scale, fontWeight: 700, color: C.text3 }}>
+          <span style={{ fontSize: Math.max(11, 10 * scale), fontWeight: 700, color: C.text2 }}>
             {ratingsCount}/3 {t("avaliações")}
           </span>
         </div>

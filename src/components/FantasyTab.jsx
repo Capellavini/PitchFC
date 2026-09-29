@@ -1,19 +1,25 @@
 import { useState, useMemo } from "react";
-import { Pencil, X, Search, Check, ArrowRightLeft, Cross } from "lucide-react";
-import { C, cardStyle, displayFont } from "../theme";
+import { Pencil, X, Search, Check, ArrowRightLeft, Cross, Plus, Lock, ChevronDown, Users } from "lucide-react";
+import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall } from "../lib/helpers";
 import { fantasyPrice, computeRoundPoints, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM, squadCostBasis, nextPricesPaid } from "../lib/fantasy";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
+import BtnGhost from "./BtnGhost";
+import Chip from "./Chip";
 import Collapsible from "./Collapsible";
-import FantasyPitch, { FantasyBench } from "./FantasyPitch";
+import SegmentedControl from "./SegmentedControl";
+import FantasyPitch from "./FantasyPitch";
+import FantasyBench from "./FantasyBench";
+import FantasyPlayerSheet from "./FantasyPlayerSheet";
+import FantasyStatsCard from "./FantasyStatsCard";
 import FutCard from "./FutCard";
 
 const inputStyle = {
   width: "100%", boxSizing: "border-box", background: C.surface, color: C.text1,
-  border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, marginTop: 4,
+  border: `1px solid ${C.border}`, borderRadius: R.control, padding: "0 12px", minHeight: TOUCH.min, fontSize: T.body, marginTop: S.xs,
 };
 
 const POSITION_ORDER = ["Guarda-redes", "Defesa", "Médio", "Avançado"];
@@ -102,7 +108,7 @@ function CreateLeague({ isOrganizer, onCreateLeague, nextSeason }) {
         </div>
         <label style={{ fontSize: 11, color: C.text2, fontWeight: 700, marginTop: 10, display: "block" }}>{t("Duração (meses, mín. 1)")}</label>
         <input type="number" min={1} value={form.durationMonths} onChange={(e) => setForm((f) => ({ ...f, durationMonths: e.target.value }))} style={inputStyle} />
-        <div style={{ fontSize: 11, color: C.text3, marginTop: 10 }}>
+        <div style={{ fontSize: T.meta, color: C.text2, marginTop: 10 }}>
           {t("Todos começam a")} {fmtM(startPrice)}. {t("Com este orçamento dá para")} {affordable} {t("jogadores de início.")}
         </div>
         <BtnPrimary onClick={submit} disabled={creating} style={{ width: "100%", marginTop: 16, opacity: creating ? 0.6 : 1 }}>
@@ -134,7 +140,10 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
-  const [editing, setEditing] = useState(!complete);
+  // Sub-views: A minha equipa (pitch) · Liga (table) · Mercado (squad
+  // editor + trades). An incomplete squad opens straight on Mercado.
+  const [view, setView] = useState(complete ? "equipa" : "mercado");
+  const [sheetId, setSheetId] = useState(null); // player whose captain/bench sheet is open
   const [viewingId, setViewingId] = useState(null);
   const [tradeTarget, setTradeTarget] = useState(null); // { playerId, ownerSquad }
   const [sortMode, setSortMode] = useState("pos"); // 'pos' | 'points' — "todos os jogadores por pontuação"
@@ -215,7 +224,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
     setSaving(false);
     if (!res?.error) {
       setSaved(true); setTimeout(() => setSaved(false), 2000);
-      if ((extra.playerIds ?? selected).length >= league.squad_size) setEditing(false);
+      if ((extra.playerIds ?? selected).length >= league.squad_size) setView("equipa");
     } else setError(res.error);
     return res;
   };
@@ -251,147 +260,265 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
   const myOffers = offers.filter((o) => o.from_participant_id === me?.uuid);
   const incomingOffers = offers.filter((o) => o.to_participant_id === me?.uuid);
 
-  return (
-    <div style={{ padding: 16 }}>
-      <SectionLabel>{(league.name || "Pitch Manager").toUpperCase()}</SectionLabel>
+  const inMarket = view === "mercado";
+  const myRankIdx = leaderboard.findIndex((r) => r.pid === me?.uuid);
+  const myRow = myRankIdx >= 0 ? leaderboard[myRankIdx] : null;
+  const myLastRound = lastRoundScores.find((s) => s.participant_id === me?.uuid);
+  const sheetPlayer = sheetId && mySquad ? group.find((p) => p.uuid === sheetId) : null;
+  const sheetBench = sheetPlayer ? (mySquad.reserve_ids || []).includes(sheetPlayer.uuid) : false;
+  const viewOptions = [
+    { id: "equipa", label: "A minha equipa" },
+    { id: "liga", label: "Liga" },
+    { id: "mercado", label: "Mercado", badge: incomingOffers.length > 0 },
+  ];
+  const lockedNotice = locked && (
+    <div style={{ fontSize: T.meta, color: C.text1, lineHeight: 1.4, padding: `${S.sm}px ${S.md}px`, marginBottom: S.md, borderLeft: `3px solid ${C.orange}`, background: C.orangeDim, borderRadius: R.control }}>
+      {ended ? t("Liga terminada — consulta a classificação final abaixo.") : t("Escalação trancada — falta menos de 8h para o jogo.")}
+    </div>
+  );
+  const posLabel = { fontSize: T.meta, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text2, margin: `${S.md}px 0 ${S.xs}px` };
 
-      {complete && !editing ? (
-        <>
-          <TopBar total={squadCostBasis(mySquad?.prices_paid)} budget={effectiveBudget} count={selected.length} squadSize={league.squad_size} overBudget={false} />
-          {!locked && (
-            <button onClick={() => setEditing(true)} style={{ background: C.surface, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, marginBottom: 10 }}>
-            <Pencil size={11} /> {t("Editar escalação")}
+  const renderMarketRow = (p, i) => {
+    const picked = selected.includes(p.uuid);
+    const count = ownership[p.uuid] || 0;
+    const atCap = count >= OWNERSHIP_CAP && !picked;
+    const owners = ownersOf(p.uuid).filter((s) => s.participant_id !== me?.uuid);
+    return (
+      <div key={p.uuid} style={{
+        display: "flex", alignItems: "center", gap: S.md, minHeight: 56, padding: `${S.sm}px ${S.sm}px ${S.sm}px ${picked ? S.sm : 0}px`,
+        borderTop: i > 0 ? `1px solid ${C.border}` : "none", borderLeft: picked ? `3px solid ${C.green}` : "none",
+        background: picked ? C.surface : "transparent", opacity: locked ? 0.6 : 1,
+      }}>
+        <button type="button" onClick={() => setViewingPlayerId(p.uuid)} aria-label={`${p.nick} — ${t("ver cartão")}`}
+          style={{ display: "flex", alignItems: "center", gap: S.md, flex: 1, minWidth: 0, minHeight: 44, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}>
+          <Avatar name={p.name} color={playerColor(group, p)} size={40} isMe={p.isMe} photo={p.photo} injured={p.injured} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: T.body + 1, fontWeight: 700, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</div>
+            <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {sortMode === "points" ? `${t(p.position)} · ` : ""}OVR {computeOverall(p.position, p.attrs)} · {Math.round(totalPoints[p.uuid] || 0)} pts · <span title={t("Managers com este jogador")} style={{ color: atCap ? C.orange : C.text2, whiteSpace: "nowrap" }}><Users size={12} style={{ verticalAlign: -1 }} /> {count}/{OWNERSHIP_CAP}</span>
+            </div>
+          </div>
+        </button>
+        <span style={{ ...displayFont, fontSize: T.body, color: C.text1, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{fmtM(prices[p.uuid])}</span>
+        {locked ? null : (p.injured && !picked) ? (
+          <Chip variant="red" Icon={Cross}>{t("Lesionado")}</Chip>
+        ) : atCap ? (
+          <BtnGhost onClick={() => setTradeTarget({ playerId: p.uuid, owners })} disabled={!owners.length}
+            style={{ minHeight: TOUCH.min, padding: `0 ${S.md}px`, fontSize: T.meta, flexShrink: 0 }}>
+            <ArrowRightLeft size={14} /> {t("Oferta")}
+          </BtnGhost>
+        ) : (
+          <button type="button" onClick={() => toggle(p.uuid)} aria-label={picked ? t("Remover") : t("Adicionar")} aria-pressed={picked}
+            style={{ width: TOUCH.min, height: TOUCH.min, borderRadius: "50%", flexShrink: 0, background: picked ? C.greenDim : "transparent", color: picked ? C.green : C.text1, border: `1px solid ${picked ? C.greenBorder : C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            {picked ? <Check size={18} strokeWidth={3} /> : <Plus size={18} />}
           </button>
-          )}
-          {!mySquad.captain_id && (
-            <div style={{ fontSize: 11, color: C.orange, marginBottom: 8 }}>{t("Ainda sem capitão — toca na coroa de um jogador no campo.")}</div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ padding: `${S.xs}px ${S.lg}px ${S.xl}px` }}>
+      <SectionLabel right={ended ? <Chip>{t("Terminada")}</Chip> : locked ? <Chip variant="orange" Icon={Lock}>{t("Trancada")}</Chip> : null}>
+        {league.name || "Pitch Manager"}
+      </SectionLabel>
+      <FantasyStatsCard
+        count={inMarket ? selected.length : (mySquad?.player_ids?.length || 0)}
+        squadSize={league.squad_size}
+        bank={effectiveBudget - (inMarket ? total : squadCostBasis(mySquad?.prices_paid))}
+        overBudget={inMarket && overBudget}
+        points={myRow ? myRow.points : null} lastRound={myLastRound ? myLastRound.points : null}
+        rank={myRow ? myRankIdx + 1 : null} participants={leaderboard.length} />
+      <SegmentedControl options={viewOptions} value={view} onChange={setView} />
+
+      {/* ── A minha equipa ── */}
+      {view === "equipa" && (complete ? (
+        <>
+          {lockedNotice}
+          {!mySquad.captain_id && !locked && (
+            <div style={{ ...cardStyle, borderLeft: `3px solid ${C.accent}`, marginBottom: S.md, padding: `${S.md}px ${S.lg}px`, fontSize: T.body - 1, color: C.text1, lineHeight: 1.4 }}>
+              {t("Ainda sem capitão — toca num jogador no campo e escolhe «Tornar capitão».")}
+            </div>
           )}
           <FantasyPitch
             group={group} playerIds={mySquad.player_ids} captainId={mySquad.captain_id} reserveIds={mySquad.reserve_ids}
-            weights={weights} lastRoundLines={lastRoundLines} readOnly={locked}
-            onSetCaptain={(id) => save({ captainId: id })}
-            onSetReserve={toggleReserve}
+            weights={weights} lastRoundLines={lastRoundLines} readOnly={locked} onSelect={(p) => setSheetId(p.uuid)}
           />
           <FantasyBench
             group={group} reserveIds={mySquad.reserve_ids} captainId={mySquad.captain_id} weights={weights} lastRoundLines={lastRoundLines}
-            readOnly={locked} onSetReserve={toggleReserve}
+            readOnly={locked} onSelect={(p) => setSheetId(p.uuid)}
           />
+          {!locked && (
+            <BtnGhost block onClick={() => setView("mercado")}>
+              <Pencil size={16} /> {t("Editar escalação")}
+            </BtnGhost>
+          )}
         </>
       ) : (
-      <div style={{ ...cardStyle, marginBottom: 14 }}>
-        <TopBar total={total} budget={effectiveBudget} count={selected.length} squadSize={league.squad_size} overBudget={overBudget} />
-        <div style={{ position: "relative", marginBottom: 10 }}>
-          <Search size={14} color={C.text3} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Pesquisar por nome…")}
-            style={{ ...inputStyle, marginTop: 0, paddingLeft: 30 }} />
-        </div>
-
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {[["pos", "Por posição"], ["points", "Por pontuação"]].map(([id, label]) => {
-            const active = sortMode === id;
-            return (
-              <button key={id} onClick={() => setSortMode(id)}
-                style={{ flex: 1, background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 10, padding: "7px 6px", fontSize: 12, fontWeight: active ? 800 : 500, cursor: "pointer" }}>
-                {t(label)}
-              </button>
-            );
-          })}
-        </div>
-
-        {locked && (
-          <div style={{ fontSize: 11, color: C.orange, background: C.orangeDim, border: `1px solid ${C.orange}44`, borderRadius: 10, padding: "8px 10px", marginBottom: 12 }}>
-            {ended ? t("Liga terminada — consulta a classificação final abaixo.") : t("Escalação trancada — falta menos de 8h para o jogo.")}
+        <div style={{ ...cardStyle }}>
+          {lockedNotice}
+          <div style={{ fontSize: T.cardTitle, fontWeight: 700, color: C.text1, marginBottom: S.xs }}>{t("Ainda sem equipa")}</div>
+          <div style={{ fontSize: T.body - 1, color: C.text2, lineHeight: 1.4, marginBottom: locked ? 0 : S.lg }}>
+            {t("Escolhe")} {league.squad_size} {t("colegas e define o capitão (pontos em dobro).")}
           </div>
-        )}
-        {!locked && overBudget && (
-          <div style={{ fontSize: 11, color: C.red, background: `${C.red}18`, border: `1px solid ${C.red}44`, borderRadius: 10, padding: "8px 10px", marginBottom: 12, fontWeight: 700 }}>
-            {t("Falta")} {fmtM(total - effectiveBudget)} — {t("tira alguém ou troca por um mais barato.")}
-          </div>
-        )}
+          {!locked && <BtnPrimary block onClick={() => setView("mercado")}>{t("Montar equipa")}</BtnPrimary>}
+        </div>
+      ))}
 
-        {(() => {
-          const renderRow = (p) => {
-            const picked = selected.includes(p.uuid);
-            const count = ownership[p.uuid] || 0;
-            const atCap = count >= OWNERSHIP_CAP && !picked;
-            const owners = ownersOf(p.uuid).filter((s) => s.participant_id !== me?.uuid);
-            return (
-              <div key={p.uuid}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10,
-                  background: picked ? C.accentDim : "transparent", border: `1px solid ${picked ? C.accentBorder : C.border}`, opacity: locked ? 0.6 : 1 }}>
-                <button onClick={() => setViewingPlayerId(p.uuid)}
-                  style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
-                  <Avatar name={p.name} color={playerColor(group, p)} size={38} fontSize={13} isMe={p.isMe} photo={p.photo} injured={p.injured} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.text1 }}>{p.nick}</div>
-                    <div style={{ fontSize: 10, color: atCap ? C.red : C.text2 }}>
-                      {sortMode === "points" ? `${t(p.position)} · ` : ""}{count}/{OWNERSHIP_CAP} {t("disponível")}
+      {/* ── Mercado (squad editor + trades) ── */}
+      {inMarket && (
+        <>
+          {(myOffers.length > 0 || incomingOffers.length > 0) && (
+            <div style={{ marginBottom: S.lg }}>
+              <Collapsible title={t("Ofertas de troca")} subtitle={`${incomingOffers.length} ${t("recebidas")} · ${myOffers.length} ${t("enviadas")}`}>
+                {incomingOffers.length > 0 && (
+                  <div style={{ marginBottom: myOffers.length ? S.md : 0 }}>
+                    <SectionLabel style={{ marginBottom: S.sm }}>{t("RECEBIDAS")}</SectionLabel>
+                    <div style={{ display: "flex", flexDirection: "column", gap: S.sm }}>
+                      {incomingOffers.map((o) => (
+                        <OfferRow key={o.id} offer={o} group={group} mine={false} onRespond={onRespondTradeOffer} />
+                      ))}
                     </div>
                   </div>
-                </button>
-                <div style={{ textAlign: "center", minWidth: 26 }}>
-                  <div style={{ ...displayFont, fontSize: 13, color: C.text1 }}>{computeOverall(p.position, p.attrs)}</div>
-                  <div style={{ fontSize: 7, fontWeight: 700, color: C.text3 }}>OVR</div>
-                </div>
-                <div style={{ textAlign: "center", minWidth: 26 }}>
-                  <div style={{ ...displayFont, fontSize: 13, color: C.accent }}>{Math.round(totalPoints[p.uuid] || 0)}</div>
-                  <div style={{ fontSize: 7, fontWeight: 700, color: C.text3 }}>PTS</div>
-                </div>
-                <div style={{ ...displayFont, fontSize: 12, color: C.accent, minWidth: 44, textAlign: "right" }}>{fmtM(prices[p.uuid])}</div>
-                {locked ? null : (p.injured && !picked) ? (
-                  <span style={{ background: C.redDim, color: C.red, border: `1px solid ${C.red}55`, borderRadius: 8, padding: "5px 8px", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                    <Cross size={11} /> {t("Lesionado")}
-                  </span>
-                ) : atCap ? (
-                  <button onClick={() => setTradeTarget({ playerId: p.uuid, owners })} disabled={!owners.length}
-                    style={{ background: C.orangeDim, color: C.orange, border: `1px solid ${C.orange}55`, borderRadius: 8, padding: "5px 8px", fontSize: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                    <ArrowRightLeft size={11} /> {t("Oferta")}
-                  </button>
-                ) : (
-                  <button onClick={() => toggle(p.uuid)}
-                    style={{ width: 28, height: 28, borderRadius: 14, flexShrink: 0, background: picked ? C.redDim : C.greenDim, color: picked ? C.red : C.green, border: `1px solid ${picked ? C.red : C.greenBorder}`, cursor: "pointer", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {picked ? "×" : "+"}
-                  </button>
                 )}
-              </div>
-            );
-          };
-
-          if (sortMode === "points") {
-            return (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.text3, marginBottom: 6 }}>{t("Todos os jogadores").toUpperCase()}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {byPoints.map(renderRow)}
-                </div>
-              </div>
-            );
-          }
-          return byPosition.map(({ pos, players }) => players.length > 0 && (
-            <div key={pos} style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.text3, marginBottom: 6 }}>{t(pos).toUpperCase()}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {players.map(renderRow)}
-              </div>
+                {myOffers.length > 0 && (
+                  <div>
+                    <SectionLabel style={{ marginBottom: S.sm }}>{t("ENVIADAS")}</SectionLabel>
+                    <div style={{ display: "flex", flexDirection: "column", gap: S.sm }}>
+                      {myOffers.map((o) => (
+                        <OfferRow key={o.id} offer={o} group={group} mine onCancel={onCancelTradeOffer} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Collapsible>
             </div>
-          ));
-        })()}
+          )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-          {complete && (
-            <button onClick={() => { setSelected(mySquad.player_ids); setEditing(false); }}
-              style={{ background: C.card, color: C.text2, border: `1px solid ${C.border}`, borderRadius: 12, padding: "0 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-              {t("Cancelar")}
-            </button>
+          <div style={{ ...cardStyle, marginBottom: S.xl }}>
+            {lockedNotice}
+            <div style={{ position: "relative", marginBottom: S.sm }}>
+              <Search size={16} color={C.text2} style={{ position: "absolute", left: S.md, top: "50%", transform: "translateY(-50%)" }} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Pesquisar por nome…")} aria-label={t("Pesquisar por nome…")}
+                style={{ ...inputStyle, marginTop: 0, paddingLeft: S.xxl + 4 }} />
+            </div>
+            <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>
+              {[["pos", "Por posição"], ["points", "Por pontuação"]].map(([id, label]) => (
+                <Chip key={id} variant={sortMode === id ? "lime" : "neutral"} onClick={() => setSortMode(id)}>{t(label)}</Chip>
+              ))}
+            </div>
+
+            {!locked && overBudget && (
+              <div style={{ fontSize: T.meta, color: C.red, fontWeight: 700, padding: `${S.sm}px ${S.md}px`, marginTop: S.sm, border: `1px solid ${C.red}55`, background: C.redDim, borderRadius: R.control }}>
+                {t("Falta")} {fmtM(total - effectiveBudget)} — {t("tira alguém ou troca por um mais barato.")}
+              </div>
+            )}
+
+            {sortMode === "points" ? (
+              <>
+                <div style={posLabel}>{t("Todos os jogadores")}</div>
+                {byPoints.map(renderMarketRow)}
+              </>
+            ) : byPosition.map(({ pos, players }) => players.length > 0 && (
+              <div key={pos}>
+                <div style={posLabel}>{t(pos)}</div>
+                {players.map(renderMarketRow)}
+              </div>
+            ))}
+
+            <div style={{ display: "flex", gap: S.sm, marginTop: S.lg }}>
+              {complete && (
+                <BtnGhost onClick={() => { setSelected(mySquad.player_ids); setView("equipa"); }}>{t("Cancelar")}</BtnGhost>
+              )}
+              {!locked && (
+                <BtnPrimary onClick={() => save()} disabled={!canSave || saving} style={{ flex: 1 }}>
+                  {saving ? t("Um momento…") : saved ? t("Escalação guardada ✓") : t("Guardar escalação")}
+                </BtnPrimary>
+              )}
+            </div>
+            {error && <div style={{ fontSize: T.meta, color: C.red, marginTop: S.sm }}>{error}</div>}
+          </div>
+        </>
+      )}
+
+      {/* ── Liga ── */}
+      {view === "liga" && (
+        <>
+          <SectionLabel right={isOrganizer && onSyncFantasy ? (
+            <BtnGhost onClick={runSync} disabled={syncing} title={t("Recupera jornadas em que as stats gravaram mas a pontuação Fantasy falhou")}
+              style={{ minHeight: TOUCH.min, padding: `0 ${S.md}px`, fontSize: T.meta }}>
+              {syncing ? t("A sincronizar…") : syncResult !== null ? (syncResult > 0 ? `✓ ${syncResult} ${t("recuperada(s)")}` : t("Tudo em dia")) : t("Sincronizar")}
+            </BtnGhost>
+          ) : null}>
+            {t("Classificação")}
+          </SectionLabel>
+          <div style={{ ...cardStyle, padding: 0, overflow: "hidden", marginBottom: S.lg }}>
+            {leaderboard.length === 0 && <div style={{ padding: S.lg, fontSize: T.body - 1, color: C.text2 }}>{t("Ainda sem jornadas fechadas.")}</div>}
+            {leaderboard.map((row, i) => {
+              const rivalSquad = squads.find((s) => s.participant_id === row.pid && s.player_ids?.length);
+              const isMe = row.player?.isMe;
+              const open = viewingId === row.pid;
+              const rank = i + 1;
+              const top3 = rank <= 3 && row.points > 0;
+              const Tag = rivalSquad ? "button" : "div";
+              return (
+                <Tag key={row.pid} type={rivalSquad ? "button" : undefined} aria-expanded={rivalSquad ? open : undefined}
+                  onClick={rivalSquad ? () => setViewingId((v) => (v === row.pid ? null : row.pid)) : undefined}
+                  style={{
+                    display: "flex", alignItems: "center", gap: S.md, width: "100%", minHeight: 56, boxSizing: "border-box",
+                    padding: `${S.sm}px ${S.lg}px`, border: "none", borderTop: i > 0 ? `1px solid ${C.border}` : "none",
+                    background: isMe || open ? C.surface : "transparent", boxShadow: isMe ? `inset 3px 0 0 ${C.accent}` : "none",
+                    color: "inherit", font: "inherit", textAlign: "left", cursor: rivalSquad ? "pointer" : "default",
+                  }}>
+                  <span style={{ ...displayFont, width: 24, textAlign: "center", fontSize: top3 ? T.h - 2 : T.body, color: top3 ? [C.gold, C.silver, C.bronze][rank - 1] : C.text2 }}>{rank}</span>
+                  <Avatar name={row.player?.name || "?"} color={row.player ? playerColor(group, row.player) : C.text2} size={top3 ? 40 : 34} isMe={isMe} photo={row.player?.photo} injured={row.player?.injured} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: T.body + 1, fontWeight: top3 || isMe ? 800 : 600, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {row.player?.nick || "?"}{isMe && <span style={{ fontSize: T.meta, color: C.text2, fontWeight: 500 }}> {t("· tu")}</span>}
+                    </div>
+                    <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{row.rounds} {t("jornadas")}</div>
+                  </div>
+                  <span style={{ ...displayFont, fontSize: top3 ? T.h + 2 : T.h - 2, color: top3 || isMe ? C.text1 : C.text2, minWidth: 40, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{Math.round(row.points)}</span>
+                  {rivalSquad && <ChevronDown size={18} color={C.text2} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
+                </Tag>
+              );
+            })}
+          </div>
+
+          {viewingId && (() => {
+            const rivalSquad = squads.find((s) => s.participant_id === viewingId);
+            const rival = group.find((p) => p.uuid === viewingId);
+            if (!rivalSquad) return null;
+            return (
+              <div style={{ marginBottom: S.lg }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: S.xs }}>
+                  <div style={{ fontSize: T.cardTitle, fontWeight: 700, color: C.text1 }}>{t("Escalação de")} {rival?.nick || "?"}</div>
+                  <button type="button" onClick={() => setViewingId(null)} aria-label={t("Fechar")}
+                    style={{ width: TOUCH.min, height: TOUCH.min, background: "none", border: "none", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><X size={18} /></button>
+                </div>
+                <FantasyPitch
+                  group={group} playerIds={rivalSquad.player_ids} captainId={rivalSquad.captain_id} reserveIds={rivalSquad.reserve_ids}
+                  weights={weights} lastRoundLines={lastRoundLines} readOnly
+                />
+              </div>
+            );
+          })()}
+
+          {lastRoundScores.length > 0 && (
+            <Collapsible title={t("Última jornada")} subtitle={t("Pontos de cada participante")}>
+              {lastRoundScores.map((s, i) => {
+                const p = group.find((x) => x.uuid === s.participant_id);
+                return (
+                  <div key={s.id ?? s.participant_id} style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: 48, borderTop: i > 0 ? `1px solid ${C.border}` : "none" }}>
+                    <Avatar name={p?.name || "?"} color={p ? playerColor(group, p) : C.text2} size={32} isMe={p?.isMe} photo={p?.photo} injured={p?.injured} />
+                    <div style={{ flex: 1, fontSize: T.body, fontWeight: p?.isMe ? 800 : 600, color: C.text1 }}>{p?.nick || "?"}</div>
+                    <div style={{ ...displayFont, fontSize: T.cardTitle, color: C.text1 }}>{Math.round(s.points)}</div>
+                  </div>
+                );
+              })}
+            </Collapsible>
           )}
-          {!locked && (
-            <BtnPrimary onClick={() => save()} disabled={!canSave || saving} style={{ flex: 1, opacity: (!canSave || saving) ? 0.5 : 1 }}>
-              {saving ? t("Um momento…") : saved ? t("Escalação guardada ✓") : t("Guardar escalação")}
-            </BtnPrimary>
-          )}
-        </div>
-        {error && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{error}</div>}
-      </div>
+        </>
       )}
 
       {tradeTarget && (
@@ -406,93 +533,14 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
         />
       )}
 
-      {(myOffers.length > 0 || incomingOffers.length > 0) && (
-        <Collapsible title={t("Ofertas de troca")} subtitle={`${incomingOffers.length} ${t("recebidas")} · ${myOffers.length} ${t("enviadas")}`}>
-          {incomingOffers.length > 0 && (
-            <div style={{ marginBottom: myOffers.length ? 14 : 0 }}>
-              <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>{t("RECEBIDAS")}</SectionLabel>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {incomingOffers.map((o) => (
-                  <OfferRow key={o.id} offer={o} group={group} mine={false} onRespond={onRespondTradeOffer} />
-                ))}
-              </div>
-            </div>
-          )}
-          {myOffers.length > 0 && (
-            <div>
-              <SectionLabel style={{ marginBottom: 8, color: C.text3 }}>{t("ENVIADAS")}</SectionLabel>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {myOffers.map((o) => (
-                  <OfferRow key={o.id} offer={o} group={group} mine onCancel={onCancelTradeOffer} />
-                ))}
-              </div>
-            </div>
-          )}
-        </Collapsible>
-      )}
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <SectionLabel>{t("Classificação")}</SectionLabel>
-        {isOrganizer && onSyncFantasy && (
-          <button onClick={runSync} disabled={syncing}
-            title={t("Recupera jornadas em que as stats gravaram mas a pontuação Fantasy falhou")}
-            style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 9px", fontSize: 10, fontWeight: 700, color: C.text3, cursor: syncing ? "default" : "pointer", opacity: syncing ? 0.6 : 1 }}>
-            {syncing ? t("A sincronizar…") : syncResult !== null ? (syncResult > 0 ? `✓ ${syncResult} ${t("recuperada(s)")}` : t("Tudo em dia")) : t("Sincronizar")}
-          </button>
-        )}
-      </div>
-      <div style={{ ...cardStyle, marginBottom: 14 }}>
-        {leaderboard.length === 0 && <div style={{ fontSize: 12, color: C.text2 }}>{t("Ainda sem jornadas fechadas.")}</div>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {leaderboard.map((row, i) => {
-            const rivalSquad = squads.find((s) => s.participant_id === row.pid && s.player_ids?.length);
-            return (
-              <div key={row.pid} onClick={() => rivalSquad && setViewingId((v) => (v === row.pid ? null : row.pid))}
-                style={{ display: "flex", alignItems: "center", gap: 10, cursor: rivalSquad ? "pointer" : "default" }}>
-                <div style={{ ...displayFont, width: 20, fontSize: 13, color: C.text3 }}>{i + 1}</div>
-                <Avatar name={row.player?.name || "?"} color={row.player ? playerColor(group, row.player) : C.text3} size={28} fontSize={10} isMe={row.player?.isMe} photo={row.player?.photo} injured={row.player?.injured} />
-                <div style={{ flex: 1, fontSize: 13, fontWeight: row.player?.isMe ? 800 : 600 }}>{row.player?.nick || "?"}</div>
-                <div style={{ fontSize: 10, color: C.text2 }}>{row.rounds} {t("jornadas")}</div>
-                <div style={{ ...displayFont, fontSize: 15, color: C.accent, minWidth: 36, textAlign: "right" }}>{Math.round(row.points)}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {viewingId && (() => {
-        const rivalSquad = squads.find((s) => s.participant_id === viewingId);
-        const rival = group.find((p) => p.uuid === viewingId);
-        if (!rivalSquad) return null;
-        return (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{t("Escalação de")} {rival?.nick || "?"}</div>
-              <button onClick={() => setViewingId(null)} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex" }}><X size={16} /></button>
-            </div>
-            <FantasyPitch
-              group={group} playerIds={rivalSquad.player_ids} captainId={rivalSquad.captain_id} reserveIds={rivalSquad.reserve_ids}
-              weights={weights} lastRoundLines={lastRoundLines} readOnly
-            />
-          </div>
-        );
-      })()}
-
-      {lastRoundScores.length > 0 && (
-        <Collapsible title={t("Última jornada")} subtitle={t("Pontos de cada participante")}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {lastRoundScores.map((s) => {
-              const p = group.find((x) => x.uuid === s.participant_id);
-              return (
-                <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={p?.name || "?"} color={p ? playerColor(group, p) : C.text3} size={26} fontSize={10} isMe={p?.isMe} photo={p?.photo} injured={p?.injured} />
-                  <div style={{ flex: 1, fontSize: 12 }}>{p?.nick || "?"}</div>
-                  <div style={{ ...displayFont, fontSize: 13, color: C.accent }}>{Math.round(s.points)}</div>
-                </div>
-              );
-            })}
-          </div>
-        </Collapsible>
+      {sheetPlayer && (
+        <FantasyPlayerSheet
+          p={sheetPlayer} group={group} captain={sheetPlayer.uuid === mySquad.captain_id} bench={sheetBench}
+          pts={lastRoundLines ? computeRoundPoints([sheetPlayer.uuid], mySquad.captain_id, lastRoundLines, weights, mySquad.reserve_ids) : null}
+          onCaptain={() => save({ captainId: sheetPlayer.uuid })}
+          onToggleBench={() => toggleReserve(sheetPlayer.uuid)}
+          onClose={() => setSheetId(null)}
+        />
       )}
 
       {viewingPlayerId && (() => {
@@ -525,7 +573,7 @@ function PlayerCardModal({ player, price, points, ownership, onClose }) {
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 320, width: "100%" }}>
-        <button onClick={onClose} style={{ alignSelf: "flex-end", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginBottom: 10 }}>
+        <button type="button" onClick={onClose} aria-label={t("Fechar")} style={{ alignSelf: "flex-end", background: C.card, border: `1px solid ${C.border}`, borderRadius: R.control, width: TOUCH.min, height: TOUCH.min, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginBottom: 10 }}>
           <X size={16} color={C.text2} />
         </button>
         <FutCard player={player} width={260} ratingsCount={player.ratingsCount} />
@@ -534,43 +582,26 @@ function PlayerCardModal({ player, price, points, ownership, onClose }) {
             {stats.map(([emoji, label, value]) => (
               <div key={label} style={{ textAlign: "center" }}>
                 <div style={{ ...displayFont, fontSize: 16, color: C.text1 }}>{emoji} {value}</div>
-                <div style={{ fontSize: 8, fontWeight: 700, color: C.text3, marginTop: 2 }}>{label.toUpperCase()}</div>
+                <div style={{ fontSize: T.min, fontWeight: 700, color: C.text2, marginTop: 2 }}>{label.toUpperCase()}</div>
               </div>
             ))}
           </div>
           <div style={{ height: 1, background: C.border, marginBottom: 12 }} />
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ ...displayFont, fontSize: 15, color: C.accent }}>{fmtM(price)}</div>
-              <div style={{ fontSize: 8, fontWeight: 700, color: C.text3, marginTop: 2 }}>{t("PREÇO")}</div>
+              <div style={{ ...displayFont, fontSize: 15, color: C.text1 }}>{fmtM(price)}</div>
+              <div style={{ fontSize: T.min, fontWeight: 700, color: C.text2, marginTop: 2 }}>{t("PREÇO")}</div>
             </div>
             <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ ...displayFont, fontSize: 15, color: C.accent }}>{Math.round(points || 0)}</div>
-              <div style={{ fontSize: 8, fontWeight: 700, color: C.text3, marginTop: 2 }}>{t("PTS NA LIGA")}</div>
+              <div style={{ ...displayFont, fontSize: 15, color: C.text1 }}>{Math.round(points || 0)}</div>
+              <div style={{ fontSize: T.min, fontWeight: 700, color: C.text2, marginTop: 2 }}>{t("PTS NA LIGA")}</div>
             </div>
             <div style={{ textAlign: "center", flex: 1 }}>
               <div style={{ ...displayFont, fontSize: 15, color: C.text1 }}>{ownership}/{OWNERSHIP_CAP}</div>
-              <div style={{ fontSize: 8, fontWeight: 700, color: C.text3, marginTop: 2 }}>{t("DONOS")}</div>
+              <div style={{ fontSize: T.min, fontWeight: 700, color: C.text2, marginTop: 2 }}>{t("DONOS")}</div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-/** FPL-style header: red "players selected" badge + green "bank" badge. */
-function TopBar({ total, budget, count, squadSize, overBudget }) {
-  const bank = budget - total;
-  return (
-    <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-      <div style={{ flex: 1, background: C.redDim, border: `1px solid ${C.red}44`, borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
-        <div style={{ ...displayFont, fontSize: 16, color: C.red }}>{count}/{squadSize}</div>
-        <div style={{ fontSize: 9, color: C.text2, fontWeight: 700 }}>{t("Selecionados")}</div>
-      </div>
-      <div style={{ flex: 1, background: overBudget ? `${C.red}18` : C.greenDim, border: `1px solid ${overBudget ? C.red : C.greenBorder}`, borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
-        <div style={{ ...displayFont, fontSize: 16, color: overBudget ? C.red : C.green }}>{fmtM(bank)}</div>
-        <div style={{ fontSize: 9, color: C.text2, fontWeight: 700 }}>{t("Banco")}</div>
       </div>
     </div>
   );
@@ -612,7 +643,7 @@ function TradeOfferPanel({ group, me, mySquad, prices, target, myBank, onClose, 
     <div onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: "100%", maxWidth: 380, border: `1px solid ${C.orange}55` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <div style={{ fontSize: 13, fontWeight: 800 }}>{t("Oferta por")} {targetPlayer?.nick}</div>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: C.text3, cursor: "pointer", display: "flex" }}><X size={16} /></button>
+        <button type="button" onClick={onClose} aria-label={t("Fechar")} style={{ width: TOUCH.min, height: TOUCH.min, background: "none", border: "none", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><X size={18} /></button>
       </div>
 
       <label style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>{t("A quem fazer a oferta")}</label>
@@ -673,8 +704,8 @@ function OfferRow({ offer, group, mine, onCancel, onRespond }) {
   const act = async (fn) => { setBusy(true); await fn(); setBusy(false); };
 
   return (
-    <div style={{ background: C.surface, borderRadius: 10, padding: 10 }}>
-      <div style={{ fontSize: 12, marginBottom: 6 }}>
+    <div style={{ background: C.surface, borderRadius: R.control, padding: S.md }}>
+      <div style={{ fontSize: T.body - 1, lineHeight: 1.4, marginBottom: S.sm }}>
         {mine ? (
           <>
             <div>{t("A tua oferta a")} {counterpart?.nick}: <strong>{give?.nick}</strong>{offer.offer_type === "cash" ? ` + ${fmtM(offer.offer_cash)}` : ""}</div>
@@ -688,11 +719,11 @@ function OfferRow({ offer, group, mine, onCancel, onRespond }) {
         )}
       </div>
       {mine ? (
-        <button onClick={() => act(() => onCancel(offer.id))} disabled={busy} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, cursor: "pointer" }}>{t("Cancelar oferta")}</button>
+        <BtnGhost onClick={() => act(() => onCancel(offer.id))} disabled={busy} style={{ minHeight: TOUCH.min, fontSize: T.meta }}>{t("Cancelar oferta")}</BtnGhost>
       ) : (
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => act(() => onRespond(offer, true))} disabled={busy} style={{ background: C.greenDim, border: `1px solid ${C.greenBorder}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.green, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Check size={12} /> {t("Aceitar")}</button>
-          <button onClick={() => act(() => onRespond(offer, false))} disabled={busy} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: C.text2, cursor: "pointer" }}>{t("Recusar")}</button>
+          <BtnPrimary onClick={() => act(() => onRespond(offer, true))} disabled={busy} style={{ flex: 1, minHeight: TOUCH.min }}><Check size={16} /> {t("Aceitar")}</BtnPrimary>
+          <BtnGhost onClick={() => act(() => onRespond(offer, false))} disabled={busy} style={{ flex: 1, minHeight: TOUCH.min }}>{t("Recusar")}</BtnGhost>
         </div>
       )}
     </div>
