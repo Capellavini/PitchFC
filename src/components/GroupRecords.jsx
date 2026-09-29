@@ -74,7 +74,7 @@ export default function GroupRecords({ records = [], canDelete, onDeleteMatchday
                       <div style={{ display: "flex", flexDirection: "column", gap: S.xs + 2, marginBottom: canDelete ? S.md : 0 }}>
                         {r.summary.lines.map((l) => (
                           <div key={l.key} style={{ display: "flex", alignItems: "center", gap: S.sm }}>
-                            <Avatar name={l.nick} color={l.color || C.text2} size={24} fontSize={9} photo={l.photo} />
+                            <Avatar name={l.name || l.nick} color={l.color || C.text2} size={24} fontSize={9} photo={l.photo} />
                             <span style={{ flex: 1, minWidth: 0, fontSize: T.meta, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.nick}</span>
                             <span style={{ fontSize: T.meta, color: C.text2, display: "flex", gap: S.sm, flexShrink: 0 }}>
                               {l.goals > 0 && <span>⚽ {l.goals}</span>}
