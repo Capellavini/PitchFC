@@ -3,10 +3,9 @@ import { Play } from "lucide-react";
 import { C, S, R, T, TOUCH, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
 import { t } from "../lib/i18n";
+import { goalOfTheWeekRanking } from "../lib/homeFeed";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
-
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Golo da Semana — the group's video posts from the last 7 days,
  *  ranked by ⚽ Golaço reactions. The Golaço IS the vote (same
@@ -14,20 +13,14 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
  *  new table: whichever video has the most Golaços this week leads.
  *
  *  `postDates` ({ [postId]: ISO created_at }) scopes to the last 7 days
- *  in cloud mode; local demo posts carry no timestamp, so all of them
- *  count. The leader's video is shown; the rest expand on tap. */
+ *  in cloud mode; local demo posts use their own createdAt (see
+ *  goalOfTheWeekRanking, shared with Home's feed). The leader's video
+ *  is shown; the rest expand on tap. */
 export default function GoalOfTheWeek({ social, group = [], postDates }) {
   const [openId, setOpenId] = useState(null);
   if (!social) return null;
 
-  const now = Date.now();
-  const candidates = (social.posts || [])
-    .filter((p) => p.type === "video" && p.media && p.author?.groupId === social.myGroupId)
-    .filter((p) => {
-      const iso = postDates?.[p.id];
-      return !iso || now - new Date(iso).getTime() <= WEEK_MS;
-    })
-    .sort((a, b) => b.likes.length - a.likes.length);
+  const candidates = goalOfTheWeekRanking(social, postDates);
 
   const colorOf = (authorId) => {
     const p = group.find((x) => (x.uuid ?? x.id) === authorId);
@@ -71,7 +64,7 @@ export default function GoalOfTheWeek({ social, group = [], postDates }) {
                   </button>
                 </div>
                 {open && (
-                  <video src={p.media} controls playsInline preload="metadata"
+                  <video src={p.media} poster={p.poster} controls playsInline preload="metadata"
                     style={{ width: "100%", borderRadius: R.control, maxHeight: 320, background: C.bg, marginTop: S.md, display: "block" }} />
                 )}
               </div>

@@ -153,7 +153,7 @@ function PostBody({ post, social }) {
         <img src={post.media} alt="" style={{ width: "100%", borderRadius: R.control, maxHeight: 320, objectFit: "cover", marginTop: S.md, display: "block" }} />
       )}
       {post.type === "video" && post.media && (
-        <video src={post.media} controls playsInline style={{ width: "100%", borderRadius: R.control, maxHeight: 360, background: C.bg, marginTop: S.md, display: "block" }} />
+        <video src={post.media} poster={post.poster} controls playsInline style={{ width: "100%", borderRadius: R.control, maxHeight: 360, background: C.bg, marginTop: S.md, display: "block" }} />
       )}
       <Footer>
         <GolacoButton active={post.liked} count={post.likes?.length || 0} onClick={() => social.onToggleLike(post.id, post.liked)} />
@@ -193,9 +193,26 @@ function PostBody({ post, social }) {
  * Props: item (lib/homeFeed buildFeed), social (post handlers),
  *        kudos { count, mine } + onGolaco (performance items).
  */
-export default function FeedItem({ item, social, kudos = { count: 0, mine: false }, onGolaco }) {
+export default function FeedItem({ item, social, kudos = { count: 0, mine: false }, onGolaco, onOpenGotw }) {
   return (
     <article style={{ ...cardStyle }}>
+      {item.kind === "gotw" && (
+        // Golo da Semana leader: trophy banner on top of the video post
+        // itself (the Golaço on it is still the vote).
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: S.md, paddingBottom: S.md, marginBottom: S.md, borderBottom: `1px solid ${C.border}` }}>
+            <IconBadge Icon={Trophy} color={C.gold} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: T.body, fontWeight: 800, color: C.text1 }}>{t("Golo da Semana")}</div>
+              <div style={{ fontSize: T.meta, color: C.text2 }}>
+                {`${item.post.author?.nick ?? ""} ${t("lidera com")} ${item.post.likes?.length || 0} ⚽ Golaço`}
+              </div>
+            </div>
+            {onOpenGotw && <Chip onClick={onOpenGotw}>{t("Ver ranking")}</Chip>}
+          </div>
+          <PostBody post={item.post} social={social} />
+        </>
+      )}
       {item.kind === "result" && <ResultBody md={item.md} />}
       {item.kind === "performance" && <PerformanceBody item={item} kudos={kudos} onGolaco={onGolaco} />}
       {item.kind === "milestone" && <MilestoneBody item={item} />}

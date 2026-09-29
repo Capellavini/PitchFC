@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { C, S, T, cardStyle } from "../theme";
 import { splitWaitlist, playerColor, fmtDayMonth, isoDay, toIsoDay } from "../lib/helpers";
 import { t } from "../lib/i18n";
@@ -24,13 +24,16 @@ import TeamDraw from "./TeamDraw";
  * its MVP vote is still open and there's no new game today. A manager can
  * jump from "after" back to "before" to prepare another round.
  */
-export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null, mvp = null, lastMatchday = null, onCardGenerated }) {
+export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null, mvp = null, lastMatchday = null, onCardGenerated, social }) {
   const [forceBefore, setForceBefore] = useState(false);
   const confirmed = group.filter((p) => p.status === "confirmed");
   const { playing, waitlist: waiting = [] } = splitWaitlist(confirmed, game.spots);
   const me = group.find((p) => p.isMe);
 
   const live = Boolean(matchdayProps.matchday);
+  // "Preparar o próximo jogo" only applies until the next day goes live —
+  // once that one ends, its own after-state must show.
+  useEffect(() => { if (live) setForceBefore(false); }, [live]);
   const today = isoDay(0);
   const gameIsToday = !game.noGameScheduled && game.kickoffAt instanceof Date && toIsoDay(game.kickoffAt) === today;
   const hasSummary = Boolean(lastMatchday) && (lastMatchday.matches ?? []).length > 0;
@@ -58,7 +61,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
   if (after) {
     return wrap(
       <MatchdayAfter lastMatchday={lastMatchday} mvp={mvp} me={me} group={group} groupName={game.groupName}
-        onCardGenerated={onCardGenerated} canManage={canManageTeams} onPrepareNext={() => setForceBefore(true)} />
+        onCardGenerated={onCardGenerated} canManage={canManageTeams} onPrepareNext={() => setForceBefore(true)} social={social} />
     );
   }
 

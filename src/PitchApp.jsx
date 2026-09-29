@@ -12,7 +12,9 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { C, BRAND } from "./theme";
-import { INITIAL_GROUP, INITIAL_MATERIAL, INITIAL_POSTS, DEFAULT_SETTINGS, POSITIONS, HISTORY, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
+import { INITIAL_GROUP, INITIAL_MATERIAL, DEFAULT_SETTINGS, POSITIONS, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
+import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
+import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGHTS } from "./lib/fantasy";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, fmtFullDay, isoDay, toIsoDay, fromIso, dateTimeFromIso, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor } from "./lib/helpers";
@@ -95,7 +97,7 @@ export default function PitchApp() {
   const [settings, setSettings] = usePersistentState("settings", DEFAULT_SETTINGS);
   const [group, setGroup]       = usePersistentState("group", INITIAL_GROUP);
   const [material, setMaterial] = usePersistentState("material", INITIAL_MATERIAL);
-  const [posts, setPosts]       = usePersistentState("posts", INITIAL_POSTS);
+  const [posts, setPosts]       = usePersistentState("posts", DEMO_POSTS);
   // teamsRaw/matchdayLocal: local-demo-only storage. In cloud mode the
   // real source of truth is cloud.game.teams / cloud.game.live_matchday
   // (synced via Supabase so every device sees the same draw/scores) —
@@ -103,9 +105,21 @@ export default function PitchApp() {
   // below, which pick whichever source applies.
   const [teamsRaw, setTeamsLocal] = usePersistentState("teams", null);
   const [teamsConfirmedLocal, setTeamsConfirmedLocal] = usePersistentState("teamsConfirmed", false);
-  const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", []);
+  const [peerRatings, setPeerRatings] = usePersistentState("peerRatings", DEMO_PEER_RATINGS);
   const [mvpVote, setMvpVote]   = usePersistentState("mvpVote", { open: true, votes: { 1: null, 2: null, 3: null } });
-  const [history, setHistory]   = usePersistentState("history", HISTORY);
+  // Only matchdays the user ran in THIS browser. The dated demo seed
+  // (lib/demoSeed DEMO_HISTORY / DEMO_MATCHDAYS) is never persisted — it's
+  // appended live in the views below so its dates always roll with today.
+  const [history, setHistory]   = usePersistentState("history", []);
+  // Local demo seed version. v1 (redesign): dated matchdays + demo posts.
+  // Browsers that ran an older demo keep their persisted "history"/"posts"
+  // — the effect below drops ONLY the untouched old static seed (5 rows
+  // starting "7 Jun") and fills an empty feed / empty ratings with the new
+  // seed; anything the user created locally is left alone. "Repor demo"
+  // always gets the new seed.
+  const [demoSeedV, setDemoSeedV] = usePersistentState("demoSeed", 0);
+  // Pitch Manager in local demo: my own squad is editable and persisted.
+  const [demoFantasySquad, setDemoFantasySquad] = usePersistentState("demoFantasySquad", DEMO_FANTASY.mySquad);
   const [matchdayLocal, setMatchdayLocal] = usePersistentState("matchday", null);
   const [lastMatchday, setLastMatchday] = usePersistentState("lastMatchday", null);
   const [bookings, setBookings] = usePersistentState("bookings", INITIAL_BOOKINGS);
@@ -353,6 +367,13 @@ export default function PitchApp() {
   useEffect(() => {
     if (teamsRaw && !Array.isArray(teamsRaw)) setTeamsLocal(null);
     if (matchdayLocal?.matches?.some((m) => m.homeId === undefined)) setMatchdayLocal(null);
+    if (demoSeedV < 1) {
+      const oldStaticSeed = history.length === 5 && history[0]?.id === 1 && history[0]?.date === "7 Jun";
+      if (oldStaticSeed) setHistory([]);
+      if (posts.length === 0) setPosts(DEMO_POSTS);
+      if (peerRatings.length === 0) setPeerRatings(DEMO_PEER_RATINGS);
+      setDemoSeedV(1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -844,8 +865,8 @@ export default function PitchApp() {
         if (!s && !played) return p;
         return { ...p, goals: p.goals + (s?.goals ?? 0), assists: p.assists + (s?.assists ?? 0), gamesPlayed: p.gamesPlayed + (played ? 1 : 0), wins: (p.wins || 0) + (s?.wins ?? 0) };
       }));
-      setHistory((h) => [{ id: Date.now(), date, confirmed: confirmed.length, result: `${totalGoals}⚽`, allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length }, ...h]);
-      setLastMatchday({ date, mode: matchday.mode, ...summary });
+      setHistory((h) => [{ id: Date.now(), date, playedOn: isoDay(0), confirmed: confirmed.length, result: `${totalGoals}⚽`, allPaid: confirmed.every((p) => p.paid), mvpId: null, games: matchday.matches.length }, ...h]);
+      setLastMatchday({ date, playedOn: isoDay(0), mode: matchday.mode, ...summary });
       setMvpVote({ open: true, votes: { 1: null, 2: null, 3: null } });
       setMatchdayLocal(null);
     }
@@ -1222,6 +1243,7 @@ export default function PitchApp() {
   const MVP_BALLOT_POINTS = { 1: 3, 2: 2, 3: 1 };
 
   let lastMatchdayView = null, historyView = [], matchdaySummariesView = [], recordsView = [], mvp = null;
+  let localDays = []; // local demo only — newest first, see the else-branch below
   if (cloudMode) {
     const rows = cloud.matchdays;
     // Raw per-day team results (name/color/goals) for the Stats tab's
@@ -1266,12 +1288,41 @@ export default function PitchApp() {
       mvpNick: r.mvp_id ? nickByKey(r.mvp_id) : null,
     }));
   } else {
-    lastMatchdayView = lastMatchday;
-    historyView = history.map((g) => ({ ...g, mvpNick: g.mvpId ? baseGroup.find((p) => p.id === g.mvpId)?.nick : null }));
-    if (lastMatchday) {
+    // Local demo: the user's own last matchday (if they ran one here) on
+    // top of the dated demo seed (lib/demoSeed — weekly games going back
+    // ~2 months from today). The newest seed night stands in as "last
+    // matchday" until the user plays one, with its MVP vote open.
+    const seedLatest = DEMO_MATCHDAYS[0];
+    const effLast = lastMatchday ?? (seedLatest
+      ? { date: fmtDayMonth(seedLatest.playedOn), playedOn: seedLatest.playedOn, mode: seedLatest.mode, ...seedLatest.summary }
+      : null);
+    const localMvpKey = !mvpVote.open ? mvpVote.votes[1] : null;
+    localDays = [
+      ...(lastMatchday ? [{ id: "local-last", playedOn: lastMatchday.playedOn ?? null, date: lastMatchday.date, mode: lastMatchday.mode, summary: lastMatchday, mvpKey: localMvpKey }] : []),
+      ...DEMO_MATCHDAYS.map((d, i) => ({
+        id: d.id, playedOn: d.playedOn, date: fmtDayMonth(d.playedOn), mode: d.mode, summary: d.summary,
+        mvpKey: i === 0 && !lastMatchday ? localMvpKey : d.mvpKey,
+      })),
+    ];
+    recordsView = localDays.map((d, i) => ({
+      id: d.id, date: d.date, playedOn: d.playedOn, mode: d.mode,
+      nGames: (d.summary.matches || []).length,
+      totalGoals: (d.summary.matches || []).reduce((s, m) => s + (m.homeGoals || 0) + (m.awayGoals || 0), 0),
+      mvpOpen: i === 0 && mvpVote.open, mvpNick: d.mvpKey != null ? nickByKey(d.mvpKey) : null,
+      runnerUpNick: null, thirdNick: null,
+      summary: d.summary,
+    }));
+    matchdaySummariesView = localDays.map((d) => ({ date: d.date, summary: d.summary }));
+    lastMatchdayView = effLast;
+    // User-run rows first, then the live demo seed rows (the newest seed
+    // row's MVP comes from the local vote while it stands in as "last").
+    const userHistory = history.filter((g) => !String(g.id).startsWith("demo-"));
+    const seedHistory = DEMO_HISTORY.map((g, i) => (i === 0 && !lastMatchday ? { ...g, mvpId: localMvpKey } : g));
+    historyView = [...userHistory, ...seedHistory].map((g) => ({ ...g, date: g.playedOn ? fmtDayMonth(g.playedOn) : g.date, mvpNick: g.mvpId ? baseGroup.find((p) => p.id === g.mvpId)?.nick : null }));
+    if (effLast) {
       mvp = {
         open: mvpVote.open,
-        candidates: lastMatchday.candidates ?? [],
+        candidates: effLast.candidates ?? [],
         myVotes: mvpVote.votes,
         tally: null,
         podium: !mvpVote.open ? {
@@ -1381,6 +1432,26 @@ export default function PitchApp() {
       dateLabel: fmtFullDay(toIsoDay(soonest.scheduledAt)),
       timeLabel: `${String(soonest.scheduledAt.getHours()).padStart(2, "0")}:${String(soonest.scheduledAt.getMinutes()).padStart(2, "0")}`,
     } : null;
+  } else if (localMode && me) {
+    // Local demo: same streak / records as cloud, from the seeded days.
+    const played = (d) => (d.summary?.candidates || []).some((c) => c.key === me.id) || (d.summary?.lines || []).some((l) => l.key === me.id);
+    for (const d of localDays) {
+      if (!played(d)) break;
+      attendanceStreak += 1;
+    }
+    const myLines = localDays.filter(played).map((d) => {
+      const line = (d.summary?.lines || []).find((l) => l.key === me.id) || {};
+      return { id: d.id, date: d.date, goals: line.goals || 0, assists: line.assists || 0, mvp: d.mvpKey === me.id };
+    });
+    if (myLines.length) {
+      personalRecords = {
+        bestNight: [...myLines].sort((a, b) => (b.goals + b.assists) - (a.goals + a.assists))[0],
+        totalGoals: myLines.reduce((s, l) => s + l.goals, 0),
+        totalAssists: myLines.reduce((s, l) => s + l.assists, 0),
+        mvps: myLines.filter((l) => l.mvp).length,
+        gamesInWindow: myLines.length,
+      };
+    }
   }
 
   // ── Achievements: normalized per-matchday detail (cloud keeps the full
@@ -1389,7 +1460,7 @@ export default function PitchApp() {
   // from endMatchday (uuid in cloud, numeric id in local).
   const achievementMatchdays = cloudMode
     ? cloud.matchdays.map((r) => ({ matches: r.summary?.matches ?? [], nightLines: r.summary?.lines ?? [], mvpKey: r.mvp_id ?? null }))
-    : (lastMatchday ? [{ matches: lastMatchday.matches ?? [], nightLines: lastMatchday.lines ?? [], mvpKey: !mvpVote.open ? mvpVote.votes[1] : null }] : []);
+    : localDays.map((d) => ({ matches: d.summary?.matches ?? [], nightLines: d.summary?.lines ?? [], mvpKey: d.mvpKey ?? null }));
 
   // ── Social: normalized for SocialTab (cloud or local) ──
   let social;
@@ -1431,7 +1502,8 @@ export default function PitchApp() {
     social = {
       meId: meLocal?.id, myGroupId: "local",
       uploadMedia,
-      posts,
+      // Demo seed posts carry createdAt → live relative label ("há 20 h").
+      posts: posts.map((p) => (p.createdAt ? { ...p, time: relativeTime(p.createdAt) } : p)),
       friendIds: [], friends: [], requests: [], sentPending: [], candidates: [],
       friendshipIdOf: () => null,
       onCreatePost: (post) => setPosts((ps) => [{ id: Date.now(), author: { id: meLocal?.id, nick: meLocal?.nick, name: meLocal?.name, photo: meLocal?.photo, groupId: "local" }, mine: true, time: "agora", type: post.type, text: post.body, media: post.media_url, likes: [], liked: false, comments: [] }, ...ps]),
@@ -1487,7 +1559,10 @@ export default function PitchApp() {
       title: t("Quem foram os 3 melhores em campo?"),
       subtitle: lastMatchdayView?.date ? `${game.groupName} · ${lastMatchdayView.date}` : game.groupName,
       primaryLabel: t("Votar MVP"),
-      onPrimary: () => goToGroupView("stats"),
+      // MatchdayMvpVote lives in Matchday's after-state (shown while the
+      // vote is open and there's no new game today). On a game day Matchday
+      // shows the new game instead, so fall back to the group's Stats vote.
+      onPrimary: () => (isGameDay ? goToGroupView("stats") : selectTab("matchday")),
     } : null,
   ].filter(Boolean);
 
@@ -1508,6 +1583,55 @@ export default function PitchApp() {
 
   const statsProps = { group: displayGroup, history: historyView, matchdaySummaries: matchdaySummariesView, lastMatchday: lastMatchdayView, mvp, statMode, setStatMode, groupName: game.groupName, onCardGenerated: cloudMode ? cloud.logCardGenerated : undefined, social };
   const totalGamesPlayed = historyView.reduce((s, h) => s + (h.games || 1), 0);
+
+  // ── Pitch Manager (Fantasy) in local demo ──────────────
+  // FantasyTab is keyed by player uuid; demo players get String(id) as
+  // uuid (and the seed lines the same keys) so the real component runs
+  // unchanged on a mock league: me + 5 rivals, rounds = seeded matchdays
+  // since the league started, my squad editable + persisted locally.
+  // Trades need other real managers → unavailable in the demo.
+  let demoFantasyProps = null;
+  if (localMode && me) {
+    const fk = (id) => String(id);
+    const fGroup = displayGroup.map((p) => ({ ...p, uuid: fk(p.id) }));
+    const startsAt = new Date(Date.now() - DEMO_FANTASY.startsWeeksAgo * 7 * 24 * 3600 * 1000 - 3600 * 1000).toISOString();
+    const fMatchdays = localDays.map((d) => ({
+      id: d.id,
+      created_at: d.playedOn ? new Date(`${d.playedOn}T21:00:00`).toISOString() : new Date().toISOString(),
+      summary: { ...d.summary, lines: (d.summary?.lines || []).map((l) => ({ ...l, key: fk(l.key) })) },
+    }));
+    const rounds = fMatchdays.filter((md) => md.created_at >= startsAt);
+    const basePaid = (ids) => Object.fromEntries(ids.map((id) => [id, DEFAULT_FANTASY_WEIGHTS.priceBase]));
+    const myIds = (demoFantasySquad.player_ids || []).map(fk);
+    const squads = [
+      { participant_id: fk(me.id), player_ids: myIds, captain_id: demoFantasySquad.captain_id != null ? fk(demoFantasySquad.captain_id) : null,
+        reserve_ids: (demoFantasySquad.reserve_ids || []).map(fk), prices_paid: demoFantasySquad.prices_paid || basePaid(myIds), budget_adjustment: 30 },
+      ...DEMO_FANTASY.rivals.filter((r) => r.participant !== me.id).map((r) => ({
+        participant_id: fk(r.participant), player_ids: r.player_ids.map(fk), captain_id: fk(r.captain_id),
+        reserve_ids: [], prices_paid: basePaid(r.player_ids.map(fk)), budget_adjustment: 0,
+      })),
+    ];
+    const scores = rounds.flatMap((md) => squads.map((s) => ({
+      participant_id: s.participant_id, matchday_id: md.id,
+      points: computeRoundPoints(s.player_ids, s.captain_id, md.summary.lines, DEFAULT_FANTASY_WEIGHTS, s.reserve_ids),
+    })));
+    const unavailable = async () => ({ error: t("Indisponível na demonstração.") });
+    demoFantasyProps = {
+      group: fGroup, me: fGroup.find((p) => p.isMe),
+      fantasyLeague: { id: "demo-league", name: "Pitch Manager", budget: DEMO_FANTASY.budget, squad_size: DEMO_FANTASY.squadSize, duration_months: 2, starts_at: startsAt, created_at: startsAt },
+      fantasySquads: squads, fantasyScores: scores, fantasyTradeOffers: [], matchdays: fMatchdays,
+      onCreateLeague: unavailable, onCreateTradeOffer: unavailable, onCancelTradeOffer: unavailable, onRespondTradeOffer: unavailable,
+      onSyncFantasy: null,
+      onSaveSquad: async (_leagueId, playerIds, captainId, reserveIds) => {
+        const ids = [...new Set(playerIds)];
+        setDemoFantasySquad((prev) => ({
+          player_ids: ids, captain_id: captainId, reserve_ids: reserveIds || [],
+          prices_paid: nextPricesPaid(prev.prices_paid || basePaid((prev.player_ids || []).map(fk)), ids, (id) => fantasyPrice(id, rounds)),
+        }));
+        return {};
+      },
+    };
+  }
 
   // Matchday: organizers (and assistants) ALWAYS get the full controls;
   // a regular player gets them when it's hot or the lineup is out,
@@ -1543,11 +1667,12 @@ export default function PitchApp() {
             resultPending={canManageTeams && hasGameContext && !matchday && kickoffAt <= new Date() && Date.now() - kickoffAt.getTime() < 36 * 3600 * 1000 && lastMatchdayView?.date !== fmtDayMonth(isoDay(0))}
             onOpenJogar={() => { setJogarView("jogos"); selectTab("jogar"); }}
             onOpenMatchday={() => selectTab("matchday")}
+            onOpenCompetir={() => selectTab("competir")}
             feedMatchdays={cloudMode ? [
               ...cloud.matchdays.map((r) => ({ ...r, groupName: game.groupName })),
               ...cloud.crossGroupMatchdays.map((r) => ({ ...r, groupName: r.groups?.name })),
             ] : null}
-            localHistory={cloudMode ? null : { lastMatchday, history: historyView, groupName: game.groupName, mvpKey: lastMatchday && !mvpVote.open ? mvpVote.votes[1] : null }}
+            localHistory={cloudMode ? null : { days: localDays, history: historyView, groupName: game.groupName }}
             social={social}
             postTs={cloudAuthed ? Object.fromEntries(cloud.posts.map((p) => [p.id, p.created_at])) : null}
             myGroupIds={cloudAuthed ? [cloud.groupRow?.id, ...cloud.myGroups.map((m) => m.group_id)].filter(Boolean) : ["local"]}
@@ -1657,6 +1782,8 @@ export default function PitchApp() {
                     onCreateLeague={cloud.createFantasyLeague} onSaveSquad={cloud.saveFantasySquad}
                     onCreateTradeOffer={cloud.createTradeOffer} onCancelTradeOffer={cloud.cancelTradeOffer}
                     onRespondTradeOffer={cloud.respondTradeOffer} onSyncFantasy={cloud.syncFantasyScores} />
+                ) : demoFantasyProps ? (
+                  <FantasyTab {...demoFantasyProps} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt} />
                 ) : null}
                 settings={
                   <GroupSettings game={game} onEditGroup={() => setEditingGroup(true)}
@@ -1684,6 +1811,7 @@ export default function PitchApp() {
             prompt={confirmAction ? <NextActionCard {...confirmAction} /> : null}
             coldView={matchdayCold ? <MatchdayCold game={game} lastMatchday={lastMatchdayView} /> : null}
             mvp={mvp} lastMatchday={lastMatchdayView} onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined}
+            social={social}
           />
         ))}
         {tab === "competir" && (
@@ -1754,7 +1882,7 @@ export default function PitchApp() {
             groupName={game.groupName} city={groupSettings.city}
             myGroups={cloudMode ? cloud.myGroups : []} activeGroupId={cloudMode ? cloud.groupRow?.id : null}
             myTeams={cloudMode ? cloud.myTeams : []}
-            localMatchday={cloudMode ? null : lastMatchday}
+            localMatchday={cloudMode ? null : lastMatchdayView}
           />
         )}
       </div>

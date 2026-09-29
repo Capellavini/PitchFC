@@ -57,7 +57,8 @@ export function careerRecordsFor(days, key) {
 }
 
 /** Per-day markers for the calendar: iso → { goals, mvp }. Needs
- *  `playedOn` (cloud only — local demo doesn't keep the ISO date). */
+ *  `playedOn` (cloud rows, the local demo seed and local matchdays
+ *  saved since the redesign; older local saves have none). */
 export function calendarDaysFor(days, key, nick) {
   const map = {};
   (days || []).forEach((d) => {

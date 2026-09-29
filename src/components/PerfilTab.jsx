@@ -97,10 +97,11 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
   };
 
   // Normalized matchday list (newest first) for form / records /
-  // calendar / progress. Cloud keeps the whole season; local demo only
-  // keeps the last matchday played in this browser (no ISO date, so it
-  // can't be placed on the calendar).
-  const days = cloudMode
+  // calendar / progress. Cloud keeps the whole season; local demo passes
+  // its dated seed + the last matchday played in this browser as
+  // `records` too (PitchApp's localDays). `localMatchday` is only the
+  // fallback for an empty list.
+  const days = cloudMode || records.length
     ? records.map((r) => ({ date: r.date, playedOn: r.playedOn, mvpNick: r.mvpNick, summary: r.summary }))
     : (localMatchday ? [{ date: localMatchday.date, summary: localMatchday }] : []);
   const form5 = formFor(days, playerKey).slice(-5);

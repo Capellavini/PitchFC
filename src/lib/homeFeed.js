@@ -43,6 +43,23 @@ export function normalizeMatchdays({ cloudRows, local, fmt }) {
   }
   if (!local) return [];
   const out = [];
+  // Local demo with full per-day detail (PitchApp's localDays: the user's
+  // own last matchday + the dated demo seed). Date-less history rows not
+  // covered by a day are still appended as plain results.
+  if (Array.isArray(local.days) && local.days.length) {
+    const { days, history = [], groupName } = local;
+    days.forEach((d) => out.push({
+      id: d.id,
+      ts: d.playedOn ? new Date(`${d.playedOn}T21:00:00`).getTime() : tsFromDayMonth(d.date),
+      dateLabel: d.date, groupName, mode: d.mode, summary: d.summary || {}, mvpKey: d.mvpKey ?? null,
+    }));
+    const covered = new Set(days.map((d) => d.date));
+    history.filter((h) => !covered.has(h.date)).forEach((h) => out.push({
+      id: `local-h${h.id}`, ts: tsFromDayMonth(h.date), dateLabel: h.date, groupName,
+      summary: {}, mvpKey: null, mvpNick: h.mvpNick ?? null, resultText: h.result ?? null,
+    }));
+    return out;
+  }
   const { lastMatchday, history = [], mvpKey, groupName } = local;
   if (lastMatchday) {
     const { date, mode, ...summary } = lastMatchday;
@@ -63,9 +80,30 @@ export const nickIn = (md, key) =>
   ?? (md.summary?.candidates || []).find((c) => c.key === key)?.nick
   ?? null;
 
+const WEEK = 7 * DAY;
+
+/** Golo da Semana ranking — the group's video posts from the last 7 days,
+ *  most ⚽ Golaço first (the Golaço IS the vote). `postDates` maps
+ *  post id → ISO created_at (cloud); posts without one (local demo) use
+ *  their own `createdAt`, or always count when neither exists. Shared
+ *  by Competir's GoalOfTheWeek and Home's feed. */
+export function goalOfTheWeekRanking(social, postDates, now = Date.now()) {
+  if (!social) return [];
+  return (social.posts || [])
+    .filter((p) => p.type === "video" && p.media && p.author?.groupId === social.myGroupId)
+    .filter((p) => {
+      const iso = postDates?.[p.id] ?? p.createdAt;
+      return !iso || now - new Date(iso).getTime() <= WEEK;
+    })
+    .sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
+}
+
 /** Builds the single chronological feed.
- *  Item kinds: "result" | "performance" | "milestone" | "post". */
-export function buildFeed({ matchdays = [], posts = [], postTs, myKey, meId, friendIds = [], myGroupIds = [], streak = 0 }) {
+ *  Item kinds: "result" | "performance" | "milestone" | "post" | "gotw"
+ *  ("gotw" = the current Golo da Semana leader: replaces that video's
+ *  plain post item, same place in the timeline). `gotwLeaderId` = id of
+ *  the leading post (goalOfTheWeekRanking()[0] with ≥1 Golaço) or null. */
+export function buildFeed({ matchdays = [], posts = [], postTs, myKey, meId, friendIds = [], myGroupIds = [], streak = 0, gotwLeaderId = null }) {
   const items = [];
   const sortedMd = [...matchdays].sort((a, b) => b.ts - a.ts);
 
@@ -107,8 +145,9 @@ export function buildFeed({ matchdays = [], posts = [], postTs, myKey, meId, fri
   posts
     .filter((p) => p.mine || p.author?.id === meId || myGroupIds.includes(p.author?.groupId) || friendIds.includes(p.author?.id))
     .forEach((p) => {
-      const ts = (postTs && Date.parse(postTs[p.id])) || (typeof p.id === "number" && p.id > 1e12 ? p.id : 0);
-      items.push({ kind: "post", id: `post-${p.id}`, ts, post: p });
+      const ts = (postTs && Date.parse(postTs[p.id])) || (p.createdAt && Date.parse(p.createdAt)) || (typeof p.id === "number" && p.id > 1e12 ? p.id : 0);
+      if (gotwLeaderId != null && p.id === gotwLeaderId) items.push({ kind: "gotw", id: `gotw-${p.id}`, ts, post: p });
+      else items.push({ kind: "post", id: `post-${p.id}`, ts, post: p });
     });
 
   return items.sort((a, b) => b.ts - a.ts).slice(0, 40);

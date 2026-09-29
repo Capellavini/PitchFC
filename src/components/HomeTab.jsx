@@ -4,7 +4,7 @@ import { S } from "../theme";
 import { t } from "../lib/i18n";
 import { fmtDayMonth } from "../lib/helpers";
 import { usePersistentState } from "../lib/storage";
-import { normalizeMatchdays, buildFeed, recentMatchday } from "../lib/homeFeed";
+import { normalizeMatchdays, buildFeed, recentMatchday, goalOfTheWeekRanking } from "../lib/homeFeed";
 import PageHeader from "./PageHeader";
 import Chip from "./Chip";
 import NextActionCard from "./NextActionCard";
@@ -29,6 +29,7 @@ import WorkoutCardModal from "./WorkoutCardModal";
  *  - slots         { taken, spots, groupName, myStatus } for the active game.
  *  - nextGame      { groupName, dateLabel, timeLabel, venue } or null.
  *  - liveMatchday / resultPending  booleans for the Matchday actions.
+ *  - onOpenCompetir  opens Competir from the Golo da Semana leader item.
  *  - feedMatchdays cloud matchday rows (with groupName) | null in demo.
  *  - localHistory  { lastMatchday, history, mvpKey, groupName } | null in cloud.
  *  - social, postTs, myGroupIds, friendsEnabled — feed posts + friends.
@@ -37,7 +38,7 @@ import WorkoutCardModal from "./WorkoutCardModal";
  */
 export default function HomeTab({
   me, group = [], myKey, nextGame, nextActions = [], slots,
-  liveMatchday, resultPending, onOpenJogar, onOpenMatchday,
+  liveMatchday, resultPending, onOpenJogar, onOpenMatchday, onOpenCompetir,
   feedMatchdays, localHistory, social, postTs, myGroupIds = [], friendsEnabled,
   kudos, onToggleKudos, attendanceStreak = 0, onCardGenerated, groupName, lastMatchdayForWorkout,
 }) {
@@ -71,10 +72,13 @@ export default function HomeTab({
     [feedMatchdays, localHistory],
   );
   const recent = recentMatchday(matchdays);
+  // Current Golo da Semana leader (needs ≥1 Golaço) → its own feed item.
+  const gotwLeader = goalOfTheWeekRanking(social, postTs)[0];
+  const gotwLeaderId = gotwLeader && (gotwLeader.likes?.length || 0) > 0 ? gotwLeader.id : null;
   const items = useMemo(() => buildFeed({
     matchdays, posts: social?.posts || [], postTs, myKey, meId: social?.meId,
-    friendIds: social?.friendIds || [], myGroupIds, streak: attendanceStreak,
-  }), [matchdays, social, postTs, myKey, myGroupIds, attendanceStreak]);
+    friendIds: social?.friendIds || [], myGroupIds, streak: attendanceStreak, gotwLeaderId,
+  }), [matchdays, social, postTs, myKey, myGroupIds, attendanceStreak, gotwLeaderId]);
 
   const kudosFor = (item) => {
     if (onToggleKudos) {
@@ -125,7 +129,8 @@ export default function HomeTab({
       <ActivityFeed items={items} social={social} me={me}
         kudosFor={kudosFor} onGolaco={onGolaco}
         friendsEnabled={friendsEnabled}
-        onWorkout={me && social ? () => setShowWorkout(true) : undefined} />
+        onWorkout={me && social ? () => setShowWorkout(true) : undefined}
+        onOpenGotw={onOpenCompetir} />
 
       {showCard && recent && me && (
         <PostMatchCardModal

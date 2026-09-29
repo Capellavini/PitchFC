@@ -18,8 +18,8 @@ const weekdayInitials = () => {
  *  player played filled lime, a dot under days they scored, a gold star
  *  on MVP days; tap a played day for their line that night. Always
  *  renders the grid (+ legend) — an empty month just reads as "no games
- *  yet". Only cloud matchdays carry the ISO date needed to place a day;
- *  local demo shows the empty grid. Minutes aren't tracked, so the day
+ *  yet". Days need the ISO `playedOn` (cloud rows, the local demo seed
+ *  and matchdays played locally since the redesign carry it). Minutes aren't tracked, so the day
  *  detail is golos/assistências/defesas/clean sheets only. */
 export default function MatchdayCalendar({ days = [], playerKey, playerNick }) {
   const byIso = calendarDaysFor(days, playerKey, playerNick);

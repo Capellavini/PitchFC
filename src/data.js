@@ -8,7 +8,7 @@ export const INITIAL_GROUP = [
     email: "carlos@email.com", phone: "+351 912 345 678", position: "Médio",    foot: "Direito",
     age: 29, nationality: "🇵🇹 Portugal", club: "FC Porto",
     attrs: { rit: 78, rem: 74, pas: 84, dri: 79, def: 66, fis: 75 },
-    goals: 12, assists: 8,  mvps: 3, gamesPlayed: 13 },
+    goals: 18, assists: 12, mvps: 3, gamesPlayed: 15 },
   { id: 2,  name: "João Ferreira",    nick: "Joãozão",    status: "confirmed", paid: true,
     email: "", phone: "+351 913 000 001", position: "Avançado", foot: "Direito",
     age: 31, nationality: "🇵🇹 Portugal", club: "SL Benfica",

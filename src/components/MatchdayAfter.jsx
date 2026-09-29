@@ -7,6 +7,7 @@ import Avatar from "./Avatar";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import Chip from "./Chip";
+import FeedComposer from "./FeedComposer";
 import ListRow from "./ListRow";
 import MatchdayGames from "./MatchdayGames";
 import MatchdayMvpVote from "./MatchdayMvpVote";
@@ -21,10 +22,13 @@ import StatTile from "./StatTile";
  * and the MVP view object. Final score (ScoreBlock for a one-game night,
  * a tappable results list otherwise), who scored/assisted, MVP vote or
  * podium, the personal share card (PostMatchCard) and the Golo da Semana
- * entry point (no submission backend yet → shown as "Em breve").
+ * entry point: opens the feed's post composer (FeedComposer) — a group
+ * video post is what Golo da Semana ranks, so no separate backend.
  */
-export default function MatchdayAfter({ lastMatchday, mvp, me, group, groupName, onCardGenerated, canManage, onPrepareNext }) {
+export default function MatchdayAfter({ lastMatchday, mvp, me, group, groupName, onCardGenerated, canManage, onPrepareNext, social }) {
   const [showCard, setShowCard] = useState(false);
+  const [gotwOpen, setGotwOpen] = useState(false);
+  const [gotwSent, setGotwSent] = useState(false);
   const md = lastMatchday || {};
   const matches = (md.matches || []).filter((m) => m && m.homeName != null);
   const teamColor = (name) => (md.teamResults || []).find((tr) => tr.name === name)?.color;
@@ -96,10 +100,27 @@ export default function MatchdayAfter({ lastMatchday, mvp, me, group, groupName,
             <div style={{ fontSize: T.cardTitle, fontWeight: 700 }}>{t("O teu card do jogo")}</div>
             <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2, marginBottom: S.md }}>{t("Os teus golos e assistências, pronto para o WhatsApp e Instagram.")}</div>
             <BtnPrimary block onClick={() => setShowCard(true)}><Share2 size={16} /> {t("Gerar o meu card")}</BtnPrimary>
-            <BtnGhost block disabled style={{ marginTop: S.sm }}>
-              <Video size={16} /> {t("Submeter ao Golo da Semana")} <Chip style={{ height: 22 }}>{t("Em breve")}</Chip>
-            </BtnGhost>
+            {social && !gotwOpen && (
+              <BtnGhost block onClick={() => { setGotwOpen(true); setGotwSent(false); }} style={{ marginTop: S.sm }}>
+                <Video size={16} /> {t("Submeter ao Golo da Semana")}
+              </BtnGhost>
+            )}
+            {gotwSent && !gotwOpen && (
+              <div style={{ fontSize: T.meta, color: C.green, marginTop: S.sm, display: "flex", alignItems: "center", gap: S.xs }}>
+                <Check size={14} /> {t("Publicado no feed — o vídeo com mais ⚽ Golaço ganha.")}
+              </div>
+            )}
           </div>
+          {social && gotwOpen && (
+            // Same composer as Home's feed: a video post from the group
+            // enters Golo da Semana automatically (Competir ranks them).
+            <div style={{ marginTop: S.md }}>
+              <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.sm }}>{t("Escolhe \"Vídeo\" e publica o teu golo. Os vídeos do grupo dos últimos 7 dias entram no Golo da Semana.")}</div>
+              <FeedComposer me={me} social={social} initialOpen placeholder={t("Descreve o golo…")}
+                onPublished={() => { setGotwOpen(false); setGotwSent(true); }} style={{ marginBottom: 0 }} />
+              <BtnGhost block onClick={() => setGotwOpen(false)} style={{ marginTop: S.sm }}>{t("Cancelar")}</BtnGhost>
+            </div>
+          )}
         </section>
       )}
 

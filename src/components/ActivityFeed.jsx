@@ -21,8 +21,9 @@ import FriendsPanel from "./FriendsPanel";
  *  - onGolaco(item) toggles the ⚽ Golaço on a performance item.
  *  - friendsEnabled show the Amigos manager (cloud only).
  *  - onWorkout      opens the workout card composer (optional).
+ *  - onOpenGotw     opens Competir (Golo da Semana ranking) from the leader item.
  */
-export default function ActivityFeed({ items = [], social, me, kudosFor, onGolaco, friendsEnabled, onWorkout }) {
+export default function ActivityFeed({ items = [], social, me, kudosFor, onGolaco, friendsEnabled, onWorkout, onOpenGotw }) {
   const requests = social?.requests?.length || 0;
   const [friendsOpen, setFriendsOpen] = useState(false);
 
@@ -55,7 +56,8 @@ export default function ActivityFeed({ items = [], social, me, kudosFor, onGolac
           {items.map((item) => (
             <FeedItem key={item.id} item={item} social={social}
               kudos={item.kind === "performance" && kudosFor ? kudosFor(item) : undefined}
-              onGolaco={item.kind === "performance" && onGolaco ? () => onGolaco(item) : undefined} />
+              onGolaco={item.kind === "performance" && onGolaco ? () => onGolaco(item) : undefined}
+              onOpenGotw={onOpenGotw} />
           ))}
         </div>
       )}
