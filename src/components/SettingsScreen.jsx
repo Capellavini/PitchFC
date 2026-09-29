@@ -70,7 +70,6 @@ export default function SettingsScreen({ player, onBack, isOrganizer, onEditGrou
       <option value="pt">🇵🇹 Português</option>
       <option value="pt-br">🇧🇷 Português (BR)</option>
       <option value="en">🇬🇧 English</option>
-      <option value="it">🇮🇹 Italiano</option>
     </select>
   );
 

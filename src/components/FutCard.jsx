@@ -107,9 +107,7 @@ export default function FutCard({ player, width = 260, ratingsCount }) {
         <div style={{ fontSize: 10 * scale, color: C.text2 }}>
           {player.club}{player.age ? ` · ${player.age} ${t("anos")}` : ""} · {getLang() === "en"
             ? `${t(player.foot || "—").toLowerCase()} foot`
-            : getLang() === "it"
-              ? `piede ${t(player.foot || "—").toLowerCase()}`
-              : `pé ${t(player.foot || "—").toLowerCase()}`}
+            : `pé ${t(player.foot || "—").toLowerCase()}`}
         </div>
       </div>
 

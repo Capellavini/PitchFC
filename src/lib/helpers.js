@@ -79,6 +79,13 @@ function lisbonWallClockToUtcMs(year, month, day, hour, minute) {
   return naiveUtc - tzOffsetMinutes(naiveUtc, GAME_TZ) * 60000;
 }
 
+/** A real instant → "HH:MM" as it falls in Portugal — correct no matter
+ *  what timezone the viewer's own device is in (see GAME_TZ above). */
+export function lisbonTimeLabel(date) {
+  const p = lisbonParts(date);
+  return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+}
+
 /** Next occurrence of weekday (0=Sun) at HH:MM **in Portugal**, as a Date
  *  (a real instant) — correct no matter what timezone the viewer is in. */
 export function nextGameDate(weekday, time = "20:00") {
@@ -168,19 +175,16 @@ export function relativeTime(ts) {
   if (mins < 1) return t("agora");
   if (mins < 60) {
     if (lang === "en") return `${mins} min ago`;
-    if (lang === "it") return `${mins} min fa`;
     return `há ${mins} min`;
   }
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) {
     if (lang === "en") return `${hrs}h ago`;
-    if (lang === "it") return `${hrs}h fa`;
     return `há ${hrs}h`;
   }
   const days = Math.floor(hrs / 24);
   if (days < 7) {
     if (lang === "en") return `${days} ${days === 1 ? "day" : "days"} ago`;
-    if (lang === "it") return `${days} ${days === 1 ? "giorno" : "giorni"} fa`;
     return `há ${days} ${days === 1 ? "dia" : "dias"}`;
   }
   const d = new Date(ts);

@@ -150,8 +150,6 @@ export default function OnboardingOrganizer({ settings, onDone, onBack, isEditin
             <div style={{ background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: 10, padding: 12, fontSize: 12, color: C.text2 }}>
               {lang === "en" ? (
                 <>📅 Every <b style={{ color: C.accent }}>{t(WEEKDAYS_PT[form.openWeekday])} at {form.openTime}</b> confirmations open for the <b style={{ color: C.text1 }}>{t(WEEKDAYS_PT[form.weekday])}</b> game.</>
-              ) : lang === "it" ? (
-                <>📅 Ogni <b style={{ color: C.accent }}>{t(WEEKDAYS_PT[form.openWeekday]).toLowerCase()} alle {form.openTime}</b> apre la conferma per la partita di <b style={{ color: C.text1 }}>{t(WEEKDAYS_PT[form.weekday]).toLowerCase()}</b>.</>
               ) : (
                 <>📅 Todas as <b style={{ color: C.accent }}>{WEEKDAYS_PT[form.openWeekday]?.toLowerCase()}s às {form.openTime}</b> abre a confirmação para o jogo de <b style={{ color: C.text1 }}>{WEEKDAYS_PT[form.weekday]?.toLowerCase()}</b>.</>
               )}

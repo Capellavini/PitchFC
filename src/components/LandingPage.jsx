@@ -294,7 +294,6 @@ export default function LandingPage({ onEnter, lang, onLang }) {
                 <option value="pt">🇵🇹 PT</option>
                 <option value="pt-br">🇧🇷 PT-BR</option>
                 <option value="en">🇬🇧 EN</option>
-                <option value="it">🇮🇹 IT</option>
               </select>
             )}
             <button onClick={onEnter} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: C.text1, cursor: "pointer" }}>

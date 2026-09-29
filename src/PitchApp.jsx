@@ -17,7 +17,7 @@ import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATIN
 import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGHTS } from "./lib/fantasy";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
-import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, fmtFullDay, isoDay, toIsoDay, fromIso, dateTimeFromIso, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor } from "./lib/helpers";
+import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, fmtFullDay, isoDay, toIsoDay, fromIso, dateTimeFromIso, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor, lisbonTimeLabel } from "./lib/helpers";
 import { t, setLang, detectLang } from "./lib/i18n";
 import { getThemeMode, setThemeMode } from "./lib/themeMode";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
@@ -1435,7 +1435,7 @@ export default function PitchApp() {
     nextGameAcrossGroups = soonest ? {
       groupName: soonest.groupName, venue: soonest.venue,
       dateLabel: fmtFullDay(toIsoDay(soonest.scheduledAt)),
-      timeLabel: `${String(soonest.scheduledAt.getHours()).padStart(2, "0")}:${String(soonest.scheduledAt.getMinutes()).padStart(2, "0")}`,
+      timeLabel: lisbonTimeLabel(soonest.scheduledAt),
     } : null;
   } else if (localMode && me) {
     // Local demo: same streak / records as cloud, from the seeded days.
@@ -1727,7 +1727,7 @@ export default function PitchApp() {
                     return {
                       id: g.id, groupName: g.groups?.name, venue: g.venue,
                       dateLabel: fmtFullDay(toIsoDay(d)),
-                      timeLabel: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+                      timeLabel: lisbonTimeLabel(d),
                       onOpen: cloud.switchActiveGroup ? () => cloud.switchActiveGroup(g.group_id) : undefined,
                     };
                   }) : []}
