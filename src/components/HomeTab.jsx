@@ -17,8 +17,9 @@ import WorkoutCardModal from "./WorkoutCardModal";
  * Home — "o que está a acontecer?" (docs/REDESIGN-SPEC.md §2). No group
  * selector. Top to bottom:
  *  1. ONE next-action card, the most urgent of: live matchday → confirm
- *     → pay → vote MVP → result pending. Mini slot grid when it's about
- *     the next game; one lime CTA. No action → the next game, quietly.
+ *     → pay → vote MVP → result pending. Confirm/pay (and the quiet
+ *     next game) use the game layout — Jogar's shared SlotGrid on the
+ *     field artwork; one lime CTA. No action → the next game, quietly.
  *  2. Last result recap if a matchday was played in the last 7 days.
  *  3. A single chronological activity feed (my groups + friends): auto
  *     football items first-class, manual posts allowed, ⚽ Golaço.
@@ -125,7 +126,7 @@ export default function HomeTab({
           eyebrow={t("PRÓXIMO JOGO")} status={nextIsActive ? myStatusChip : null}
           title={nextGame.groupName}
           subtitle={`${nextGame.dateLabel} · ${nextGame.timeLabel}${nextGame.venue ? ` · ${nextGame.venue}` : ""}`}
-          slots={nextIsActive ? slots : null}
+          slots={nextIsActive ? slots : null} onOpen={nextIsActive ? onOpenJogar : undefined}
           primaryLabel={t("Ver jogo")} onPrimary={onOpenJogar} />
       ) : (
         <NextActionCard neutral Icon={CalendarPlus}

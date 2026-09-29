@@ -1540,6 +1540,7 @@ export default function PitchApp() {
     onPrimary: () => toggleMyStatus("confirmed"),
     secondaryLabel: t("Não posso"),
     onSecondary: () => toggleMyStatus("declined"),
+    prompt: spotsTaken.length < game.spots ? t("Vais jogar?") : t("Jogo cheio — entra na lista de espera e entras se alguém desistir."),
   } : null;
 
   const goToGroupView = (view) => {
@@ -1557,6 +1558,7 @@ export default function PitchApp() {
       subtitle: `${game.date} · ${game.time}`,
       primaryLabel: `${t("Pagar")} · MB Way`,
       onPrimary: payMine,
+      owes: fmtEUR(game.priceEach),
     } : null,
     canVoteMvp ? {
       id: "mvp", Icon: Star,
@@ -1672,7 +1674,10 @@ export default function PitchApp() {
             nextGame={homeNextGame} nextActions={nextActions}
             slots={hasGameContext ? {
               spots: game.spots, groupName: game.groupName, myStatus: me?.status,
-              taken: spotsTaken.map((p) => ({ id: p.id, name: p.name || p.nick, photo: p.photo, isMe: p.isMe, color: playerColor(baseGroup, p) })),
+              date: game.date, time: game.time, venue: game.venue,
+              waitlist: Math.max(0, baseGroup.filter((p) => p.status === "confirmed").length - spotsTaken.length),
+              // Same shape JogoTab feeds the shared SlotGrid (photo, nick, paid, injured).
+              taken: spotsTaken.map((p) => ({ ...p, name: p.name || p.nick, color: playerColor(baseGroup, p) })),
             } : null}
             liveMatchday={Boolean(matchday)}
             resultPending={canManageTeams && hasGameContext && !matchday && kickoffAt <= new Date() && Date.now() - kickoffAt.getTime() < 36 * 3600 * 1000 && lastMatchdayView?.date !== fmtDayMonth(isoDay(0))}

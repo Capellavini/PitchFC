@@ -316,6 +316,7 @@ const EN = {
     "You get in automatically if someone drops out. No payment until you're in.",
   "Estás dentro!": "You're in!",
   "Pago ✓ — bom jogo!": "Paid ✓ — have a good game!", "Falta pagar": "Still to pay",
+  "Estás dentro — só falta a tua parte.": "You're in — just your share left to pay.",
   "Pagar": "Pay",
   "Disseste que não podes. Mudaste de ideias?": "You said you can't make it. Changed your mind?",
   "Afinal vou! Confirmar": "I'm in after all! Confirm",

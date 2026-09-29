@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import {
-  Clock, MapPin, Check, MessageCircle, CreditCard, Plus, Minus, Share2, Copy, Lock, UserPlus, Pencil, Cross, CalendarDays, History,
+  Clock, MapPin, Check, MessageCircle, CreditCard, Plus, Minus, Share2, Copy, Lock, UserPlus, Pencil, CalendarDays, History,
 } from "lucide-react";
-import { C, S, R, T, TOUCH, cardStyle, displayFont, fieldWash, BRAND } from "../theme";
-import { ini, playerColor, fmtEUR, splitWaitlist, isoDay, toIsoDay, fmtFullDay } from "../lib/helpers";
+import { C, S, R, T, TOUCH, cardStyle, displayFont } from "../theme";
+import { playerColor, fmtEUR, splitWaitlist, isoDay, toIsoDay, fmtFullDay } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import { fetchGameWeather, weatherIconFor } from "../lib/weather";
 import { openWhatsApp, groupInviteMessage, inviteMessage, lineupShareMessage } from "../lib/whatsapp";
@@ -13,6 +13,8 @@ import BtnGhost from "./BtnGhost";
 import Chip from "./Chip";
 import ListRow from "./ListRow";
 import ShareSheet from "./ShareSheet";
+import SlotGrid from "./SlotGrid";
+import FieldArtwork from "./FieldArtwork";
 
 const inputStyle = {
   borderRadius: R.control, padding: "0 12px", minHeight: TOUCH.min, fontSize: T.body, outline: "none", colorScheme: "dark",
@@ -143,7 +145,6 @@ export default function JogoTab({
   };
   const price     = fmtEUR(game.priceEach);
   const pending   = confirmOpen && me && me.status !== "confirmed" && me.status !== "declined";
-  const emptySlots = Math.max(0, game.spots - playing.length);
 
   const iconBtn = { width: TOUCH.min, height: TOUCH.min, borderRadius: R.control, background: C.surface, border: `1px solid ${C.border}`, color: C.text1, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, padding: 0 };
 
@@ -223,12 +224,7 @@ export default function JogoTab({
           {/* portrait pitch: the landscape artwork rotated 90° (16:9 box
               whose height = card width), lines lifted a touch so it reads
               as a pitch like the original hero. */}
-          <img src={BRAND.field} alt="" aria-hidden="true" style={{
-            position: "absolute", top: "50%", left: "50%", width: "177.78%", aspectRatio: "16 / 9",
-            transform: "translate(-50%, -50%) rotate(90deg)", objectFit: "cover",
-            filter: "brightness(1.5) contrast(1.15)", pointerEvents: "none",
-          }} />
-          <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: fieldWash(0.3, 0.5), pointerEvents: "none" }} />
+          <FieldArtwork />
           {/* header */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: S.sm, marginBottom: S.lg, position: "relative" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -276,60 +272,9 @@ export default function JogoTab({
             </div>
           )}
 
-          {/* count */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: S.md, position: "relative" }}>
-            <div>
-              <span style={{ ...displayFont, fontSize: 40, lineHeight: 1, color: full ? C.green : C.text1 }}>{playing.length}</span>
-              <span style={{ fontSize: T.h, fontWeight: 600, color: C.text2 }}>/{game.spots}</span>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              {!full
-                ? <div style={{ fontSize: T.body, color: C.orange, fontWeight: 700 }}>{spotsLeft} {spotsLeft === 1 ? t("vaga em aberto") : t("vagas em aberto")}</div>
-                : <div style={{ fontSize: T.body, color: C.green, fontWeight: 700, display: "flex", alignItems: "center", gap: S.xs, justifyContent: "flex-end" }}><Check size={15} /> {t("Equipa completa!")}</div>}
-              {waitlist.length > 0 && <div style={{ fontSize: T.meta, color: C.orange, fontWeight: 700, marginTop: 2 }}>{waitlist.length} {t("na lista de espera")}</div>}
-            </div>
-          </div>
-
-          {/* the grid: filled + empty squares */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: S.sm, rowGap: S.md, position: "relative" }}>
-            {playing.map((player) => {
-              const color = playerColor(group, player);
-              return (
-                <div key={player.id} style={{ textAlign: "center", minWidth: 0 }}>
-                  <div style={{
-                    width: "100%", aspectRatio: "1", borderRadius: 14, boxSizing: "border-box",
-                    background: player.photo ? C.surface : player.isMe ? C.accentDim : `${color}22`,
-                    border: `2px solid ${player.isMe ? C.accent : color}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: T.body, fontWeight: 800, color: player.isMe ? C.accent : color, position: "relative",
-                  }}>
-                    {player.photo
-                      ? <img src={player.photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} />
-                      : ini(player.name)}
-                    {player.paid && (
-                      <div title={t("Pago")} style={{ position: "absolute", bottom: -4, right: -4, width: 16, height: 16, borderRadius: 8, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.card}` }}>
-                        <Check size={8} strokeWidth={3} color={C.bg} />
-                      </div>
-                    )}
-                    {player.injured && (
-                      <div title={t("Lesionado")} style={{ position: "absolute", top: -6, left: -6, width: 16, height: 16, borderRadius: 8, background: C.red, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.card}` }}>
-                        <Cross size={9} strokeWidth={3} color={C.text1} />
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: T.min, color: player.isMe ? C.accent : C.text2, marginTop: S.xs, fontWeight: player.isMe ? 800 : 600, lineHeight: 1.2, letterSpacing: "-0.02em", marginLeft: -2, marginRight: -2 }}>{player.nick}</div>
-                </div>
-              );
-            })}
-            {Array.from({ length: emptySlots }).map((_, i) => (
-              <div key={`empty-${i}`} style={{ textAlign: "center", minWidth: 0 }}>
-                <div style={{ width: "100%", aspectRatio: "1", borderRadius: 14, boxSizing: "border-box", border: `2px dashed ${C.border}`, background: `${C.bg}66`, display: "flex", alignItems: "center", justifyContent: "center", color: C.text3 }}>
-                  <Plus size={16} />
-                </div>
-                <div style={{ fontSize: T.min, color: C.text3, marginTop: S.xs }}>&nbsp;</div>
-              </div>
-            ))}
-          </div>
+          {/* count + the grid (shared with Home's next-action card) */}
+          <SlotGrid spots={game.spots} waitlist={waitlist.length}
+            players={playing.map((p) => ({ ...p, color: playerColor(group, p) }))} />
 
           {/* spots control — organizer only */}
           {canManageGame && (
