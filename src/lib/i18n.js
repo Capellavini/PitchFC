@@ -724,6 +724,20 @@ const EN = {
   "Este browser não permite reconhecimento de voz (comum no Safari/iPhone) — experimenta no Chrome, num Android ou computador.": "This browser doesn't support speech recognition (common on Safari/iPhone) — try Chrome on Android or a computer.",
   "Não percebi — mantém premido enquanto dizes \"iniciar\" ou \"soltar tempo\".": "Didn't catch that — hold while you say \"start\" or \"start time\".",
   "Erro do microfone:": "Microphone error:",
+  "Balizas a zero e defesas espetaculares do GR escolhido contam ao terminar o dia.": "Clean sheets and great saves for the chosen GK count when the day ends.",
+  "Autogolo": "Own goal", "a favor de": "for", "quem marcou na própria baliza?": "who put it in their own net?", "Tipo de golo": "Goal type",
+  "Conta para os": "Counts for", "Escolhe o jogador dos": "Pick the player from", "não entra nos golos dele.": "it doesn't count as their goal.",
+  "Foi um adversário a marcar na própria baliza? Escolhe Autogolo.": "Did an opponent put it in their own net? Pick Own goal.",
+  "A decorrer": "Running", "Em pausa": "Paused", "Configurar cronómetro": "Timer settings",
+  "Balizas a zero": "Clean sheets", "autogolo": "own goal",
+  // Competir — full season stats (moved from the group's StatsTab)
+  // Home feed — identity items
+  "Conquista desbloqueada": "Achievement unlocked", "O teu card chegou ao nível Lenda.": "Your card reached Legend tier.",
+  "O card chegou ao nível Lenda.": "Their card reached Legend tier.", "Overall 86+ pela avaliação dos colegas": "86+ overall from teammates' ratings",
+  "Ver": "View", "Mais": "More", "Mais rankings": "More rankings", "Forma": "Form", "Jogadores de campo": "Outfield players", "Só guarda-redes": "Goalkeepers only",
+  "Sofridos": "Conceded", "Como se calcula?": "How is it calculated?", "Stats lado a lado e % de vitórias juntos": "Stats side by side and win % together",
+  "Quem está mais completo esta época, tudo junto num só número: golo vale mais quanto mais longe da baliza adversária é a posição (2 Avançado, 2,5 Médio, 3 Defesa, 4 Guarda-redes), 1 por assistência, 1 por vitória, 3 por MVP, 1 por baliza a zero.": "Who's the most complete player this season, all in one number: a goal is worth more the further the position is from the opponent's goal (2 Forward, 2.5 Midfielder, 3 Defender, 4 Goalkeeper), 1 per assist, 1 per win, 3 per MVP, 1 per clean sheet.",
+  "Balizas a zero (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.": "Clean sheets (worth 3×) and great saves — counts who actually kept, not just who plays in goal.",
 
   // ── Competir (redesign v1) ───────────────────────────────
   "Rankings": "Rankings", "Classificação da época": "Season standings", "Fiabilidade %": "Reliability %",

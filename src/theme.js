@@ -78,6 +78,8 @@ export const C = {
   goldDim:      "rgba(232,197,71,0.10)",
   silver:       "#C0C8D0",
   bronze:       "#C9824F",
+  // LENDA (OVR ≥ 86) champagne gold — same value FutCard/AchievementBadge use.
+  legend:       "#F2DA8A",
 };
 
 // ── Layout + type tokens (redesign v1, docs/REDESIGN-SPEC.md §3) ──

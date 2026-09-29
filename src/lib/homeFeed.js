@@ -3,8 +3,10 @@
 // feed items, where auto-generated football items (results, standout
 // performances, personal records, streak milestones) sit alongside
 // manual posts as first-class entries (docs/REDESIGN-SPEC.md §2 Home).
-import { MONTHS_PT } from "./helpers";
+import { MONTHS_PT, computeOverall, playerColor } from "./helpers";
 import { t } from "./i18n";
+import { ACHIEVEMENTS } from "./achievements";
+import { podiumTop3 } from "./rankings";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -98,17 +100,118 @@ export function goalOfTheWeekRanking(social, postDates, now = Date.now()) {
     .sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
 }
 
+// ── Identity items: achievements + LENDA ─────────────────────
+const playedIn = (md, key) =>
+  (md.summary?.candidates || []).some((c) => c.key === key)
+  || (md.summary?.lines || []).some((l) => l.key === key)
+  || (md.summary?.teamResults || []).some((tr) => (tr.players || []).includes(key));
+
+/** Shape lib/achievements' per-matchday checks expect. */
+const achMatchday = (md) => ({ matches: md.summary?.matches ?? [], nightLines: md.summary?.lines ?? [], mvpKey: md.mvpKey ?? null });
+
+/** When did each player unlock each conquista? Replays the group's
+ *  matchdays oldest → newest and re-runs the SAME check() functions from
+ *  lib/achievements against the player "as of" each day: season totals
+ *  minus what the window still has to add (baseline) plus what's been
+ *  played so far. The first day a check flips to true is the unlock day;
+ *  anything already true at the baseline was unlocked before the data we
+ *  have, so it gets no item. Checks that can't be replayed in time
+ *  (attendance %, leader role, peer-rated overall) are fed neutral values
+ *  and never fire here — no invented dates. One item per player per day. */
+export function achievementUnlocks({ players = [], matchdays = [] }) {
+  const days = [...matchdays].sort((a, b) => a.ts - b.ts);
+  if (!days.length) return [];
+  const out = [];
+  players.forEach((p) => {
+    const key = p.uuid ?? p.id;
+    const perDay = days.map((md) => {
+      const line = (md.summary?.lines || []).find((l) => l.key === key) || {};
+      return {
+        goals: line.goals || 0, assists: line.assists || 0, cleanSheets: line.cleanSheets || 0,
+        gamesPlayed: playedIn(md, key) ? 1 : 0, mvps: md.mvpKey != null && md.mvpKey === key ? 1 : 0,
+      };
+    });
+    const FIELDS = ["goals", "assists", "cleanSheets", "gamesPlayed", "mvps"];
+    const windowSum = Object.fromEntries(FIELDS.map((f) => [f, perDay.reduce((s, d) => s + d[f], 0)]));
+    const baseline = Object.fromEntries(FIELDS.map((f) => [f, Math.max(0, (p[f] || 0) - windowSum[f])]));
+    const ctxAt = (n) => ({ attendancePct: 0, isLeader: false, overall: 0, playerKey: key, matchdays: days.slice(0, n).map(achMatchday) });
+    const asOf = (n) => {
+      const cum = { ...baseline };
+      for (let i = 0; i < n; i++) FIELDS.forEach((f) => { cum[f] += perDay[i][f]; });
+      return { ...p, ...cum };
+    };
+    const byDay = new Map();
+    ACHIEVEMENTS.forEach((a) => {
+      if (!a.check(p, ctxAt(days.length))) return; // not unlocked today (real season totals)
+      if (a.check(asOf(0), ctxAt(0))) return; // unlocked before our data
+      for (let i = 1; i <= days.length; i++) {
+        if (a.check(asOf(i), ctxAt(i))) {
+          byDay.set(i - 1, [...(byDay.get(i - 1) || []), a]);
+          break;
+        }
+      }
+    });
+    byDay.forEach((list, idx) => {
+      const md = days[idx];
+      out.push({
+        kind: "achievement", id: `ach-${md.id}-${key}`, ts: md.ts - 5, md,
+        line: { key, nick: p.nick, name: p.name, photo: p.photo, color: playerColor(players, p), isMe: Boolean(p.isMe) },
+        mine: Boolean(p.isMe),
+        achievements: list.map(({ id, name, desc, tier, icon }) => ({ id, name, desc, tier, icon })),
+      });
+    });
+  });
+  return out;
+}
+
+/** LENDA (FutCard tier, OVR ≥ 86 — same 3+ peer-ratings gate as the
+ *  card). There's no history of past OVRs, so it's placed at the best
+ *  time source we have: the player's latest peer rating (cloud
+ *  `ratingTs`), else the latest matchday they played. Stable id per
+ *  player → it shows once, never repeats. */
+export function legendItems({ players = [], matchdays = [], ratingTs = {} }) {
+  const out = [];
+  const newestFirst = [...matchdays].sort((a, b) => b.ts - a.ts);
+  players.forEach((p) => {
+    if (p.ratingsCount != null && p.ratingsCount < 3) return;
+    const overall = computeOverall(p.position, p.attrs);
+    if (overall < 86) return;
+    const key = p.uuid ?? p.id;
+    const md = newestFirst.find((d) => playedIn(d, key)) || null;
+    const ts = ratingTs[key] || (md ? md.ts - 6 : 0);
+    if (!ts) return;
+    const d = new Date(ts);
+    out.push({
+      // md = latest matchday played (Golaço target, same kudos row as that
+      // night's performance in cloud); dateLabel follows the placement ts.
+      kind: "legend", id: `legend-${key}`, ts, md, overall, position: p.position,
+      dateLabel: ratingTs[key] ? `${d.getDate()} ${t(MONTHS_PT[d.getMonth()])}` : md?.dateLabel,
+      line: { key, nick: p.nick, name: p.name, photo: p.photo, color: playerColor(players, p), isMe: Boolean(p.isMe) }, mine: Boolean(p.isMe),
+    });
+  });
+  return out;
+}
+
 /** Builds the single chronological feed.
- *  Item kinds: "result" | "performance" | "milestone" | "post" | "gotw"
+ *  Item kinds: "result" | "podium" | "performance" | "achievement" |
+ *  "legend" | "milestone" | "post" | "gotw"
  *  ("gotw" = the current Golo da Semana leader: replaces that video's
  *  plain post item, same place in the timeline). `gotwLeaderId` = id of
- *  the leading post (goalOfTheWeekRanking()[0] with ≥1 Golaço) or null. */
-export function buildFeed({ matchdays = [], posts = [], postTs, myKey, meId, friendIds = [], myGroupIds = [], streak = 0, gotwLeaderId = null }) {
+ *  the leading post (goalOfTheWeekRanking()[0] with ≥1 Golaço) or null.
+ *  Identity items (achievement, legend) need `players` (the active
+ *  group's roster with season totals) + `activeGroupName` (which
+ *  matchdays belong to that roster); `ratingTs` = { playerKey: ms of
+ *  latest peer rating } when known (cloud). */
+export function buildFeed({ matchdays = [], posts = [], postTs, myKey, meId, friendIds = [], myGroupIds = [], streak = 0, gotwLeaderId = null, players = [], activeGroupName = null, ratingTs = {} }) {
   const items = [];
   const sortedMd = [...matchdays].sort((a, b) => b.ts - a.ts);
 
   sortedMd.forEach((md) => {
     items.push({ kind: "result", id: `r-${md.id}`, ts: md.ts, md });
+
+    // Weekly podium of that matchday — same top-3 rule as Competir.
+    const top = podiumTop3(md.summary?.lines);
+    if (top.length >= 2) items.push({ kind: "podium", id: `pod-${md.id}`, ts: md.ts - 0.5, md, top });
 
     // Standout performances: MVP, hat-tricks, and my own contribution.
     const standouts = (md.summary?.lines || [])
@@ -140,6 +243,19 @@ export function buildFeed({ matchdays = [], posts = [], postTs, myKey, meId, fri
   if (streak >= 3) {
     const latestMine = sortedMd.find((md) => (md.summary?.lines || []).some((l) => l.key === myKey));
     if (latestMine) items.push({ kind: "milestone", id: `streak-${streak}`, ts: latestMine.ts - 10, streak, md: latestMine });
+  }
+
+  // Conquistas + LENDA for the active group's roster.
+  if (players.length) {
+    const groupMd = activeGroupName ? matchdays.filter((md) => md.groupName === activeGroupName) : matchdays;
+    // At most 2 conquista cards per matchday (mine first, then the rarest
+    // tier) — identity, not badge spam (CLAUDE.md: no excess badges).
+    const TIER_RANK = { legend: 0, gold: 1, silver: 2, bronze: 3 };
+    const best = (it) => Math.min(...it.achievements.map((a) => TIER_RANK[a.tier] ?? 4));
+    const perMd = new Map();
+    achievementUnlocks({ players, matchdays: groupMd }).forEach((it) => perMd.set(it.md.id, [...(perMd.get(it.md.id) || []), it]));
+    perMd.forEach((list) => items.push(...list.sort((a, b) => Number(b.mine) - Number(a.mine) || best(a) - best(b)).slice(0, 2)));
+    items.push(...legendItems({ players, matchdays: groupMd, ratingTs }));
   }
 
   posts

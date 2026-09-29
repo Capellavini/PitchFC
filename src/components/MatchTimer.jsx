@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, BellRing, Minus, Plus, Mic } from "lucide-react";
+import { Play, Pause, RotateCcw, BellRing, Minus, Plus, Mic, SlidersHorizontal } from "lucide-react";
 import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { usePersistentState } from "../lib/storage";
 import { voiceSupported, listenOnce, isStartTimerCommand } from "../lib/voice";
@@ -18,12 +18,20 @@ const roundBtn = () => ({
  *  Persists across refresh (stores the target end time) under
  *  "pitch.v2.matchTimer" — src/lib/matchTimer.js reads the same key to
  *  stamp a goal's minute. Device-local: whoever runs the clock keeps it
- *  on their phone. Compact one-card layout for the live Matchday. */
+ *  on their phone.
+ *
+ *  Layout: one compact line that sits right under the live score (the
+ *  mockup's "Live · 1st Half · 12:34") — running time + a 44px
+ *  Iniciar/Pausar/Retomar icon button + a settings button. The duration
+ *  presets, ±1 min nudges, reset and voice start live behind the settings
+ *  button ("Configurar cronómetro"), collapsed by default so they can't be
+ *  mistapped mid-game. */
 export default function MatchTimer() {
   const [t, setT] = usePersistentState("matchTimer", {
     durationSec: 600, remainingSec: 600, running: false, endsAt: null, finished: false,
   });
   const [, setTick] = useState(0);
+  const [configOpen, setConfigOpen] = useState(false);
   const audioRef = useRef(null);
 
   // Re-render every 250ms while running so the countdown updates.
@@ -73,6 +81,7 @@ export default function MatchTimer() {
     ensureAudio();
     const base = remaining > 0 ? remaining : t.durationSec;
     setT((s) => ({ ...s, running: true, finished: false, remainingSec: base, endsAt: Date.now() + base * 1000 }));
+    setConfigOpen(false);
   };
   const pause = () => setT((s) => ({ ...s, running: false, remainingSec: remaining, endsAt: null }));
   const reset = () => setT((s) => ({ ...s, running: false, finished: false, remainingSec: s.durationSec, endsAt: null }));
@@ -92,6 +101,7 @@ export default function MatchTimer() {
   const low = t.running && remaining <= 60;
   const numColor = t.finished ? C.red : low ? C.orange : C.text1;
   const pristine = !t.running && !t.finished && remaining === t.durationSec;
+  const paused = !t.running && !t.finished && remaining > 0 && remaining < t.durationSec;
 
   // "Soltar tempo" — press-and-hold start, same interaction as the voice
   // goal in live scoring: releasing is what ends the capture, instead of
@@ -119,68 +129,81 @@ export default function MatchTimer() {
   };
   const endVoiceStart = () => { voiceStopRef.current?.(); voiceStopRef.current = null; };
 
+  const status = t.finished ? <><BellRing size={13} /> {tr("Fim do tempo!")}</>
+    : t.running ? tr("A decorrer")
+    : paused ? tr("Em pausa")
+    : tr("Cronómetro do jogo");
+  const toggleLabel = t.running ? tr("Pausar") : paused ? tr("Retomar") : tr("Iniciar");
+
   return (
-    <div style={{ ...cardStyle, marginBottom: S.lg }}>
+    <div style={{ ...cardStyle, padding: `${S.sm}px ${S.sm}px ${S.sm}px ${S.lg}px`, marginBottom: S.lg }}>
       <style>{`@keyframes tpulse { 0%,100% { opacity: 1 } 50% { opacity: 0.45 } }`}</style>
       <div style={{ display: "flex", alignItems: "center", gap: S.sm }}>
-        <button type="button" onClick={() => adjustMinutes(-1)} aria-label={tr("Tirar 1 minuto")} title={tr("Tirar 1 minuto")} style={roundBtn()}>
-          <Minus size={16} />
-        </button>
-        <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
-          <div style={{ ...displayFont, fontSize: 44, lineHeight: 1, color: numColor, fontVariantNumeric: "tabular-nums", animation: low ? "tpulse 1s infinite" : "none" }}>
-            {fmt(remaining)}
-          </div>
-          <div style={{ fontSize: T.meta, color: t.finished ? C.red : C.text2, marginTop: S.xs, display: "flex", alignItems: "center", justifyContent: "center", gap: S.xs }}>
-            {t.finished ? <><BellRing size={13} /> {tr("Fim do tempo!")}</> : tr("Cronómetro do jogo")}
-          </div>
+        <div style={{ ...displayFont, fontSize: 32, lineHeight: 1, color: numColor, fontVariantNumeric: "tabular-nums", animation: low ? "tpulse 1s infinite" : "none", flexShrink: 0 }}>
+          {fmt(remaining)}
         </div>
-        <button type="button" onClick={() => adjustMinutes(1)} aria-label={tr("Adicionar 1 minuto")} title={tr("Adicionar 1 minuto")} style={roundBtn()}>
-          <Plus size={16} />
+        <div style={{ flex: 1, minWidth: 0, fontSize: T.meta, fontWeight: 700, color: t.finished ? C.red : C.text2, display: "flex", alignItems: "center", gap: S.xs, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+          {status}
+        </div>
+        <button type="button" onClick={t.running ? pause : start} aria-label={toggleLabel} title={toggleLabel}
+          style={{ ...roundBtn(), background: t.running ? "transparent" : C.accent, color: t.running ? C.orange : C.bg, border: `1px solid ${t.running ? C.orange : C.accent}` }}>
+          {t.running ? <Pause size={18} /> : <Play size={18} />}
+        </button>
+        <button type="button" onClick={() => setConfigOpen((v) => !v)} aria-expanded={configOpen}
+          aria-label={tr("Configurar cronómetro")} title={tr("Configurar cronómetro")}
+          style={{ ...roundBtn(), border: "none", color: configOpen ? C.text1 : C.text2 }}>
+          <SlidersHorizontal size={18} />
         </button>
       </div>
 
-      {/* presets — only before the clock has been touched (avoids mistaps mid-game) */}
-      {pristine && (
-        <div style={{ display: "flex", gap: S.sm, justifyContent: "center", marginTop: S.md, flexWrap: "wrap" }}>
-          {PRESETS.map((min) => {
-            const active = t.durationSec === min * 60;
-            return (
-              <button key={min} type="button" onClick={() => setDuration(min)}
-                style={{ minHeight: 36, background: active ? C.accentDim : "transparent", color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: R.pill, padding: `0 ${S.md}px`, fontSize: T.meta, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
-                {min} min
+      {configOpen && (
+        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: S.sm, padding: `${S.md}px ${S.sm}px ${S.xs}px 0` }}>
+          <div style={{ fontSize: T.meta, fontWeight: 800, color: C.text2, marginBottom: S.sm }}>{tr("Configurar cronómetro")}</div>
+
+          {/* presets — only before the clock has been touched (avoids mistaps mid-game) */}
+          {pristine && (
+            <div style={{ display: "flex", gap: S.sm, marginBottom: S.md, flexWrap: "wrap" }}>
+              {PRESETS.map((min) => {
+                const active = t.durationSec === min * 60;
+                return (
+                  <button key={min} type="button" onClick={() => setDuration(min)}
+                    style={{ minHeight: 44, background: active ? C.accentDim : "transparent", color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: R.pill, padding: `0 ${S.md}px`, fontSize: T.meta, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
+                    {min} min
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{ display: "flex", alignItems: "center", gap: S.sm }}>
+            <button type="button" onClick={() => adjustMinutes(-1)} aria-label={tr("Tirar 1 minuto")} title={tr("Tirar 1 minuto")} style={roundBtn()}>
+              <Minus size={16} />
+            </button>
+            <span style={{ fontSize: T.meta, fontWeight: 700, color: C.text2 }}>1 min</span>
+            <button type="button" onClick={() => adjustMinutes(1)} aria-label={tr("Adicionar 1 minuto")} title={tr("Adicionar 1 minuto")} style={roundBtn()}>
+              <Plus size={16} />
+            </button>
+            <span style={{ flex: 1 }} />
+            {!t.running && voiceSupported() && (
+              <button type="button"
+                onPointerDown={(e) => { e.preventDefault(); beginVoiceStart(); }}
+                onPointerUp={endVoiceStart}
+                onPointerLeave={endVoiceStart}
+                onPointerCancel={endVoiceStart}
+                onContextMenu={(e) => e.preventDefault()}
+                aria-label={tr("Mantém premido e diz \"soltar tempo\"")}
+                title={tr("Mantém premido e diz \"soltar tempo\"")}
+                style={{ ...roundBtn(), background: voiceListening ? C.accentDim : "transparent", color: voiceListening ? C.accent : C.text2, border: `1px solid ${voiceListening ? C.accentBorder : C.border}`, touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
+                <Mic size={16} style={voiceListening ? { animation: "tpulse 1s infinite" } : undefined} />
               </button>
-            );
-          })}
+            )}
+            <BtnGhost onClick={reset} compact aria-label={tr("Repor")} title={tr("Repor")}>
+              <RotateCcw size={16} /> {tr("Repor")}
+            </BtnGhost>
+          </div>
         </div>
       )}
 
-      <div style={{ display: "flex", gap: S.sm, marginTop: S.md }}>
-        {t.running ? (
-          <BtnGhost onClick={pause} style={{ flex: 1, color: C.orange, borderColor: `${C.orange}66` }}>
-            <Pause size={16} /> {tr("Pausar")}
-          </BtnGhost>
-        ) : (
-          <BtnGhost tone="accent" onClick={start} style={{ flex: 1 }}>
-            <Play size={16} /> {remaining > 0 && remaining < t.durationSec ? tr("Retomar") : tr("Iniciar")}
-          </BtnGhost>
-        )}
-        <BtnGhost onClick={reset} aria-label={tr("Repor")} title={tr("Repor")} style={{ padding: `0 ${S.md}px` }}>
-          <RotateCcw size={16} />
-        </BtnGhost>
-        {!t.running && voiceSupported() && (
-          <button type="button"
-            onPointerDown={(e) => { e.preventDefault(); beginVoiceStart(); }}
-            onPointerUp={endVoiceStart}
-            onPointerLeave={endVoiceStart}
-            onPointerCancel={endVoiceStart}
-            onContextMenu={(e) => e.preventDefault()}
-            aria-label={tr("Mantém premido e diz \"soltar tempo\"")}
-            title={tr("Mantém premido e diz \"soltar tempo\"")}
-            style={{ minHeight: 48, minWidth: 48, background: voiceListening ? C.accentDim : "transparent", color: voiceListening ? C.accent : C.text2, border: `1px solid ${voiceListening ? C.accentBorder : C.border}`, borderRadius: R.control, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
-            <Mic size={18} style={voiceListening ? { animation: "tpulse 1s infinite" } : undefined} />
-          </button>
-        )}
-      </div>
       {voiceMiss === "not-allowed" && (
         <div style={{ fontSize: T.meta, color: C.orange, textAlign: "center", marginTop: S.sm }}>{tr("Permissão de microfone negada — ativa-a nas definições do browser.")}</div>
       )}

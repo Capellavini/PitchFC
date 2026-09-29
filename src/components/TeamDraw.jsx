@@ -31,7 +31,7 @@ const selectStyle = {
  *  - canManage, confirmed, setByName, confirmedByName.
  *  - onDraw(n), onClear(), onRename(teamId, name), onMove(playerId, teamId), onConfirm().
  */
-export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onConfirm }) {
+export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onConfirm, lockDraw = false }) {
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const [editing, setEditing] = useState(false);
 
@@ -80,7 +80,9 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
       <SectionLabel right={status}>{t("Equipas")}</SectionLabel>
 
       {/* ── Draw controls (manager) ── */}
-      {showEditor && (
+      {/* lockDraw: the day is live — players can still be moved/renamed,
+          but a redraw or clear would orphan the logged matches. */}
+      {showEditor && !lockDraw && (
         <div style={{ ...cardStyle, marginBottom: S.md }}>
           <div style={{ fontSize: T.cardTitle, fontWeight: 700 }}>{t("Sorteio equilibrado")}</div>
           <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2, marginBottom: S.md, lineHeight: 1.4 }}>

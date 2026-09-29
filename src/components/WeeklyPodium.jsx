@@ -1,6 +1,7 @@
 import { Star } from "lucide-react";
 import { C, S, T, cardStyle, displayFont } from "../theme";
 import { t } from "../lib/i18n";
+import { podiumTop3 } from "../lib/rankings";
 import Avatar from "./Avatar";
 import Chip from "./Chip";
 import SectionLabel from "./SectionLabel";
@@ -18,9 +19,8 @@ const PLACES = [
 export default function WeeklyPodium({ lastMatchday, mvp, group = [] }) {
   // Full name → the same 2-letter initials as every other Avatar (nick alone gives 1).
   const nameOf = (l) => l.name || group.find((p) => (l.key != null && (p.uuid ?? p.id) === l.key) || p.nick === l.nick)?.name || l.nick;
-  const lines = (lastMatchday?.lines || []).filter((l) => (l.goals || 0) + (l.assists || 0) + (l.cleanSheets || 0) > 0);
-  if (!lastMatchday || lines.length === 0) return null;
-  const top = lines.slice(0, 3);
+  const top = podiumTop3(lastMatchday?.lines);
+  if (!lastMatchday || top.length === 0) return null;
   const mvpNick = mvp && !mvp.open ? mvp.podium?.first : null;
 
   const statLine = (l) => [

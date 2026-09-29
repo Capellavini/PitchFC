@@ -358,7 +358,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
             <StatTile value={player.wins ?? "—"} label={t("Vitórias")} />
             <StatTile value={perGame(player.goals)} label={t("Golos / jogo")} />
             <StatTile value={perGame(player.assists)} label={t("Assist. / jogo")} />
-            <StatTile value={player.cleanSheets ?? 0} label={t("Clean sheets")} />
+            <StatTile value={player.cleanSheets ?? 0} label={t("Balizas a zero")} />
           </div>
 
           {isOwn && personalRecords && (

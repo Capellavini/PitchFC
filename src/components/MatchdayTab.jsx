@@ -27,6 +27,7 @@ import TeamDraw from "./TeamDraw";
  */
 export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null, mvp = null, lastMatchday = null, onCardGenerated, social }) {
   const [forceBefore, setForceBefore] = useState(false);
+  const [liveView, setLiveView] = useState("jogo"); // equipas | jogo | stats (live state only)
   const confirmed = group.filter((p) => p.status === "confirmed");
   const { playing, waitlist: waiting = [] } = splitWaitlist(confirmed, game.spots);
   const me = group.find((p) => p.isMe);
@@ -34,7 +35,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
   const live = Boolean(matchdayProps.matchday);
   // "Preparar o próximo jogo" only applies until the next day goes live —
   // once that one ends, its own after-state must show.
-  useEffect(() => { if (live) setForceBefore(false); }, [live]);
+  useEffect(() => { if (live) setForceBefore(false); else setLiveView("jogo"); }, [live]);
   const today = isoDay(0);
   const gameIsToday = !game.noGameScheduled && game.kickoffAt instanceof Date && toIsoDay(game.kickoffAt) === today;
   const hasSummary = Boolean(lastMatchday) && (lastMatchday.matches ?? []).length > 0;
@@ -45,18 +46,33 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
     : after ? `${t("Terminado")} · ${game.groupName}`
     : `${game.groupName} · ${game.date}${game.time ? ` · ${game.time}` : ""}`;
 
-  const wrap = (children, step = null) => (
+  const wrap = (children, step = null, stepNav = null) => (
     <div style={{ padding: `0 ${S.lg}px ${S.xl}px` }}>
       <PageHeader title="Matchday" subtitle={subtitle} />
-      {step != null && <MatchdayStepper step={step} />}
+      {step != null && <MatchdayStepper step={step} {...(stepNav || {})} />}
       {prompt && <div style={{ marginBottom: S.xl }}>{prompt}</div>}
       {children}
     </div>
   );
 
   // ── B · live ────────────────────────────────────────────
+  // The stepper is the live screen's navigation: Equipas (teams, the
+  // manager can still move players — no redraw mid-day), Jogo (scoring),
+  // Stats (day leaders + standings).
   if (live) {
-    return wrap(<Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed} />, 1);
+    const liveViews = ["equipas", "jogo", "stats"];
+    return wrap(
+      liveView === "equipas" ? (
+        <TeamDraw group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
+          setByName={teamsSetByName} confirmedByName={teamsConfirmedByName} lockDraw
+          onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onConfirm={onConfirmTeams} />
+      ) : (
+        <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed}
+          view={liveView} />
+      ),
+      1,
+      { view: liveViews.indexOf(liveView), onSelect: (i) => setLiveView(liveViews[i]) },
+    );
   }
 
   // ── C · after ───────────────────────────────────────────

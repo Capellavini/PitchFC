@@ -47,7 +47,6 @@ import JogarTab from "./components/JogarTab";
 import CompetirTab from "./components/CompetirTab";
 import JogoTab from "./components/JogoTab";
 import GrupoTab from "./components/GrupoTab";
-import StatsTab from "./components/StatsTab";
 import FindGamePlaceholder from "./components/FindGamePlaceholder";
 // Jogar tab (redesign v1): pushed Game Detail + Group page screens.
 import GameDetail from "./components/GameDetail";
@@ -138,7 +137,7 @@ export default function PitchApp() {
   const setTab = (id) => setTabRaw(normalizeTab(id));
   // Jogar's segment (Jogos | Grupos) is lifted so Home's next-action
   // cards can deep-link into it; `grupoEntry` re-mounts GrupoTab on a
-  // specific sub-view (e.g. "stats" for the MVP vote).
+  // specific sub-view (e.g. "stats" = the group's Histórico).
   const [jogarView, setJogarView] = useState("jogos");
   const [grupoEntry, setGrupoEntry] = useState({ view: "squad", n: 0 });
   // Perfil → ⚙: null (profile) | "main" (settings) | "clube" (admin Clube).
@@ -152,7 +151,6 @@ export default function PitchApp() {
   // needsProfile/player gating further down for how these two paths
   // converge on the same quick onboarding card.
   const [manualJoinChoice, setManualJoinChoice] = useState(null);
-  const [statMode, setStatMode] = useState("geral");
   const [viewPlayerId, setViewPlayerId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(false);
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -478,6 +476,10 @@ export default function PitchApp() {
   const awaitingMyAnswer = hasGameThisWeek && confWin.isOpen && me?.status === "pending";
   const openingTab = !noGroup && matchday ? "matchday" : awaitingMyAnswer ? "jogar" : "home";
   const tab = tabState ?? openingTab;
+  // Home's "Votar MVP" on a game day lands in Competir with the ballot
+  // already expanded; any other visit shows it as a one-line card.
+  const [competirBallot, setCompetirBallot] = useState(false);
+  useEffect(() => { if (tab !== "competir") setCompetirBallot(false); }, [tab]);
   useEffect(() => {
     if (tabState === null && appDataReady) setTabRaw(openingTab);
   }, [tabState, appDataReady, openingTab]);
@@ -1564,8 +1566,8 @@ export default function PitchApp() {
       primaryLabel: t("Votar MVP"),
       // MatchdayMvpVote lives in Matchday's after-state (shown while the
       // vote is open and there's no new game today). On a game day Matchday
-      // shows the new game instead, so fall back to the group's Stats vote.
-      onPrimary: () => (isGameDay ? goToGroupView("stats") : selectTab("matchday")),
+      // shows the new game instead, so the open ballot is reached in Competir.
+      onPrimary: () => { if (isGameDay) { setCompetirBallot(true); selectTab("competir"); } else selectTab("matchday"); },
     } : null,
   ].filter(Boolean);
 
@@ -1584,7 +1586,6 @@ export default function PitchApp() {
     />
   ) : null;
 
-  const statsProps = { group: displayGroup, history: historyView, matchdaySummaries: matchdaySummariesView, lastMatchday: lastMatchdayView, mvp, statMode, setStatMode, groupName: game.groupName, onCardGenerated: cloudMode ? cloud.logCardGenerated : undefined, social };
   const totalGamesPlayed = historyView.reduce((s, h) => s + (h.games || 1), 0);
 
   // ── Pitch Manager (Fantasy) in local demo ──────────────
@@ -1691,6 +1692,7 @@ export default function PitchApp() {
             onToggleKudos={cloudMode ? (matchdayId, toKey, given) => cloud.toggleKudos(matchdayId, toKey, given) : null}
             attendanceStreak={attendanceStreak}
             groupName={game.groupName} lastMatchdayForWorkout={lastMatchdayView}
+            peerRatings={cloudMode ? cloud.ratings : null}
             onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined}
           />
         )}
@@ -1781,10 +1783,7 @@ export default function PitchApp() {
                     onAddTeamMember={cloudMode ? cloud.addTeamMember : undefined} onRemoveTeamMember={cloudMode ? cloud.removeTeamMember : undefined}
                   />
                 }
-                stats={<>
-                  <StatsTab {...statsProps} embedded />
-                  <GroupRecords records={recordsView} canDelete={isOrganizer && cloudMode} onDeleteMatchday={deleteMatchdayRecord} />
-                </>}
+                stats={<GroupRecords records={recordsView} canDelete={isOrganizer && cloudMode} onDeleteMatchday={deleteMatchdayRecord} />}
                 fantasy={cloud.canSeeFantasy ? (
                   <FantasyTab group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
                     fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
@@ -1827,10 +1826,11 @@ export default function PitchApp() {
         {tab === "competir" && (
           <CompetirTab
             isAdmin={cloud.isAdmin}
-            group={displayGroup} history={historyView} lastMatchday={lastMatchdayView} mvp={mvp}
+            group={displayGroup} history={historyView} matchdaySummaries={matchdaySummariesView} lastMatchday={lastMatchdayView} mvp={mvp}
             social={social} groupName={game.groupName}
             postDates={cloudMode ? Object.fromEntries(cloud.posts.map((p) => [p.id, p.created_at])) : null}
             groupPicker={cloudMode && (cloud.myGroups?.length ?? 0) > 1 ? groupSwitcher : null}
+            openBallot={competirBallot}
           />
         )}
         {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (

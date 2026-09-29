@@ -22,8 +22,11 @@ import FriendsPanel from "./FriendsPanel";
  *  - friendsEnabled show the Amigos manager (cloud only).
  *  - onWorkout      opens the workout card composer (optional).
  *  - onOpenGotw     opens Competir (Golo da Semana ranking) from the leader item.
+ *  - onOpenCompetir opens Competir from a podium item.
  */
-export default function ActivityFeed({ items = [], social, me, kudosFor, onGolaco, friendsEnabled, onWorkout, onOpenGotw, nameOf }) {
+const GOLACO_KINDS = ["performance", "achievement", "legend"];
+
+export default function ActivityFeed({ items = [], social, me, kudosFor, onGolaco, friendsEnabled, onWorkout, onOpenGotw, onOpenCompetir, nameOf }) {
   const requests = social?.requests?.length || 0;
   const [friendsOpen, setFriendsOpen] = useState(false);
 
@@ -55,9 +58,9 @@ export default function ActivityFeed({ items = [], social, me, kudosFor, onGolac
         <div style={{ display: "flex", flexDirection: "column", gap: S.md }}>
           {items.map((item) => (
             <FeedItem key={item.id} item={item} social={social}
-              kudos={item.kind === "performance" && kudosFor ? kudosFor(item) : undefined}
-              onGolaco={item.kind === "performance" && onGolaco ? () => onGolaco(item) : undefined}
-              onOpenGotw={onOpenGotw} nameOf={nameOf} />
+              kudos={GOLACO_KINDS.includes(item.kind) && kudosFor ? kudosFor(item) : undefined}
+              onGolaco={GOLACO_KINDS.includes(item.kind) && onGolaco ? () => onGolaco(item) : undefined}
+              onOpenGotw={onOpenGotw} onOpenCompetir={onOpenCompetir} nameOf={nameOf} />
           ))}
         </div>
       )}

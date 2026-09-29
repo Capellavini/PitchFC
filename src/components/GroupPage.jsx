@@ -7,7 +7,7 @@ import ComingSoon from "./ComingSoon";
 
 /**
  * Group page — pushed from Jogar → Grupos (not a tab). Segmented
- * sub-views Plantel · Stats · Fantasy · Definições (organizer only).
+ * sub-views Plantel · Histórico · Fantasy · Definições (organizer only).
  * Pitch Manager (Fantasy) lives HERE, per group — not in Competir.
  * Every sub-view arrives as an already-wired node from PitchApp; when
  * `fantasy` is null (no account, e.g. local demo) a placeholder shows.
@@ -17,7 +17,7 @@ export default function GroupPage({ onBack, groupName, subtitle, headerRight, in
   const [view, setView] = useState(initialView === "settings" && !isOrganizer ? "squad" : initialView);
   const options = [
     { id: "squad", label: "Plantel" },
-    { id: "stats", label: "Stats" },
+    { id: "stats", label: "Histórico" }, // matchday history/records; season rankings live in Competir
     { id: "fantasy", label: "Fantasy" },
     ...(isOrganizer && settings ? [{ id: "settings", label: "Definições" }] : []),
   ];

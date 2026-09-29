@@ -37,7 +37,7 @@ const grid = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))"
  * Bottom sheet behind the four live action buttons (Golo · Assistência ·
  * Defesa · MVP) plus substitutions. Keeps the exact scoring semantics of
  * the old inline pickers:
- *  - goal   → team → scorer → assist (optional). "Próprio golo": teamId is
+ *  - goal   → team → scorer → assist (optional). "Autogolo" (own goal): teamId is
  *             still the team that BENEFITS, scorer picked from the other side.
  *  - assist → pick a goal of this match with no assist yet → assister
  *             (same team, not the scorer) → onUpdateEvent(idx, {assistId}).
@@ -70,13 +70,31 @@ export default function LiveEventSheet({ kind, match, group, sides, roster, play
       body = <div style={{ display: "flex", gap: S.sm }}>{sides.map((id) => <TeamPick key={id} team={teamById(id) || { name: "—" }} onClick={() => setStep({ teamId: id, ownGoal: false })} />)}</div>;
     } else if (step.scorerId == null) {
       const fromTeam = step.ownGoal ? other(step.teamId) : step.teamId;
-      title = step.ownGoal ? `${t("Próprio golo a favor de")} ${teamName(step.teamId)}` : `${t("Golo dos")} ${teamName(step.teamId)} — ${t("quem marcou?")}`;
+      title = step.ownGoal
+        ? `${t("Autogolo")} ${t("a favor de")} ${teamName(step.teamId)} — ${t("quem marcou na própria baliza?")}`
+        : `${t("Golo dos")} ${teamName(step.teamId)} — ${t("quem marcou?")}`;
+      // Own goal = first-class toggle: the goal still counts for the team
+      // that benefits (teamId), but the scorer comes from the OTHER side
+      // and it never enters that player's goals (matchdayLive/endMatchday).
+      const kindBtn = (active, tone) => ({
+        flex: 1, minHeight: 44, borderRadius: R.control, cursor: "pointer", fontSize: T.body, fontWeight: 800,
+        background: active ? (tone === "orange" ? C.orange : C.accent) : "transparent",
+        color: active ? C.bg : C.text1, border: `1px solid ${active ? (tone === "orange" ? C.orange : C.accent) : C.border}`,
+      });
       body = (
         <>
-          <div style={{ marginBottom: S.md }}>
-            <Chip variant={step.ownGoal ? "orange" : "neutral"} onClick={() => setStep((s) => ({ ...s, ownGoal: !s.ownGoal }))}>
-              {step.ownGoal ? t("↩ Golo normal") : t("Foi próprio golo?")}
-            </Chip>
+          <div role="radiogroup" aria-label={t("Tipo de golo")} style={{ display: "flex", gap: S.sm, marginBottom: S.sm }}>
+            <button type="button" role="radio" aria-checked={!step.ownGoal} onClick={() => setStep((s) => ({ ...s, ownGoal: false }))} style={kindBtn(!step.ownGoal)}>
+              ⚽ {t("Golo")}
+            </button>
+            <button type="button" role="radio" aria-checked={Boolean(step.ownGoal)} onClick={() => setStep((s) => ({ ...s, ownGoal: true }))} style={kindBtn(step.ownGoal, "orange")}>
+              ↩ {t("Autogolo")}
+            </button>
+          </div>
+          <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.md, lineHeight: 1.4 }}>
+            {step.ownGoal
+              ? `${t("Conta para os")} ${teamName(step.teamId)}. ${t("Escolhe o jogador dos")} ${teamName(fromTeam)} — ${t("não entra nos golos dele.")}`
+              : t("Foi um adversário a marcar na própria baliza? Escolhe Autogolo.")}
           </div>
           <div style={grid}>
             {roster(fromTeam).map((p) => (

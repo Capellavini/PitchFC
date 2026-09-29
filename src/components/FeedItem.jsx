@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Trophy, Flame, MessageCircle, Send, Trash2, Share2, Star } from "lucide-react";
+import { Trophy, Flame, MessageCircle, Send, Trash2, Share2, Star, Medal } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, displayFont, AVATAR_PALETTE } from "../theme";
 import { t } from "../lib/i18n";
 import { openWhatsApp, sharePostMessage } from "../lib/whatsapp";
+import { POSITION_ABBR } from "../lib/helpers";
 import { nickIn, teamColorOf } from "../lib/homeFeed";
 import Avatar from "./Avatar";
 import Chip from "./Chip";
@@ -133,6 +134,118 @@ function PerformanceBody({ item, kudos, onGolaco, nameOf }) {
   );
 }
 
+// ── Auto: weekly podium of a matchday (top 3, same rule as Competir) ──
+const PODIUM = [
+  { idx: 1, color: C.silver, size: 44 }, // 2nd — left
+  { idx: 0, color: C.gold, size: 56 },   // 1st — centre
+  { idx: 2, color: C.bronze, size: 44 }, // 3rd — right
+];
+function PodiumBody({ item, nameOf, onOpenCompetir }) {
+  const { md, top } = item;
+  const stat = (l) => [l.goals ? `${l.goals} ⚽` : null, l.assists ? `${l.assists} ${t("assist.")}` : null, l.cleanSheets ? `${l.cleanSheets} 🧤` : null].filter(Boolean).join(" · ");
+  return (
+    <>
+      <Header
+        leading={<IconBadge Icon={Medal} color={C.gold} />}
+        title={`${t("Pódio da jornada")}${md.groupName ? ` · ${md.groupName}` : ""}`}
+        meta={md.dateLabel}
+        right={onOpenCompetir ? <Chip onClick={onOpenCompetir}>{t("Ver ranking")}</Chip> : null}
+      />
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: S.sm }}>
+        {PODIUM.map(({ idx, color, size }) => {
+          const l = top[idx];
+          if (!l) return <div key={idx} style={{ flex: 1 }} />;
+          return (
+            <div key={idx} style={{ flex: 1, minWidth: 0, textAlign: "center", paddingBottom: idx === 0 ? S.md : 0 }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: S.xs }}>
+                <Avatar name={nameOf ? nameOf(l) : (l.name || l.nick)} color={l.color || colorFor(l.key)} size={size} photo={l.photo} isMe={l.isMe} />
+              </div>
+              <div style={{ ...displayFont, fontSize: T.h, color, lineHeight: 1 }}>{t(`${idx + 1}º`)}</div>
+              <div style={{ fontSize: T.body, fontWeight: 800, color: C.text1, marginTop: S.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.nick}</div>
+              <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stat(l)}</div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// ── Auto: conquista unlocked (lib/achievements, replayed in time) ──
+const TIER_COLOR = () => ({ legend: C.legend, gold: C.gold, silver: C.silver, bronze: C.bronze });
+function AchievementBody({ item, kudos, onGolaco, nameOf }) {
+  const { md, line, mine, achievements } = item;
+  const [hero, ...rest] = achievements;
+  const who = mine ? t("Tu") : line.nick;
+  const color = TIER_COLOR()[hero.tier] ?? C.gold;
+  const HeroIcon = hero.icon;
+  return (
+    <>
+      <Header
+        leading={<Avatar name={nameOf ? nameOf(line) : (line.name || line.nick)} color={line.color || colorFor(line.key)} size={40} photo={line.photo} isMe={mine} />}
+        title={who}
+        meta={`${md.groupName ? `${md.groupName} · ` : ""}${md.dateLabel}`}
+      />
+      <div style={{ display: "flex", alignItems: "center", gap: S.md }}>
+        <div style={{ width: 56, height: 56, borderRadius: "50%", flexShrink: 0, background: `radial-gradient(circle at 50% 35%, ${color}33, ${C.card} 72%)`, border: `1.5px solid ${color}88`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <HeroIcon size={24} color={color} strokeWidth={2} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: T.meta, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color }}>{t("Conquista desbloqueada")}</div>
+          <div style={{ fontSize: T.h, fontWeight: 900, color: C.text1, lineHeight: 1.2, marginTop: 2 }}>{t(hero.name)}</div>
+          <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{t(hero.desc)}</div>
+        </div>
+      </div>
+      {rest.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: S.sm, marginTop: S.md }}>
+          {rest.map((a) => <Chip key={a.id} Icon={a.icon}>{t(a.name)}</Chip>)}
+        </div>
+      )}
+      <Footer>
+        {onGolaco && <GolacoButton active={kudos.mine} count={kudos.count} onClick={onGolaco} />}
+        <ShareBtn text={`${who} · ${t("Conquista desbloqueada")}: ${t(hero.name)} (${md.groupName ?? ""} ${md.dateLabel})`} />
+      </Footer>
+    </>
+  );
+}
+
+// ── Auto: card crossed into LENDA (OVR ≥ 86, FutCard tier) ──
+function LegendBody({ item, kudos, onGolaco, nameOf }) {
+  const { line, mine, overall, position, md } = item;
+  const who = mine ? t("Tu") : line.nick;
+  return (
+    <>
+      <Header
+        leading={<Avatar name={nameOf ? nameOf(line) : (line.name || line.nick)} color={line.color || colorFor(line.key)} size={40} photo={line.photo} isMe={mine} />}
+        title={who}
+        meta={[md?.groupName, item.dateLabel].filter(Boolean).join(" · ")}
+      />
+      <div style={{
+        position: "relative", overflow: "hidden", borderRadius: R.control, padding: `${S.lg}px`,
+        background: `linear-gradient(155deg, ${C.legend}33 0%, ${C.card} 80%)`, border: `1px solid ${C.legend}66`,
+        display: "flex", alignItems: "center", gap: S.lg,
+      }}>
+        <div aria-hidden style={{ position: "absolute", inset: 0, background: `repeating-linear-gradient(115deg, transparent 0 14px, ${C.legend}0E 14px 17px)`, pointerEvents: "none" }} />
+        <div style={{ position: "relative", textAlign: "center", minWidth: 64 }}>
+          <div style={{ ...displayFont, fontSize: 56, lineHeight: 1, color: C.legend, textShadow: `0 0 14px ${C.legend}66` }}>{overall}</div>
+          <div style={{ fontSize: T.meta, fontWeight: 800, letterSpacing: "0.06em", color: C.text1, marginTop: S.xs }}>{POSITION_ABBR[position] ?? ""}</div>
+        </div>
+        <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
+          <div style={{ ...displayFont, fontSize: 34, lineHeight: 1, color: C.legend, letterSpacing: "0.04em" }}>{t("LENDA")}</div>
+          <div style={{ fontSize: T.body, color: C.text1, marginTop: S.sm, lineHeight: 1.4 }}>
+            {mine ? t("O teu card chegou ao nível Lenda.") : t("O card chegou ao nível Lenda.")}
+          </div>
+          <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{t("Overall 86+ pela avaliação dos colegas")}</div>
+        </div>
+      </div>
+      <Footer>
+        {onGolaco && <GolacoButton active={kudos.mine} count={kudos.count} onClick={onGolaco} />}
+        <ShareBtn text={`${who} · ${t("LENDA")} ${overall}`} />
+      </Footer>
+    </>
+  );
+}
+
 // ── Auto: milestone (attendance streak) ────────────────────
 function MilestoneBody({ item }) {
   return (
@@ -207,16 +320,20 @@ function PostBody({ post, social }) {
 
 /**
  * FeedItem — one entry of Home's single activity feed. Auto-generated
- * items (result / performance / milestone) share the same card anatomy
+ * items (result / podium / performance / achievement / legend / milestone) share the same card anatomy
  * as manual posts (header → body → Golaço/share footer), so football
  * activity reads first-class, not as a system notice.
  *
  * Props: item (lib/homeFeed buildFeed), social (post handlers),
  *        kudos { count, mine } + onGolaco (performance items).
  */
-export default function FeedItem({ item, social, kudos = { count: 0, mine: false }, onGolaco, onOpenGotw, nameOf }) {
+export default function FeedItem({ item, social, kudos = { count: 0, mine: false }, onGolaco, onOpenGotw, onOpenCompetir, nameOf }) {
+  const edge = item.kind === "performance" && (item.isMvp || item.isRecord) ? C.gold
+    : item.kind === "achievement" ? C.gold
+    : item.kind === "legend" ? C.legend
+    : item.kind === "milestone" ? C.orange : null;
   return (
-    <article style={{ ...cardStyle, ...(item.kind === "performance" && (item.isMvp || item.isRecord) ? { borderTop: `3px solid ${C.gold}` } : {}), ...(item.kind === "milestone" ? { borderTop: `3px solid ${C.orange}` } : {}) }}>
+    <article style={{ ...cardStyle, ...(edge ? { borderTop: `3px solid ${edge}` } : {}) }}>
       {item.kind === "gotw" && (
         // Golo da Semana leader: trophy banner on top of the video post
         // itself (the Golaço on it is still the vote).
@@ -237,6 +354,9 @@ export default function FeedItem({ item, social, kudos = { count: 0, mine: false
       {item.kind === "result" && <ResultBody md={item.md} />}
       {item.kind === "performance" && <PerformanceBody item={item} kudos={kudos} onGolaco={onGolaco} nameOf={nameOf} />}
       {item.kind === "milestone" && <MilestoneBody item={item} />}
+      {item.kind === "podium" && <PodiumBody item={item} nameOf={nameOf} onOpenCompetir={onOpenCompetir} />}
+      {item.kind === "achievement" && <AchievementBody item={item} kudos={kudos} onGolaco={onGolaco} nameOf={nameOf} />}
+      {item.kind === "legend" && <LegendBody item={item} kudos={kudos} onGolaco={onGolaco} nameOf={nameOf} />}
       {item.kind === "post" && <PostBody post={item.post} social={social} />}
     </article>
   );

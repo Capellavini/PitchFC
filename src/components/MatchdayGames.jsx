@@ -52,7 +52,7 @@ export default function MatchdayGames({ summary, framed = false }) {
                     <span style={minuteCol}>{e.min != null ? `${e.min}'` : ""}</span>
                     <span aria-hidden>{ICON[e.type]}</span>
                     <span style={{ fontWeight: 700 }}>{e.who}</span>
-                    {e.type === "og" && <span style={{ color: C.text2 }}>({t("próprio golo")})</span>}
+                    {e.type === "og" && <span style={{ color: C.text2 }}>({t("autogolo")})</span>}
                     {e.assist && <span style={{ color: C.text2 }}>🎯 {e.assist}</span>}
                     <span style={{ marginLeft: "auto", fontSize: T.min, color: sideColor(tag(e.side) ?? {}), whiteSpace: "nowrap" }}>{tag(e.side)?.name}</span>
                   </div>

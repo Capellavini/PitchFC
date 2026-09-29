@@ -138,7 +138,7 @@ export default function MatchdayCalendar({ days = [], playerKey, playerNick }) {
             ))}
             {(line?.cleanSheets || 0) > 0 && (
               <span style={{ display: "flex", alignItems: "center", gap: S.xs, fontSize: T.meta, color: C.text2 }}>
-                <Shield size={14} color={C.green} /> {line.cleanSheets} {line.cleanSheets === 1 ? t("clean sheet") : t("clean sheets")}
+                <Shield size={14} color={C.green} /> {line.cleanSheets} {line.cleanSheets === 1 ? t("baliza a zero") : t("balizas a zero")}
               </span>
             )}
             {selected.mvp && (

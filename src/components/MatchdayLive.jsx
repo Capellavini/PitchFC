@@ -17,7 +17,6 @@ import MatchTimer from "./MatchTimer";
 import MatchdayStandings from "./MatchdayStandings";
 import ScoreBlock from "./ScoreBlock";
 import SectionLabel from "./SectionLabel";
-import SegmentedControl from "./SegmentedControl";
 import TacticsBoard from "./TacticsBoard";
 
 const pill = (active) => ({
@@ -50,9 +49,8 @@ function ActionSquare({ Icon, label, color, onClick }) {
  * Organizer/assistant writes; everyone else gets the same screen
  * read-only (synced via games.live_matchday in cloud mode).
  */
-export default function MatchdayLive({ matchday, teams, group, canManage, onAddMatch, onGoal, onEpicSave, onRemoveEvent, onUpdateEvent, onSetGoalkeeper, onSetMatchConcluded, onEnd, onCancel, onAdvancePlayoff, onSetPenaltyWinner, onSubstitute, onRevertSub }) {
+export default function MatchdayLive({ matchday, teams, group, canManage, onAddMatch, onGoal, onEpicSave, onRemoveEvent, onUpdateEvent, onSetGoalkeeper, onSetMatchConcluded, onEnd, onCancel, onAdvancePlayoff, onSetPenaltyWinner, onSubstitute, onRevertSub, view = "jogo" }) {
   const [selectedId, setSelectedId] = useState(null);
-  const [view, setView] = useState("jogo"); // jogo | torneio | stats
   const [sheet, setSheet] = useState(null); // { kind, initial? }
   const [composing, setComposing] = useState(null); // { homeId, awayId }
   const [voice, setVoice] = useState(null); // { matchId, listening?, transcript?, parsed?, error? }
@@ -117,12 +115,6 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
   const modeChip = isPersonalizado ? { Icon: Settings2, label: t("Personalizado") }
     : isCampeonato ? { Icon: Trophy, label: t("Campeonato") } : { Icon: Swords, label: t("Avulsa") };
 
-  const viewOptions = [
-    { id: "jogo", label: "Jogo" },
-    ...(showTournament ? [{ id: "torneio", label: "Classificação" }] : []),
-    { id: "stats", label: "Stats do dia" },
-  ];
-
   // ── Match body ─────────────────────────────────────────
   const renderMatch = () => {
     if (!m) return null;
@@ -164,13 +156,17 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
             <span style={{ letterSpacing: "0.06em" }}>{matchLabel(m, roundSize)}</span>
             {concluded
               ? <span style={{ color: C.green }}>{t("FINAL")}</span>
-              : <span style={{ display: "flex", alignItems: "center", gap: 4, color: C.red }}><span style={{ width: 6, height: 6, borderRadius: 3, background: C.red, animation: "mdpulse 1.2s infinite" }} />{t("LIVE")}</span>}
+              : <span style={{ display: "flex", alignItems: "center", gap: 4, color: C.red }}><span style={{ width: 6, height: 6, borderRadius: 3, background: C.red, animation: "mdpulse 1.2s infinite" }} />{t("AO VIVO")}</span>}
           </>}
-          style={{ marginBottom: S.lg }}
+          style={{ marginBottom: S.sm }}
         />
 
-        {/* the four big actions — right under the score so the organizer
-            never scrolls to log a goal (timer follows) */}
+        {/* compact clock line glued to the score (mockup "Live · 12:34");
+            presets/±1 min hide behind its settings button */}
+        {!concluded ? <MatchTimer /> : <div style={{ height: S.sm }} />}
+
+        {/* the four big actions — right under score + clock so the
+            organizer never scrolls to log a goal */}
         {canManage && !concluded && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: S.sm, marginBottom: S.md }}>
             <ActionSquare Icon={Goal} label={t("Golo")} color={C.accent} onClick={() => setSheet({ kind: "goal" })} />
@@ -180,15 +176,13 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
           </div>
         )}
 
-        {!concluded && <MatchTimer />}
-
         {/* voice goal — optional helper, confirm step before anything is written */}
         {canManage && !concluded && voiceSupported() && (
           vs?.parsed && !listening ? (
             <div style={{ ...cardStyle, marginBottom: S.lg, textAlign: "center" }}>
               <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.sm }}>{t("Ouvi:")} “{vs.transcript}”</div>
               <div style={{ fontSize: T.body, fontWeight: 700, marginBottom: S.md }}>
-                {vs.parsed.ownGoal ? t("Próprio golo de") : t("Golo de")} {byId(vs.parsed.scorerId)?.nick}
+                {vs.parsed.ownGoal ? `${t("Autogolo")} ·` : t("Golo de")} {byId(vs.parsed.scorerId)?.nick}
                 {vs.parsed.assistId && <> · {t("assist.")} {byId(vs.parsed.assistId)?.nick}</>}
                 {" "}<span style={{ color: C.text2 }}>({teamName(vs.parsed.teamId)})</span>
               </div>
@@ -228,7 +222,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
             const save = isSave(e);
             const who = byId(save ? e.playerId : e.scorerId);
             const meta = save ? t("Grande defesa")
-              : e.ownGoal ? t("próprio golo")
+              : e.ownGoal ? `${t("a favor de")} ${teamName(e.teamId)}`
               : e.assistId ? `${t("assist.")} ${byId(e.assistId)?.nick ?? "?"}` : t("sem assistência");
             const canAddAssist = canManage && Boolean(onUpdateEvent) && !save && !e.ownGoal && !e.assistId;
             return (
@@ -242,8 +236,8 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
                     </span>
                   </span>
                 }
-                title={who?.nick ?? "?"}
-                meta={<><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: teamColor(e.teamId), marginRight: 6 }} />{teamName(e.teamId)} · {meta}</>}
+                title={e.ownGoal ? `${t("Autogolo")} · ${who?.nick ?? "?"}` : (who?.nick ?? "?")}
+                meta={<><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: teamColor(e.teamId), marginRight: 6 }} />{e.ownGoal ? meta : `${teamName(e.teamId)} · ${meta}`}</>}
                 right={canManage ? (
                   <>
                     {canAddAssist && (
@@ -300,7 +294,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
                   </label>
                 ))}
               </div>
-              <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.sm }}>{t("Clean sheets e defesas espetaculares do GR escolhido contam ao terminar o dia.")}</div>
+              <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.sm }}>{t("Balizas a zero e defesas espetaculares do GR escolhido contam ao terminar o dia.")}</div>
             </div>
 
             <div style={{ display: "flex", gap: S.sm, marginBottom: S.xl }}>
@@ -338,10 +332,15 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
           stepper and the LIVE dot in the score already say it; the format
           chip sits at the end of the match switcher) */}
 
-      {viewOptions.length > 1 && <SegmentedControl options={viewOptions} value={view} onChange={setView} />}
-
+      {/* navigation lives in the MatchdayStepper above (Equipas · Jogo ·
+          Stats) — no second switcher here */}
       {view === "jogo" && (
         <>
+          {/* the day's format — its own line so it never scrolls out of view */}
+          <div style={{ display: "flex", marginBottom: S.md }}>
+            <Chip Icon={modeChip.Icon}>{t("Formato")}: {modeChip.label}</Chip>
+          </div>
+
           {/* match switcher: Jogo 1 · Jogo 2 · … · + Novo */}
           {(matches.length > 1 || canManage) && (
             <div style={{ display: "flex", gap: S.sm, overflowX: "auto", scrollbarWidth: "none", marginBottom: S.lg, paddingBottom: 2 }}>
@@ -360,7 +359,6 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
                   <Plus size={14} /> {t("Novo jogo")}
                 </button>
               )}
-              <span style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center" }}><Chip Icon={modeChip.Icon}>{modeChip.label}</Chip></span>
             </div>
           )}
 
@@ -391,12 +389,14 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
         </>
       )}
 
-      {view === "torneio" && showTournament && (
-        <MatchdayStandings matchday={matchday} teams={list} canManage={canManage} onAdvancePlayoff={onAdvancePlayoff} />
-      )}
-
       {view === "stats" && (
         <>
+          {showTournament && (
+            <>
+              <SectionLabel>{t("Classificação")}</SectionLabel>
+              <MatchdayStandings matchday={matchday} teams={list} canManage={canManage} onAdvancePlayoff={onAdvancePlayoff} />
+            </>
+          )}
           <SectionLabel>{t("Stats do dia")}</SectionLabel>
           <div style={{ ...cardStyle, padding: `0 ${S.lg}px`, marginBottom: S.xl }}>
             {leaders.length === 0 ? (

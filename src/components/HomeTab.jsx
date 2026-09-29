@@ -33,6 +33,7 @@ import WorkoutCardModal from "./WorkoutCardModal";
  *  - feedMatchdays cloud matchday rows (with groupName) | null in demo.
  *  - localHistory  { lastMatchday, history, mvpKey, groupName } | null in cloud.
  *  - social, postTs, myGroupIds, friendsEnabled — feed posts + friends.
+ *  - peerRatings   cloud peer_ratings rows (LENDA feed item timing) | null.
  *  - kudos (cloud matchday_kudos rows) + onToggleKudos(mdId, toKey, given);
  *    without onToggleKudos (demo) Golaço is kept locally.
  */
@@ -40,7 +41,7 @@ export default function HomeTab({
   me, group = [], myKey, nextGame, nextActions = [], slots,
   liveMatchday, resultPending, onOpenJogar, onOpenMatchday, onOpenCompetir,
   feedMatchdays, localHistory, social, postTs, myGroupIds = [], friendsEnabled,
-  kudos, onToggleKudos, attendanceStreak = 0, onCardGenerated, groupName, lastMatchdayForWorkout,
+  kudos, onToggleKudos, attendanceStreak = 0, onCardGenerated, groupName, lastMatchdayForWorkout, peerRatings,
 }) {
   const [showCard, setShowCard] = useState(false);
   const [showWorkout, setShowWorkout] = useState(false);
@@ -75,17 +76,28 @@ export default function HomeTab({
   // Current Golo da Semana leader (needs ≥1 Golaço) → its own feed item.
   const gotwLeader = goalOfTheWeekRanking(social, postTs)[0];
   const gotwLeaderId = gotwLeader && (gotwLeader.likes?.length || 0) > 0 ? gotwLeader.id : null;
+  // LENDA placement: latest peer rating per player (cloud peer_ratings rows).
+  const ratingTs = useMemo(() => (peerRatings || []).reduce((m, r) => {
+    const ms = Date.parse(r.created_at) || 0;
+    if (ms > (m[r.player_id] || 0)) m[r.player_id] = ms;
+    return m;
+  }, {}), [peerRatings]);
   const items = useMemo(() => buildFeed({
     matchdays, posts: social?.posts || [], postTs, myKey, meId: social?.meId,
     friendIds: social?.friendIds || [], myGroupIds, streak: attendanceStreak, gotwLeaderId,
-  }), [matchdays, social, postTs, myKey, myGroupIds, attendanceStreak, gotwLeaderId]);
+    players: group, activeGroupName: groupName, ratingTs,
+  }), [matchdays, social, postTs, myKey, myGroupIds, attendanceStreak, gotwLeaderId, group, groupName, ratingTs]);
 
   // Full name for Avatar initials (2 letters, like everywhere else) —
   // older saved summary lines only carry the nick.
   const nameOf = (line) => line.name || group.find((p) => (p.uuid ?? p.id) === line.key)?.name || line.nick;
 
+  // Golaço on auto items (performance, achievement, legend): cloud = the
+  // matchday_kudos row for (matchday, player) — the same row that night's
+  // performance card uses; demo = kept locally per item.
   const kudosFor = (item) => {
     if (onToggleKudos) {
+      if (!item.md || !item.line) return { count: 0, mine: false };
       const rows = (kudos || []).filter((k) => k.matchday_id === item.md.id && k.to_player_id === item.line.key);
       return { count: rows.length, mine: rows.some((k) => k.from_player_id === myKey) };
     }
@@ -93,7 +105,7 @@ export default function HomeTab({
     return { count: mine ? 1 : 0, mine };
   };
   const onGolaco = (item) => {
-    if (onToggleKudos) return onToggleKudos(item.md.id, item.line.key, kudosFor(item).mine);
+    if (onToggleKudos) return item.md && item.line ? onToggleKudos(item.md.id, item.line.key, kudosFor(item).mine) : undefined;
     setLocalKudos((m) => ({ ...m, [item.id]: !m[item.id] }));
   };
 
@@ -134,7 +146,7 @@ export default function HomeTab({
         kudosFor={kudosFor} onGolaco={onGolaco}
         friendsEnabled={friendsEnabled}
         onWorkout={me && social ? () => setShowWorkout(true) : undefined}
-        onOpenGotw={onOpenCompetir} nameOf={nameOf} />
+        onOpenGotw={onOpenCompetir} onOpenCompetir={onOpenCompetir} nameOf={nameOf} />
 
       {showCard && recent && me && (
         <PostMatchCardModal
