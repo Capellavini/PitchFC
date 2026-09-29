@@ -40,7 +40,7 @@ export default function WeeklyPodium({ lastMatchday, mvp }) {
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: S.sm }}>
                   <Avatar name={l.nick} color={l.color || color} size={size} isMe={l.isMe} photo={l.photo} />
                 </div>
-                <div style={{ ...displayFont, fontSize: T.h, color, lineHeight: 1 }}>{idx + 1}º</div>
+                <div style={{ ...displayFont, fontSize: T.h, color, lineHeight: 1 }}>{t(`${idx + 1}º`)}</div>
                 <div style={{ fontSize: T.body, fontWeight: 800, color: C.text1, marginTop: S.xs, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {l.nick}
                 </div>

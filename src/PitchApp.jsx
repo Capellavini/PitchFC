@@ -1293,12 +1293,12 @@ export default function PitchApp() {
     // ~2 months from today). The newest seed night stands in as "last
     // matchday" until the user plays one, with its MVP vote open.
     const seedLatest = DEMO_MATCHDAYS[0];
-    const effLast = lastMatchday ?? (seedLatest
+    const effLast = lastMatchday ? { ...lastMatchday, date: lastMatchday.playedOn ? fmtDayMonth(lastMatchday.playedOn) : lastMatchday.date } : (seedLatest
       ? { date: fmtDayMonth(seedLatest.playedOn), playedOn: seedLatest.playedOn, mode: seedLatest.mode, ...seedLatest.summary }
       : null);
     const localMvpKey = !mvpVote.open ? mvpVote.votes[1] : null;
     localDays = [
-      ...(lastMatchday ? [{ id: "local-last", playedOn: lastMatchday.playedOn ?? null, date: lastMatchday.date, mode: lastMatchday.mode, summary: lastMatchday, mvpKey: localMvpKey }] : []),
+      ...(lastMatchday ? [{ id: "local-last", playedOn: lastMatchday.playedOn ?? null, date: effLast.date, mode: lastMatchday.mode, summary: lastMatchday, mvpKey: localMvpKey }] : []),
       ...DEMO_MATCHDAYS.map((d, i) => ({
         id: d.id, playedOn: d.playedOn, date: fmtDayMonth(d.playedOn), mode: d.mode, summary: d.summary,
         mvpKey: i === 0 && !lastMatchday ? localMvpKey : d.mvpKey,

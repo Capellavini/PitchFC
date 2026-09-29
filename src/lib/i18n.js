@@ -656,7 +656,7 @@ const EN = {
   // ── Home: "just played" share banner ─────────────────────
   "ACABASTE DE JOGAR": "YOU JUST PLAYED", "Dispensar": "Dismiss",
   "novo recorde pessoal": "new personal best", "Partilhar o meu desempenho": "Share my performance",
-  "golos": "goals", "assist.": "assists",
+  "golos": "goals", "assist.": "ast.",
   // ── Records: reopen a finished game ────────────────────
   "JOGOS": "GAMES", "toca num jogo para ver os detalhes": "tap a game for details",
   "Sem golos neste jogo": "No goals in this game", "próprio golo": "own goal",
@@ -734,6 +734,43 @@ const EN = {
   "Ainda não há golos em vídeo esta semana. Publica o teu no feed — o vídeo com mais ⚽ Golaço ganha.": "No goal videos this week yet. Post yours in the feed — the video with the most ⚽ Golaço wins.",
   "O teu ⚽ Golaço é o voto. Ganha o vídeo com mais Golaços.": "Your ⚽ Golaço is your vote. The video with the most Golaços wins.",
   "Ainda sem jogos por aqui — quando jogares, a tua atividade aparece nesta tela.": "No games here yet — once you play, your activity shows up on this screen.",
+
+  // ── Redesign v1 integration (Home actions, feed, Matchday after, demo) ──
+  "CONFIRMA A TUA PRESENÇA": "CONFIRM YOUR SPOT", "PAGAMENTO EM FALTA": "PAYMENT DUE",
+  "VOTAÇÃO MVP ABERTA": "MVP VOTING OPEN", "Votar MVP": "Vote MVP",
+  "1º": "1st", "2º": "2nd", "3º": "3rd",
+  "lidera com": "leads with", "Ver ranking": "See ranking",
+  "Publicado no feed — o vídeo com mais ⚽ Golaço ganha.": "Posted to the feed — the video with the most ⚽ Golaço wins.",
+  "Escolhe \"Vídeo\" e publica o teu golo. Os vídeos do grupo dos últimos 7 dias entram no Golo da Semana.": "Pick \"Video\" and post your goal. Group videos from the last 7 days enter Goal of the Week.",
+  "Descreve o golo…": "Describe the goal…",
+  "Indisponível na demonstração.": "Not available in the demo.",
+  "Cancelar o dia de jogo em curso? Todos os golos e resultados registados até agora são apagados. As stats da época não são afetadas — ainda não foram gravadas.": "Cancel the matchday in progress? Every goal and result logged so far is deleted. Season stats aren't affected — they haven't been saved yet.",
+  "Apagar o dia de jogo de": "Delete the matchday of",
+  "As stats desse dia são retiradas da época de cada jogador. Esta ação não pode ser desfeita.": "That day's stats are removed from each player's season. This can't be undone.",
+  "As stats da época foram gravadas, mas a pontuação da Fantasy falhou para este dia. Vai a Manager e usa \"Sincronizar\" para recuperar esta ronda.": "Season stats were saved, but Fantasy scoring failed for this day. Go to Manager and use \"Sync\" to recover this round.",
+  // Stats (group page)
+  "Impacto": "Impact", "Sobre-entrega": "Over-delivery", "Forma (últimos 5)": "Form (last 5)",
+  "Melhor ataque (dia)": "Best attack (day)", "Melhor defesa (dia)": "Best defence (day)",
+  "Quem está mais completo esta época, tudo junto num só número: golo vale mais quanto mais longe da baliza adversária é a posição (2 Avançado, 2,5 Médio, 3 Defesa, 4 Guarda-redes), 1 por assistência, 1 por vitória, 3 por MVP, 1 por clean sheet.": "Who's the most complete player this season, all in one number: a goal is worth more the further the position is from the opponent's goal (2 Forward, 2.5 Midfielder, 3 Defender, 4 Goalkeeper), 1 per assist, 1 per win, 3 per MVP, 1 per clean sheet.",
+  "Total de golos marcados na época.": "Total goals scored this season.",
+  "Total de assistências na época.": "Total assists this season.",
+  "Vezes eleito MVP do dia.": "Times voted matchday MVP.",
+  "Clean sheets (valem 3×) e defesas espetaculares — conta quem defendeu de verdade, não só quem joga na baliza.": "Clean sheets (worth 3×) and great saves — counts who actually kept, not just who plays in goal.",
+  "Compara o ranking de avaliação (OVR dos colegas) com o ranking real de Impacto. Positivo = rende mais do que esperavam; negativo = rende menos. Só entra quem já tem 3+ avaliações.": "Compares the rating ranking (teammates' OVR) with the real Impact ranking. Positive = delivering more than expected; negative = less. Only players with 3+ ratings.",
+  "O mesmo cálculo do Impacto, mas só dos últimos 5 dias de jogo — quem está em alta agora. 🔥 = a render bem acima da média da época.": "Same as Impact, but only the last 5 matchdays — who's hot right now. 🔥 = performing well above their season average.",
+  "Mais golos marcados por uma equipa num único dia de jogo.": "Most goals scored by a team in a single matchday.",
+  "Menos golos sofridos por uma equipa num único dia de jogo.": "Fewest goals conceded by a team in a single matchday.",
+  "Comparar jogadores": "Compare players",
+  "Escolhe 2 a 4 jogadores para comparar as stats e ver a % de vitórias quando jogam juntos.": "Pick 2 to 4 players to compare stats and see the win % when they play together.",
+  "Escolhe pelo menos 2 jogadores.": "Pick at least 2 players.",
+  "Ainda sem dias em que todos jogaram juntos na mesma equipa — passa a contar a partir do próximo dia de jogo.": "No days yet where they all played on the same team — it starts counting from the next matchday.",
+  "Jogos juntos": "Games together", "% Vitórias": "Win %", "Golos marcados": "Goals scored", "Golos sofridos": "Goals conceded",
+  "Ninguém tem ainda 3+ avaliações dos colegas para comparar.": "Nobody has 3+ teammate ratings to compare yet.",
+  "Ainda sem dados.": "No data yet.",
+  // Fantasy
+  "Recupera jornadas em que as stats gravaram mas a pontuação Fantasy falhou": "Recovers rounds where stats saved but Fantasy scoring failed",
+  "A sincronizar…": "Syncing…", "recuperada(s)": "recovered", "Tudo em dia": "All up to date", "Sincronizar": "Sync",
+  "Oferta por": "Offer for",
 };
 
 const PT_BR = {
