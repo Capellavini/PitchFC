@@ -74,6 +74,13 @@ export const C = {
   grass:        "#0E5C36",
   grassDim:     "rgba(14,160,90,0.08)",
   grassLine:    "rgba(255,255,255,0.07)",
+  // Pitch Manager (Fantasy) drawn pitch: FPL-like gradient, its line
+  // markings and the labels that sit on it.
+  pitchTop:     "#1D7A46",
+  pitchBottom:  "#16603A",
+  pitchMark:    "rgba(255,255,255,0.32)",
+  pitchStripe:  "rgba(255,255,255,0.05)",
+  onPitch:      "#FFFFFF",
   gold:         "#E8C547",
   goldDim:      "rgba(232,197,71,0.10)",
   silver:       "#C0C8D0",

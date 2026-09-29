@@ -6,6 +6,7 @@ import Avatar from "./Avatar";
 import Matchday from "./Matchday";
 import MatchdayAfter from "./MatchdayAfter";
 import MatchdayStepper from "./MatchdayStepper";
+import OwnTeamCard from "./OwnTeamCard";
 import PageHeader from "./PageHeader";
 import SectionLabel from "./SectionLabel";
 import TeamDraw from "./TeamDraw";
@@ -31,6 +32,9 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
   const confirmed = group.filter((p) => p.status === "confirmed");
   const { playing, waitlist: waiting = [] } = splitWaitlist(confirmed, game.spots);
   const me = group.find((p) => p.isMe);
+  // "A TUA EQUIPA" hero: once the teams are confirmed and I'm on one.
+  const myTeam = teamsConfirmed && me ? (teams || []).find((tm) => tm.players.includes(me.id)) : null;
+  const ownTeam = myTeam ? <OwnTeamCard team={myTeam} group={group} confirmedByName={teamsConfirmedByName} /> : null;
 
   const live = Boolean(matchdayProps.matchday);
   // "Preparar o próximo jogo" only applies until the next day goes live —
@@ -63,12 +67,20 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
     const liveViews = ["equipas", "jogo", "stats"];
     return wrap(
       liveView === "equipas" ? (
-        <TeamDraw group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
+        <>
+        {ownTeam}
+        <TeamDraw hideTeamId={myTeam?.id} group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
           setByName={teamsSetByName} confirmedByName={teamsConfirmedByName} lockDraw
           onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onConfirm={onConfirmTeams} />
+        </>
       ) : (
+        <>
+        {myTeam && liveView === "jogo" && (
+          <OwnTeamCard compact team={myTeam} group={group} onOpen={() => setLiveView("equipas")} />
+        )}
         <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed}
           view={liveView} />
+        </>
       ),
       1,
       { view: liveViews.indexOf(liveView), onSelect: (i) => setLiveView(liveViews[i]) },
@@ -90,6 +102,8 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
   // ── A · before ──────────────────────────────────────────
   return wrap(
     <>
+      {ownTeam}
+
       {/* who's in */}
       <section style={{ marginBottom: S.xl }}>
         <SectionLabel right={<span style={{ fontSize: T.meta, fontWeight: 800, color: playing.length >= game.spots ? C.green : C.text2 }}>{playing.length}/{game.spots}</span>}>
@@ -116,7 +130,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
         </div>
       </section>
 
-      <TeamDraw group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
+      <TeamDraw hideTeamId={myTeam?.id} group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
         setByName={teamsSetByName} confirmedByName={teamsConfirmedByName}
         onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onConfirm={onConfirmTeams} />
 

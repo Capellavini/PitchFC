@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Shuffle, RotateCcw, Check, Pencil } from "lucide-react";
 import { C, R, S, T, cardStyle, displayFont } from "../theme";
-import { playerColor, computeOverall } from "../lib/helpers";
+import { playerColor, computeOverall, teamOverall as avgOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import Avatar from "./Avatar";
 import BtnPrimary from "./BtnPrimary";
@@ -31,16 +31,12 @@ const selectStyle = {
  *  - canManage, confirmed, setByName, confirmedByName.
  *  - onDraw(n), onClear(), onRename(teamId, name), onMove(playerId, teamId), onConfirm().
  */
-export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onConfirm, lockDraw = false }) {
+export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onConfirm, lockDraw = false, hideTeamId = null }) {
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const [editing, setEditing] = useState(false);
 
   const resolve = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
-  const teamOverall = (tm) => {
-    const ps = resolve(tm.players);
-    if (!ps.length) return null;
-    return Math.round(ps.reduce((s, p) => s + computeOverall(p.position, p.attrs), 0) / ps.length);
-  };
+  const teamOverall = (tm) => avgOverall(tm, group);
   // Confirmed players not on any drawn team — they confirmed after the
   // draw, or a teammate declining freed a spot (releaseFromTeams in
   // PitchApp). The organizer patches the gap by hand instead of redrawing.
@@ -49,6 +45,11 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
   const me = group.find((p) => p.isMe);
 
   const showEditor = canManage && (!confirmed || editing);
+  // The viewer's own team is already the OwnTeamCard hero above — in the
+  // read-only lineup only the OTHER teams are listed here (the editor
+  // still shows every team, it needs them all to move players).
+  const hidden = !showEditor && hideTeamId ? hideTeamId : null;
+  const shownTeams = (teams || []).filter((tm) => tm.id !== hidden);
   const canDraw = playing.length >= 2;
   const countOptions = [2, 3, 4, 5, 6].filter((n) => n === 2 || n <= playing.length);
 
@@ -77,7 +78,7 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
 
   return (
     <section style={{ marginBottom: S.xl }}>
-      <SectionLabel right={status}>{t("Equipas")}</SectionLabel>
+      <SectionLabel right={status}>{hidden ? t("Outras equipas") : t("Equipas")}</SectionLabel>
 
       {/* ── Draw controls (manager) ── */}
       {/* lockDraw: the day is live — players can still be moved/renamed,
@@ -123,7 +124,7 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
       )}
 
       {/* ── Teams ── */}
-      {teams && teams.map((tm) => {
+      {teams && shownTeams.map((tm) => {
         const players = resolve(tm.players);
         const ovr = teamOverall(tm);
         const mine = me && tm.players.includes(me.id);
@@ -207,7 +208,7 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
           {editing ? <><Check size={16} /> {t("Concluir edição")}</> : <><Pencil size={16} /> {t("Editar equipas")}</>}
         </BtnGhost>
       )}
-      {confirmed && confirmedByName && (
+      {confirmed && confirmedByName && !hidden && (
         <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginTop: S.sm }}>{t("Confirmado por")} {confirmedByName}</div>
       )}
     </section>
