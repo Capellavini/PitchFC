@@ -1,0 +1,36 @@
+name: Deploy Supabase Edge Functions
+
+# Deploys Edge Functions to the linked Supabase project on merges to main
+# that touch them, or on demand. Deliberately scoped to send-welcome only:
+# notify-next is still deployed by hand (see supabase/PUSH-SETUP.md) and
+# must not be redeployed from here until that's decided on purpose.
+#
+# Function secrets are NOT set here — set them once in the Supabase
+# dashboard (Edge Functions → Secrets) or with `supabase secrets set`:
+#   RESEND_API_KEY   (required by send-welcome)
+#   PITCH_WHATSAPP   (optional, bot's number as E.164 digits → footer wa.me link)
+#   WELCOME_FROM     (optional, defaults to "Vini | Pitch FC App <vini@pitch-fc.com>")
+#
+# Required GitHub repo secrets (same as supabase-migrations.yml):
+#   SUPABASE_ACCESS_TOKEN  - personal access token
+#   SUPABASE_PROJECT_ID    - the project ref
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/send-welcome/**"
+  workflow_dispatch:
+
+jobs:
+  deploy-send-welcome:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy send-welcome
+        run: supabase functions deploy send-welcome --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"

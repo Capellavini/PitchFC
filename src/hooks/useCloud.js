@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, supabaseEnabled, isAdminEmail } from "../lib/supabase";
 import { computeRoundPoints, mvpBonus, fantasyPrice, DEFAULT_FANTASY_WEIGHTS, nextPricesPaid, squadCostBasis } from "../lib/fantasy";
 import { nextGameDate, dateTimeFromIso } from "../lib/helpers";
+import { getLang } from "../lib/i18n";
 
 /**
  * PR 2 of the Supabase migration: real accounts (email + password),
@@ -51,11 +52,32 @@ export function useCloud() {
   const [recovery, setRecovery] = useState(false);
   const userRef = useRef(null);
   const touchedLastSeenRef = useRef(false);
+  const welcomeRequestedRef = useRef(null);
+
+  // Welcome email, once per account, right after email confirmation: the
+  // confirm link lands the user back here with a session, and the first
+  // authenticated load with a confirmed email fires the send-welcome Edge
+  // Function. Fire-and-forget — never awaited, never blocks or breaks the
+  // load. The function is idempotent server-side (claims a welcome_emails
+  // row keyed by auth user before sending); the ref just avoids re-invoking
+  // on every refetch, and the 7-day window keeps long-confirmed accounts
+  // from calling it on every page load (they were backfilled as welcomed
+  // in migration 20260101006100 anyway).
+  const maybeSendWelcome = (user) => {
+    try {
+      if (!user?.email_confirmed_at || welcomeRequestedRef.current === user.id) return;
+      if (Date.now() - new Date(user.email_confirmed_at).getTime() > 7 * 864e5) return;
+      welcomeRequestedRef.current = user.id;
+      const joinToken = new URLSearchParams(window.location.search).get("join");
+      supabase.functions.invoke("send-welcome", { body: { lang: getLang(), join_token: joinToken } }).catch(() => {});
+    } catch { /* never let the welcome email break anything */ }
+  };
 
   // ── Load everything for the current auth user ──────────
   const load = useCallback(async (user) => {
     if (!supabaseEnabled) return;
     if (!user) { setData(EMPTY); setStatus("anon"); return; }
+    maybeSendWelcome(user);
     try {
       // Club-wide events are visible to everyone, even pre-group.
       const evq = await supabase.from("events").select("*").order("day");
@@ -265,8 +287,13 @@ export function useCloud() {
 
   // ── Auth actions ───────────────────────────────────────
   const signUp = async (email, password, meta) => {
+    // The ?join= token doesn't survive the email-confirmation round trip
+    // (the link lands on the Site URL), so keep it — and the app language
+    // the user signed up in — on the account itself: the send-welcome Edge
+    // Function reads both to name the group and pick the email's language.
+    const joinToken = new URLSearchParams(window.location.search).get("join");
     const { data: res, error } = await supabase.auth.signUp({
-      email, password, options: { data: meta },
+      email, password, options: { data: { ...meta, lang: getLang(), ...(joinToken ? { join_token: joinToken } : {}) } },
     });
     if (error) return { error: error.message };
     // Confirmation OFF → session present, user is in. ON → needs email.
