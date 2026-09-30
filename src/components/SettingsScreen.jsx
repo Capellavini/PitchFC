@@ -3,6 +3,7 @@ import { ArrowLeft, CreditCard, Settings, LogOut, ShieldCheck, Bell, Globe, Plus
 import { C, S, R, T, TOUCH, cardStyle } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
 import { t } from "../lib/i18n";
+import { formatPhone } from "../lib/phone";
 import SectionLabel from "./SectionLabel";
 import PageHeader from "./PageHeader";
 import SecuritySection from "./SecuritySection";
@@ -83,8 +84,8 @@ export default function SettingsScreen({ player, onBack, isOrganizer, onEditGrou
 
       <Group label={t("CONTA")} rows={[
         { id: "email", props: { leading: iconDisc(Mail), title: "Email", meta: player.email || notSet } },
-        { id: "phone", props: { leading: iconDisc(Phone), title: t("Telemóvel"), meta: player.phone || notSet } },
-        { id: "mbway", props: { leading: iconDisc(CreditCard, C.blue), title: "MB Way", meta: player.phone || notSet, right: player.phone ? <Chip variant="green">{t("Ativo")}</Chip> : null } },
+        { id: "phone", props: { leading: iconDisc(Phone), title: t("Telemóvel"), meta: formatPhone(player.phone) || notSet } },
+        { id: "mbway", props: { leading: iconDisc(CreditCard, C.blue), title: "MB Way", meta: formatPhone(player.phone) || notSet, right: player.phone ? <Chip variant="green">{t("Ativo")}</Chip> : null } },
       ]} />
 
       <Group label={t("GRUPO")} rows={[

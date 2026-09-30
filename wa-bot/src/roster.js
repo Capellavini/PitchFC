@@ -5,16 +5,28 @@
 /** Digits only, no leading 00. "+351 912 345 678" -> "351912345678". */
 export const digits = (s) => String(s ?? "").replace(/\D/g, "").replace(/^00/, "");
 
+/** Does a raw stored/sender value carry a country code? "+…" / "00…" always;
+ *  otherwise ≥ 12 digits (351+9, 55+10/11, 44+10…). 11 bare digits is NOT
+ *  enough on its own: that's exactly a Brazilian national mobile (DDD + 9). */
+export const hasCountryCode = (s) => /^\s*(\+|00)/.test(String(s ?? "")) || digits(s).length >= 12;
+
 /**
- * Same phone if the last 9 digits match. Players are stored with or without
- * country code ("912345678" vs "351912345678"); comparing the national part
- * handles both. Anything shorter than 8 digits never matches (junk data).
+ * Same phone? Anything shorter than 8 digits never matches (junk data).
+ * - Both sides international (E.164, the app's format since 2026-09-30, and
+ *   the WhatsApp JID the bot sees) → exact full-digit equality, so two
+ *   Brazilian numbers sharing the last 9 digits across DDDs never collide.
+ * - One side national-only (legacy "912345678", "11987654321") → compare
+ *   the tail, as long as the shorter side (trunk 0 dropped, e.g. UK
+ *   "07911…") — at least the last 9 digits, the old behaviour.
  */
 export function phonesMatch(a, b) {
   const x = digits(a), y = digits(b);
   if (x.length < 8 || y.length < 8) return false;
-  const n = Math.min(9, x.length, y.length);
-  return x.slice(-n) === y.slice(-n);
+  if (hasCountryCode(a) && hasCountryCode(b)) return x === y;
+  const [shortD, longD] = x.length <= y.length ? [x, y] : [y, x];
+  const nat = shortD.length > 9 ? shortD.replace(/^0/, "") : shortD;
+  const n = Math.min(nat.length, longD.length);
+  return nat.slice(-n) === longD.slice(-n);
 }
 
 /** Mirror of splitWaitlist in src/lib/helpers.js: mensalistas outrank unlocked avulsos, then responded_at. */

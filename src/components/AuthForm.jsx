@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Mail, Lock, User, Phone, ChevronLeft } from "lucide-react";
+import { Mail, Lock, User, ChevronLeft } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
 import { t } from "../lib/i18n";
 import BtnPrimary from "./BtnPrimary";
+import PhoneInput from "./PhoneInput";
 
 /** Real account: email + password (+ name/phone on signup).
  *  Talks to Supabase Auth via the onSignUp / onSignIn callbacks. */
@@ -73,7 +74,12 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
         </div>
 
         {isSignup && field(User, t("Nome completo"), "name", "text", t("Como te chamas"))}
-        {isSignup && field(Phone, t("Telemóvel"), "phone", "tel", "+351 9…")}
+        {isSignup && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Telemóvel")}</div>
+            <PhoneInput value={form.phone} onChange={(v) => set("phone", v)} onEnter={submit} />
+          </div>
+        )}
         {field(Mail, "Email", "email", "email", t("tu@email.com"))}
         {field(Lock, t("Palavra-passe"), "password", "password", t("mín. 6 caracteres"))}
 

@@ -1,6 +1,12 @@
 import { t } from "./i18n";
 
-const digits = (phone) => (phone || "").replace(/\D/g, "");
+/** wa.me wants the full international number, digits only. Phones are
+ *  stored as E.164 ("+351912345678" → "351912345678"); "00…" loses the
+ *  00; a legacy national-only PT mobile ("912 345 678") gets 351. */
+export const digits = (phone) => {
+  const d = String(phone || "").replace(/\D/g, "").replace(/^00/, "");
+  return /^9\d{8}$/.test(d) ? `351${d}` : d;
+};
 
 /**
  * Open WhatsApp with a pre-filled message.

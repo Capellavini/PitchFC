@@ -23,6 +23,8 @@ import PeerRatingsCard from "./PeerRatingsCard";
 import AchievementsSection from "./AchievementsSection";
 import MatchdayCalendar from "./MatchdayCalendar";
 import ProgressChart from "./ProgressChart";
+import PhoneInput from "./PhoneInput";
+import { normalizePhone } from "../lib/phone";
 
 const SEGMENTS = [
   { id: "resumo", label: "Resumo" },
@@ -178,7 +180,10 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
           {field(t("Nome completo"), "name")}
           {field(t("Alcunha (nome no cartão)"), "nick")}
           {field("Email", "email", "email")}
-          {field(t("Telemóvel (MB Way)"), "phone", "tel")}
+          <div style={{ marginBottom: S.md }}>
+            <div style={labelStyle}>{t("Telemóvel (MB Way)")}</div>
+            <PhoneInput value={form.phone ?? ""} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} mbwayHint />
+          </div>
           {field(t("Idade"), "age", "number")}
           {selectField(t("Nacionalidade"), "nationality", NATIONALITIES)}
           {field(t("Clube do coração"), "club")}
@@ -187,7 +192,7 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
         </div>
 
         <div style={{ display: "flex", gap: S.sm }}>
-          <BtnPrimary onClick={() => { updateProfile(form); setEditing(false); }} disabled={uploading} style={{ flex: 1 }}>{uploading ? t("A carregar…") : t("Guardar")}</BtnPrimary>
+          <BtnPrimary onClick={() => { updateProfile({ ...form, phone: form.phone ? normalizePhone(form.phone) : form.phone }); setEditing(false); }} disabled={uploading} style={{ flex: 1 }}>{uploading ? t("A carregar…") : t("Guardar")}</BtnPrimary>
           <BtnGhost onClick={() => { setForm(player); setEditing(false); }} style={{ flex: 1 }}>{t("Cancelar")}</BtnGhost>
         </div>
       </div>

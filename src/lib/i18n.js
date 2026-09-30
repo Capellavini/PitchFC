@@ -785,6 +785,12 @@ const EN = {
   // Redesign v1 polish pass
   "Novidades": "What's new", "O meu perfil": "My profile", "clean sheet": "clean sheet",
   "A tua noite": "Your night", "Marco": "Milestone", "Progresso do dia de jogo": "Matchday progress", "balizas a zero": "clean sheets", "vitória": "win", "vitórias": "wins",
+  // PhoneInput
+  "Indicativo do país": "Country code",
+  "Os telemóveis portugueses começam por 9.": "Portuguese mobile numbers start with 9.",
+  "Este número parece curto demais — confirma.": "This number looks too short — double-check it.",
+  "Este número parece longo demais — confirma.": "This number looks too long — double-check it.",
+  "MB Way só funciona com números portugueses.": "MB Way only works with Portuguese numbers.",
 };
 
 const PT_BR = {
@@ -1106,6 +1112,12 @@ const PT_BR = {
   "3 ou mais golos numa só partida": "3 ou mais gols em uma só partida",
   "Golo e assistência na mesma partida": "Gol e assistência na mesma partida",
   "MVP da noite com 2+ golos": "MVP da noite com 2+ gols",
+  // PhoneInput
+  "Indicativo do país": "Código do país",
+  "Os telemóveis portugueses começam por 9.": "Os celulares portugueses começam com 9.",
+  "Este número parece curto demais — confirma.": "Esse número parece curto demais — confira.",
+  "Este número parece longo demais — confirma.": "Esse número parece longo demais — confira.",
+  "MB Way só funciona com números portugueses.": "O MB Way só funciona com números portugueses.",
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR };

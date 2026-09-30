@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseIntent, phonesMatch, splitWaitlist, actionReplies } from "../src/roster.js";
+import { parseIntent, phonesMatch, hasCountryCode, splitWaitlist, actionReplies } from "../src/roster.js";
 
 const intent = (t) => parseIntent(t)?.intent ?? null;
 
@@ -39,6 +39,32 @@ test("phone matching ignores country code and formatting", () => {
   assert.ok(!phonesMatch("912345678", "912345679"));
   assert.ok(!phonesMatch("1234567", "1234567")); // too short = junk data
   assert.ok(!phonesMatch(null, "912345678"));
+});
+
+test("phone matching: both international → exact digits (no BR DDD collisions)", () => {
+  // Same last 9 digits, different DDD (São Paulo 11 vs Rio 21)
+  assert.ok(!phonesMatch("+5511987654321", "5521987654321"));
+  assert.ok(phonesMatch("+5511987654321", "5511987654321"));
+  // Same subscriber digits, different country
+  assert.ok(!phonesMatch("+351912345678", "+34912345678"));
+  assert.ok(phonesMatch("00351912345678", "351912345678"));
+  assert.ok(!phonesMatch("+351912345678", "+351912345679"));
+});
+
+test("phone matching: legacy national-only values still match", () => {
+  assert.ok(phonesMatch("912345678", "351912345678"));          // PT legacy
+  assert.ok(phonesMatch("11987654321", "5511987654321"));       // BR legacy (DDD + 9)
+  assert.ok(!phonesMatch("11987654321", "5521987654321"));      // BR legacy, other DDD
+  assert.ok(phonesMatch("07911 123456", "447911123456"));       // UK trunk 0
+  assert.ok(phonesMatch("+12125551234", "12125551234"));        // US JID has 11 digits
+});
+
+test("hasCountryCode", () => {
+  assert.ok(hasCountryCode("+351 912 345 678"));
+  assert.ok(hasCountryCode("0055 11 98765 4321"));
+  assert.ok(hasCountryCode("351912345678"));
+  assert.ok(!hasCountryCode("11987654321"));
+  assert.ok(!hasCountryCode("912345678"));
 });
 
 test("waitlist: mensalista outranks an earlier avulso; order by responded_at", () => {
