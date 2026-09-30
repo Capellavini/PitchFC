@@ -52,9 +52,9 @@ async function typing(jid) {
   await sleep(600 + Math.random() * 1200);
 }
 
-async function send(jid, text, quoted) {
+async function send(jid, text, quoted, mentions) {
   await typing(jid);
-  await sock.sendMessage(jid, { text }, quoted ? { quoted } : undefined);
+  await sock.sendMessage(jid, { text, ...(mentions?.length ? { mentions } : {}) }, quoted ? { quoted } : undefined);
 }
 
 /** The bot's own one-tap attendance poll. The bot authors it, so it holds the secret to read votes. */
@@ -82,7 +82,7 @@ async function dispatch(group, gameId, ev, ctx) {
   const id = await claim(group.id, gameId, ev.kind, ev.key);
   if (!id) return "skipped"; // already announced
   try {
-    await send(group.wa_group_jid, text);
+    await send(group.wa_group_jid, text, undefined, ctx.promoted ? [ctx.promoted.jid] : undefined);
     await markSent(id);
     log(`sent ${ev.kind} -> ${group.name}`);
     await logMessage({ groupId: group.id, kind: "proactive", eventKind: ev.kind, answer: text })
@@ -106,6 +106,29 @@ async function sayAndLog({ group, jid, m, answer, kind, question = null, askerId
     .catch((e) => log("bot_message_log write failed:", e.message));
 }
 
+/** Who just got auto-promoted off the waitlist into the XI, for a game that
+ *  stayed full after a decline — same "derived waitlist" read the app
+ *  itself uses (confirmed rows beyond the first `spots`, ordered by
+ *  responded_at). The marginal (last) titular in the freshly-recomputed
+ *  order is, by definition, whoever just crossed the line. Returns null
+ *  if their phone can't be resolved to a mentionable JID — still fine,
+ *  the message just goes out without a tag (see messages.js). */
+async function resolvePromoted(group, game, spots) {
+  try {
+    const members = await groupMembers(group.id);
+    const { playing } = splitWaitlist(await confirmedRoster(game.id, members), spots);
+    const last = playing[playing.length - 1];
+    if (!last) return null;
+    const member = members.find((m) => m.id === last.id);
+    const phoneDigits = member?.phone ? member.phone.replace(/\D/g, "") : "";
+    if (!phoneDigits) return null;
+    return { nick: member.nick, phoneDigits, jid: `${phoneDigits}@s.whatsapp.net` };
+  } catch (e) {
+    log("resolvePromoted failed:", e.message);
+    return null;
+  }
+}
+
 async function tickGroup(group) {
   const now = new Date();
   for (const game of await upcomingGames(group.id)) {
@@ -121,7 +144,9 @@ async function tickGroup(group) {
 
     let blocked = false;
     for (const ev of decide({ game, spots, confirmed: game.confirmed, prev, now })) {
-      const r = await dispatch(group, game.id, ev, { game, spots, confirmed: game.confirmed });
+      const ctx = { game, spots, confirmed: game.confirmed };
+      if (ev.kind === "promoted") ctx.promoted = await resolvePromoted(group, game, spots);
+      const r = await dispatch(group, game.id, ev, ctx);
       if (r === "blocked") { blocked = true; if (!ev.urgent) break; }
     }
     if (!blocked) await setPrev(game.id, game.confirmed);

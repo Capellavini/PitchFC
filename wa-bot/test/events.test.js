@@ -34,8 +34,14 @@ test("full game loses one -> spot_opened", () => {
 test("8 -> 7 is not news", () => {
   assert.deepEqual(kinds({ prev: 8, confirmed: 7 }), []);
 });
-test("waitlist 12 -> 11 is not a spot (still full)", () => {
-  assert.deepEqual(kinds({ prev: 12, confirmed: 11 }), []);
+test("waitlist 12 -> 11: still full, a waitlister was auto-promoted", () => {
+  assert.deepEqual(kinds({ prev: 12, confirmed: 11 }), ["promoted"]);
+});
+test("promoted key changes with the bucket, so consecutive promotions each get announced", () => {
+  const key = (confirmed, now) => run({ prev: 12, confirmed, now })[0].key;
+  const a = key(11, new Date("2026-09-24T18:00:00Z"));
+  const b = key(10, new Date("2026-09-24T18:11:00Z")); // different bucket, different transition
+  assert.notEqual(a, b);
 });
 test("cancelled is urgent and exclusive", () => {
   const e = run({ game: { status: "cancelled" }, prev: 3, confirmed: 3 });
@@ -53,9 +59,9 @@ test("played games are ignored", () => {
 import { milestoneThresholds, decidePostGame } from "../src/events.js";
 import { render } from "../src/messages.js";
 
-test("thresholds scale with group size (80% / full / waitlist)", () => {
-  assert.deepEqual(milestoneThresholds(10), [8, 10, 12, 15]);
-  assert.deepEqual(milestoneThresholds(14), [12, 14, 17, 21]);
+test("thresholds scale with group size (80% / full / waitlist just started / waitlist growing)", () => {
+  assert.deepEqual(milestoneThresholds(10), [8, 10, 11, 12, 15]);
+  assert.deepEqual(milestoneThresholds(14), [12, 14, 15, 17, 21]);
   assert.deepEqual(milestoneThresholds(2), [2, 3]); // tiny groups collapse duplicates
 });
 test("7 -> 8 in a 10-spot group fires the 80% milestone", () => {
@@ -105,6 +111,17 @@ test("render: pt, en and pt+en (Goodweather) all include the link", () => {
   assert.match(pt, /faltam 2 vagas/); assert.match(en, /2 spots left/);
   assert.equal(both, `${pt}\n\n${en}`);
   assert.ok([pt, en, both].every((t) => t.includes("https://x/?join=abc")));
+});
+test("render: promoted tags the auto-promoted player by phone digits", () => {
+  const ctx = { confirmed: 10, spots: 10, promoted: { nick: "Vini", phoneDigits: "351912345678", jid: "351912345678@s.whatsapp.net" } };
+  assert.match(render("promoted", ctx, "pt"), /@351912345678 estás dentro!/);
+  assert.match(render("promoted", ctx, "ptbr"), /@351912345678 você tá dentro!/);
+  assert.match(render("promoted", ctx, "en"), /@351912345678 you're in!/);
+});
+test("render: promoted with nobody resolved still announces the count, just no tag", () => {
+  const t = render("promoted", { confirmed: 10, spots: 10, promoted: null }, "en");
+  assert.doesNotMatch(t, /@/);
+  assert.match(t, /automatically filled from the waiting list/);
 });
 test("render: post-game lists scores, top scorer and MVP link", () => {
   const md = { mvp_open: true, summary: { matches: [{ n: 1, homeName: "Azuis", awayName: "Brancos", homeGoals: 3, awayGoals: 2 }], lines: [{ nick: "Liminha", goals: 2 }, { nick: "Diogo", goals: 1 }] } };

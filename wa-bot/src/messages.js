@@ -46,6 +46,25 @@ const T = {
     en: ({ game, confirmed, spots, link }) => `🔓 *A spot just opened!* ${confirmed}/${spots} for ${formatGameWhen(game.scheduled_at, "en")} — ${spotsLeft.en(spots - confirmed)}.\n${link}`,
   },
 
+  // Someone declined but the XI stayed full — a waitlister moved up
+  // automatically. `promoted` is null when nobody could be resolved (e.g.
+  // their phone didn't match any group member) — still worth announcing
+  // the game's own count, just without a tag.
+  promoted: {
+    pt: ({ confirmed, spots, promoted }) =>
+      promoted
+        ? `🔁 @${promoted.phoneDigits} estás dentro! Uma vaga abriu e foste promovido automaticamente. ${confirmed}/${spots} confirmados.`
+        : `🔁 Uma vaga abriu e já foi preenchida automaticamente pela lista de espera. ${confirmed}/${spots} confirmados.`,
+    ptbr: ({ confirmed, spots, promoted }) =>
+      promoted
+        ? `🔁 @${promoted.phoneDigits} você tá dentro! Abriu uma vaga e você foi promovido automaticamente. ${confirmed}/${spots} confirmados.`
+        : `🔁 Abriu uma vaga e já foi preenchida automaticamente pela lista de espera. ${confirmed}/${spots} confirmados.`,
+    en: ({ confirmed, spots, promoted }) =>
+      promoted
+        ? `🔁 @${promoted.phoneDigits} you're in! A spot opened up and you were automatically promoted. ${confirmed}/${spots} confirmed.`
+        : `🔁 A spot opened up and was automatically filled from the waiting list. ${confirmed}/${spots} confirmed.`,
+  },
+
   reminder: {
     pt: ({ game, confirmed, spots, link }) => `⏰ ${formatGameWhen(game.scheduled_at, "pt")}: ${spotsLeft.pt(spots - confirmed)} (${confirmed}/${spots}).\n${link}`,
     ptbr: ({ game, confirmed, spots, link }) => `⏰ ${formatGameWhen(game.scheduled_at, "pt")}: ${spotsLeft.ptbr(spots - confirmed)} (${confirmed}/${spots}).\n${link}`,

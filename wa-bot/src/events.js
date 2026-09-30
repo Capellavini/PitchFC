@@ -4,17 +4,22 @@
 // Rules baked in (from the group-bot playbook):
 //  - milestones are proportional to the group size, coalesced to the highest crossed
 //  - "vaga aberta" only when the game WAS full (a drop from 8 to 7 is not news)
+//  - a decline that still leaves the XI full means a waitlister was auto-
+//    promoted into it — its own "promoted" kind, distinct from "spot_opened"
+//    (which is for when nobody was waiting to fill the gap)
 //  - cancellation is its own kind and is flagged urgent
 
 import { lisbonDayKey, lisbonMinutesOfDay } from "./time.js";
 
 /**
  * Proportional milestones, e.g. for 10 spots: 8 (80%, "2 left"), 10 (full),
- * 12 and 15 (waiting list growing). Works for any group size; duplicates
- * collapse for tiny groups.
+ * 11 (waiting list just started — always exact, not proportional, so a
+ * big group's first waitlister is never lost between 100% and the 1.2x
+ * mark), 12 and 15 (waiting list growing further). Works for any group
+ * size; duplicates collapse for tiny groups.
  */
 export function milestoneThresholds(spots, almostPct = 0.8) {
-  const raw = [Math.ceil(spots * almostPct), spots, Math.ceil(spots * 1.2), Math.ceil(spots * 1.5)];
+  const raw = [Math.ceil(spots * almostPct), spots, spots + 1, Math.ceil(spots * 1.2), Math.ceil(spots * 1.5)];
   return [...new Set(raw)].filter((t) => t > 0).sort((a, b) => a - b);
 }
 
@@ -57,6 +62,14 @@ export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, al
         // in bot_announcements sees it as already announced.
         out.push({ kind: "milestone", key: `milestone:${gid}:${t}:${game.cycle_opened_at ?? "once"}` });
       }
+    } else if (prev >= spots && confirmed >= spots) {
+      // Someone left but the XI is still full — a waitlister was
+      // auto-promoted into their place (the waitlist is derived, not
+      // stored: it's just "confirmed" rows beyond the first `spots`, by
+      // responded_at order). Who specifically got promoted isn't known
+      // here (no I/O) — the caller resolves that from the roster.
+      const bucket = Math.floor(now.getTime() / 6e5);
+      out.push({ kind: "promoted", key: `promoted:${gid}:${prev}>${confirmed}:${bucket}` });
     } else if (prev >= spots && confirmed < spots) {
       // Same numbers can recur (fill, drop, fill, drop): bucket to 10 min.
       const bucket = Math.floor(now.getTime() / 6e5);
