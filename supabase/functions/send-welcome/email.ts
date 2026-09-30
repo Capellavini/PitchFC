@@ -25,9 +25,9 @@ const BRAND = {
 type Copy = {
   subject: (n: string) => string;
   preheader: (g: string | null) => string;
-  hello: (n: string) => string;
+  hello: () => string;
   // `g` arrives HTML-escaped + bolded in the HTML part, plain in the text part.
-  intro: (g: string | null) => string;
+  intro: (n: string, g: string | null) => string;
   howTitle: string;
   steps: [string, string][]; // [title, body]
   cta: string;
@@ -41,15 +41,15 @@ const b = (s: string, html: boolean) => (html ? `<strong>${s}</strong>` : s);
 
 const COPY: Record<Lang, Copy> = {
   pt: {
-    subject: (n) => `Bem-vindo ao PITCH, ${n} ⚽`,
+    subject: (n) => `Bem-vindo ao Pitch FC, ${n} ⚽`,
     preheader: (g) => (g ? `Já estás no plantel do ${g}. Vê como funciona.` : "A tua conta está confirmada. Vê como funciona."),
-    hello: (n) => `Olá ${n}, bem-vindo!`,
-    intro: (g) => g
-      ? `Aqui é o Vini, do PITCH. A tua conta está confirmada e já estás no plantel do ${g}. A partir de agora, o jogo da semana organiza-se aqui — sem caos no WhatsApp.`
-      : "Aqui é o Vini, do PITCH. A tua conta está confirmada. A partir de agora, o jogo da semana organiza-se aqui — sem caos no WhatsApp.",
+    hello: () => "Olá craque, bem-vindo ao Pitch FC!",
+    intro: (n, g) => g
+      ? `${n}, a tua conta está confirmada e já estás no plantel do ${g}. A partir de agora, o jogo da semana organiza-se aqui — sem caos no WhatsApp.`
+      : `${n}, a tua conta está confirmada. A partir de agora, o jogo da semana organiza-se aqui — sem caos no WhatsApp.`,
     howTitle: "Como funciona",
     steps: [
-      ["Confirma com um toque", "No separador Jogar dizes se vais ou não. Um toque e está feito."],
+      ["Confirma com um toque", "No separador \"Jogar\" dizes se vais ou não. Um toque e está feito!"],
       ["Matchday", "No dia do jogo, o Matchday regista golos, assistências e o MVP."],
       ["O teu PITCH ID", "O teu Perfil é o teu PITCH ID — a tua carreira acumula a cada jogo."],
     ],
@@ -60,15 +60,15 @@ const COPY: Record<Lang, Copy> = {
     why: "Recebeste este email porque criaste uma conta no PITCH.",
   },
   "pt-br": {
-    subject: (n) => `Bem-vindo ao PITCH, ${n} ⚽`,
+    subject: (n) => `Bem-vindo ao Pitch FC, ${n} ⚽`,
     preheader: (g) => (g ? `Você já está no elenco do ${g}. Veja como funciona.` : "Sua conta está confirmada. Veja como funciona."),
-    hello: (n) => `Olá ${n}, bem-vindo!`,
-    intro: (g) => g
-      ? `Aqui é o Vini, do PITCH. Sua conta está confirmada e você já faz parte do elenco do ${g}. A partir de agora, o jogo da semana se organiza aqui — sem bagunça no WhatsApp.`
-      : "Aqui é o Vini, do PITCH. Sua conta está confirmada. A partir de agora, o jogo da semana se organiza aqui — sem bagunça no WhatsApp.",
+    hello: () => "Olá craque, bem-vindo ao Pitch FC!",
+    intro: (n, g) => g
+      ? `${n}, sua conta está confirmada e você já faz parte do elenco do ${g}. A partir de agora, o jogo da semana se organiza aqui — sem bagunça no WhatsApp.`
+      : `${n}, sua conta está confirmada. A partir de agora, o jogo da semana se organiza aqui — sem bagunça no WhatsApp.`,
     howTitle: "Como funciona",
     steps: [
-      ["Confirme com um toque", "Na aba Jogar você diz se vai ou não. Um toque e pronto."],
+      ["Confirme com um toque", "Na aba \"Jogar\" você diz se vai ou não. Um toque e pronto!"],
       ["Matchday", "No dia do jogo, o Matchday registra gols, assistências e o MVP."],
       ["Seu PITCH ID", "Seu Perfil é seu PITCH ID — sua carreira cresce a cada jogo."],
     ],
@@ -79,15 +79,15 @@ const COPY: Record<Lang, Copy> = {
     why: "Você recebeu este email porque criou uma conta no PITCH.",
   },
   en: {
-    subject: (n) => `Welcome to PITCH, ${n} ⚽`,
+    subject: (n) => `Welcome to Pitch FC, ${n} ⚽`,
     preheader: (g) => (g ? `You're in the ${g} squad. Here's how it works.` : "Your account is confirmed. Here's how it works."),
-    hello: (n) => `Hi ${n}, welcome!`,
-    intro: (g) => g
-      ? `Vini from PITCH here. Your account is confirmed and you're in the ${g} squad. From now on, the weekly game gets organised here — no more WhatsApp chaos.`
-      : "Vini from PITCH here. Your account is confirmed. From now on, the weekly game gets organised here — no more WhatsApp chaos.",
+    hello: () => "Hey champ, welcome to Pitch FC!",
+    intro: (n, g) => g
+      ? `${n}, your account is confirmed and you're in the ${g} squad. From now on, the weekly game gets organised here — no more WhatsApp chaos.`
+      : `${n}, your account is confirmed. From now on, the weekly game gets organised here — no more WhatsApp chaos.`,
     howTitle: "How it works",
     steps: [
-      ["Confirm in one tap", "In the Play tab you say whether you're in or out. One tap, done."],
+      ["Confirm in one tap", "In the \"Play\" tab you say whether you're in or out. One tap and you're done!"],
       ["Matchday", "On game day, Matchday records goals, assists and the MVP."],
       ["Your PITCH ID", "Your profile is your PITCH ID — your career builds up with every game."],
     ],
@@ -99,7 +99,7 @@ const COPY: Record<Lang, Copy> = {
   },
 };
 
-const SIGNATURE = "Vini, Pitch FC";
+const SIGNATURE = "Vini | Founder | PITCH FC.";
 
 export const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -196,8 +196,8 @@ export function renderWelcome({ firstName: n, groupName, lang, botEnabled, socia
         </tr>
         <tr>
           <td style="padding:28px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;">
-            <h1 style="margin:0 0 10px 0;font-size:24px;line-height:1.25;font-weight:900;color:${BRAND.ink};">${escapeHtml(c.hello(n))}</h1>
-            <p style="margin:0;font-size:15px;line-height:1.55;color:${BRAND.text};">${c.intro(gH ? `<strong style="color:${BRAND.ink};">${gH}</strong>` : null)}</p>
+            <h1 style="margin:0 0 10px 0;font-size:24px;line-height:1.25;font-weight:900;color:${BRAND.ink};">${escapeHtml(c.hello())}</h1>
+            <p style="margin:0;font-size:15px;line-height:1.55;color:${BRAND.text};">${c.intro(escapeHtml(n), gH ? `<strong style="color:${BRAND.ink};">${gH}</strong>` : null)}</p>
           </td>
         </tr>
         <tr>
@@ -238,9 +238,9 @@ export function renderWelcome({ firstName: n, groupName, lang, botEnabled, socia
 </html>`;
 
   const text = [
-    c.hello(n),
+    c.hello(),
     "",
-    c.intro(g),
+    c.intro(n, g),
     "",
     `${c.howTitle}:`,
     ...c.steps.map(([title, body], i) => `${i + 1}. ${title}: ${body}`),
