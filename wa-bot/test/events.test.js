@@ -21,12 +21,12 @@ test("crossing 10 -> one milestone", () => {
   const e = run({ prev: 9, confirmed: 10 });
   assert.equal(e.length, 1);
   assert.equal(e[0].kind, "milestone");
-  assert.equal(e[0].key, "milestone:g1:10");
+  assert.equal(e[0].key, "milestone:g1:10:once");
 });
 test("jump 9 -> 13 coalesces to the highest threshold (12)", () => {
   const e = run({ prev: 9, confirmed: 13 });
   assert.equal(e.length, 1);
-  assert.equal(e[0].key, "milestone:g1:12");
+  assert.equal(e[0].key, "milestone:g1:12:once");
 });
 test("full game loses one -> spot_opened", () => {
   assert.deepEqual(kinds({ prev: 10, confirmed: 9 }), ["spot_opened"]);
@@ -60,10 +60,17 @@ test("thresholds scale with group size (80% / full / waitlist)", () => {
 });
 test("7 -> 8 in a 10-spot group fires the 80% milestone", () => {
   const e = run({ prev: 7, confirmed: 8 });
-  assert.deepEqual(e.map((x) => x.key), ["milestone:g1:8"]);
+  assert.deepEqual(e.map((x) => x.key), ["milestone:g1:8:once"]);
 });
 test("5 -> 9 coalesces to the 80% milestone once", () => {
   assert.equal(run({ prev: 5, confirmed: 9 }).length, 1);
+});
+test("recurring games reuse the same row: milestone key includes cycle_opened_at so next week's crossing isn't seen as a dupe of last week's", () => {
+  const week1 = run({ prev: 7, confirmed: 8, game: { cycle_opened_at: "2026-09-15T17:00:00Z" } });
+  const week2 = run({ prev: 7, confirmed: 8, game: { cycle_opened_at: "2026-09-22T17:00:00Z" } });
+  assert.notEqual(week1[0].key, week2[0].key);
+  const sameCycleAgain = run({ prev: 7, confirmed: 8, game: { cycle_opened_at: "2026-09-15T17:00:00Z" } });
+  assert.equal(week1[0].key, sameCycleAgain[0].key);
 });
 test("day-of reminder: game day from 10:00 Lisbon until kickoff", () => {
   const gameToday = { scheduled_at: "2026-09-24T19:00:00Z" }; // 20:00 Lisbon (UTC+1 in September)

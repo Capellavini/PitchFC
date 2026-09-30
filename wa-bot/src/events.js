@@ -20,7 +20,7 @@ export function milestoneThresholds(spots, almostPct = 0.8) {
 
 /**
  * @param {object} i
- * @param {object} i.game            games row (id, status, scheduled_at, spots, created_at)
+ * @param {object} i.game            games row (id, status, scheduled_at, spots, created_at, cycle_opened_at)
  * @param {number} i.spots           effective spots
  * @param {number} i.confirmed       confirmed attendances right now
  * @param {number|null} i.prev       last_confirmed we recorded, null = first sighting
@@ -50,7 +50,12 @@ export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, al
       const crossed = milestoneThresholds(spots, almostPct).filter((t) => prev < t && t <= confirmed);
       if (crossed.length) {
         const t = Math.max(...crossed);
-        out.push({ kind: "milestone", key: `milestone:${gid}:${t}` });
+        // A recurring game reuses the same row every week (games.cycle_opened_at
+        // marks each reset) — without that in the key, "12/15 reached" would
+        // claim its dedupe row once and then silently never fire again for any
+        // later week that also happens to cross 12, since the unique constraint
+        // in bot_announcements sees it as already announced.
+        out.push({ kind: "milestone", key: `milestone:${gid}:${t}:${game.cycle_opened_at ?? "once"}` });
       }
     } else if (prev >= spots && confirmed < spots) {
       // Same numbers can recur (fill, drop, fill, drop): bucket to 10 min.

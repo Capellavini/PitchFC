@@ -18,7 +18,7 @@ export async function botGroups() {
 export async function upcomingGames(groupId) {
   const since = new Date(Date.now() - 6 * 36e5).toISOString();
   const { data: games, error } = await db().from("games")
-    .select("id, status, scheduled_at, venue, spots, created_at")
+    .select("id, status, scheduled_at, venue, spots, created_at, cycle_opened_at")
     .eq("group_id", groupId).gte("scheduled_at", since)
     .in("status", ["open", "full", "cancelled"]);
   if (error) throw error;
