@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { cfg } from "./config.js";
+import { lisbonWeekday } from "./time.js";
 
 let client;
 export const db = () =>
@@ -8,7 +9,7 @@ export const db = () =>
 /** Groups that opted in to the bot (jid set + enabled). Safe by default. */
 export async function botGroups() {
   const { data, error } = await db().from("groups")
-    .select("id, name, wa_group_jid, wa_bot_lang, invite_token, max_players")
+    .select("id, name, wa_group_jid, wa_bot_lang, invite_token, max_players, venue, monthly_price_cents")
     .eq("wa_bot_enabled", true).not("wa_group_jid", "is", null);
   if (error) throw error;
   return data ?? [];
@@ -88,12 +89,16 @@ export async function groupStats(groupId) {
 /** Members of the group whose stored phone could match. Caller filters with phonesMatch. */
 export async function groupMembers(groupId) {
   const { data, error } = await db().from("player_group_memberships")
-    .select("player_id, player_type, banned, players(id, nick, name, phone, magic_token, is_organizer)")
+    .select("player_id, player_type, banned, role, players(id, nick, name, phone, magic_token, is_organizer)")
     .eq("group_id", groupId).eq("banned", false);
   if (error) throw error;
   return (data ?? []).filter((m) => m.players).map((m) => ({
     id: m.players.id, nick: m.players.nick || m.players.name, phone: m.players.phone,
     token: m.players.magic_token, playerType: m.player_type, isOrganizer: !!m.players.is_organizer,
+    // role is the single source of truth (organizer/assistant/member), kept
+    // in sync with players.is_organizer/is_assistant by a DB trigger — see
+    // supabase/migrations/20260101003600_player_group_memberships.sql.
+    canManageGames: m.role === "organizer" || m.role === "assistant",
   }));
 }
 
@@ -111,4 +116,71 @@ export async function confirmedRoster(gameId, members) {
 export async function setStatus(token, status, gameId) {
   const { error } = await db().rpc("magic_set_status", { token, new_status: status, p_game_id: gameId });
   if (error) throw error;
+}
+
+// ── Organizer/assistant-only actions ("@Pitch cria jogo" / "cancela o jogo") ──
+/** True if the group already has a game on the calendar (open or full) —
+ *  callers should refuse to create a second one on top of it, same as the
+ *  app's own JogoTab (scheduleNextGame only shows up with no game.data yet). */
+export async function hasOpenGame(groupId) {
+  const { data } = await db().from("games").select("id")
+    .eq("group_id", groupId).in("status", ["open", "full"]).limit(1);
+  return Boolean(data?.length);
+}
+
+/** Mirrors the app's own scheduleNextGame (src/hooks/useCloud.js): sets the
+ *  group's recurring weekday/time going forward AND opens the game itself,
+ *  with every current member starting pending — this is the same "no game
+ *  scheduled yet" flow the organizer would hit in the app, just reachable
+ *  from the chat. `scheduledAt` is a real instant (already resolved to
+ *  Lisbon wall-clock by the caller via time.js); `hhmm` is that SAME
+ *  Lisbon wall-clock time as "HH:MM" — passed through rather than
+ *  re-derived from scheduledAt, since reading UTC hours/minutes back off
+ *  a real instant would silently drift from Lisbon time across DST. */
+export async function createGame(group, scheduledAt, hhmm) {
+  const weekday = lisbonWeekday(scheduledAt);
+  await db().from("groups").update({ weekday, game_time: hhmm }).eq("id", group.id);
+  const { data: game, error } = await db().from("games").insert({
+    group_id: group.id, scheduled_at: scheduledAt.toISOString(),
+    venue: group.venue, spots: group.max_players,
+    total_cost_cents: group.monthly_price_cents,
+    status: "open", recurring_rule: `weekly_${weekday}_${hhmm}`,
+  }).select().single();
+  if (error) throw error;
+
+  const members = await groupMembers(group.id);
+  if (members.length) {
+    await db().from("attendances").insert(
+      members.map((m) => ({ game_id: game.id, player_id: m.id, status: "pending" }))
+    );
+  }
+  return game;
+}
+
+/** Soft-cancel the group's current game (same as the app's cancelGame) —
+ *  the existing "cancelled" announcement in events.js/index.js then picks
+ *  it up and tells the group, urgently, on the next poll. */
+export async function cancelCurrentGame(groupId) {
+  const { data } = await db().from("games").select("id")
+    .eq("group_id", groupId).in("status", ["open", "full"]).order("scheduled_at", { ascending: true }).limit(1).maybeSingle();
+  if (!data) return null;
+  const { error } = await db().from("games").update({ status: "cancelled" }).eq("id", data.id);
+  if (error) throw error;
+  return data.id;
+}
+
+// ── Personal stats ("quantos golos fiz no último jogo?") ──────────────────
+/** This one player's own line from the group's most recent finished
+ *  matchday, plus their season totals — kept separate from groupStats'
+ *  leaderboard so @Pitch can answer "how did *I* do" without mixing up
+ *  whose numbers are whose. */
+export async function myStats(groupId, playerId) {
+  const { data: season } = await db().from("player_group_memberships")
+    .select("goals, assists, mvps, games_played, wins, clean_sheets")
+    .eq("group_id", groupId).eq("player_id", playerId).maybeSingle();
+
+  const last = (await recentMatchdays(groupId, 24 * 30))[0] ?? null;
+  const myLine = last?.summary?.lines?.find((l) => l.id === playerId || l.key === playerId) ?? null;
+
+  return { season: season ?? null, lastMatchday: last ? { playedOn: last.played_on, line: myLine } : null };
 }

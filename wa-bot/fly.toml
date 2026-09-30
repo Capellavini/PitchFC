@@ -1,0 +1,17 @@
+# Background worker, no HTTP service — the bot only talks to WhatsApp
+# (Baileys websocket) and Supabase, nothing listens for inbound requests.
+app = "pitch-wa-bot"
+primary_region = "cdg"
+
+[build]
+
+[mounts]
+  source = "wa_bot_auth"
+  destination = "/app/auth"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[processes]
+  app = "node src/index.js"

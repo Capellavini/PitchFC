@@ -6,7 +6,7 @@
 //  - "vaga aberta" only when the game WAS full (a drop from 8 to 7 is not news)
 //  - cancellation is its own kind and is flagged urgent
 
-import { lisbonDayKey, lisbonHour } from "./time.js";
+import { lisbonDayKey, lisbonMinutesOfDay } from "./time.js";
 
 /**
  * Proportional milestones, e.g. for 10 spots: 8 (80%, "2 left"), 10 (full),
@@ -27,10 +27,10 @@ export function milestoneThresholds(spots, almostPct = 0.8) {
  * @param {Date} i.now
  * @param {number} [i.openMaxAgeH]   only announce "jogo aberto" for games this fresh
  * @param {number} [i.almostPct]     "almost full" threshold, default 80%
- * @param {number} [i.dayOfHour]     Lisbon hour the game-day reminder may start
+ * @param {number} [i.dayOfMinutes]  Lisbon minute-of-day the game-day reminder may start (default 08:30)
  * @returns {{kind:string,key:string,urgent?:boolean}[]}
  */
-export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, almostPct = 0.8, dayOfHour = 10 }) {
+export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, almostPct = 0.8, dayOfMinutes = 8 * 60 + 30 }) {
   const out = [];
   const gid = game.id;
 
@@ -70,7 +70,7 @@ export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, al
   }
 
   // Game day, morning onwards, until kickoff.
-  if (hoursToGame > 0 && lisbonDayKey(start) === lisbonDayKey(now) && lisbonHour(now) >= dayOfHour) {
+  if (hoursToGame > 0 && lisbonDayKey(start) === lisbonDayKey(now) && lisbonMinutesOfDay(now) >= dayOfMinutes) {
     out.push({ kind: "matchday", key: `matchday:${gid}` });
   }
   return out;
@@ -81,4 +81,15 @@ export function decidePostGame({ matchday, now, maxAgeH = 12 }) {
   const ageH = (now - new Date(matchday.created_at)) / 36e5;
   if (ageH > maxAgeH) return [];
   return [{ kind: "postgame", key: `postgame:${matchday.id}` }];
+}
+
+/** Top scorer + top assist for the match, sent once a matchday has had time
+ *  to settle (2h) — separate from the immediate postgame score recap, and
+ *  from its own age window so it isn't just "postgame, but later". Games
+ *  aren't always at night, so this is named/worded around "the match", not
+ *  "tonight". */
+export function decideMatchAwards({ matchday, now, minAgeH = 2, maxAgeH = 12 }) {
+  const ageH = (now - new Date(matchday.created_at)) / 36e5;
+  if (ageH < minAgeH || ageH > maxAgeH) return [];
+  return [{ kind: "match_awards", key: `match_awards:${matchday.id}` }];
 }

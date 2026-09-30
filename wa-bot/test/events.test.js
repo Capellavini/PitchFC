@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { decide } from "../src/events.js";
+import { decide, decideMatchAwards } from "../src/events.js";
 
 const now = new Date("2026-09-24T18:00:00Z"); // Thursday
 const game = (o = {}) => ({
@@ -72,17 +72,32 @@ test("recurring games reuse the same row: milestone key includes cycle_opened_at
   const sameCycleAgain = run({ prev: 7, confirmed: 8, game: { cycle_opened_at: "2026-09-15T17:00:00Z" } });
   assert.equal(week1[0].key, sameCycleAgain[0].key);
 });
-test("day-of reminder: game day from 10:00 Lisbon until kickoff", () => {
+test("day-of reminder: game day from 08:30 Lisbon until kickoff", () => {
   const gameToday = { scheduled_at: "2026-09-24T19:00:00Z" }; // 20:00 Lisbon (UTC+1 in September)
   const at = (iso) => decide({ game: game(gameToday), spots: 10, confirmed: 10, prev: 10, now: new Date(iso) }).map((e) => e.kind);
-  assert.deepEqual(at("2026-09-24T08:00:00Z"), []);          // 09:00 Lisbon: too early
+  assert.deepEqual(at("2026-09-24T07:00:00Z"), []);           // 08:00 Lisbon: too early
+  assert.deepEqual(at("2026-09-24T07:29:00Z"), []);           // 08:29 Lisbon: still too early
+  assert.deepEqual(at("2026-09-24T07:30:00Z"), ["matchday"]); // 08:30 Lisbon: right on time
   assert.deepEqual(at("2026-09-24T09:30:00Z"), ["matchday"]); // 10:30 Lisbon
-  assert.deepEqual(at("2026-09-24T19:30:00Z"), []);          // after kickoff
+  assert.deepEqual(at("2026-09-24T19:30:00Z"), []);           // after kickoff
 });
 test("post-game: fresh matchday yields one keyed message, old ones nothing", () => {
   const md = { id: "m1", created_at: "2026-09-24T17:00:00Z" };
   assert.deepEqual(decidePostGame({ matchday: md, now }).map((e) => e.key), ["postgame:m1"]);
   assert.deepEqual(decidePostGame({ matchday: { ...md, created_at: "2026-09-20T17:00:00Z" }, now }), []);
+});
+test("match awards: nothing before 2h, one message from 2h to 12h, nothing after", () => {
+  const md = (createdAt) => ({ id: "m1", created_at: createdAt });
+  assert.deepEqual(decideMatchAwards({ matchday: md("2026-09-24T17:00:00Z"), now }), []); // 1h old: too soon
+  assert.deepEqual(
+    decideMatchAwards({ matchday: md("2026-09-24T16:00:00Z"), now }).map((e) => e.key),
+    ["match_awards:m1"] // exactly 2h old
+  );
+  assert.deepEqual(
+    decideMatchAwards({ matchday: md("2026-09-24T10:00:00Z"), now }).map((e) => e.key),
+    ["match_awards:m1"] // 8h old, still within the window
+  );
+  assert.deepEqual(decideMatchAwards({ matchday: md("2026-09-20T17:00:00Z"), now }), []); // days old
 });
 test("render: pt, en and pt+en (Goodweather) all include the link", () => {
   const ctx = { game: game(), spots: 10, confirmed: 8, link: "https://x/?join=abc" };
@@ -95,4 +110,22 @@ test("render: post-game lists scores, top scorer and MVP link", () => {
   const md = { mvp_open: true, summary: { matches: [{ n: 1, homeName: "Azuis", awayName: "Brancos", homeGoals: 3, awayGoals: 2 }], lines: [{ nick: "Liminha", goals: 2 }, { nick: "Diogo", goals: 1 }] } };
   const t = render("postgame", { matchday: md, link: "L" }, "en");
   assert.match(t, /Game 1: Azuis 3-2 Brancos/); assert.ok(t.includes("Top scorer: Liminha (2 goals)")); assert.match(t, /Vote for the MVP: L/);
+});
+test("render: match_awards lists top scorer and top assist independently, never says 'tonight'", () => {
+  const md = { summary: { lines: [
+    { nick: "Carlão", goals: 3, assists: 0 },
+    { nick: "Liminha", goals: 1, assists: 2 },
+    { nick: "Tiago", goals: 0, assists: 2 },
+  ] } };
+  const pt = render("match_awards", { matchday: md }, "pt");
+  assert.match(pt, /Artilheiro: Carlão \(3 golos\)/);
+  assert.match(pt, /Maior assistente: Liminha, Tiago \(2 assistências\)/); // tie, both named
+  assert.ok(!/noite/i.test(pt)); // games aren't always at night
+  const en = render("match_awards", { matchday: md }, "en");
+  assert.match(en, /Top scorer: Carlão \(3 goals\)/);
+  assert.match(en, /Most assists: Liminha, Tiago \(2 assists\)/);
+});
+test("render: match_awards falls back gracefully when nobody scored", () => {
+  const t = render("match_awards", { matchday: { summary: { lines: [] } } }, "en");
+  assert.match(t, /No goals logged for this match/);
 });

@@ -1,0 +1,8 @@
+node_modules
+auth
+data
+.env
+.env.*
+bot-out.log
+bot-err.log
+.bot.pid

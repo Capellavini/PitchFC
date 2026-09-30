@@ -80,6 +80,21 @@ const T = {
       title: "🏁 *Full time!*", game: "Game", top: "🎯 Top scorer", vote: "🗳️ Vote for the MVP", goals: "goals",
     }),
   },
+
+  match_awards: {
+    pt: ({ matchday }) => matchAwards(matchday, {
+      title: "🏆 *Destaques da partida*", top: "🎯 Artilheiro", assist: "🅰️ Maior assistente",
+      goals: "golos", assists: "assistências", none: "Sem golos registados nesta partida.",
+    }),
+    ptbr: ({ matchday }) => matchAwards(matchday, {
+      title: "🏆 *Destaques da partida*", top: "🎯 Artilheiro", assist: "🅰️ Maior assistente",
+      goals: "gols", assists: "assistências", none: "Sem gols registados nessa partida.",
+    }),
+    en: ({ matchday }) => matchAwards(matchday, {
+      title: "🏆 *Match standouts*", top: "🎯 Top scorer", assist: "🅰️ Most assists",
+      goals: "goals", assists: "assists", none: "No goals logged for this match.",
+    }),
+  },
 };
 
 function postgame(md, link, L) {
@@ -92,6 +107,26 @@ function postgame(md, link, L) {
     lines.push(`${L.top}: ${best} (${scorers[0].goals} ${L.goals})`);
   }
   if (md.mvp_open) lines.push(`${L.vote}: ${link}`);
+  return lines.join("\n");
+}
+
+// Top by goals and top by assists, independently — a playmaker with 0
+// goals still deserves the assist line, so this never derives one list
+// from the other the way postgame's single "top scorer" line can get away with.
+function matchAwards(md, L) {
+  const rows = md.summary?.lines ?? [];
+  const lines = [L.title];
+  const scorers = rows.filter((l) => l.goals > 0).sort((a, b) => b.goals - a.goals);
+  const assisters = rows.filter((l) => l.assists > 0).sort((a, b) => b.assists - a.assists);
+  if (!scorers.length && !assisters.length) return `${L.title}\n${L.none}`;
+  if (scorers.length) {
+    const best = scorers.filter((s) => s.goals === scorers[0].goals).map((s) => s.nick).join(", ");
+    lines.push(`${L.top}: ${best} (${scorers[0].goals} ${L.goals})`);
+  }
+  if (assisters.length) {
+    const best = assisters.filter((s) => s.assists === assisters[0].assists).map((s) => s.nick).join(", ");
+    lines.push(`${L.assist}: ${best} (${assisters[0].assists} ${L.assists})`);
+  }
   return lines.join("\n");
 }
 

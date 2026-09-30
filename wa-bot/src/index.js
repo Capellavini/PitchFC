@@ -10,11 +10,11 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaile
 import qrcode from "qrcode-terminal";
 import pino from "pino";
 import { cfg } from "./config.js";
-import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays, groupMembers, confirmedRoster, setStatus } from "./db.js";
-import { decide, decidePostGame } from "./events.js";
+import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays, groupMembers, confirmedRoster, setStatus, hasOpenGame, createGame, cancelCurrentGame } from "./db.js";
+import { decide, decidePostGame, decideMatchAwards } from "./events.js";
 import { render, pollContent } from "./messages.js";
-import { isQuietHour, lisbonDayKey } from "./time.js";
-import { answer, classifyIntent, pollApplies } from "./ask.js";
+import { isQuietHour, lisbonDayKey, nextLisbonWeekdayAt, lisbonDateAt, todayLisbon, formatGameWhen } from "./time.js";
+import { answer, classifyIntent, pollApplies, classifyAdminIntent } from "./ask.js";
 import { parseIntent, parseCommand, phonesMatch, splitWaitlist, actionReplies } from "./roster.js";
 import * as polls from "./polls.js";
 
@@ -114,9 +114,11 @@ async function tickGroup(group) {
     if (!blocked) await setPrev(game.id, game.confirmed);
   }
 
-  // Post-game: one message per freshly finished matchday.
+  // Post-game: one message per freshly finished matchday, plus a separate
+  // top-scorer/top-assist recap once the match has had 2h to settle.
   for (const matchday of await recentMatchdays(group.id)) {
     for (const ev of decidePostGame({ matchday, now })) await dispatch(group, null, ev, { matchday });
+    for (const ev of decideMatchAwards({ matchday, now })) await dispatch(group, null, ev, { matchday });
   }
 }
 
@@ -222,6 +224,39 @@ async function handlePollCommand({ group, game, m, jid, lang }) {
   catch (e) { await unclaim(id); throw e; }
 }
 
+// "@Pitch cria jogo sábado às 20h" / "cancela o jogo" — organizer/assistant
+// only. classifyAdminIntent only extracts what was asked; permission is
+// always re-checked here, server-side, never trusted from the model.
+async function handleAdminAction({ group, m, jid, action, lang }) {
+  const say = async (text) => (cfg().autosend ? send(jid, text, m) : log(`[dry-run] @Pitch reply -> ${group.name}: ${text}`));
+  const { me } = await memberFor(group, m);
+  if (!me) return say(actionReplies.not_found[lang]({ link: linkFor(group) }));
+  if (!me.canManageGames) return say(actionReplies.admin_only[lang]({}));
+
+  if (action.action === "cancel_game") {
+    if (!cfg().autosend) return log(`[dry-run] would cancel current game for ${group.name} (asked by ${me.nick})`);
+    const id = await cancelCurrentGame(group.id);
+    if (!id) return say(actionReplies.no_game_to_cancel[lang]({}));
+    log(`admin: ${me.nick} cancelled game ${id} in ${group.name}`);
+    // The group-wide "cancelled" broadcast follows on its own via decide()
+    // once the next poll sees status = cancelled — no need to send it here too.
+    return say(actionReplies.game_cancelled_ack[lang]({}));
+  }
+
+  // create_game
+  if (!action.date && action.weekday == null) return say(actionReplies.ask_day[lang]({}));
+  if (!action.time) return say(actionReplies.ask_time[lang]({}));
+  if (await hasOpenGame(group.id)) return say(actionReplies.already_open_game[lang]({ link: linkFor(group) }));
+
+  const scheduledAt = action.date ? lisbonDateAt(action.date, action.time) : nextLisbonWeekdayAt(action.weekday, action.time);
+  if (!cfg().autosend) return log(`[dry-run] would create game at ${scheduledAt.toISOString()} for ${group.name} (asked by ${me.nick})`);
+  await createGame(group, scheduledAt, action.time);
+  log(`admin: ${me.nick} created a game for ${scheduledAt.toISOString()} in ${group.name}`);
+  // Same idea: the group-wide "game_open" announcement follows on its own
+  // via decide() on the next poll — this reply is just the personal ack.
+  return say(actionReplies.game_created[lang]({ when: formatGameWhen(scheduledAt.toISOString(), lang === "en" ? "en" : "pt") }));
+}
+
 // -- polls: creation (learn the secret) and votes (attendance) ----------------
 async function onPollMessage(m, inner) {
   const jid = m.key.remoteJid;
@@ -315,7 +350,14 @@ async function onMessage(m) {
     log(`addressed in ${group.name}: "${text.slice(0, 60)}" -> ${action ? action.intent : "question"}`);
     if (action) return await handleAction({ group, game, spots, m, jid, ...action, lang: replyLang(action.lang) });
 
-    const reply = await answer({ question: text, game, spots, link: linkFor(group), groupId: group.id, lang: group.wa_bot_lang || "pt" });
+    // "cria jogo sábado às 20h" / "cancela o jogo" — checked only after
+    // confirm/decline finds nothing, so a plain "@Pitch eu vou" is never at risk.
+    const admin = await classifyAdminIntent(text, { todayIso: todayLisbon().isoDate, todayWeekday: todayLisbon().weekday })
+      .catch((e) => { log("admin intent classifier failed:", e.message); return null; });
+    if (admin) return await handleAdminAction({ group, m, jid, action: admin, lang: replyLang(admin.lang) });
+
+    const { me: asker } = await memberFor(group, m);
+    const reply = await answer({ question: text, game, spots, link: linkFor(group), groupId: group.id, askerId: asker?.id, lang: group.wa_bot_lang || "pt" });
     if (!reply) return;
     if (!cfg().autosend) return log(`[dry-run] @Pitch reply -> ${group.name}: ${reply}`);
     await send(jid, reply, m);

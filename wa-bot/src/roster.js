@@ -134,4 +134,39 @@ export const actionReplies = {
     ptbr: () => "Só o organizador pode pedir a enquete.",
     en: () => "Only the organizer can ask for the poll.",
   },
+  admin_only: {
+    pt: () => "Só o organizador ou o auxiliar podem fazer isso. Pede a um deles 🙂",
+    ptbr: () => "Só o organizador ou o auxiliar podem fazer isso. Peça pra um deles 🙂",
+    en: () => "Only the organizer or the assistant can do that — ask one of them 🙂",
+  },
+  ask_day: {
+    pt: () => "Para que dia queres marcar o jogo?",
+    ptbr: () => "Pra que dia você quer marcar o jogo?",
+    en: () => "What day do you want the game on?",
+  },
+  ask_time: {
+    pt: () => "A que horas?",
+    ptbr: () => "A que horas?",
+    en: () => "What time?",
+  },
+  already_open_game: {
+    pt: ({ link }) => `Já há um jogo marcado. Cancela-o primeiro se quiseres marcar outro:\n${link}`,
+    ptbr: ({ link }) => `Já tem um jogo marcado. Cancele primeiro se quiser marcar outro:\n${link}`,
+    en: ({ link }) => `There's already a game on the calendar. Cancel it first if you want to schedule another:\n${link}`,
+  },
+  game_created: {
+    pt: ({ when }) => `⚽ Jogo criado para ${when}! A avisar o grupo.`,
+    ptbr: ({ when }) => `⚽ Jogo criado pra ${when}! Já vou avisar o grupo.`,
+    en: ({ when }) => `⚽ Game created for ${when}! Letting the group know.`,
+  },
+  no_game_to_cancel: {
+    pt: () => "Não há jogo marcado para cancelar.",
+    ptbr: () => "Não tem jogo marcado pra cancelar.",
+    en: () => "There's no game on the calendar to cancel.",
+  },
+  game_cancelled_ack: {
+    pt: () => "🚫 Cancelado. A avisar o grupo.",
+    ptbr: () => "🚫 Cancelado. Já vou avisar o grupo.",
+    en: () => "🚫 Cancelled. Letting the group know.",
+  },
 };
