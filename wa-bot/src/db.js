@@ -6,6 +6,15 @@ let client;
 export const db = () =>
   (client ??= createClient(cfg().supabaseUrl, cfg().serviceKey, { auth: { persistSession: false } }));
 
+/** Durable record of what @Pitch actually sent — full text, not just the
+ *  event kind bot_announcements already tracks. Callers should catch: a
+ *  logging failure must never block or retry the real send. */
+export async function logMessage({ groupId, kind, answer, eventKind = null, question = null, askerId = null }) {
+  const { error } = await db().from("bot_message_log")
+    .insert({ group_id: groupId, kind, event_kind: eventKind, question, answer, asker_id: askerId });
+  if (error) throw error;
+}
+
 /** Groups that opted in to the bot (jid set + enabled). Safe by default. */
 export async function botGroups() {
   const { data, error } = await db().from("groups")

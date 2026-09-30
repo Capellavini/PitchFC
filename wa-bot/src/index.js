@@ -10,7 +10,7 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaile
 import qrcode from "qrcode-terminal";
 import pino from "pino";
 import { cfg } from "./config.js";
-import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays, groupMembers, confirmedRoster, setStatus, hasOpenGame, createGame, cancelCurrentGame } from "./db.js";
+import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays, groupMembers, confirmedRoster, setStatus, hasOpenGame, createGame, cancelCurrentGame, logMessage } from "./db.js";
 import { decide, decidePostGame, decideMatchAwards } from "./events.js";
 import { render, pollContent } from "./messages.js";
 import { isQuietHour, lisbonDayKey, nextLisbonWeekdayAt, lisbonDateAt, todayLisbon, formatGameWhen } from "./time.js";
@@ -85,12 +85,25 @@ async function dispatch(group, gameId, ev, ctx) {
     await send(group.wa_group_jid, text);
     await markSent(id);
     log(`sent ${ev.kind} -> ${group.name}`);
+    await logMessage({ groupId: group.id, kind: "proactive", eventKind: ev.kind, answer: text })
+      .catch((e) => log("bot_message_log write failed:", e.message));
     return "sent";
   } catch (e) {
     await unclaim(id); // retry next poll
     log("send failed, will retry:", e.message);
     return "blocked";
   }
+}
+
+// Sends (or dry-run-logs) a reply and, on a real send, records the full
+// text in bot_message_log — the durable "what did @Pitch actually say"
+// record dispatch() keeps for proactive events. A logging failure never
+// blocks or retries the send itself.
+async function sayAndLog({ group, jid, m, answer, kind, question = null, askerId = null }) {
+  if (!cfg().autosend) return log(`[dry-run] @Pitch reply -> ${group.name}: ${answer}`);
+  await send(jid, answer, m);
+  await logMessage({ groupId: group.id, kind, question, answer, askerId })
+    .catch((e) => log("bot_message_log write failed:", e.message));
 }
 
 async function tickGroup(group) {
@@ -193,60 +206,63 @@ const nextGame = async (group) =>
     .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0] ?? null;
 
 // "@Pitch eu vou" / "@Pitch I'm out"
-async function handleAction({ group, game, spots, m, jid, intent, lang }) {
+async function handleAction({ group, game, spots, m, jid, intent, lang, text }) {
   const reply = (key, ctx = {}) => actionReplies[key][lang]({ link: linkFor(group), ...ctx });
-  const say = async (text) => (cfg().autosend ? send(jid, text, m) : log(`[dry-run] @Pitch reply -> ${group.name}: ${text}`));
+  const say = (msg, askerId) => sayAndLog({ group, jid, m, answer: msg, kind: "action_reply", question: text, askerId });
 
   const r = await applyAttendance({ group, game, spots, m, intent });
   switch (r.result) {
     case "no_game": return say(reply("no_game"));
     case "not_found": return say(reply("not_found"));
-    case "already": return say(reply("already", { nick: r.me.nick }));
+    case "already": return say(reply("already", { nick: r.me.nick }), r.me.id);
     case "window": return say(reply("window"));
-    case "declined": return say(reply("declined", { nick: r.me.nick }));
-    case "waitlist": return say(reply("waitlist", { nick: r.me.nick, pos: r.pos }));
-    case "confirmed": return say(reply("confirmed", { nick: r.me.nick, c: r.c, s: spots }));
+    case "declined": return say(reply("declined", { nick: r.me.nick }), r.me.id);
+    case "waitlist": return say(reply("waitlist", { nick: r.me.nick, pos: r.pos }), r.me.id);
+    case "confirmed": return say(reply("confirmed", { nick: r.me.nick, c: r.c, s: spots }), r.me.id);
     default: return undefined; // dry-run
   }
 }
 
 // "@Pitch enquete": any registered member can ask the bot to post its attendance poll (max 1/hour).
-async function handlePollCommand({ group, game, m, jid, lang }) {
+async function handlePollCommand({ group, game, m, jid, lang, text }) {
   const reply = (key) => actionReplies[key][lang]({});
-  const say = async (text) => (cfg().autosend ? send(jid, text, m) : log(`[dry-run] @Pitch reply -> ${group.name}: ${text}`));
+  const say = (msg, askerId) => sayAndLog({ group, jid, m, answer: msg, kind: "action_reply", question: text, askerId });
   if (!game) return say(reply("no_game"));
   const { me } = await memberFor(group, m);
   if (!me) return say(actionReplies.not_found[lang]({ link: linkFor(group) }));
   if (!cfg().autosend) return log(`[dry-run] would post attendance poll for ${game.id} (asked by ${me.nick})`);
   const id = await claim(group.id, game.id, "game_poll", `game_poll:${game.id}:manual:${Math.floor(Date.now() / 36e5)}`);
   if (!id) return log("poll already posted this hour, ignoring");
-  try { await sendPoll(group, game); await markSent(id); log(`sent game_poll (manual) -> ${group.name}`); }
-  catch (e) { await unclaim(id); throw e; }
+  try {
+    await sendPoll(group, game); await markSent(id); log(`sent game_poll (manual) -> ${group.name}`);
+    await logMessage({ groupId: group.id, kind: "poll_reply", eventKind: "game_poll", question: text, answer: "[posted attendance poll]", askerId: me.id })
+      .catch((e) => log("bot_message_log write failed:", e.message));
+  } catch (e) { await unclaim(id); throw e; }
 }
 
 // "@Pitch cria jogo sábado às 20h" / "cancela o jogo" — organizer/assistant
 // only. classifyAdminIntent only extracts what was asked; permission is
 // always re-checked here, server-side, never trusted from the model.
-async function handleAdminAction({ group, m, jid, action, lang }) {
-  const say = async (text) => (cfg().autosend ? send(jid, text, m) : log(`[dry-run] @Pitch reply -> ${group.name}: ${text}`));
+async function handleAdminAction({ group, m, jid, action, lang, text }) {
+  const say = (msg, askerId) => sayAndLog({ group, jid, m, answer: msg, kind: "admin_reply", question: text, askerId });
   const { me } = await memberFor(group, m);
   if (!me) return say(actionReplies.not_found[lang]({ link: linkFor(group) }));
-  if (!me.canManageGames) return say(actionReplies.admin_only[lang]({}));
+  if (!me.canManageGames) return say(actionReplies.admin_only[lang]({}), me.id);
 
   if (action.action === "cancel_game") {
     if (!cfg().autosend) return log(`[dry-run] would cancel current game for ${group.name} (asked by ${me.nick})`);
     const id = await cancelCurrentGame(group.id);
-    if (!id) return say(actionReplies.no_game_to_cancel[lang]({}));
+    if (!id) return say(actionReplies.no_game_to_cancel[lang]({}), me.id);
     log(`admin: ${me.nick} cancelled game ${id} in ${group.name}`);
     // The group-wide "cancelled" broadcast follows on its own via decide()
     // once the next poll sees status = cancelled — no need to send it here too.
-    return say(actionReplies.game_cancelled_ack[lang]({}));
+    return say(actionReplies.game_cancelled_ack[lang]({}), me.id);
   }
 
   // create_game
-  if (!action.date && action.weekday == null) return say(actionReplies.ask_day[lang]({}));
-  if (!action.time) return say(actionReplies.ask_time[lang]({}));
-  if (await hasOpenGame(group.id)) return say(actionReplies.already_open_game[lang]({ link: linkFor(group) }));
+  if (!action.date && action.weekday == null) return say(actionReplies.ask_day[lang]({}), me.id);
+  if (!action.time) return say(actionReplies.ask_time[lang]({}), me.id);
+  if (await hasOpenGame(group.id)) return say(actionReplies.already_open_game[lang]({ link: linkFor(group) }), me.id);
 
   const scheduledAt = action.date ? lisbonDateAt(action.date, action.time) : nextLisbonWeekdayAt(action.weekday, action.time);
   if (!cfg().autosend) return log(`[dry-run] would create game at ${scheduledAt.toISOString()} for ${group.name} (asked by ${me.nick})`);
@@ -254,7 +270,7 @@ async function handleAdminAction({ group, m, jid, action, lang }) {
   log(`admin: ${me.nick} created a game for ${scheduledAt.toISOString()} in ${group.name}`);
   // Same idea: the group-wide "game_open" announcement follows on its own
   // via decide() on the next poll — this reply is just the personal ack.
-  return say(actionReplies.game_created[lang]({ when: formatGameWhen(scheduledAt.toISOString(), lang === "en" ? "en" : "pt") }));
+  return say(actionReplies.game_created[lang]({ when: formatGameWhen(scheduledAt.toISOString(), lang === "en" ? "en" : "pt") }), me.id);
 }
 
 // -- polls: creation (learn the secret) and votes (attendance) ----------------
@@ -342,25 +358,27 @@ async function onMessage(m) {
     const replyLang = (detected) => (detected === "en" ? "en" : (group.wa_bot_lang || "pt"));
 
     const cmd = parseCommand(text);
-    if (cmd) return await handlePollCommand({ group, game, m, jid, lang: replyLang(cmd.lang) });
+    if (cmd) return await handlePollCommand({ group, game, m, jid, lang: replyLang(cmd.lang), text });
 
     // Strict phrases first (free, instant); otherwise let the model read natural wording.
     let action = parseIntent(text);
     if (!action) action = await classifyIntent(text).catch((e) => { log("intent classifier failed:", e.message); return null; });
     log(`addressed in ${group.name}: "${text.slice(0, 60)}" -> ${action ? action.intent : "question"}`);
-    if (action) return await handleAction({ group, game, spots, m, jid, ...action, lang: replyLang(action.lang) });
+    if (action) return await handleAction({ group, game, spots, m, jid, ...action, lang: replyLang(action.lang), text });
 
     // "cria jogo sábado às 20h" / "cancela o jogo" — checked only after
     // confirm/decline finds nothing, so a plain "@Pitch eu vou" is never at risk.
     const admin = await classifyAdminIntent(text, { todayIso: todayLisbon().isoDate, todayWeekday: todayLisbon().weekday })
       .catch((e) => { log("admin intent classifier failed:", e.message); return null; });
-    if (admin) return await handleAdminAction({ group, m, jid, action: admin, lang: replyLang(admin.lang) });
+    if (admin) return await handleAdminAction({ group, m, jid, action: admin, lang: replyLang(admin.lang), text });
 
     const { me: asker } = await memberFor(group, m);
     const reply = await answer({ question: text, game, spots, link: linkFor(group), groupId: group.id, askerId: asker?.id, lang: group.wa_bot_lang || "pt" });
     if (!reply) return;
     if (!cfg().autosend) return log(`[dry-run] @Pitch reply -> ${group.name}: ${reply}`);
     await send(jid, reply, m);
+    await logMessage({ groupId: group.id, kind: "answer", question: text, answer: reply, askerId: asker?.id })
+      .catch((e) => log("bot_message_log write failed:", e.message));
   } catch (e) { log("message error (ignored):", e.message); }
 }
 
