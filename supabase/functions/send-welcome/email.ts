@@ -10,7 +10,14 @@
 export const APP_URL = "https://pitch-fc.com";
 
 export type Lang = "pt" | "pt-br" | "en";
-export type Social = { label: string; handle: string; url: string };
+export type Social = { label: string; handle: string; url: string; icon?: string };
+
+// Hosted on the app (public/brand) — email clients need absolute PNG URLs (Gmail drops SVG).
+export const LOGO_URL = "https://pitch-fc.com/brand/logo.png"; // white wordmark, 1178×360
+export const ICONS = {
+  instagram: "https://pitch-fc.com/brand/email-instagram.png",
+  whatsapp: "https://pitch-fc.com/brand/email-whatsapp.png",
+};
 
 const BRAND = {
   navy: "#0A0F18",
@@ -132,7 +139,7 @@ export function pickLang(appLang?: string | null, groupLang?: string | null): La
 export function whatsappSocial(raw?: string | null): Social | null {
   const digits = (raw || "").replace(/\D/g, "");
   if (digits.length < 8) return null;
-  return { label: "WhatsApp", handle: `+${digits}`, url: `https://wa.me/${digits}` };
+  return { label: "WhatsApp", handle: `+${digits}`, url: `https://wa.me/${digits}`, icon: ICONS.whatsapp };
 }
 
 export type WelcomeInput = {
@@ -171,9 +178,11 @@ export function renderWelcome({ firstName: n, groupName, lang, botEnabled, socia
           </td>
         </tr>` : "";
 
-  const socialsHtml = socials.map((s) =>
-    `<a href="${escapeHtml(s.url)}" style="color:${BRAND.ink};font-weight:700;text-decoration:none;">${escapeHtml(s.label)} ${escapeHtml(s.handle)}</a>`,
-  ).join(` <span style="color:${BRAND.muted};">·</span> `);
+  // Round clickable icons (hosted PNGs); label as alt text for clients that block images.
+  const socialsHtml = socials.map((s) => s.icon
+    ? `<a href="${escapeHtml(s.url)}" style="display:inline-block;margin:0 6px;text-decoration:none;"><img src="${escapeHtml(s.icon)}" width="36" height="36" alt="${escapeHtml(s.label)}" title="${escapeHtml(`${s.label} ${s.handle}`)}" style="display:block;border:0;width:36px;height:36px;"></a>`
+    : `<a href="${escapeHtml(s.url)}" style="color:${BRAND.ink};font-weight:700;text-decoration:none;margin:0 6px;">${escapeHtml(s.label)}</a>`,
+  ).join("");
 
   const html = `<!doctype html>
 <html lang="${lang === "pt-br" ? "pt-BR" : lang === "en" ? "en" : "pt-PT"}">
@@ -191,7 +200,7 @@ export function renderWelcome({ firstName: n, groupName, lang, botEnabled, socia
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid ${BRAND.line};">
         <tr>
           <td style="background:${BRAND.navy};padding:22px 28px;font-family:Arial,Helvetica,sans-serif;">
-            <span style="font-size:26px;font-weight:900;font-style:italic;letter-spacing:1px;color:#FFFFFF;">PITCH</span><span style="font-size:26px;font-weight:900;color:${BRAND.lime};">.</span>
+            <a href="${url}" style="text-decoration:none;"><img src="${LOGO_URL}" width="150" height="46" alt="PITCH" style="display:block;border:0;outline:none;width:150px;height:46px;color:#FFFFFF;font-size:24px;font-weight:900;font-style:italic;"></a>
           </td>
         </tr>
         <tr>
@@ -225,7 +234,7 @@ export function renderWelcome({ firstName: n, groupName, lang, botEnabled, socia
         </tr>
         <tr>
           <td style="padding:18px 28px 24px 28px;border-top:1px solid ${BRAND.line};font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:${BRAND.muted};">
-            ${socials.length ? `<div style="margin-bottom:6px;">${escapeHtml(c.follow)}: ${socialsHtml}</div>` : ""}
+            ${socials.length ? `<div style="text-align:center;margin-bottom:14px;"><div style="font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${BRAND.muted};margin-bottom:10px;">${escapeHtml(c.follow)}</div>${socialsHtml}</div>` : ""}
             <div>${escapeHtml(c.why)}</div>
             <div style="margin-top:6px;"><a href="${url}" style="color:${BRAND.muted};">pitch-fc.com</a></div>
           </td>

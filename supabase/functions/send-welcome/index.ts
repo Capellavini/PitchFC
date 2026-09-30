@@ -26,11 +26,11 @@
 // Body (optional): { lang?: "pt" | "pt-br" | "en", join_token?: string }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { firstName, pickLang, renderWelcome, whatsappSocial, type Social } from "./email.ts";
+import { ICONS, firstName, pickLang, renderWelcome, whatsappSocial, type Social } from "./email.ts";
 
 // ── Footer social links — the single place to add more (TikTok, X, …) ──
 const SOCIALS: Social[] = [
-  { label: "Instagram", handle: "@pitchfc.app", url: "https://instagram.com/pitchfc.app" },
+  { label: "Instagram", handle: "@pitchfc.app", url: "https://instagram.com/pitchfc.app", icon: ICONS.instagram },
   ...[whatsappSocial(Deno.env.get("PITCH_WHATSAPP"))].filter((s): s is Social => !!s),
 ];
 
