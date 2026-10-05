@@ -100,7 +100,7 @@ const CONTENT = {
         h: "7. Quanto tempo guardamos os teus dados",
         p: [
           "Guardamos os teus dados enquanto a tua conta estiver ativa. Se pedires a eliminação da conta, apagamos os teus dados pessoais no prazo de 30 dias, exceto o que formos legalmente obrigados a manter.",
-          "Os registos de mensagens do Pitch AI (pergunta e resposta) são guardados apenas pelo tempo necessário para auditoria e melhoria do serviço. Os dados de análise ficam no Google pelo período configurado na nossa conta de Analytics (no máximo 14 meses).",
+          "Os registos de mensagens do Pitch AI (pergunta e resposta) são guardados para auditoria e melhoria do serviço e apagados automaticamente ao fim de 90 dias. Os dados de análise ficam no Google pelo período configurado na nossa conta de Analytics (no máximo 14 meses).",
         ],
       },
       {

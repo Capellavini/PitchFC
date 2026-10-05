@@ -72,9 +72,8 @@ Na primeira visita perguntamos-te se aceitas a análise de utilização. Podes m
 
 Guardamos os teus dados enquanto a tua conta estiver ativa. Se pedires a eliminação da conta, apagamos os teus dados pessoais no prazo de 30 dias, exceto o que formos legalmente obrigados a manter.
 
-Os registos de mensagens do Pitch AI (pergunta e resposta) são guardados apenas pelo tempo necessário para auditoria e melhoria do serviço. Os dados de análise ficam no Google pelo período configurado na nossa conta de Analytics (no máximo 14 meses).
+Os registos de mensagens do Pitch AI (pergunta e resposta) são guardados para auditoria e melhoria do serviço e apagados automaticamente ao fim de 90 dias. Os dados de análise ficam no Google pelo período configurado na nossa conta de Analytics (no máximo 14 meses).
 
-*Nota interna: definir um prazo concreto de retenção para `bot_message_log` (ex. 90 dias, via job de limpeza) e passá-lo para o texto público; "o tempo necessário" é vago para o RGPD.*
 
 ## 8. Os teus direitos
 
