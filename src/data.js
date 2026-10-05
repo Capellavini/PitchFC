@@ -117,7 +117,7 @@ export const INITIAL_MATERIAL = [
 ];
 
 export const TOTAL_GAMES = 15;
-export const POSITIONS = ["Guarda-redes", "Defesa", "Médio", "Avançado"];
+export { POSITIONS } from "./lib/core/overall.js";
 export const FEET = ["Direito", "Esquerdo", "Ambos"];
 
 export const NATIONALITIES = [

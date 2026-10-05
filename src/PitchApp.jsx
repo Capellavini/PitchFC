@@ -12,7 +12,9 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { C, BRAND, TOUCH } from "./theme";
-import { INITIAL_GROUP, INITIAL_MATERIAL, DEFAULT_SETTINGS, POSITIONS, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
+import { INITIAL_GROUP, INITIAL_MATERIAL, DEFAULT_SETTINGS, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
+import { hashId } from "./lib/core/ids.js";
+import { drawTeams as drawTeamsCore } from "./lib/core/teamDraw.js";
 import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
 import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGHTS } from "./lib/fantasy";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
@@ -73,18 +75,6 @@ import KeepyUppyLoader from "./components/KeepyUppyLoader";
 import { isEnabled } from "./lib/flags";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
-
-// Team draw supports 2–6 teams; each gets a colour and an editable name.
-const TEAM_PALETTE = ["#C8FF00", "#4895FF", "#FF9F0A", "#A78BFA", "#FF6B9D", "#2DD4BF"];
-const TEAM_NAMES = ["Coletes", "Sem coletes", "Equipa 3", "Equipa 4", "Equipa 5", "Equipa 6"];
-
-// Stable positive integer from a uuid, so cloud players slot into the
-// local features that assume numeric ids (teams, matchday, posts…).
-const hashId = (uuid) => {
-  let h = 0;
-  for (let i = 0; i < uuid.length; i++) h = (h * 31 + uuid.charCodeAt(i)) >>> 0;
-  return h;
-};
 
 // 5-tab IA (2026-09-28): home · jogar · matchday · competir · perfil.
 // Any caller still using a pre-redesign id lands on its new home instead
@@ -603,24 +593,13 @@ export default function PitchApp() {
     else setGroup((g) => g.map((p) => (p.isMe ? { ...p, injured: value } : p)));
   };
 
-  // Position-balanced team draw into N (2–6) teams: shuffle, order by
-  // position, then snake-deal across teams so each gets a fair spread.
+  // OVR-balanced team draw into N (2–6) teams (shared core, also used by
+  // the WhatsApp bot): position snake by OVR, then same-position swaps
+  // while they shrink the gap between the strongest and weakest team.
   const drawTeams = (numTeams = 2) => {
-    const n = Math.max(2, Math.min(6, numTeams));
     // Only those actually playing get drawn — the waiting line sits out.
     const { playing } = splitWaitlist(baseGroup.filter((p) => p.status === "confirmed"), groupSettings.maxPlayers);
-    const shuffled = [...playing].sort(() => Math.random() - 0.5);
-    const order = POSITIONS.flatMap((pos) => shuffled.filter((p) => p.position === pos));
-    const newTeams = Array.from({ length: n }, (_, i) => ({
-      id: `t${i + 1}`, name: TEAM_NAMES[i], color: TEAM_PALETTE[i], players: [],
-    }));
-    order.forEach((p, idx) => {
-      const round = Math.floor(idx / n);
-      const slot = idx % n;
-      const ti = round % 2 === 0 ? slot : n - 1 - slot; // snake
-      newTeams[ti].players.push(p.id);
-    });
-    updateTeams(newTeams, { resetConfirmed: true, drawnBy: true });
+    updateTeams(drawTeamsCore(playing, numTeams, { balance: "ovr" }), { resetConfirmed: true, drawnBy: true });
   };
 
   const renameTeam = (teamId, name) =>

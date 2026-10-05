@@ -5,52 +5,18 @@
 // Events: goal { teamId, scorerId, assistId?, ownGoal?, minute? } — teamId
 // is always the team that BENEFITS (own goals included) — or save
 // { teamId, type: "epicSave", playerId }.
+// Table / play-off logic lives in the shared core (src/lib/core/
+// standings.js, also used by the WhatsApp bot); re-exported here so app
+// import paths stay put.
 import { t } from "./i18n";
-import { matchWinner } from "./tournament";
+import { computeTable, isSave } from "./core/standings.js";
 
-export const isSave = (e) => e?.type === "epicSave";
-
-export const goalsOf = (m, teamId) => (m.events || []).filter((e) => e.teamId === teamId && !isSave(e)).length;
+export { isSave, goalsOf, playoffState } from "./core/standings.js";
 
 /** Group-stage table (campeonato = the whole day; personalizado = only the
  *  "grupo" matches — the play-off doesn't count towards it). */
 export function standings(teams, matches) {
-  const tally = {};
-  teams.forEach((tm) => { tally[tm.id] = { ...tm, w: 0, d: 0, l: 0, gf: 0, ga: 0 }; });
-  matches.filter((m) => m.stage !== "playoff" && !m.isBye).forEach((m) => {
-    const H = tally[m.homeId], A = tally[m.awayId];
-    if (!H || !A) return;
-    const hg = goalsOf(m, m.homeId), ag = goalsOf(m, m.awayId);
-    H.gf += hg; H.ga += ag; A.gf += ag; A.ga += hg;
-    if (hg > ag) { H.w++; A.l++; } else if (ag > hg) { A.w++; H.l++; } else { H.d++; A.d++; }
-  });
-  return Object.values(tally)
-    .map((r) => ({ ...r, j: r.w + r.d + r.l, gd: r.gf - r.ga, pts: r.w * 3 + r.d }))
-    .sort((x, y) => y.pts - x.pts || y.gd - x.gd || y.gf - x.gf);
-}
-
-/** Play-off bookkeeping (personalizado only): current round, whether it's
- *  decided, champion, and whether "advance" is allowed. "Concluído" (the
- *  explicit lock-in) is what gates advancing — a 0-0 on a match nobody has
- *  played yet would otherwise look decided from the score alone. */
-export function playoffState(matchday) {
-  const matches = matchday?.matches || [];
-  const playoffMatches = matches.filter((m) => m.stage === "playoff");
-  const rounds = [...new Set(playoffMatches.map((m) => m.round))].sort((a, b) => a - b);
-  const currentRound = playoffMatches.length ? Math.max(...playoffMatches.map((m) => m.round)) : 0;
-  const currentRoundMatches = playoffMatches.filter((m) => m.round === currentRound);
-  const winnerOf = (m) => (m.isBye ? m.homeId : matchWinner(m, goalsOf(m, m.homeId), goalsOf(m, m.awayId)));
-  const roundWinners = currentRoundMatches.map(winnerOf);
-  const isDone = (m) => m.isBye || Boolean(m.concluded);
-  const groupMatches = matches.filter((m) => m.stage !== "playoff");
-  const allGroupConcluded = groupMatches.length > 0 && groupMatches.every(isDone);
-  const roundDecided = roundWinners.length > 0 && roundWinners.every(Boolean) && currentRoundMatches.every(isDone);
-  const champion = currentRound > 0 && currentRoundMatches.length === 1 && roundDecided ? roundWinners[0] : null;
-  const isPersonalizado = matchday?.mode === "personalizado";
-  const canAdvance = isPersonalizado && Boolean(matchday.config?.faseFinal) && !champion
-    && (currentRound === 0 ? allGroupConcluded : roundDecided);
-  const roundSize = (round) => playoffMatches.filter((pm) => pm.round === round).length;
-  return { playoffMatches, rounds, currentRound, champion, canAdvance, roundSize, winnerOf };
+  return computeTable(teams, matches.filter((m) => m.stage !== "playoff" && !m.isBye));
 }
 
 /** "JOGO 3" / "MEIA-FINAL" / "FINAL". */
