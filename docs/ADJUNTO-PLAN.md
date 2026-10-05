@@ -21,7 +21,9 @@
 >       - Vários jogadores com o mesmo número (dados sujos) → não ativa; responde como "nenhum" e regista em log.
 >     - O botão com código continua a existir (cobre números desatualizados e o caso `@lid` sem PN).
 >
-> Ordem de construção: **A** core partilhado → **B** migrações → **C** bot (dry-run, só Fut do Burger) → **D** app.
+> 12. **Grupo piloto: Goodweather F.C.** (não o Fut do Burger) — e o teste de aceitação é o fluxo completo com o **organizador do Goodweather a pedir a ativação pelo WhatsApp** ("Quero o Treinador Adjunto"), sem passar pela app.
+>
+> Ordem de construção: **A** core partilhado → **B** migrações → **C** bot (dry-run, só Goodweather) → **D** app.
 
 ---
 
