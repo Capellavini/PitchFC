@@ -295,6 +295,9 @@ export function makeRouter(env) {
     if (res.stop === "error") env.log("adjunto agent error:", res.error?.message);
     if (res.stop === "guard") env.log(`adjunto guard_violation: ${res.violations?.join(", ")}`);
     let reply = res.text;
+    // A team card produced this turn must reach the organizer verbatim even
+    // if the model paraphrased it (its numbers come from code, not the model).
+    if (tc.card && !reply.includes(tc.card.split("\n").at(-1))) reply = `${reply ? `${reply}\n\n` : ""}${tc.card}`;
     for (const p of tc.created) {
       if (!reply.includes(`#${p.id}`) && p.kind !== "teams") reply += `\n#${p.id} ${p.summary}. ${lang === "en" ? "Confirm? (yes/no)" : "Confirmas? (sim/não)"}`;
       await env.store.appendMessage(link.id, active.id, "event", `[#${p.id} pendente: ${p.summary}]`).catch(() => {});

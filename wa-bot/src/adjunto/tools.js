@@ -254,6 +254,7 @@ const H_ = {
     const n = num_teams == null ? null : Math.max(2, Math.min(6, num_teams));
     const { proposal, text } = await teamsflow.startCard(tc.env, { link: tc.link, ctx, lang: tc.lang, numTeams: n, forceRedraw: n != null });
     tc.created.push({ id: proposal.id, kind: "teams", summary: "teams" });
+    tc.card = text;
     return { status: "pending_confirmation", proposal_id: proposal.id, card: text };
   },
   async swap_players({ a, b }, tc) { return editTeams(tc, { type: "swap", a, b }); },
@@ -329,6 +330,7 @@ async function editTeams(tc, cmd) {
   const p = await pendingTeams(tc);
   const ctx = await tc.ctx();
   const { text } = await teamsflow.editCard(tc.env, { link: tc.link, ctx, proposal: p, cmd, lang: tc.lang });
+  tc.card = text;
   return { status: "pending_confirmation", proposal_id: p.id, card: text };
 }
 
