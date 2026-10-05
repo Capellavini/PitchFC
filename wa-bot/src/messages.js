@@ -86,6 +86,33 @@ const T = {
     en: ({ game }) => `🚫 *Game cancelled:* ${formatGameWhen(game.scheduled_at, "en")}. We'll let you know when the next one opens.`,
   },
 
+  // ── Treinador Adjunto group kinds (organizer-approved in DM). Group-safe by
+  // construction: ctx is sanitised by adjunto/groupsafe.js to names/nicks and
+  // the game row only — never OVRs, insights or anything DM-only.
+  adj_reminder: {
+    pt: ({ game, confirmed, spots, pending = [], link }) =>
+      `⏰ *Lembrete* — ${formatGameWhen(game.scheduled_at, "pt")}${at(game)}: ${spotsLeft.pt(spots - confirmed)} (${confirmed}/${spots}).${pending.length ? `\nAinda sem resposta: ${pending.join(", ")}` : ""}\n${link}`,
+    ptbr: ({ game, confirmed, spots, pending = [], link }) =>
+      `⏰ *Lembrete* — ${formatGameWhen(game.scheduled_at, "pt")}${at(game)}: ${spotsLeft.ptbr(spots - confirmed)} (${confirmed}/${spots}).${pending.length ? `\nAinda sem resposta: ${pending.join(", ")}` : ""}\n${link}`,
+    en: ({ game, confirmed, spots, pending = [], link }) =>
+      `⏰ *Reminder* — ${formatGameWhen(game.scheduled_at, "en")}${at(game)}: ${spotsLeft.en(spots - confirmed)} (${confirmed}/${spots}).${pending.length ? `\nNo answer yet: ${pending.join(", ")}` : ""}\n${link}`,
+  },
+  open_spots: {
+    pt: ({ game, confirmed, spots, inviteLink, link }) => `🙋 *Vagas abertas* para ${formatGameWhen(game.scheduled_at, "pt")}${at(game)} — ${spotsLeft.pt(spots - confirmed)}. Conheces alguém? Partilha:\n${inviteLink || link}`,
+    ptbr: ({ game, confirmed, spots, inviteLink, link }) => `🙋 *Vagas abertas* para ${formatGameWhen(game.scheduled_at, "pt")}${at(game)} — ${spotsLeft.ptbr(spots - confirmed)}. Conhece alguém? Compartilhe:\n${inviteLink || link}`,
+    en: ({ game, confirmed, spots, inviteLink, link }) => `🙋 *Open spots* for ${formatGameWhen(game.scheduled_at, "en")}${at(game)} — ${spotsLeft.en(spots - confirmed)}. Know someone? Share:\n${inviteLink || link}`,
+  },
+  teams_confirmed: {
+    pt: ({ teams }) => `👕 *Equipas*\n${teams.map((t) => `*${t.name}*: ${t.nicks.join(", ")}`).join("\n")}`,
+    ptbr: ({ teams }) => `👕 *Times*\n${teams.map((t) => `*${t.name}*: ${t.nicks.join(", ")}`).join("\n")}`,
+    en: ({ teams }) => `👕 *Teams*\n${teams.map((t) => `*${t.name}*: ${t.nicks.join(", ")}`).join("\n")}`,
+  },
+  rescheduled: {
+    pt: ({ game, link }) => `📢 *Jogo alterado:* agora é ${formatGameWhen(game.scheduled_at, "pt")}${at(game)}.\n${link}`,
+    ptbr: ({ game, link }) => `📢 *Jogo alterado:* agora é ${formatGameWhen(game.scheduled_at, "pt")}${at(game)}.\n${link}`,
+    en: ({ game, link }) => `📢 *Game changed:* now ${formatGameWhen(game.scheduled_at, "en")}${at(game)}.\n${link}`,
+  },
+
   // ctx.matchday = a `matchdays` row; summary.matches / summary.lines come from
   // the live-matchday finish (see PitchApp.jsx).
   postgame: {

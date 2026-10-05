@@ -61,9 +61,12 @@ export async function claim(groupId, gameId, kind, key) {
 export const markSent = (id) => db().from("bot_announcements").update({ status: "sent" }).eq("id", id);
 export const unclaim = (id) => db().from("bot_announcements").delete().eq("id", id);
 
+// Group messages only: the Treinador Adjunto's private DMs are claimed in
+// the same table with kind "dm_*" and must not eat the group's daily cap.
 export async function sentSince(groupId, iso) {
   const { count } = await db().from("bot_announcements")
-    .select("id", { count: "exact", head: true }).eq("group_id", groupId).gte("created_at", iso);
+    .select("id", { count: "exact", head: true }).eq("group_id", groupId).gte("created_at", iso)
+    .not("kind", "like", "dm_%");
   return count ?? 0;
 }
 
