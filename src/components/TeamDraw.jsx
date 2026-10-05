@@ -29,13 +29,15 @@ const selectStyle = {
  *  - group, teams ([{id,name,color,players:[id]}] | null), playing (the
  *    confirmed players inside the spots cap — the waiting line sits out).
  *  - canManage, confirmed, setByName, confirmedByName.
- *  - onDraw(n), onClear(), onRename(teamId, name), onMove(playerId, teamId), onConfirm().
+ *  - onDraw(n), onClear(), onRename(teamId, name), onMove(playerId, teamId),
+ *    onSetCaptain(teamId, playerId|null), onConfirm().
  */
-export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onConfirm, lockDraw = false, hideTeamId = null }) {
+export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onSetCaptain, onConfirm, lockDraw = false, hideTeamId = null }) {
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const [editing, setEditing] = useState(false);
 
   const resolve = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
+  const captainOf = (tm) => (tm.captainId != null && tm.players.includes(tm.captainId) ? group.find((p) => p.id === tm.captainId) : null);
   const teamOverall = (tm) => avgOverall(tm, group);
   // Confirmed players not on any drawn team — they confirmed after the
   // draw, or a teammate declining freed a spot (releaseFromTeams in
@@ -141,6 +143,22 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
               {mine && !showEditor && <Chip variant="lime">{t("A tua equipa")}</Chip>}
               {ovr != null && <span style={{ fontSize: T.meta, fontWeight: 800, color: C.text2, flexShrink: 0 }}>OVR {ovr}</span>}
             </div>
+
+            {/* optional captain — shown under the team name on the live score */}
+            {showEditor && onSetCaptain && players.length > 0 && (
+              <label style={{ display: "flex", alignItems: "center", gap: S.sm, minHeight: 44 }}>
+                <span style={{ fontSize: T.meta, fontWeight: 700, color: C.text2, flexShrink: 0 }}>{t("Capitão")}</span>
+                <select value={players.some((p) => p.id === tm.captainId) ? tm.captainId : ""} onChange={(e) => onSetCaptain(tm.id, e.target.value ? Number(e.target.value) || e.target.value : null)}
+                  aria-label={t("Capitão")}
+                  style={{ ...selectStyle, maxWidth: "none", flex: 1, minWidth: 0, color: tm.captainId ? C.text1 : C.text2, border: `1px solid ${C.border}`, background: C.card }}>
+                  <option value="">{t("Sem capitão")}</option>
+                  {players.map((p) => <option key={p.id} value={p.id}>{p.nick}</option>)}
+                </select>
+              </label>
+            )}
+            {!showEditor && captainOf(tm) && (
+              <div style={{ fontSize: T.meta, fontWeight: 700, color: C.text2, marginBottom: S.md }}>{t("Capitão")} {captainOf(tm).nick}</div>
+            )}
 
             {players.length === 0 && (
               <div style={{ fontSize: T.meta, color: C.text2, padding: `${S.sm}px 0 ${S.md}px` }}>{t("sem jogadores")}</div>

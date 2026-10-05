@@ -14,9 +14,12 @@ import { computeTable, isSave } from "./core/standings.js";
 export { isSave, goalsOf, playoffState } from "./core/standings.js";
 
 /** Group-stage table (campeonato = the whole day; personalizado = only the
- *  "grupo" matches — the play-off doesn't count towards it). */
+ *  "grupo" matches — the play-off doesn't count towards it). Personalizado
+ *  generates every fixture upfront, so a game nobody has touched yet (no
+ *  events, not concluded) must not count as a 0-0 draw. */
 export function standings(teams, matches) {
-  return computeTable(teams, matches.filter((m) => m.stage !== "playoff" && !m.isBye));
+  const started = (m) => m.concluded || (m.events || []).length > 0;
+  return computeTable(teams, matches.filter((m) => m.stage !== "playoff" && !m.isBye && started(m)));
 }
 
 /** "JOGO 3" / "MEIA-FINAL" / "FINAL". */

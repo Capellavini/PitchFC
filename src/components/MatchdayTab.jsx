@@ -26,7 +26,7 @@ import TeamDraw from "./TeamDraw";
  * its MVP vote is still open and there's no new game today. A manager can
  * jump from "after" back to "before" to prepare another round.
  */
-export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null, mvp = null, lastMatchday = null, onCardGenerated, social }) {
+export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, setTeamCaptain, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null, mvp = null, lastMatchday = null, onCardGenerated, social }) {
   const [forceBefore, setForceBefore] = useState(false);
   const [liveView, setLiveView] = useState("jogo"); // equipas | jogo | stats (live state only)
   const confirmed = group.filter((p) => p.status === "confirmed");
@@ -71,16 +71,11 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
         {ownTeam}
         <TeamDraw hideTeamId={myTeam?.id} group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
           setByName={teamsSetByName} confirmedByName={teamsConfirmedByName} lockDraw
-          onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onConfirm={onConfirmTeams} />
+          onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onSetCaptain={setTeamCaptain} onConfirm={onConfirmTeams} />
         </>
       ) : (
-        <>
-        {myTeam && liveView === "jogo" && (
-          <OwnTeamCard compact team={myTeam} group={group} onOpen={() => setLiveView("equipas")} />
-        )}
         <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed}
           view={liveView} />
-        </>
       ),
       1,
       { view: liveViews.indexOf(liveView), onSelect: (i) => setLiveView(liveViews[i]) },
@@ -132,7 +127,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
 
       <TeamDraw hideTeamId={myTeam?.id} group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
         setByName={teamsSetByName} confirmedByName={teamsConfirmedByName}
-        onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onConfirm={onConfirmTeams} />
+        onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onSetCaptain={setTeamCaptain} onConfirm={onConfirmTeams} />
 
       <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed} />
     </>,

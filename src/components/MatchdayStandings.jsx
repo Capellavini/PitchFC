@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Trophy, ArrowRightCircle } from "lucide-react";
-import { C, S, T, cardStyle, displayFont } from "../theme";
+import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { t } from "../lib/i18n";
 import { goalsOf, standings, playoffState } from "../lib/matchdayLive";
 import BtnGhost from "./BtnGhost";
@@ -8,11 +9,15 @@ import SectionLabel from "./SectionLabel";
 const COLS = "minmax(0,1fr) 28px 56px 36px 32px";
 
 /** Live "Classificação" view (campeonato / personalizado): champion banner,
- *  group-stage table, play-off rounds and the manager's "advance" action. */
-export default function MatchdayStandings({ matchday, teams, canManage, onAdvancePlayoff }) {
+ *  group-stage table, play-off rounds and the manager's "advance" action.
+ *  Personalizado also lets the manager declare the champion by hand
+ *  (matchday.championId) — it wins over the play-off result. */
+export default function MatchdayStandings({ matchday, teams, canManage, onAdvancePlayoff, onSetChampion, hideLabel = false }) {
+  const [pick, setPick] = useState("");
   const list = Array.isArray(teams) ? teams : [];
   const teamName = (id) => list.find((x) => x.id === id)?.name ?? "—";
-  const { playoffMatches, rounds, currentRound, champion, canAdvance, roundSize, winnerOf } = playoffState(matchday);
+  const { playoffMatches, rounds, currentRound, champion: playoffChampion, canAdvance, roundSize, winnerOf } = playoffState(matchday);
+  const champion = matchday.championId ?? playoffChampion;
   const isPersonalizado = matchday.mode === "personalizado";
   const hasPlayoff = isPersonalizado && matchday.config?.faseFinal;
   const rows = standings(list, matchday.matches || []);
@@ -26,10 +31,13 @@ export default function MatchdayStandings({ matchday, teams, canManage, onAdvanc
             <div style={{ fontSize: T.meta, fontWeight: 800, color: C.text2, letterSpacing: "0.08em" }}>{t("CAMPEÃO")}</div>
             <div style={{ ...displayFont, fontSize: T.h, color: C.gold }}>{teamName(champion)}</div>
           </div>
+          {canManage && onSetChampion && matchday.championId != null && (
+            <BtnGhost compact onClick={() => onSetChampion(null)} style={{ marginLeft: "auto" }}>{t("corrigir")}</BtnGhost>
+          )}
         </div>
       )}
 
-      <SectionLabel>{t("Classificação")}</SectionLabel>
+      {!hideLabel && <SectionLabel>{t("Classificação")}</SectionLabel>}
       <div style={{ ...cardStyle, padding: `${S.sm}px ${S.lg}px`, marginBottom: S.lg }}>
         <div style={{ display: "grid", gridTemplateColumns: COLS, gap: S.xs, fontSize: T.min, fontWeight: 800, color: C.text2, padding: `${S.sm}px 0`, textAlign: "center" }}>
           <span style={{ textAlign: "left" }}>{t("EQUIPA")}</span><span>{t("J")}</span><span>{t("V-E-D")}</span><span>{t("SG")}</span><span>{t("P")}</span>
@@ -74,6 +82,23 @@ export default function MatchdayStandings({ matchday, teams, canManage, onAdvanc
             }))}
           </div>
         </>
+      )}
+
+      {canManage && isPersonalizado && onSetChampion && !champion && (
+        <div style={{ ...cardStyle, marginBottom: S.lg }}>
+          <div style={{ fontSize: T.body, fontWeight: 700, marginBottom: S.xs }}>{t("Declarar campeão")}</div>
+          <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.md, lineHeight: 1.4 }}>{t("Escolhe a equipa campeã do dia — para formatos sem fase final, ou para fechar à mão.")}</div>
+          <div style={{ display: "flex", gap: S.sm }}>
+            <select value={pick} onChange={(e) => setPick(e.target.value)} aria-label={t("Declarar campeão")}
+              style={{ flex: 1, minWidth: 0, minHeight: 44, background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.control, padding: "0 8px", fontSize: T.body, color: pick ? C.text1 : C.text2, outline: "none" }}>
+              <option value="">{t("Equipa…")}</option>
+              {list.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </select>
+            <BtnGhost tone="accent" disabled={!pick} onClick={() => { onSetChampion(pick); setPick(""); }}>
+              <Trophy size={16} /> {t("Declarar")}
+            </BtnGhost>
+          </div>
+        </div>
       )}
 
       {canManage && hasPlayoff && !champion && (

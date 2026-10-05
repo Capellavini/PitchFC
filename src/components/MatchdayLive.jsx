@@ -1,11 +1,11 @@
 import { useState, useRef, Fragment } from "react";
-import { Goal, Footprints, Hand, Star, Flag, RotateCcw, Plus, Check, X, Undo2, ArrowLeftRight, Mic, LayoutGrid, ArrowRightCircle, Swords, Trophy, Settings2 } from "lucide-react";
+import { Goal, Footprints, Hand, Flag, RotateCcw, Plus, Check, X, Undo2, ArrowLeftRight, Mic, LayoutGrid, ArrowRightCircle, Swords, Trophy, Settings2 } from "lucide-react";
 import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { t, tCtx } from "../lib/i18n";
 import { playerColor } from "../lib/helpers";
 import { voiceSupported, listenOnce, parseGoalCommand } from "../lib/voice";
 import { currentTimerMinute } from "../lib/matchTimer";
-import { goalsOf, isSave, playoffState, matchLabel, dayStats } from "../lib/matchdayLive";
+import { goalsOf, isSave, playoffState, matchLabel, dayStats, standings } from "../lib/matchdayLive";
 import Avatar from "./Avatar";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
@@ -28,7 +28,7 @@ const pill = (active) => ({
   border: `1px solid ${active ? C.text2 : C.border}`, fontSize: 13, fontWeight: active ? 800 : 600,
 });
 
-/** One of the four big square live actions (Golo · Assistência · Defesa · MVP). */
+/** One of the three big square live actions (Golo · Assistência · Defesa). */
 function ActionSquare({ Icon, label, color, onClick }) {
   return (
     <button type="button" onClick={onClick} aria-label={label}
@@ -49,7 +49,7 @@ function ActionSquare({ Icon, label, color, onClick }) {
  * Organizer/assistant writes; everyone else gets the same screen
  * read-only (synced via games.live_matchday in cloud mode).
  */
-export default function MatchdayLive({ matchday, teams, group, canManage, onAddMatch, onGoal, onEpicSave, onRemoveEvent, onUpdateEvent, onSetGoalkeeper, onSetMatchConcluded, onEnd, onCancel, onAdvancePlayoff, onSetPenaltyWinner, onSubstitute, onRevertSub, view = "jogo" }) {
+export default function MatchdayLive({ matchday, teams, group, canManage, onAddMatch, onGoal, onEpicSave, onRemoveEvent, onUpdateEvent, onSetGoalkeeper, onSetMatchConcluded, onEnd, onCancel, onAdvancePlayoff, onSetChampion, onSetPenaltyWinner, onSubstitute, onRevertSub, view = "jogo" }) {
   const [selectedId, setSelectedId] = useState(null);
   const [sheet, setSheet] = useState(null); // { kind, initial? }
   const [composing, setComposing] = useState(null); // { homeId, awayId }
@@ -77,6 +77,9 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
   const showTournament = isCampeonato || isPersonalizado;
   const { roundSize } = playoffState(matchday);
   const leaders = dayStats(matchday, byId);
+  // Collapsed-card subtitle: who's top of the table right now.
+  const table = showTournament ? standings(list, matches) : [];
+  const leaderLine = table.length && table[0].j > 0 ? `${t("Líder")}: ${table[0].name} · ${table[0].pts} ${t("pts")}` : t("Toca para ver a tabela");
 
   // Focus: explicit pick, else the latest match still being played, else the last one.
   const playable = matches.filter((m) => !m.isBye);
@@ -145,13 +148,20 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
               ? `${t("Não percebi quem marcou em")} “${vs.transcript}”`
               : `${t("Não ouvi nada — mantém premido enquanto falas.")}${vs.error ? ` [${vs.error}]` : ""}`)
       : null;
-    const gkNick = (id) => byId(id)?.nick;
+    // Line under each team name: the captain when one is set ("Capitão Vini"),
+    // otherwise the match's goalkeeper.
+    const sideSub = (teamId, gkId) => {
+      const tm = teamById(teamId);
+      const cap = tm?.captainId != null && tm.players?.includes(tm.captainId) ? byId(tm.captainId) : null;
+      if (cap) return `${t("Capitão")} ${cap.nick}`;
+      return gkId && byId(gkId) ? `${t("GR")} ${byId(gkId).nick}` : null;
+    };
 
     return (
       <>
         <ScoreBlock
-          home={{ name: teamName(m.homeId), score: hg, color: teamColor(m.homeId), sub: m.homeGkId ? `${t("GR")} ${gkNick(m.homeGkId)}` : null }}
-          away={{ name: teamName(m.awayId), score: ag, color: teamColor(m.awayId), sub: m.awayGkId ? `${t("GR")} ${gkNick(m.awayGkId)}` : null }}
+          home={{ name: teamName(m.homeId), score: hg, color: teamColor(m.homeId), sub: sideSub(m.homeId, m.homeGkId) }}
+          away={{ name: teamName(m.awayId), score: ag, color: teamColor(m.awayId), sub: sideSub(m.awayId, m.awayGkId) }}
           center={<>
             <span style={{ letterSpacing: "0.06em" }}>{matchLabel(m, roundSize)}</span>
             {concluded
@@ -168,11 +178,10 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
         {/* the four big actions — right under score + clock so the
             organizer never scrolls to log a goal */}
         {canManage && !concluded && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: S.sm, marginBottom: S.md }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: S.sm, marginBottom: S.md }}>
             <ActionSquare Icon={Goal} label={t("Golo")} color={C.accent} onClick={() => setSheet({ kind: "goal" })} />
             <ActionSquare Icon={Footprints} label={t("Assistência")} color={C.text1} onClick={() => setSheet({ kind: onUpdateEvent ? "assist" : "goal" })} />
             <ActionSquare Icon={Hand} label={tCtx("action", "Defesa")} color={C.blue} onClick={() => setSheet({ kind: "save" })} />
-            <ActionSquare Icon={Star} label={t("MVP")} color={C.gold} onClick={() => setSheet({ kind: "mvp" })} />
           </div>
         )}
 
@@ -341,6 +350,14 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
             <Chip Icon={modeChip.Icon}>{t("Formato")}: {modeChip.label}</Chip>
           </div>
 
+          {/* championship table — one tap away, in place of the old team card */}
+          {showTournament && (
+            <Collapsible icon={<Trophy size={16} color={C.gold} />} title={t("Classificação")}
+              subtitle={leaderLine}>
+              <MatchdayStandings hideLabel matchday={matchday} teams={list} canManage={canManage} onAdvancePlayoff={onAdvancePlayoff} onSetChampion={onSetChampion} />
+            </Collapsible>
+          )}
+
           {/* match switcher: Jogo 1 · Jogo 2 · … · + Novo */}
           {(matches.length > 1 || canManage) && (
             <div style={{ display: "flex", gap: S.sm, overflowX: "auto", scrollbarWidth: "none", marginBottom: S.lg, paddingBottom: 2 }}>
@@ -394,7 +411,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
           {showTournament && (
             <>
               <SectionLabel>{t("Classificação")}</SectionLabel>
-              <MatchdayStandings matchday={matchday} teams={list} canManage={canManage} onAdvancePlayoff={onAdvancePlayoff} />
+              <MatchdayStandings matchday={matchday} teams={list} canManage={canManage} onAdvancePlayoff={onAdvancePlayoff} onSetChampion={onSetChampion} />
             </>
           )}
           <SectionLabel>{t("Stats do dia")}</SectionLabel>
@@ -433,7 +450,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
         <LiveEventSheet key={sheet.kind + JSON.stringify(sheet.initial || {})}
           kind={sheet.kind} initial={sheet.initial} match={m} group={group}
           sides={[m.homeId, m.awayId]} roster={(teamId) => matchRoster(m, teamId)} allPlayers={allPlayers}
-          playerById={byId} teamById={teamById} dayLeaders={leaders}
+          playerById={byId} teamById={teamById}
           onGoal={onGoal} onEpicSave={onEpicSave} onSubstitute={onSubstitute} onRevertSub={onRevertSub}
           onUpdateEvent={onUpdateEvent}
           onSwitchKind={(kind) => setSheet({ kind })}

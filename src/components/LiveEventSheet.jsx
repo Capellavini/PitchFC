@@ -34,19 +34,19 @@ function TeamPick({ team, onClick, sub }) {
 const grid = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: S.sm };
 
 /**
- * Bottom sheet behind the four live action buttons (Golo · Assistência ·
- * Defesa · MVP) plus substitutions. Keeps the exact scoring semantics of
- * the old inline pickers:
+ * Bottom sheet behind the three live action buttons (Golo · Assistência ·
+ * Defesa) plus substitutions. Keeps the exact scoring semantics of the old
+ * inline pickers:
  *  - goal   → team → scorer → assist (optional). "Autogolo" (own goal): teamId is
  *             still the team that BENEFITS, scorer picked from the other side.
+ *             The first step also offers "Autogolo" directly: pick WHO did
+ *             it (from either team) and the goal goes to the opposite team.
  *  - assist → pick a goal of this match with no assist yet → assister
  *             (same team, not the scorer) → onUpdateEvent(idx, {assistId}).
  *  - save   → team → player (the side's GR first) → onEpicSave.
- *  - mvp    → read-only: tonight's leaders; the real vote opens for
- *             everyone when the day ends (MVP needs every player's say).
  *  - sub    → team → who leaves → who comes in (this match only).
  */
-export default function LiveEventSheet({ kind, match, group, sides, roster, playerById, teamById, dayLeaders, onGoal, onUpdateEvent, onEpicSave, onSubstitute, onRevertSub, allPlayers, onSwitchKind, onClose, initial }) {
+export default function LiveEventSheet({ kind, match, group, sides, roster, playerById, teamById, onGoal, onUpdateEvent, onEpicSave, onSubstitute, onRevertSub, allPlayers, onSwitchKind, onClose, initial }) {
   const [step, setStep] = useState(initial || {}); // { teamId, ownGoal, scorerId, goalIdx, outId }
   const m = match;
   const other = (teamId) => (teamId === m.homeId ? m.awayId : m.homeId);
@@ -58,16 +58,44 @@ export default function LiveEventSheet({ kind, match, group, sides, roster, play
     if (s.outId != null) return { ...s, outId: undefined };
     return {};
   });
-  const hasBack = step.teamId != null || step.goalIdx != null;
+  const hasBack = step.teamId != null || step.goalIdx != null || Boolean(step.ownDirect);
   const minute = () => currentTimerMinute();
 
   let title = "";
   let body = null;
 
   if (kind === "goal") {
-    if (step.teamId == null) {
+    if (step.ownDirect) {
+      // "Autogolo" straight from the first step: who did it? Players of both
+      // teams, grouped by team — the goal counts for the OTHER team.
+      title = t("Autogolo — quem marcou na própria baliza?");
+      body = (
+        <div style={{ display: "flex", flexDirection: "column", gap: S.md }}>
+          {sides.map((id) => (
+            <div key={id}>
+              <div style={{ display: "flex", alignItems: "center", gap: S.sm, fontSize: T.meta, fontWeight: 800, color: C.text2, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: S.sm }}>
+                <span style={{ width: 8, height: 8, borderRadius: 4, background: teamById(id)?.color || C.text2 }} />{teamName(id)}
+              </div>
+              <div style={grid}>
+                {roster(id).map((p) => (
+                  <PlayerPick key={p.id} p={p} group={group} onClick={() => { onGoal(m.id, { teamId: other(id), scorerId: p.id, ownGoal: true, minute: minute() }); onClose(); }} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    } else if (step.teamId == null) {
       title = t("Golo de que equipa?");
-      body = <div style={{ display: "flex", gap: S.sm }}>{sides.map((id) => <TeamPick key={id} team={teamById(id) || { name: "—" }} onClick={() => setStep({ teamId: id, ownGoal: false })} />)}</div>;
+      body = (
+        <>
+          <div style={{ display: "flex", gap: S.sm }}>{sides.map((id) => <TeamPick key={id} team={teamById(id) || { name: "—" }} onClick={() => setStep({ teamId: id, ownGoal: false })} />)}</div>
+          <button type="button" onClick={() => setStep({ ownDirect: true })}
+            style={{ width: "100%", minHeight: 48, marginTop: S.md, background: "transparent", color: C.orange, border: `1px solid ${C.orange}`, borderRadius: R.control, fontSize: T.body, fontWeight: 800, cursor: "pointer" }}>
+            ↩ {t("Autogolo")} — {t("quem foi?")}
+          </button>
+        </>
+      );
     } else if (step.scorerId == null) {
       const fromTeam = step.ownGoal ? other(step.teamId) : step.teamId;
       title = step.ownGoal
@@ -174,27 +202,6 @@ export default function LiveEventSheet({ kind, match, group, sides, roster, play
         </div>
       );
     }
-  } else if (kind === "mvp") {
-    title = t("Candidatos a MVP");
-    body = (
-      <>
-        <div style={{ fontSize: T.body, color: C.text2, marginBottom: S.md, lineHeight: 1.4 }}>{t("A votação MVP abre para todos quando terminares o jogo. Para já, quem está a brilhar:")}</div>
-        {dayLeaders.length === 0 ? (
-          <div style={{ fontSize: T.body, color: C.text2 }}>{t("Ainda sem golos ou assistências registados hoje.")}</div>
-        ) : dayLeaders.slice(0, 5).map((row, i) => (
-          <div key={row.p.id} style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: 52, borderTop: i ? `1px solid ${C.border}` : "none" }}>
-            <span style={{ width: 16, fontSize: T.body, fontWeight: 800, color: i === 0 ? C.gold : C.text2 }}>{i + 1}</span>
-            <Avatar name={row.p.name} color={playerColor(group, row.p)} photo={row.p.photo} isMe={row.p.isMe} size={32} />
-            <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.p.nick}</span>
-            <span style={{ display: "flex", gap: S.sm, fontSize: T.meta, color: C.text2, flexShrink: 0 }}>
-              {row.goals > 0 && <span>⚽ {row.goals}</span>}
-              {row.assists > 0 && <span>🎯 {row.assists}</span>}
-              {row.epicSaves > 0 && <span>🧤 {row.epicSaves}</span>}
-            </span>
-          </div>
-        ))}
-      </>
-    );
   } else if (kind === "sub") {
     const subsFor = (teamId) => (m.subs || []).filter((s) => s.teamId === teamId);
     if (step.teamId == null) {

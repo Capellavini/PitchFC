@@ -23,6 +23,7 @@ import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, f
 import { t, setLang, detectLang } from "./lib/i18n";
 import { trackEvent } from "./lib/analytics";
 import { getThemeMode, setThemeMode } from "./lib/themeMode";
+import { playoffState } from "./lib/matchdayLive";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
@@ -606,9 +607,25 @@ export default function PitchApp() {
     updateTeams((ts) => (Array.isArray(ts) ? ts.map((t) => (t.id === teamId ? { ...t, name } : t)) : ts));
 
   // Manually move a player to another team (remove everywhere, add to target).
+  // A captain who changes team loses the armband.
   const movePlayer = (playerId, toTeamId) =>
     updateTeams((ts) => (Array.isArray(ts)
-      ? ts.map((t) => ({ ...t, players: t.id === toTeamId ? [...t.players.filter((id) => id !== playerId), playerId] : t.players.filter((id) => id !== playerId) }))
+      ? ts.map((t) => {
+          const moved = t.players.includes(playerId) && t.id !== toTeamId;
+          const next = { ...t, players: t.id === toTeamId ? [...t.players.filter((id) => id !== playerId), playerId] : t.players.filter((id) => id !== playerId) };
+          if (moved && t.captainId === playerId) delete next.captainId;
+          return next;
+        })
+      : ts));
+
+  // Optional per-team captain (shown under the team name on the live score).
+  const setTeamCaptain = (teamId, playerId) =>
+    updateTeams((ts) => (Array.isArray(ts)
+      ? ts.map((t) => {
+          if (t.id !== teamId) return t;
+          const { captainId: _old, ...rest } = t;
+          return playerId == null ? rest : { ...rest, captainId: playerId };
+        })
       : ts));
 
   // Organizer adds a guest player (no account). Overall optional → uniform attrs.
@@ -653,6 +670,14 @@ export default function PitchApp() {
       updateMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, homeId: teams[0].id, awayId: teams[1].id, homeGkId: defaultGkFor(teams[0].id), awayGkId: defaultGkFor(teams[1].id), events: [] }] });
     }
   };
+  // Personalizado: the organizer can crown a champion by hand (e.g. a
+  // format without a play-off); null undoes it.
+  const setChampion = (teamId) =>
+    updateMatchday((md) => {
+      if (!md) return md;
+      const { championId: _old, ...rest } = md;
+      return teamId == null ? rest : { ...rest, championId: teamId };
+    });
   const addMatch = (homeId, awayId) =>
     updateMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, homeId, awayId, homeGkId: defaultGkFor(homeId), awayGkId: defaultGkFor(awayId), events: [] }] }));
   const addGoal = (matchId, event) =>
@@ -830,7 +855,9 @@ export default function PitchApp() {
       .filter(Boolean)
       .sort((a, b) => (b.goals * 2 + b.assists) - (a.goals * 2 + a.assists));
     const candidates = confirmed.map((p) => ({ key: keyOf(p), nick: p.nick, position: p.position }));
-    const summary = { teamResults: teamResults.map(({ id, ...r }) => r), matches: mdMatches, lines, candidates };
+    const championId = matchday.mode === "personalizado" ? (matchday.championId ?? playoffState(matchday).champion) : null;
+    const championName = championId ? teamsById[championId]?.name : null;
+    const summary = { teamResults: teamResults.map(({ id, ...r }) => r), matches: mdMatches, lines, candidates, ...(championName ? { champion: championName } : {}) };
 
     if (cloudMode) {
       // Bump season totals on each player row + record the matchday;
@@ -1797,10 +1824,10 @@ export default function PitchApp() {
         ) : (
           <MatchdayTab
             group={displayGroup} game={game}
-            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} canManageTeams={canManageTeams}
+            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} setTeamCaptain={setTeamCaptain} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution,
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetChampion: setChampion, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution,
               // Redesign (Matchday "Assistência" button): patch one logged event in place
               // (e.g. attach an assist to an existing goal) — keeps its position/minute,
               // unlike remove + re-add. Same updateMatchday path as the other handlers.

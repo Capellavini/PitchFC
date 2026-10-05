@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Share2, Check, CalendarPlus, Video } from "lucide-react";
+import { Share2, Check, CalendarPlus, Video, Trophy } from "lucide-react";
 import { C, S, T, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
 import { playerColor } from "../lib/helpers";
@@ -47,6 +47,16 @@ export default function MatchdayAfter({ lastMatchday, mvp, me, group, groupName,
         <Chip variant="green" Icon={Check}>{t("Terminado")}</Chip>
         {md.date && <Chip>{md.date}</Chip>}
       </div>
+
+      {md.champion && (
+        <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: S.md, marginBottom: S.lg, borderColor: `${C.gold}66` }}>
+          <Trophy size={24} color={C.gold} />
+          <div>
+            <div style={{ fontSize: T.meta, fontWeight: 800, color: C.text2, letterSpacing: "0.08em" }}>{t("CAMPEÃO")}</div>
+            <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: C.gold }}>{md.champion}</div>
+          </div>
+        </div>
+      )}
 
       {/* final score */}
       {matches.length === 1 ? (

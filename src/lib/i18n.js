@@ -738,6 +738,11 @@ const EN = {
   "Não percebi — mantém premido enquanto dizes \"iniciar\" ou \"soltar tempo\".": "Didn't catch that — hold while you say \"start\" or \"start time\".",
   "Erro do microfone:": "Microphone error:",
   "Balizas a zero e defesas espetaculares do GR escolhido contam ao terminar o dia.": "Clean sheets and great saves for the chosen GK count when the day ends.",
+  "Líder": "Leader", "Toca para ver a tabela": "Tap to see the table", "Sem capitão": "No captain",
+  "Declarar campeão": "Declare champion", "Declarar": "Declare", "Equipa…": "Team…",
+  "Escolhe a equipa campeã do dia — para formatos sem fase final, ou para fechar à mão.": "Pick the day's champion — for formats without a play-off, or to close it out by hand.",
+  "Autogolo — quem marcou na própria baliza?": "Own goal — who put it in their own net?", "quem foi?": "who was it?",
+  "Campeão do dia": "Day's champion",
   "Autogolo": "Own goal", "a favor de": "for", "quem marcou na própria baliza?": "who put it in their own net?", "Tipo de golo": "Goal type",
   "Conta para os": "Counts for", "Escolhe o jogador dos": "Pick the player from", "não entra nos golos dele.": "it doesn't count as their goal.",
   "Foi um adversário a marcar na própria baliza? Escolhe Autogolo.": "Did an opponent put it in their own net? Pick Own goal.",
@@ -819,6 +824,9 @@ const EN = {
 };
 
 const PT_BR = {
+  "Toca para ver a tabela": "Toque para ver a tabela", "Equipa…": "Time…",
+  "Escolhe a equipa campeã do dia — para formatos sem fase final, ou para fechar à mão.": "Escolha o time campeão do dia — para formatos sem fase final, ou para fechar na mão.",
+  "Campeão do dia": "Campeão do dia",
   // ── Dates ──────────────────────────────────────────────
   "Fev": "Fev", "Abr": "Abr", "Mai": "Mai", "Ago": "Ago", "Set": "Set", "Out": "Out", "Dez": "Dez",
   "às": "às",
