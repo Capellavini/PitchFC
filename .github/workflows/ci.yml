@@ -1,7 +1,8 @@
 name: CI
 
 # Lightweight build check so a broken build is caught before it reaches
-# Vercel. Runs on PRs and pushes to main.
+# Vercel, plus unit tests for the app's pure logic and the WhatsApp bot.
+# Runs on PRs and pushes to main.
 
 on:
   pull_request:
@@ -19,3 +20,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - run: npm test
+      # wa-bot/src/core is generated from src/lib/core — fail on drift.
+      - run: node scripts/sync-core.mjs --check
+
+  wa-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: wa-bot/package-lock.json
+      - run: cd wa-bot && npm ci && npm test
