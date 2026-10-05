@@ -11,7 +11,7 @@
 > 7. Código de ativação expirado com o texto exato da app → o bot responde "gera outro na app" (única exceção ao silêncio em DM).
 > 8. **Sem DM de "abriram as confirmações"** — o bot já avisa no grupo.
 > 9. **Tudo grátis por agora** (só limites de custo/abuso).
-> 10. **Modelo:** os nomes/preços/parâmetros de API citados no §10 (ex.: "claude-sonnet-5-5", erros 400 de tool_choice/thinking, betas) **não foram verificados** — antes de implementar o passo C, confirmar com a skill `claude-api` (modelos atuais: `claude-sonnet-5`, `claude-opus-5-5`, `claude-haiku-4-5`).
+> 10. **Modelo:** `claude-sonnet-5-5` (Sonnet 5.5, $2 / $10 por MTok, cache read $0.20) confirmado como modelo atual via skill `claude-api` em 2026-10-05; o @Pitch do grupo continua em `claude-haiku-4-5`. Detalhes de API (thinking, tool_choice, fallbacks) devem ser re-verificados com a skill ao implementar o passo C.
 >
 > Ordem de construção: **A** core partilhado → **B** migrações → **C** bot (dry-run, só Fut do Burger) → **D** app.
 
