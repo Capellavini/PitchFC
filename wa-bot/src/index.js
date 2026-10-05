@@ -6,17 +6,19 @@
 try { process.loadEnvFile(); } catch { /* no .env: rely on real env */ }
 
 import crypto from "node:crypto";
-import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, jidNormalizedUser } from "@whiskeysockets/baileys";
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, jidNormalizedUser, generateMessageIDV2 } from "@whiskeysockets/baileys";
 import qrcode from "qrcode-terminal";
 import pino from "pino";
 import { cfg } from "./config.js";
 import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays, groupMembers, confirmedRoster, setStatus, hasOpenGame, createGame, cancelCurrentGame, logMessage } from "./db.js";
-import { decide, decidePostGame, decideMatchAwards } from "./events.js";
+import { decide, decidePostGame, decideMatchAwards, reminderKey } from "./events.js";
 import { render, pollContent } from "./messages.js";
 import { isQuietHour, lisbonDayKey, nextLisbonWeekdayAt, lisbonDateAt, todayLisbon, formatGameWhen } from "./time.js";
 import { answer, classifyIntent, pollApplies, classifyAdminIntent } from "./ask.js";
 import { parseIntent, parseCommand, phonesMatch, splitWaitlist, actionReplies } from "./roster.js";
 import * as polls from "./polls.js";
+import { isDmJid, maskJid } from "./adjunto/identity.js";
+import { groupCtx, GROUP_SAFE_KINDS } from "./adjunto/groupsafe.js";
 
 const LIST_GROUPS = process.argv.includes("--list-groups");
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -165,7 +167,76 @@ async function loop() {
     try {
       for (const g of await botGroups()) await tickGroup(g);
     } catch (e) { log("tick error:", e.message); }
+    if (cfg().adjuntoEnabled) {
+      try { await (await adjunto()).tick(); } catch (e) { log("adjunto tick error:", e.message); }
+    }
     await sleep(cfg().pollMs);
+  }
+}
+
+// -- Treinador Adjunto (private organizer DMs) --------------------------------
+// Loaded lazily and only when ADJUNTO_ENABLED=true, so with the flag off the
+// bot behaves exactly as before (DMs ignored, no extra module loaded).
+let adjuntoP = null;
+const adjunto = () => (adjuntoP ??= import("./adjunto/index.js").then(({ createAdjunto }) => createAdjunto({
+  log, getSock: () => sock, sendDm: sendAdjuntoDm, postGroup: postAdjuntoGroup, claim, markSent, unclaim, logMessage,
+  suppressAutoReminder: async (group, game) => {
+    const id = await claim(group.id, game.id, "reminder", reminderKey(game)).catch(() => null);
+    if (id) await markSent(id);
+  },
+})));
+
+/** DM to a linked organizer (or one of the two allowed replies to an
+ *  unlinked sender). Dry-run unless ADJUNTO_AUTOSEND=true. The message id is
+ *  generated up front and recorded, so the bot's own sends never look like a
+ *  human takeover. Read receipts are never sent. */
+async function sendAdjuntoDm(target, text, { groupId = null, eventKind = null } = {}) {
+  const link = typeof target === "string" ? null : target;
+  const jid = link ? link.wa_jid : target;
+  const a = await adjunto();
+  if (!cfg().adjuntoAutosend) {
+    log(`[adjunto dry-run] DM -> ${maskJid(jid)}${eventKind ? ` (${eventKind})` : ""}:\n${text}\n`);
+  } else {
+    await sleep(1000 + Math.random() * 2500);
+    await sock.sendPresenceUpdate("composing", jid);
+    await sleep(500 + Math.random() * 1200);
+    const messageId = generateMessageIDV2(sock.user?.id);
+    a.takeover.noteBotSent(messageId);
+    await sock.sendMessage(jid, { text }, { messageId });
+    await logMessage({ groupId, kind: "adjunto_out", eventKind, answer: text, askerId: link?.player_id ?? null })
+      .catch((e) => log("bot_message_log write failed:", e.message));
+  }
+  if (link) {
+    const { appendMessage } = await import("./adjunto/store.js");
+    await appendMessage(link.id, groupId ?? link.active_group_id, "assistant", text).catch((e) => log("adjunto append failed:", e.message));
+  }
+}
+
+/** Group post for an organizer-approved Adjunto action. Group-safe template
+ *  kinds only, ctx rebuilt by groupCtx (names/nicks). Same guards as
+ *  dispatch(): quiet hours, daily cap (organizer-approved posts may bypass
+ *  the cap, never quiet hours unless urgent), claim-before-send,
+ *  bot_message_log. Returns "sent"|"dry"|"quiet"|"blocked"|"skipped"|"no_bot". */
+async function postAdjuntoGroup(group, gameId, ev, rawCtx) {
+  if (!GROUP_SAFE_KINDS.includes(ev.kind)) throw new Error(`not a group-safe kind: ${ev.kind}`);
+  const g = (await botGroups()).find((x) => x.id === group.id);
+  if (!g) return "no_bot";
+  const text = render(ev.kind, { ...groupCtx(ev.kind, rawCtx), link: linkFor(g) }, g.wa_bot_lang || "pt");
+  if (!cfg().autosend || !cfg().adjuntoAutosend) { log(`[adjunto dry-run] group ${g.name} · ${ev.kind}\n${text}\n`); return "dry"; }
+  if (!ev.urgent && isQuietHour(cfg().quietStart, cfg().quietEnd, new Date())) return "quiet";
+  if (!ev.urgent && !ev.bypassCap && (await sentSince(g.id, startOfLisbonDayIso())) >= cfg().maxPerDay) return "blocked";
+  const id = await claim(g.id, gameId, ev.kind, ev.key);
+  if (!id) return "skipped";
+  try {
+    await send(g.wa_group_jid, text);
+    await markSent(id);
+    log(`sent ${ev.kind} (adjunto) -> ${g.name}`);
+    await logMessage({ groupId: g.id, kind: "proactive", eventKind: ev.kind, answer: text }).catch((e) => log("bot_message_log write failed:", e.message));
+    return "sent";
+  } catch (e) {
+    await unclaim(id);
+    log("adjunto group send failed:", e.message);
+    return "blocked";
   }
 }
 
@@ -354,7 +425,14 @@ async function onPollMessage(m, inner) {
 async function onMessage(m) {
   try {
     const jid = m.key.remoteJid;
-    if (!jid?.endsWith("@g.us")) return;
+    if (!jid?.endsWith("@g.us")) {
+      // DMs: only with the Treinador Adjunto on; status/broadcast/newsletter never.
+      if (cfg().adjuntoEnabled && isDmJid(jid)) {
+        const a = await adjunto();
+        if (m.key.fromMe) a.onOwnMessage(m); else await a.onDirectMessage(m);
+      }
+      return;
+    }
     const inner = m.message?.ephemeralMessage?.message ?? m.message;
     if (await onPollMessage(m, inner)) return;
     if (m.key.fromMe) return;
@@ -412,7 +490,12 @@ async function start() {
   const { version } = await fetchLatestBaileysVersion();
   sock = makeWASocket({ version, auth: state, logger: pino({ level: "silent" }), markOnlineOnConnect: false, syncFullHistory: false });
   sock.ev.on("creds.update", saveCreds);
-  sock.ev.on("messages.upsert", ({ messages: ms, type }) => { if (type === "notify") ms.forEach(onMessage); });
+  sock.ev.on("messages.upsert", ({ messages: ms, type }) => {
+    if (type === "notify") ms.forEach(onMessage);
+    // Messages typed on the bot's phone may arrive as "append": only used to
+    // detect a human taking over an Adjunto DM (never answered).
+    else if (type === "append" && cfg().adjuntoEnabled) ms.filter((m) => m.key?.fromMe && isDmJid(m.key.remoteJid)).forEach(onMessage);
+  });
   sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
     if (qr) {
       const phone = (process.env.WA_PAIR_PHONE || "").replace(/\D/g, "");
