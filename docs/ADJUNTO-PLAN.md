@@ -12,6 +12,14 @@
 > 8. **Sem DM de "abriram as confirmações"** — o bot já avisa no grupo.
 > 9. **Tudo grátis por agora** (só limites de custo/abuso).
 > 10. **Modelo:** `claude-sonnet-5-5` (Sonnet 5.5, $2 / $10 por MTok, cache read $0.20) confirmado como modelo atual via skill `claude-api` em 2026-10-05; o @Pitch do grupo continua em `claude-haiku-4-5`. Detalhes de API (thinking, tool_choice, fallbacks) devem ser re-verificados com a skill ao implementar o passo C.
+> 11. **Ativação por frase, sem passar pela app** (Vinicius, 2026-10-05). Além do botão com código, o organizador pode escrever diretamente ao número do bot algo como **"Quero o Treinador Adjunto"**. Regras:
+>     - Deteção **só por regex** (sem LLM para remetentes não ligados — custo zero e sem superfície de abuso), sobre o texto normalizado: verbo opcional (`quero|ativar|ativa|liga|ligar|preciso|ola|oi`) + `(treinador )?adjunto|auxiliar tecnico|assistant coach`.
+>     - **Identificação pelo número do remetente** (o WhatsApp autentica-o): resolver PN (incl. `@lid` → `getPNForLID`/`remoteJidAlt`), comparar com `players.phone` (E.164, `phonesMatch`) de jogadores com membership `organizer|assistant` em grupos com `adjunto_enabled`.
+>       - 1 grupo → cria o link (`adjunto_links`, igual ao fluxo do código) e envia as boas-vindas desse grupo.
+>       - Vários grupos → "És organizador de: 1) Fut do Burger 2) Pitch Quarta. Qual?" (ativa o escolhido; os outros ficam disponíveis via `grupo`).
+>       - Nenhum (número não encontrado, só jogador, grupo sem flag, ou `@lid` sem PN) → **uma** resposta curta (máx. 1/JID/dia): "Não encontrei nenhum grupo onde sejas organizador com este número. Confirma o teu telemóvel no Perfil da app (com indicativo) ou usa o botão «Ativar o Treinador Adjunto» nas definições do grupo." — 2.ª exceção à regra de silêncio, só para esta frase.
+>       - Vários jogadores com o mesmo número (dados sujos) → não ativa; responde como "nenhum" e regista em log.
+>     - O botão com código continua a existir (cobre números desatualizados e o caso `@lid` sem PN).
 >
 > Ordem de construção: **A** core partilhado → **B** migrações → **C** bot (dry-run, só Fut do Burger) → **D** app.
 
