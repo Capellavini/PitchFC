@@ -1,5 +1,6 @@
 import { AVATAR_PALETTE } from "../theme";
 import { t, getLang } from "./i18n";
+import { computeOverall } from "./core/overall.js";
 
 export const ini = (n) =>
   n.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -206,17 +207,9 @@ const DEFAULT_GK_ATTRS = { div: 70, man: 70, kic: 70, ref: 70, spd: 70, pos: 70 
 export const attrLabelsFor = (position) => (position === "Guarda-redes" ? GK_ATTR_LABELS : ATTR_LABELS);
 export const defaultAttrsFor = (position) => (position === "Guarda-redes" ? DEFAULT_GK_ATTRS : DEFAULT_ATTRS);
 
-const OVERALL_WEIGHTS = {
-  "Defesa":       { def: 0.35, fis: 0.25, rit: 0.15, pas: 0.15, dri: 0.05, rem: 0.05 },
-  "Médio":        { pas: 0.30, dri: 0.20, rit: 0.15, fis: 0.15, rem: 0.10, def: 0.10 },
-  "Avançado":     { rem: 0.35, rit: 0.25, dri: 0.20, pas: 0.10, fis: 0.05, def: 0.05 },
-};
-const GK_OVERALL_WEIGHTS = { ref: 0.25, div: 0.25, pos: 0.20, man: 0.15, kic: 0.10, spd: 0.05 };
-
-export function computeOverall(position, attrs) {
-  const w = position === "Guarda-redes" ? GK_OVERALL_WEIGHTS : (OVERALL_WEIGHTS[position] ?? OVERALL_WEIGHTS["Médio"]);
-  return Math.round(Object.keys(w).reduce((sum, k) => sum + (attrs?.[k] ?? 60) * w[k], 0));
-}
+// OVR formula + position abbreviations live in the shared core (also
+// used by the WhatsApp bot); re-exported so app import paths stay put.
+export { computeOverall, POSITION_ABBR } from "./core/overall.js";
 
 /** Average OVR of a drawn team ({ players:[id] }) — null when empty. */
 export function teamOverall(team, group) {
@@ -224,8 +217,6 @@ export function teamOverall(team, group) {
   if (!ps.length) return null;
   return Math.round(ps.reduce((s, p) => s + computeOverall(p.position, p.attrs), 0) / ps.length);
 }
-
-export const POSITION_ABBR = { "Guarda-redes": "GR", "Defesa": "DEF", "Médio": "MED", "Avançado": "AVA" };
 
 // ── Peer ratings ─────────────────────────────────────────
 // URL-safe base64 payloads for the no-backend rating flow:
