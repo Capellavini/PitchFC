@@ -11,6 +11,12 @@
 
 import { lisbonDayKey, lisbonMinutesOfDay } from "./time.js";
 
+/** Dedupe key of the automatic 24h group reminder. Exported so the
+ *  Treinador Adjunto claims the SAME key after the organizer sends a
+ *  reminder from the DM — the group never gets two (plan §8.5). Not
+ *  cycle-keyed yet (plan §0.5 is a separate fix). */
+export const reminderKey = (game) => `reminder:${game.id}`;
+
 /**
  * Proportional milestones, e.g. for 10 spots: 8 (80%, "2 left"), 10 (full),
  * 11 (waiting list just started — always exact, not proportional, so a
@@ -79,7 +85,7 @@ export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, al
 
   const hoursToGame = (start - now) / 36e5;
   if (hoursToGame > 0 && hoursToGame <= 24 && confirmed < spots) {
-    out.push({ kind: "reminder", key: `reminder:${gid}` });
+    out.push({ kind: "reminder", key: reminderKey(game) });
   }
 
   // Game day, morning onwards, until kickoff.
