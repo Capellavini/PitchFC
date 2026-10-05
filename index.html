@@ -4,7 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0A0F18" />
-    <meta name="description" content="PITCH — o teu jogo semanal, organizado. Confirmações, pagamentos, sorteio de equipas e stats." />
+
+    <title>PITCH — O teu jogo de futebol semanal, organizado</title>
+    <meta name="description" content="Confirmações, pagamentos, sorteio de equipas e stats do teu jogo de futebol amador — sem o caos do grupo de WhatsApp. Cria o teu grupo grátis." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <!-- Canonical + per-route title/description/noindex are set at runtime
+         (src/lib/seo.js) — static here would wrongly canonicalise every
+         route to the homepage. The Open Graph tags below are static on
+         purpose: WhatsApp/Facebook/LinkedIn crawlers don't run JavaScript. -->
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PITCH" />
+    <meta property="og:title" content="PITCH — O teu jogo de futebol semanal, organizado" />
+    <meta property="og:description" content="Confirmações, pagamentos, sorteio de equipas e stats do teu jogo de futebol amador — sem o caos do grupo de WhatsApp." />
+    <meta property="og:url" content="https://pitch-fc.com/" />
+    <meta property="og:image" content="https://pitch-fc.com/brand/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="PITCH — o teu jogo semanal, sem o caos do grupo" />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:locale:alternate" content="pt_BR" />
+    <meta property="og:locale:alternate" content="en_GB" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PITCH — O teu jogo de futebol semanal, organizado" />
+    <meta name="twitter:description" content="Confirmações, pagamentos, sorteio de equipas e stats do teu jogo de futebol amador — sem o caos do grupo de WhatsApp." />
+    <meta name="twitter:image" content="https://pitch-fc.com/brand/og-image.jpg" />
+
     <script>
       // Applied before first paint so a saved "light" preference never
       // flashes dark first — src/lib/themeMode.js re-applies this once
@@ -18,10 +43,49 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>PITCH — O teu jogo semanal</title>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://pitch-fc.com/#organization",
+          "name": "PITCH",
+          "url": "https://pitch-fc.com/",
+          "logo": "https://pitch-fc.com/brand/pitch-avatar-instagram.png",
+          "sameAs": ["https://instagram.com/pitchfc.app"]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://pitch-fc.com/#website",
+          "url": "https://pitch-fc.com/",
+          "name": "PITCH",
+          "inLanguage": ["pt-PT", "pt-BR", "en"],
+          "publisher": { "@id": "https://pitch-fc.com/#organization" }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "PITCH",
+          "description": "Aplicação para organizar o jogo semanal de futebol amador: confirmações de presença, divisão de custos, sorteio de equipas, estatísticas e cartão de jogador.",
+          "applicationCategory": "SportsApplication",
+          "operatingSystem": "Web (PWA), iOS, Android",
+          "url": "https://pitch-fc.com/",
+          "inLanguage": ["pt-PT", "pt-BR", "en"],
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+          "publisher": { "@id": "https://pitch-fc.com/#organization" }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <h1>PITCH — o teu jogo de futebol semanal, organizado</h1>
+      <p>Confirmações, pagamentos, sorteio de equipas e stats do teu jogo de futebol amador — sem o caos do grupo de WhatsApp.</p>
+      <p>O PITCH precisa de JavaScript para funcionar. <a href="/privacidade">Privacidade</a> · <a href="/termos">Termos de Uso</a></p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -13,3 +13,6 @@ wa-bot/data/
 wa-bot/.bot.pid
 wa-bot/bot-out.log
 wa-bot/bot-err.log
+
+.vercel
+.env*

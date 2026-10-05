@@ -19,6 +19,7 @@ import { usePersistentState, clearAppStorage } from "./lib/storage";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, fmtFullDay, isoDay, toIsoDay, fromIso, dateTimeFromIso, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor, lisbonTimeLabel } from "./lib/helpers";
 import { t, setLang, detectLang } from "./lib/i18n";
+import { trackEvent } from "./lib/analytics";
 import { getThemeMode, setThemeMode } from "./lib/themeMode";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
@@ -483,6 +484,8 @@ export default function PitchApp() {
   useEffect(() => {
     if (tabState === null && appDataReady) setTabRaw(openingTab);
   }, [tabState, appDataReady, openingTab]);
+  // Which of the five tabs people actually use (analytics, consent-gated).
+  useEffect(() => { if (tabState !== null) trackEvent("tab_view", { tab: tabState }); }, [tabState]);
 
   const togglePaid = (id) => {
     const player = baseGroup.find((p) => p.id === id);

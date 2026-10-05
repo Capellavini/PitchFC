@@ -41,10 +41,26 @@ let current = (() => {
   return detectLang();
 })();
 
+// <html lang> follows the UI language (accessibility + what crawlers and
+// browser translation prompts read) — index.html ships "pt-PT" statically.
+const HTML_LANG = { pt: "pt-PT", "pt-br": "pt-BR", en: "en" };
+const applyHtmlLang = () => {
+  if (typeof document !== "undefined") document.documentElement.lang = HTML_LANG[current] ?? "pt-PT";
+};
+applyHtmlLang();
+
 export const getLang = () => current;
 export const setLang = (l) => {
-  current = SUPPORTED.includes(l) ? l : "pt";
+  const next = SUPPORTED.includes(l) ? l : "pt";
+  const changed = next !== current;
+  current = next;
   try { localStorage.setItem(LANG_KEY, JSON.stringify(current)); } catch { /* in-memory only */ }
+  applyHtmlLang();
+  // Components outside PitchApp's render tree (the cookie banner) can't see
+  // the language state PitchApp re-renders on — they listen for this instead.
+  // PitchApp calls setLang() while rendering, so only announce a real change,
+  // and after the render finishes (setState-in-render otherwise).
+  if (changed && typeof window !== "undefined") queueMicrotask(() => window.dispatchEvent(new Event("pitch:lang")));
 };
 
 export const t = (s) => (current === "pt" ? s : (DICTS[current]?.[s] ?? s));
@@ -791,6 +807,15 @@ const EN = {
   "Este número parece curto demais — confirma.": "This number looks too short — double-check it.",
   "Este número parece longo demais — confirma.": "This number looks too long — double-check it.",
   "MB Way só funciona com números portugueses.": "MB Way only works with Portuguese numbers.",
+  // Cookies, consent and legal links
+  "Cookies e privacidade": "Cookies and privacy",
+  "Usamos armazenamento essencial para a app funcionar (sessão, idioma, tema). Com a tua permissão, usamos também o Google Analytics para perceber como a app é usada e melhorá-la. Nunca para publicidade.": "We use essential storage to make the app work (session, language, theme). With your permission we also use Google Analytics to understand how the app is used and improve it. Never for advertising.",
+  "Só o essencial": "Essential only", "Aceitar analytics": "Accept analytics",
+  "Saber mais na Política de Privacidade": "Read the Privacy Policy",
+  "PRIVACIDADE": "PRIVACY", "Preferências de cookies": "Cookie preferences",
+  "Analytics ativado": "Analytics on", "Analytics desativado": "Analytics off", "Ainda não escolheste": "Not chosen yet",
+  "Política de Privacidade": "Privacy Policy", "Termos de Uso": "Terms of Use",
+  "Ao criar conta, aceitas os ": "By creating an account you accept the ", " e a ": " and the ",
 };
 
 const PT_BR = {
@@ -1118,6 +1143,11 @@ const PT_BR = {
   "Este número parece curto demais — confirma.": "Esse número parece curto demais — confira.",
   "Este número parece longo demais — confirma.": "Esse número parece longo demais — confira.",
   "MB Way só funciona com números portugueses.": "O MB Way só funciona com números portugueses.",
+  // Cookies, consent and legal links
+  "Usamos armazenamento essencial para a app funcionar (sessão, idioma, tema). Com a tua permissão, usamos também o Google Analytics para perceber como a app é usada e melhorá-la. Nunca para publicidade.": "Usamos armazenamento essencial para o app funcionar (sessão, idioma, tema). Com a sua permissão, usamos também o Google Analytics para entender como o app é usado e melhorá-lo. Nunca para publicidade.",
+  "Saber mais na Política de Privacidade": "Saiba mais na Política de Privacidade",
+  "Ainda não escolheste": "Você ainda não escolheu",
+  "Ao criar conta, aceitas os ": "Ao criar a conta, você aceita os ",
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR };

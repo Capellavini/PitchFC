@@ -3,6 +3,7 @@ import { supabase, supabaseEnabled, isAdminEmail } from "../lib/supabase";
 import { computeRoundPoints, mvpBonus, fantasyPrice, DEFAULT_FANTASY_WEIGHTS, nextPricesPaid, squadCostBasis } from "../lib/fantasy";
 import { nextGameDate, dateTimeFromIso } from "../lib/helpers";
 import { getLang } from "../lib/i18n";
+import { trackEvent } from "../lib/analytics";
 
 /**
  * PR 2 of the Supabase migration: real accounts (email + password),
@@ -296,12 +297,14 @@ export function useCloud() {
       email, password, options: { data: { ...meta, lang: getLang(), ...(joinToken ? { join_token: joinToken } : {}) } },
     });
     if (error) return { error: error.message };
+    trackEvent("sign_up", { method: "email" });
     // Confirmation OFF → session present, user is in. ON → needs email.
     return { needsConfirm: !res.session };
   };
 
   const signIn = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) trackEvent("login", { method: "email" });
     return error ? { error: error.message } : {};
   };
 
@@ -367,6 +370,14 @@ export function useCloud() {
     return p;
   };
 
+  // Funnel analytics (no-op without consent). `funnel("x")(result)` records
+  // the event only when the action succeeded — a result with `error` didn't
+  // happen — and passes the result through. Params are never personal data.
+  const funnel = (event, params) => (res) => {
+    if (!res?.error) trackEvent(event, params);
+    return res;
+  };
+
   const findOwnPlayer = async (userId) => {
     const r = await supabase.from("players").select("*").eq("user_id", userId)
       .order("created_at", { ascending: true }).limit(1);
@@ -400,7 +411,7 @@ export function useCloud() {
   /** Organizer creates the group + their own (organizer) card + the
    *  first recurring game, then lands straight in the app. */
   const createGroupAsOrganizer = (groupForm, profileForm) =>
-    singleFlight("own-player", () => createGroupAsOrganizerRaw(groupForm, profileForm));
+    singleFlight("own-player", async () => funnel("create_group")(await createGroupAsOrganizerRaw(groupForm, profileForm)));
   const createGroupAsOrganizerRaw = async (groupForm, profileForm) => {
     const grp = await supabase.from("groups").insert({
       name: groupForm.groupName, venue: groupForm.venue, city: groupForm.city, weekday: groupForm.weekday,
@@ -493,7 +504,10 @@ export function useCloud() {
    *  `token` may be null (quick card finished with "ainda não tenho
    *  grupo" — same as a plain createPlayerProfile). */
   const joinGroupWithProfile = (token, form) =>
-    singleFlight("own-player", () => joinGroupWithProfileRaw(token, form));
+    singleFlight("own-player", async () => {
+      const res = await joinGroupWithProfileRaw(token, form);
+      return token ? funnel("join_group", { method: "invite" })(res) : res; // no token = a card with no group, not a join
+    });
   const joinGroupWithProfileRaw = async (token, form) => {
     if (!token) return createPlayerProfileRaw(form);
     const resolved = await resolveInviteToken(token);
@@ -525,7 +539,7 @@ export function useCloud() {
 
   /** Logged-in player joins a group via its invite token. */
   const joinGroupByToken = (token) =>
-    singleFlight("own-player", () => joinGroupByTokenRaw(token));
+    singleFlight("own-player", async () => funnel("join_group", { method: "invite" })(await joinGroupByTokenRaw(token)));
   const joinGroupByTokenRaw = async (token) => {
     const user = userRef.current;
     const trimmed = token.trim();
@@ -688,6 +702,7 @@ export function useCloud() {
       }));
       return { error: r.error.message };
     }
+    trackEvent("attendance_set", { status: status_ });
     return {};
   };
   const setPaid = async (paid, playerId, gameId) => {
@@ -767,6 +782,7 @@ export function useCloud() {
       );
     }
     await refetch();
+    trackEvent("game_created");
     return {};
   };
 
@@ -1066,6 +1082,7 @@ export function useCloud() {
     // next one.
     if (data.game) await supabase.from("games").update({ live_matchday: null }).eq("id", data.game.id);
     await refetch();
+    trackEvent("matchday_finished", { n_games: nGames });
     return fantasyError ? { fantasyError } : {};
   };
 

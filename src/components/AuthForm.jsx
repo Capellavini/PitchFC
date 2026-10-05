@@ -99,6 +99,15 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
           {busy ? t("Um momento…") : isSignup ? t("Criar conta ⚽") : t("Entrar")}
         </BtnPrimary>
 
+        {isSignup && (
+          <div style={{ fontSize: 11, color: C.text3, textAlign: "center", marginTop: 10, lineHeight: 1.5 }}>
+            {t("Ao criar conta, aceitas os ")}
+            <a href="/termos" target="_blank" rel="noopener noreferrer" style={{ color: C.text2 }}>{t("Termos de Uso")}</a>
+            {t(" e a ")}
+            <a href="/privacidade" target="_blank" rel="noopener noreferrer" style={{ color: C.text2 }}>{t("Política de Privacidade")}</a>.
+          </div>
+        )}
+
         <div style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: C.text2 }}>
           {isSignup ? t("Já tens conta? ") : t("Ainda não tens conta? ")}
           <button onClick={() => { setMode(isSignup ? "login" : "signup"); setError(null); setInfo(null); }}

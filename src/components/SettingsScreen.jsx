@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { ArrowLeft, CreditCard, Settings, LogOut, ShieldCheck, Bell, Globe, PlusCircle, Moon, Sun, Building2, Mail, Phone, RotateCcw } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { ArrowLeft, CreditCard, Settings, LogOut, ShieldCheck, Bell, Globe, PlusCircle, Moon, Sun, Building2, Mail, Phone, RotateCcw, Cookie, FileText } from "lucide-react";
 import { C, S, R, T, TOUCH, cardStyle } from "../theme";
 import { pushSupported, pushConfigured, pushPermission } from "../lib/push";
+import { analyticsConfigured } from "../lib/analytics";
+import { getConsent, getVersion, subscribe, openPreferences } from "../lib/consent";
 import { t } from "../lib/i18n";
 import { formatPhone } from "../lib/phone";
 import SectionLabel from "./SectionLabel";
@@ -41,6 +43,8 @@ function Group({ label, rows }) {
 export default function SettingsScreen({ player, onBack, isOrganizer, onEditGroup, onCreateGroup, lang, onLang, themeMode, onThemeMode, enablePush, security, isAdmin, onOpenAdmin, onOpenClube, logout, resetDemo }) {
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMsg, setPushMsg] = useState(null); // { ok, text }
+  useSyncExternalStore(subscribe, getVersion); // re-render when the cookie choice changes
+  const consent = getConsent();
   const handleEnablePush = async () => {
     setPushBusy(true); setPushMsg(null);
     const res = await enablePush();
@@ -106,6 +110,16 @@ export default function SettingsScreen({ player, onBack, isOrganizer, onEditGrou
             </BtnGhost>
           ) : null,
         } },
+      ]} />
+
+      <Group label={t("PRIVACIDADE")} rows={[
+        analyticsConfigured() && { id: "cookies", props: {
+          leading: iconDisc(Cookie), title: t("Preferências de cookies"),
+          meta: consent === null ? t("Ainda não escolheste") : consent.analytics ? t("Analytics ativado") : t("Analytics desativado"),
+          onClick: openPreferences,
+        } },
+        { id: "privacy", props: { leading: iconDisc(ShieldCheck), title: t("Política de Privacidade"), onClick: () => window.open("/privacidade", "_blank", "noopener") } },
+        { id: "terms", props: { leading: iconDisc(FileText), title: t("Termos de Uso"), onClick: () => window.open("/termos", "_blank", "noopener") } },
       ]} />
 
       {/* Account security — cloud accounts only (own component, unchanged) */}

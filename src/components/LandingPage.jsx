@@ -4,6 +4,8 @@ import {
 } from "lucide-react";
 import { C, cardStyle, displayFont, BRAND, fieldBackdrop } from "../theme";
 import { t } from "../lib/i18n";
+import { analyticsConfigured } from "../lib/analytics";
+import { openPreferences } from "../lib/consent";
 import FutCard from "./FutCard";
 import BtnPrimary from "./BtnPrimary";
 
@@ -232,7 +234,7 @@ function HowItWorksSection({ onEnter }) {
     <Section style={{ padding: "64px 20px" }}>
       <div style={{ textAlign: "center", marginBottom: 36 }}>
         <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", color: C.accent, marginBottom: 8 }}>{t("COMO FUNCIONA")}</div>
-        <div style={{ ...displayFont, fontSize: "clamp(24px, 3.6vw, 34px)", color: C.text1 }}>{t("Do zero ao primeiro jogo")}</div>
+        <h2 style={{ ...displayFont, fontSize: "clamp(24px, 3.6vw, 34px)", color: C.text1, margin: 0 }}>{t("Do zero ao primeiro jogo")}</h2>
         <div style={{ display: "inline-flex", gap: 4, marginTop: 22, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 4 }}>
           <button onClick={() => setRole("organizer")} style={tabStyle(role === "organizer")}>{t("Sou Organizador")}</button>
           <button onClick={() => setRole("player")} style={tabStyle(role === "player")}>{t("Sou Jogador")}</button>
@@ -266,9 +268,9 @@ const FeatureSection = ({ n, Icon, h1, h2, text, Mock, reverse }) => (
           </div>
           <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.14em", color: C.text3 }}>{n}</span>
         </div>
-        <div style={{ ...displayFont, fontSize: "clamp(24px, 3.4vw, 32px)", lineHeight: 1.15, marginBottom: 14 }}>
+        <h2 style={{ ...displayFont, fontSize: "clamp(24px, 3.4vw, 32px)", lineHeight: 1.15, margin: "0 0 14px" }}>
           {t(h1)}<br /><span style={{ color: C.accent }}>{t(h2)}</span>
-        </div>
+        </h2>
         <div style={{ fontSize: 15, color: C.text2, lineHeight: 1.7, maxWidth: 440 }}>{t(text)}</div>
       </div>
       <div style={{ flex: "1 1 300px", display: "flex", justifyContent: "center" }}>
@@ -284,7 +286,7 @@ export default function LandingPage({ onEnter, lang, onLang }) {
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif" }}>
 
       {/* NAV */}
-      <div style={{ position: "sticky", top: 0, zIndex: 10, background: `${C.bg}E6`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.border}` }}>
+      <header style={{ position: "sticky", top: 0, zIndex: 10, background: `${C.bg}E6`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.border}` }}>
         <Section style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px" }}>
           <img src={BRAND.logo} alt="PITCH App" style={{ height: 26 }} />
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -302,16 +304,16 @@ export default function LandingPage({ onEnter, lang, onLang }) {
             <BtnPrimary compact onClick={onEnter} style={{ padding: "8px 16px", fontSize: 13 }}>{t("Criar conta")}</BtnPrimary>
           </div>
         </Section>
-      </div>
+      </header>
 
       {/* HERO */}
       <div style={{ ...fieldBackdrop(0.5, 0.96), borderBottom: `1px solid ${C.border}` }}>
         <Section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 40, padding: "72px 20px" }}>
           <div style={{ flex: "1 1 340px" }}>
-            <div style={{ ...displayFont, fontSize: "clamp(34px, 5.5vw, 54px)", lineHeight: 1.05, marginBottom: 16 }}>
+            <h1 style={{ ...displayFont, fontSize: "clamp(34px, 5.5vw, 54px)", lineHeight: 1.05, margin: "0 0 16px" }}>
               {t("O teu jogo da semana,")}<br />
               <span style={{ color: C.accent }}>{t("sem o caos do grupo.")}</span>
-            </div>
+            </h1>
             <div style={{ fontSize: 16, color: C.text2, lineHeight: 1.6, marginBottom: 28, maxWidth: 460 }}>
               {t("Confirmações, dinheiro, equipas e stats — tudo num só sítio. Pra ninguém perguntar «então, jogamos ou não?» outra vez.")}
             </div>
@@ -342,9 +344,9 @@ export default function LandingPage({ onEnter, lang, onLang }) {
       {/* FINAL CTA */}
       <div style={{ ...fieldBackdrop(0.6, 0.92) }}>
         <Section style={{ textAlign: "center", padding: "80px 20px" }}>
-          <div style={{ ...displayFont, fontSize: "clamp(28px, 4.5vw, 42px)", marginBottom: 10 }}>
+          <h2 style={{ ...displayFont, fontSize: "clamp(28px, 4.5vw, 42px)", margin: "0 0 10px" }}>
             {t("Pronto para o próximo jogo?")}
-          </div>
+          </h2>
           <div style={{ fontSize: 15, color: C.text2, marginBottom: 28 }}>
             {t("Cria a tua conta, monta o teu cartão e entra em campo.")}
           </div>
@@ -355,18 +357,21 @@ export default function LandingPage({ onEnter, lang, onLang }) {
       </div>
 
       {/* FOOTER */}
-      <div style={{ borderTop: `1px solid ${C.border}` }}>
+      <footer style={{ borderTop: `1px solid ${C.border}` }}>
         <Section style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "24px 20px" }}>
           <img src={BRAND.logo} alt="PITCH App" style={{ height: 20, opacity: 0.7 }} />
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
             <a href="/privacidade" style={{ fontSize: 12, color: C.text3, textDecoration: "none" }}>{t("Privacidade")}</a>
             <a href="/termos" style={{ fontSize: 12, color: C.text3, textDecoration: "none" }}>{t("Termos")}</a>
+            {analyticsConfigured() && (
+              <button onClick={openPreferences} style={{ background: "none", border: "none", padding: 0, fontSize: 12, color: C.text3, cursor: "pointer" }}>{t("Cookies")}</button>
+            )}
             <div style={{ fontSize: 12, color: C.text3 }}>
               {t("PITCH Club · Matosinhos — Porto · versão beta")}
             </div>
           </div>
         </Section>
-      </div>
+      </footer>
     </div>
   );
 }

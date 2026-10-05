@@ -1,12 +1,12 @@
 # Termos de Uso — PITCH
 
-**Última atualização:** [preencher na publicação]
+**Última atualização:** 5 de outubro de 2026
 
-> ⚠️ **Rascunho de trabalho.** Escrito pelo Leo (CMO/IA) a pedido do Vinicius. Não é aconselhamento jurídico — antes de publicar, revê os campos entre `[colchetes]` e, idealmente, passa por um advogado, sobretudo antes de qualquer integração de pagamento real (MB Way).
+> ⚠️ **Rascunho de trabalho.** Escrito pelo Leo (CMO/IA) e atualizado pelo Cris (CTO/IA) a pedido do Vinicius. A versão publicada é `src/components/LegalPage.jsx`; mantém os dois em sincronia. Não é aconselhamento jurídico — antes de publicar, revê os campos entre `[colchetes]` e, idealmente, passa por um advogado, sobretudo antes de qualquer integração de pagamento real (MB Way).
 
 ## 1. Aceitação dos termos
 
-Ao criar uma conta no PITCH, aceitas estes Termos de Uso e a nossa [Política de Privacidade](./PRIVACY-POLICY.md). Se não concordares, não uses a app.
+Ao criar uma conta no PITCH, aceitas estes Termos de Uso e a nossa [Política de Privacidade](./PRIVACY-POLICY.md) (que inclui a informação sobre cookies). Se não concordares, não uses a app.
 
 ## 2. O que é o PITCH
 
@@ -36,26 +36,36 @@ Ao publicar fotos, vídeos ou comentários no PITCH, mantés os direitos sobre e
 
 **Importante:** o PITCH **não processa, não guarda nem garante** qualquer pagamento em dinheiro. O valor da mensalidade do campo é calculado pela app, mas o pagamento em si acontece diretamente entre os jogadores (ex: MB Way, dinheiro), fora do PITCH. O estado "pago" na app é apenas uma marca informativa, dada pelo próprio jogador ou pelo organizador — não é uma confirmação bancária. Qualquer disputa sobre dinheiro entre jogadores é da responsabilidade deles, não do PITCH.
 
-## 7. Propriedade intelectual
+## 7. Pitch AI (bot de WhatsApp)
+
+Se o teu grupo ativar o Pitch AI no WhatsApp:
+
+- Ele responde às mensagens que o mencionam e envia avisos do jogo no grupo (vagas, lembretes, resultados).
+- Pode confirmar ou recusar a tua presença quando lho pedes e, se fores organizador ou auxiliar do grupo, criar ou cancelar jogos a teu pedido. Esses pedidos são tratados como feitos por ti.
+- As respostas são geradas automaticamente com inteligência artificial e podem conter erros. Confirma na app a informação importante (horários, vagas, valores).
+
+O PITCH não é responsável por decisões tomadas com base em respostas automáticas incorretas, nem pelo que os membros do grupo escrevem no WhatsApp.
+
+## 8. Propriedade intelectual
 
 O design, marca, código e conteúdo do PITCH (exceto o conteúdo que os utilizadores publicam) pertencem ao PITCH. Não podes copiar, distribuir ou criar produtos derivados sem autorização.
 
-## 8. Limitação de responsabilidade
+## 9. Limitação de responsabilidade
 
 O PITCH é fornecido "tal como está". Não garantimos que a app esteja sempre disponível, livre de erros, ou que resolva disputas entre jogadores (dinheiro, comportamento, resultados de jogos). Na máxima medida permitida por lei, não somos responsáveis por danos indiretos resultantes do uso da app.
 
-## 9. Suspensão e eliminação de conta
+## 10. Suspensão e eliminação de conta
 
 Podes eliminar a tua conta a qualquer momento a partir do Perfil, ou contactando-nos. Podemos suspender contas que violem estes termos, com ou sem aviso prévio, consoante a gravidade.
 
-## 10. Alterações a estes termos
+## 11. Alterações a estes termos
 
 Podemos atualizar estes termos. Alterações relevantes serão comunicadas na app ou por email. O uso continuado do PITCH após uma alteração significa que aceitas os novos termos.
 
-## 11. Lei aplicável
+## 12. Lei aplicável
 
 Estes termos regem-se pela lei portuguesa. Qualquer litígio será submetido aos tribunais competentes de [Porto/comarca a definir].
 
-## 12. Contacto
+## 13. Contacto
 
 Dúvidas sobre estes termos: vini@pitch-fc.com

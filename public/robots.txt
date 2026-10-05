@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Internal / admin-only surfaces
+Disallow: /admin
+Disallow: /roadmap
+
+# One-time links that carry a secret token — never crawlable, never indexable
+Disallow: /*?join=
+Disallow: /*?confirm=
+Disallow: /*?rate=
+Disallow: /*?admin=
+
+Sitemap: https://pitch-fc.com/sitemap.xml
