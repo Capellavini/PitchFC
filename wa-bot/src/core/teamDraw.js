@@ -7,6 +7,8 @@ import { ovrOf, POSITIONS, TEAM_NAMES, TEAM_PALETTE } from "./overall.js";
 
 const MAX_SWAP_ITERATIONS = 200;
 const JITTER = 1.5; // ± OVR points of noise so equal rosters don't always draw identically
+const TOLERANCE = 2; // re-draw picks at random among splits within this team-OVR spread
+const ATTEMPTS = 24; // balanced candidates generated per draw
 
 const lookup = (byId) => {
   if (typeof byId === "function") return byId;
@@ -117,6 +119,41 @@ export function balanceTeams(teams, byId, { rng = null, maxIterations = MAX_SWAP
   return current;
 }
 
+/** One balanced split: position buckets sorted by OVR ± jitter, snake-dealt,
+ *  then same-position improving swaps. */
+function balancedSplit(players, n, byId, rng, jitter) {
+  const keyed = players.map((p) => ({ p, k: ovrOf(p) + (rng() * 2 - 1) * jitter }));
+  const byKey = (list) => list.sort((a, b) => b.k - a.k).map((x) => x.p);
+  const order = [
+    ...POSITIONS.flatMap((pos) => byKey(keyed.filter((x) => x.p.position === pos))),
+    ...byKey(keyed.filter((x) => !POSITIONS.includes(x.p.position))),
+  ];
+  return balanceTeams(snakeDeal(order, emptyTeams(n)), byId, { rng });
+}
+
+/** Same split regardless of team order / player order within a team. */
+const splitKey = (teams) => teams.map((t) => [...t.players].sort((a, b) => String(a).localeCompare(String(b))).join(","))
+  .sort().join("|");
+
+/** "Re-sortear" variety (Vini, 2026-10-05, option A): build several balanced
+ *  candidates from varied starting orders, keep every distinct split whose
+ *  OVR spread is within `tolerance` (or the best found, if none is), and
+ *  pick one at random — so re-draws differ while staying balanced. */
+function pickBalanced(players, n, byId, { rng, jitter, tolerance, attempts }) {
+  const seen = new Map();
+  for (let i = 0; i < attempts; i++) {
+    // First attempt uses the gentle jitter; the rest start from much more
+    // varied orders so the local search lands on different splits.
+    const split = balancedSplit(players, n, byId, rng, i === 0 ? jitter : jitter * 4);
+    const key = splitKey(split);
+    if (!seen.has(key)) seen.set(key, { split, spread: ovrSpread(split, byId) });
+  }
+  const all = [...seen.values()];
+  const best = Math.min(...all.map((c) => c.spread));
+  const pool = all.filter((c) => c.spread <= Math.max(tolerance, best) + 1e-9);
+  return pool[Math.floor(rng() * pool.length)].split;
+}
+
 /** Draw `players` into nTeams (clamped 2–6) teams: [{ id: "t1", name,
  *  color, players: [id] }].
  *  - balance "ovr" (default): goalkeepers first, then each position
@@ -125,7 +162,7 @@ export function balanceTeams(teams, byId, { rng = null, maxIterations = MAX_SWAP
  *    an unknown position are dealt last.
  *  - balance "random": the original draw — shuffle, order by position,
  *    snake-deal (players without a known position are left out, as before). */
-export function drawTeams(players, nTeams = 2, { rng = Math.random, balance = "ovr", jitter = JITTER } = {}) {
+export function drawTeams(players, nTeams = 2, { rng = Math.random, balance = "ovr", jitter = JITTER, tolerance = TOLERANCE, attempts = ATTEMPTS } = {}) {
   const n = Math.max(2, Math.min(6, nTeams));
   const teams = emptyTeams(n);
   if (balance === "random") {
@@ -133,14 +170,8 @@ export function drawTeams(players, nTeams = 2, { rng = Math.random, balance = "o
     const order = POSITIONS.flatMap((pos) => shuffled.filter((p) => p.position === pos));
     return snakeDeal(order, teams);
   }
-  const keyed = players.map((p) => ({ p, k: ovrOf(p) + (rng() * 2 - 1) * jitter }));
-  const byKey = (list) => list.sort((a, b) => b.k - a.k).map((x) => x.p);
-  const order = [
-    ...POSITIONS.flatMap((pos) => byKey(keyed.filter((x) => x.p.position === pos))),
-    ...byKey(keyed.filter((x) => !POSITIONS.includes(x.p.position))),
-  ];
   const byId = new Map(players.map((p) => [p.id, p]));
-  const balanced = balanceTeams(snakeDeal(order, teams), byId, { rng });
+  const balanced = pickBalanced(players, n, byId, { rng, jitter, tolerance, attempts });
   // Shuffle which squad wears which bib, so a re-draw doesn't always hand
   // the top-OVR player to "Coletes".
   const squads = balanced.map((t) => t.players);

@@ -143,3 +143,14 @@ test("separatePair splits a pair, keeps sizes, prefers same position and minimal
   const z = teams[1].players[0];
   assert.equal(separatePair(teams, x, z, byId), teams);
 });
+
+test("re-sortear (option A): ≥3 distinct balanced splits across 30 draws, all within tolerance or the best", () => {
+  const key = (teams) => teams.map((t) => [...t.players].sort((a, b) => a - b).join(",")).sort().join("|");
+  const splits = new Set();
+  for (let s = 0; s < 30; s++) {
+    const teams = drawTeams(ROSTER_10, 2, { rng: mulberry32(1000 + s) });
+    assert.ok(ovrSpread(teams, byId) <= 2 + 1e-9, `spread ${ovrSpread(teams, byId)} > 2`);
+    splits.add(key(teams));
+  }
+  assert.ok(splits.size >= 3, `only ${splits.size} distinct splits`);
+});
