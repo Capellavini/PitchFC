@@ -69,6 +69,7 @@ import NoGroupState from "./components/NoGroupState";
 import BtnPrimary from "./components/BtnPrimary";
 import { CalendarCheck, CreditCard, Star, ArrowLeft, Bell } from "lucide-react";
 import Avatar from "./components/Avatar";
+import KeepyUppyLoader from "./components/KeepyUppyLoader";
 import { isEnabled } from "./lib/flags";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
@@ -1113,6 +1114,7 @@ export default function PitchApp() {
       return shell(
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
           <img src={BRAND.logo} alt="PITCH App" style={{ height: 30 }} />
+          <KeepyUppyLoader />
           <div style={{ fontSize: 13, color: C.text2 }}>{t("A ligar ao clube…")}</div>
         </div>
       );
