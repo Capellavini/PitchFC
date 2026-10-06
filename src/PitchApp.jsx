@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { C, BRAND, TOUCH } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, DEFAULT_SETTINGS, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
 import { hashId } from "./lib/core/ids.js";
-import { drawTeams as drawTeamsCore } from "./lib/core/teamDraw.js";
+import { drawTeams as drawTeamsCore, balanceTeams as balanceTeamsCore } from "./lib/core/teamDraw.js";
 import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
 import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGHTS } from "./lib/fantasy";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
@@ -602,6 +602,20 @@ export default function PitchApp() {
     const { playing } = splitWaitlist(baseGroup.filter((p) => p.status === "confirmed"), groupSettings.maxPlayers);
     updateTeams(drawTeamsCore(playing, numTeams, { balance: "ovr" }), { resetConfirmed: true, drawnBy: true });
   };
+
+  // "Equilibrar equipas": keeps the current teams (names, sizes, colours)
+  // and evens out their average OVR with same-position swaps — for after
+  // manual edits. A captain who gets swapped to another team loses the armband.
+  const balanceCurrentTeams = () =>
+    updateTeams((ts) => {
+      if (!Array.isArray(ts) || ts.length < 2) return ts;
+      const balanced = balanceTeamsCore(ts, (id) => baseGroup.find((p) => p.id === id));
+      return balanced.map((t) => {
+        if (t.captainId == null || t.players.includes(t.captainId)) return t;
+        const { captainId: _old, ...rest } = t;
+        return rest;
+      });
+    });
 
   const renameTeam = (teamId, name) =>
     updateTeams((ts) => (Array.isArray(ts) ? ts.map((t) => (t.id === teamId ? { ...t, name } : t)) : ts));
@@ -1824,7 +1838,7 @@ export default function PitchApp() {
         ) : (
           <MatchdayTab
             group={displayGroup} game={game}
-            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} setTeamCaptain={setTeamCaptain} canManageTeams={canManageTeams}
+            teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} setTeamCaptain={setTeamCaptain} balanceTeams={balanceCurrentTeams} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
             matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetChampion: setChampion, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution,

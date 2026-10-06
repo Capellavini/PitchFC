@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Shuffle, RotateCcw, Check, Pencil } from "lucide-react";
+import { Shuffle, RotateCcw, Check, Pencil, Scale } from "lucide-react";
+import { ovrSpread } from "../lib/core/teamDraw.js";
 import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall, teamOverall as avgOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
@@ -30,9 +31,10 @@ const selectStyle = {
  *    confirmed players inside the spots cap — the waiting line sits out).
  *  - canManage, confirmed, setByName, confirmedByName.
  *  - onDraw(n), onClear(), onRename(teamId, name), onMove(playerId, teamId),
- *    onSetCaptain(teamId, playerId|null), onConfirm().
+ *    onSetCaptain(teamId, playerId|null), onBalance() (same-position swaps
+ *    that even out team OVR), onConfirm().
  */
-export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onSetCaptain, onConfirm, lockDraw = false, hideTeamId = null }) {
+export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onSetCaptain, onBalance, onConfirm, lockDraw = false, hideTeamId = null }) {
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const [editing, setEditing] = useState(false);
 
@@ -45,6 +47,7 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
   const assigned = new Set((teams || []).flatMap((tm) => tm.players));
   const unassigned = teams ? playing.filter((p) => !assigned.has(p.id)) : [];
   const me = group.find((p) => p.isMe);
+  const spread = teams ? ovrSpread(teams, (id) => group.find((p) => p.id === id)) : 0;
 
   const showEditor = canManage && (!confirmed || editing);
   // The viewer's own team is already the OwnTeamCard hero above — in the
@@ -118,6 +121,18 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
             <BtnPrimary block onClick={() => onDraw(numTeams)} disabled={!canDraw}>
               <Shuffle size={16} /> {t("Sortear equipas")}
             </BtnPrimary>
+          )}
+          {teams && onBalance && teams.length > 1 && (
+            <>
+              <BtnGhost block tone="accent" onClick={onBalance} disabled={spread < 0.5} style={{ marginTop: S.sm }}>
+                <Scale size={16} /> {t("Equilibrar equipas")}
+              </BtnGhost>
+              <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs, lineHeight: 1.4 }}>
+                {spread < 0.5
+                  ? t("As equipas já estão equilibradas por OVR.")
+                  : `${t("Diferença de OVR entre equipas")}: ${spread.toFixed(1)}. ${t("Troca jogadores da mesma posição, sem mudar nomes nem tamanhos.")}`}
+              </div>
+            </>
           )}
           {teams && setByName && !confirmed && (
             <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.sm }}>{t("Sorteado por")} {setByName} — {t("ainda por confirmar")}</div>
