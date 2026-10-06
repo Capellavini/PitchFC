@@ -68,10 +68,18 @@ const DEFS = [
   ["cancel_game", "PROPOSE cancelling the current game (the group is told automatically).", obj({ reason: { type: ["string", "null"] } })],
 ];
 
-/** Tool definitions, sorted by name (stable prompt-cache prefix). */
-export const TOOL_DEFS = DEFS.map(([name, description, input_schema]) => ({ name, description, input_schema, strict: true }))
-  .sort((a, b) => a.name.localeCompare(b.name));
 export const WRITE_TOOLS = new Set(["set_format", "propose_teams", "swap_players", "move_player", "redraw_teams", "send_group_reminder", "publish_open_spots", "set_spots", "change_game_time", "change_venue", "mark_paid", "cancel_game"]);
+
+/** The API accepts at most 20 strict tools per request (a 26-strict request
+ *  400'd live on 2026-10-06). Strict = guaranteed schema-valid input, which
+ *  matters for anything that changes state; read tools tolerate a missing
+ *  or odd field (handlers treat undefined like null), so they're non-strict. */
+export const MAX_STRICT_TOOLS = 20;
+const STRICT = new Set([...WRITE_TOOLS, "switch_group", "set_prefs"]);
+
+/** Tool definitions, sorted by name (stable prompt-cache prefix). */
+export const TOOL_DEFS = DEFS.map(([name, description, input_schema]) => ({ name, description, input_schema, ...(STRICT.has(name) ? { strict: true } : {}) }))
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 // ── helpers ────────────────────────────────────────────────
 const euros = (cents) => (cents / 100).toFixed(2).replace(".", ",");

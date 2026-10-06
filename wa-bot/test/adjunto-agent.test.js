@@ -27,7 +27,8 @@ test("request shape: sonnet 5.5 rules (no thinking param, auto tool_choice, effo
   assert.equal(req.max_tokens, 4000);
   const names = req.tools.map((t) => t.name);
   assert.deepEqual(names, [...names].sort());
-  assert.ok(req.tools.every((t) => t.strict === true && t.input_schema.additionalProperties === false));
+  assert.ok(req.tools.every((t) => t.input_schema.additionalProperties === false));
+  assert.ok(req.tools.filter((t) => t.strict === true).length <= 20, "API max 20 strict tools (400 live on 2026-10-06)");
   // volatile snapshot only in the latest user turn; system is static
   assert.doesNotMatch(req.system[0].text, /today/);
   assert.match(req.messages.at(-1).content[0].text, /<snapshot>\ntoday: x/);

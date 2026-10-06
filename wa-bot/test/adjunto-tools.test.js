@@ -2,7 +2,7 @@
 // table/column/RPC payloads the app uses (fake store records them).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runTool, TOOL_DEFS, WRITE_TOOLS } from "../src/adjunto/tools.js";
+import { runTool, TOOL_DEFS, WRITE_TOOLS, MAX_STRICT_TOOLS } from "../src/adjunto/tools.js";
 import { decide, gameStillValid } from "../src/adjunto/actions.js";
 import { makeWorld, makeStore, makeEnv, ORG, GROUP_ID, GAME_ID, NOW } from "./adjunto-fakes.js";
 import { defaultFormat } from "../src/core/format.js";
@@ -20,7 +20,7 @@ async function setup(worldOpts) {
   return { world, store, env, posts, link, call, yes, tc };
 }
 
-test("every tool schema is strict with all properties required", () => {
+test("every tool schema is strict-shaped; write tools strict; ≤20 strict tools (API limit)", () => {
   for (const t of TOOL_DEFS) {
     const walk = (s) => {
       if (s?.type === "object") {
@@ -31,8 +31,9 @@ test("every tool schema is strict with all properties required", () => {
       if (s?.items) walk(s.items);
     };
     walk(t.input_schema);
-    assert.equal(t.strict, true);
+    if (WRITE_TOOLS.has(t.name)) assert.equal(t.strict, true, t.name);
   }
+  assert.ok(TOOL_DEFS.filter((t) => t.strict).length <= MAX_STRICT_TOOLS, "too many strict tools");
 });
 
 test("write tools create a pending proposal and never write shared tables", async () => {
