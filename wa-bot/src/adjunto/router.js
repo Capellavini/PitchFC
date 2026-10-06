@@ -104,7 +104,7 @@ export function makeRouter(env) {
 
   async function chooseGroup(link, candidates, lang) {
     const th = await env.store.getThread(link.id);
-    await env.store.saveThread(th, { mode: "choose_group", step: null, draft: { candidates } });
+    await env.store.saveThread(th, { mode: "choose_group", step: null, draft: { candidates, lang } });
     return env.sendDm(link, T(lang).chooseGroup(candidates.map((c) => c.name)));
   }
 
@@ -188,10 +188,23 @@ export function makeRouter(env) {
 
     if (thread.mode === "choose_group") {
       const cands = thread.draft?.candidates ?? [];
+      // Same language as the menu we sent (not the first group's language).
+      const menuLang = thread.draft?.lang ?? baseLang;
+      // Repeating the activation phrase restarts the choice with a FRESH
+      // group list (the stored one may predate a group created since —
+      // Vini hit this on 2026-10-06), instead of "responde com o número".
+      if (isActivationPhrase(text)) {
+        if (groups.length === 1) {
+          await env.store.updateLink(link.id, { active_group_id: groups[0].id });
+          link.active_group_id = groups[0].id;
+          return welcome(link, await env.store.groupRow(groups[0].id));
+        }
+        return chooseGroup(link, groups.map((g) => ({ id: g.id, name: g.name })), menuLang);
+      }
       const k = parseChoice(text, cands.length);
       const byName = cands.filter((c) => c.name.toLowerCase().includes(text.trim().toLowerCase()));
       const pick = k ? cands[k - 1] : byName.length === 1 ? byName[0] : null;
-      if (!pick || !groups.some((g) => g.id === pick.id)) return say(T(baseLang).chooseGroupAgain(cands.length));
+      if (!pick || !groups.some((g) => g.id === pick.id)) return say(T(menuLang).chooseGroupAgain(cands.length));
       await env.store.updateLink(link.id, { active_group_id: pick.id });
       link.active_group_id = pick.id;
       return welcome(link, await env.store.groupRow(pick.id));

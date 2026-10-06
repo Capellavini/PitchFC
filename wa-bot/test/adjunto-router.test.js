@@ -91,16 +91,31 @@ test("several groups → numbered choice (choose_group) → pick → welcome", a
   const s = setup({ store: { orgRows: () => [{ player_id: ORG, group_id: GROUP_ID, group_name: "Goodweather F.C." }, { player_id: ORG, group_id: "g2", group_name: "Pitch Quarta" }] } });
   s.store.extraGroups = [{ id: "g2", name: "Pitch Quarta", lang: "pt", wa_bot_lang: "pt", adjunto_enabled: true, game_format: null }];
   await s.say("Quero o Treinador Adjunto");
-  assert.equal(s.last(), "És organizador de: 1) Goodweather F.C. 2) Pitch Quarta. Qual?");
+  const menu = "És organizador de vários grupos:\n1) Goodweather F.C.\n2) Pitch Quarta\n\nQual queres ativar? Responde com o número.";
+  assert.equal(s.last(), menu);
   const link = s.store.db.links[0];
   assert.equal(link.active_group_id, null);
   assert.equal(s.store.db.threads.get(link.id).mode, "choose_group");
+  // Repeating the phrase re-shows the menu (2026-10-06 live bug).
+  await s.say("Quero ativar o adjunto");
+  assert.equal(s.last(), menu);
   await s.say("7");
   assert.match(s.last(), /Responde com o número/);
   await s.say("2");
   assert.equal(link.active_group_id, "g2");
   assert.match(s.last(), /no Pitch Quarta/);
   assert.match(s.last(), /Também és organizador do Goodweather F\.C\./);
+});
+
+test("phrase again while choosing → menu rebuilt from CURRENT groups (one created after the first message shows up)", async () => {
+  const s = setup({ store: { orgRows: () => [{ player_id: ORG, group_id: GROUP_ID, group_name: "Goodweather F.C." }, { player_id: ORG, group_id: "g2", group_name: "Pitch Quarta" }] } });
+  s.store.extraGroups = [{ id: "g2", name: "Pitch Quarta", lang: "pt", wa_bot_lang: "pt", adjunto_enabled: true, game_format: null }];
+  await s.say("Quero o Treinador Adjunto");
+  s.store.extraGroups.push({ id: "g3", name: "PITCH Teste Adjunto", lang: "pt", wa_bot_lang: "pt", adjunto_enabled: true, game_format: null });
+  await s.say("Quero o Treinador Adjunto");
+  assert.match(s.last(), /3\) PITCH Teste Adjunto/);
+  await s.say("3");
+  assert.equal(s.store.db.links[0].active_group_id, "g3");
 });
 
 test("activation code: valid → link (even if the number differs); expired → 'gera outro' max 3/hour", async () => {
