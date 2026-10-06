@@ -37,6 +37,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
   const ownTeam = myTeam ? <OwnTeamCard team={myTeam} group={group} confirmedByName={teamsConfirmedByName} /> : null;
 
   const live = Boolean(matchdayProps.matchday);
+  const cardMeta = { groupName: game.groupName, dateLabel: game.date, timeLabel: game.time, venue: game.venue };
   // "Preparar o próximo jogo" only applies until the next day goes live —
   // once that one ends, its own after-state must show.
   useEffect(() => { if (live) setForceBefore(false); else setLiveView("jogo"); }, [live]);
@@ -71,7 +72,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
         {ownTeam}
         <TeamDraw hideTeamId={myTeam?.id} group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
           setByName={teamsSetByName} confirmedByName={teamsConfirmedByName} lockDraw
-          onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onSetCaptain={setTeamCaptain} onBalance={balanceTeams} onConfirm={onConfirmTeams} />
+          onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onSetCaptain={setTeamCaptain} onBalance={balanceTeams} onConfirm={onConfirmTeams} cardMeta={cardMeta} />
         </>
       ) : (
         <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed}
@@ -127,7 +128,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
 
       <TeamDraw hideTeamId={myTeam?.id} group={group} teams={teams} playing={playing} canManage={canManageTeams} confirmed={teamsConfirmed}
         setByName={teamsSetByName} confirmedByName={teamsConfirmedByName}
-        onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onSetCaptain={setTeamCaptain} onBalance={balanceTeams} onConfirm={onConfirmTeams} />
+        onDraw={drawTeams} onClear={onClearTeams} onRename={renameTeam} onMove={movePlayer} onSetCaptain={setTeamCaptain} onBalance={balanceTeams} onConfirm={onConfirmTeams} cardMeta={cardMeta} />
 
       <Matchday {...matchdayProps} group={group} teams={teams} canManage={canManageTeams} teamsConfirmed={teamsConfirmed} />
     </>,

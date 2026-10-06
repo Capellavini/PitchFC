@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shuffle, RotateCcw, Check, Pencil, Scale } from "lucide-react";
+import { Shuffle, RotateCcw, Check, Pencil, Scale, ImageDown } from "lucide-react";
 import { ovrSpread } from "../lib/core/teamDraw.js";
 import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall, teamOverall as avgOverall } from "../lib/helpers";
@@ -8,6 +8,7 @@ import Avatar from "./Avatar";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import Chip from "./Chip";
+import TeamsCardModal from "./TeamsCardModal";
 import ListRow from "./ListRow";
 import SectionLabel from "./SectionLabel";
 
@@ -34,9 +35,10 @@ const selectStyle = {
  *    onSetCaptain(teamId, playerId|null), onBalance() (same-position swaps
  *    that even out team OVR), onConfirm().
  */
-export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onSetCaptain, onBalance, onConfirm, lockDraw = false, hideTeamId = null }) {
+export default function TeamDraw({ group, teams, playing, canManage, confirmed, setByName, confirmedByName, onDraw, onClear, onRename, onMove, onSetCaptain, onBalance, onConfirm, cardMeta = null, lockDraw = false, hideTeamId = null }) {
   const [numTeams, setNumTeams] = useState(teams?.length || 2);
   const [editing, setEditing] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
 
   const resolve = (ids) => ids.map((id) => group.find((p) => p.id === id)).filter(Boolean);
   const captainOf = (tm) => (tm.captainId != null && tm.players.includes(tm.captainId) ? group.find((p) => p.id === tm.captainId) : null);
@@ -229,6 +231,14 @@ export default function TeamDraw({ group, teams, playing, canManage, confirmed, 
           ))}
         </div>
       )}
+
+      {/* ── Shareable image of the teams (what organizers used to screenshot) ── */}
+      {teams && cardMeta && (canManage || confirmed) && teams.some((tm) => tm.players.length > 0) && (
+        <BtnGhost block tone="accent" onClick={() => setCardOpen(true)} style={{ marginBottom: S.md }}>
+          <ImageDown size={16} /> {t("Gerar card das equipas")}
+        </BtnGhost>
+      )}
+      {cardOpen && <TeamsCardModal teams={teams} group={group} meta={cardMeta} onClose={() => setCardOpen(false)} />}
 
       {/* ── Confirm / reopen ── */}
       {canManage && teams && !confirmed && (
