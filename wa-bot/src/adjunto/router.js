@@ -332,7 +332,7 @@ export function makeRouter(env) {
       case "status": {
         if (!ctx.game) return sayG(t.noGame);
         const when = formatGameWhen(ctx.game.scheduled_at, lang === "en" ? "en" : "pt");
-        return sayG(t.p.status({ when, venue: ctx.game.venue, c: ctx.confirmedCount, s: ctx.spots, pending: ctx.pending.map((p) => p.nick), late: null, menu: false }));
+        return sayG(t.p.status({ when, venue: ctx.game.venue, c: Math.min(ctx.confirmedCount, ctx.spots), s: ctx.spots, pending: ctx.pending.map((p) => p.nick), late: null, menu: false }));
       }
       case "table": {
         const md = ctx.game?.live_matchday;
@@ -349,7 +349,7 @@ export function makeRouter(env) {
         if (!ctx.game || !["open", "full"].includes(ctx.game.status)) return sayG(t.noGame);
         const r = JSON.parse((await runTool("get_team_proposal", {}, tc)).content);
         if (r.pending) return sayG(r.card);
-        if (ctx.playing.length < 4) return sayG(t.p.status({ when: formatGameWhen(ctx.game.scheduled_at, lang === "en" ? "en" : "pt"), venue: ctx.game.venue, c: ctx.confirmedCount, s: ctx.spots, pending: [], late: null, menu: false }));
+        if (ctx.playing.length < 4) return sayG(t.p.status({ when: formatGameWhen(ctx.game.scheduled_at, lang === "en" ? "en" : "pt"), venue: ctx.game.venue, c: Math.min(ctx.confirmedCount, ctx.spots), s: ctx.spots, pending: [], late: null, menu: false }));
         return sayG((await teamsflow.startCard(env, { link, ctx, lang })).text);
       }
       default: return undefined;

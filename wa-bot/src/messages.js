@@ -25,24 +25,24 @@ const T = {
   // Proportional milestones: the kind depends on where `confirmed` sits
   // relative to `spots`, so it works for any group size.
   milestone: {
-    pt: ({ game, confirmed, spots, link }) =>
+    pt: ({ game, confirmed, spots, waiting = 0, link }) =>
       confirmed < spots
         ? `🔥 Já são ${confirmed}/${spots} — ${spotsLeft.pt(spots - confirmed)}. Ainda dá tempo:\n${link}`
-        : confirmed === spots
+        : !waiting
           ? `✅ *Jogo fechado!* ${confirmed}/${spots} confirmados para ${formatGameWhen(game.scheduled_at, "pt")}.\nQuem ainda quiser entra na lista de espera:\n${link}`
-          : `📋 Já são ${confirmed} confirmados — ${confirmed - spots} na lista de espera. Se alguém cair, entra por ordem.`,
-    ptbr: ({ game, confirmed, spots, link }) =>
+          : `📋 Jogo fechado (${confirmed}/${spots}) — ${waiting} na lista de espera. Se alguém cair, entra por ordem.`,
+    ptbr: ({ game, confirmed, spots, waiting = 0, link }) =>
       confirmed < spots
         ? `🔥 Já são ${confirmed}/${spots} — ${spotsLeft.ptbr(spots - confirmed)}. Ainda dá tempo:\n${link}`
-        : confirmed === spots
+        : !waiting
           ? `✅ *Rachão fechado!* ${confirmed}/${spots} confirmados para ${formatGameWhen(game.scheduled_at, "pt")}.\nQuem ainda quiser entra na lista de espera:\n${link}`
-          : `📋 Já são ${confirmed} confirmados — ${confirmed - spots} na lista de espera. Se alguém sair, entra por ordem.`,
-    en: ({ game, confirmed, spots, link }) =>
+          : `📋 Rachão fechado (${confirmed}/${spots}) — ${waiting} na lista de espera. Se alguém sair, entra por ordem.`,
+    en: ({ game, confirmed, spots, waiting = 0, link }) =>
       confirmed < spots
         ? `🔥 ${confirmed}/${spots} in — ${spotsLeft.en(spots - confirmed)}. Still time to join:\n${link}`
-        : confirmed === spots
+        : !waiting
           ? `✅ *Game full!* ${confirmed}/${spots} confirmed for ${formatGameWhen(game.scheduled_at, "en")}.\nJoin the waiting list:\n${link}`
-          : `📋 ${confirmed} confirmed — ${confirmed - spots} on the waiting list. If someone drops out, they move up in order.`,
+          : `📋 Game full (${confirmed}/${spots}) — ${waiting} on the waiting list. If someone drops out, they move up in order.`,
   },
 
   spot_opened: {
@@ -198,6 +198,12 @@ export function pollContent(game, lang = "pt") {
 /** Render a message for a group's language setting. */
 export function render(kind, ctx, lang = "pt") {
   const t = T[kind];
+  // `confirmed` arrives as the raw count of confirmed rows, which includes
+  // the waiting line. Every message shows confirmed/spots, so cap it at
+  // `spots` (never "16/15") and hand the overflow over as `waiting`.
+  if (ctx && Number.isFinite(ctx.confirmed) && Number.isFinite(ctx.spots) && ctx.confirmed > ctx.spots) {
+    ctx = { ...ctx, confirmed: ctx.spots, waiting: ctx.confirmed - ctx.spots };
+  }
   if (lang === "en") return t.en(ctx);
   if (lang === "ptbr") return t.ptbr(ctx);
   if (lang === "pt+en") return `${t.pt(ctx)}\n\n${t.en(ctx)}`;

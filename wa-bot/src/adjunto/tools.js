@@ -130,7 +130,7 @@ const H_ = {
     const h = hoursToKickoff(g, tc.env.now());
     const nick = (xs) => xs.map((p) => p.nick);
     return { game_id: g.id, when_iso: g.scheduled_at, when_label: formatGameWhen(g.scheduled_at, tc.lang === "en" ? "en" : "pt"), venue: g.venue ?? null, status: g.status,
-      spots: ctx.spots, confirmed: ctx.confirmedCount, playing: nick(ctx.playing), waitlist: nick(ctx.waitlist), pending: nick(ctx.pending), declined: nick(ctx.declined),
+      spots: ctx.spots, confirmed: ctx.playing.length, playing: nick(ctx.playing), waitlist: nick(ctx.waitlist), pending: nick(ctx.pending), declined: nick(ctx.declined),
       hours_to_kickoff: Math.round(h), teams: !g.teams ? "none" : g.teams_confirmed ? "confirmed" : "draft" };
   },
   async get_player_stats({ player, since, n }, tc) {

@@ -145,19 +145,19 @@ export function makeTicker(env) {
             const rows = lc.insufficient ? [] : lc.rows.filter((r) => pendingIds.has(r.playerId) && r.latePct >= 50)
               .slice(0, 4).map((r) => ({ nick: ctx.players.find((p) => p.uuid === r.playerId)?.nick, h: r.medianHoursBefore }));
             const late = lc.insufficient ? t.p.lateLearning : rows.length ? t.p.lateLine(rows) : null;
-            return pre + t.p.status({ when, venue: game.venue, c: ctx.confirmedCount, s: ctx.spots, pending: ctx.pending.map((p) => p.nick), late });
+            return pre + t.p.status({ when, venue: game.venue, c: Math.min(ctx.confirmedCount, ctx.spots), s: ctx.spots, pending: ctx.pending.map((p) => p.nick), late });
           }, { kind: "status", gameId: game.id, options: ["group_reminder", "open_spots"] });
           break;
         case "adj_hint":
-          await sendProactive(link, g, gid, ev, async () => pre + t.p.reminderHint({ c: ctx.confirmedCount, s: ctx.spots,
+          await sendProactive(link, g, gid, ev, async () => pre + t.p.reminderHint({ c: Math.min(ctx.confirmedCount, ctx.spots), s: ctx.spots,
             at: formatGameTime(new Date(new Date(game.scheduled_at).getTime() - 24 * 36e5).toISOString()) }), { kind: "hint", gameId: game.id, options: ["group_reminder"] });
           break;
         case "adj_gameday":
-          await sendProactive(link, g, gid, ev, async () => pre + t.p.gameday({ c: ctx.confirmedCount, s: ctx.spots }),
+          await sendProactive(link, g, gid, ev, async () => pre + t.p.gameday({ c: Math.min(ctx.confirmedCount, ctx.spots), s: ctx.spots }),
             { kind: "gameday", gameId: game.id, options: ["open_spots", "set_spots", "cancel_game"] });
           break;
         case "adj_spot":
-          await sendProactive(link, g, gid, ev, async () => pre + t.p.spot({ nick: null, c: ctx.confirmedCount, s: ctx.spots }),
+          await sendProactive(link, g, gid, ev, async () => pre + t.p.spot({ nick: null, c: Math.min(ctx.confirmedCount, ctx.spots), s: ctx.spots }),
             { kind: "spot", gameId: game.id, options: ["open_spots", "group_reminder"] });
           break;
         case "adj_teams": case "adj_teams_full":

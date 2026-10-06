@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "groups": "node src/index.js --list-groups",
-    "test": "node --test test/events.test.js test/events-cycle.test.js test/roster.test.js test/polls.test.js test/time.test.js test/ask.test.js test/core-sync.test.js test/adjunto-identity.test.js test/adjunto-commands.test.js test/adjunto-onboarding.test.js test/adjunto-guard.test.js test/adjunto-budget.test.js test/adjunto-proactive.test.js test/adjunto-groupsafe.test.js test/adjunto-teams.test.js test/adjunto-agent.test.js test/adjunto-router.test.js test/adjunto-tools.test.js test/adjunto-tick.test.js"
+    "test": "node --test test/events.test.js test/events-cycle.test.js test/roster.test.js test/polls.test.js test/time.test.js test/ask.test.js test/core-sync.test.js test/adjunto-identity.test.js test/adjunto-commands.test.js test/adjunto-onboarding.test.js test/adjunto-guard.test.js test/adjunto-budget.test.js test/adjunto-proactive.test.js test/adjunto-groupsafe.test.js test/adjunto-teams.test.js test/adjunto-agent.test.js test/adjunto-router.test.js test/adjunto-tools.test.js test/adjunto-tick.test.js test/messages-cap.test.js"
   },
   "engines": {
     "node": ">=22"
