@@ -18,7 +18,7 @@ export async function logMessage({ groupId, kind, answer, eventKind = null, ques
 /** Groups that opted in to the bot (jid set + enabled). Safe by default. */
 export async function botGroups() {
   const { data, error } = await db().from("groups")
-    .select("id, name, wa_group_jid, wa_bot_lang, invite_token, max_players, venue, monthly_price_cents")
+    .select("id, name, wa_group_jid, wa_bot_lang, wa_bot_kinds, wa_bot_interactive, invite_token, max_players, venue, monthly_price_cents")
     .eq("wa_bot_enabled", true).not("wa_group_jid", "is", null);
   if (error) throw error;
   return data ?? [];
@@ -41,12 +41,25 @@ export async function upcomingGames(groupId) {
   return games.map((g) => ({ ...g, confirmed: count[g.id] || 0 }));
 }
 
+/** Last confirmed count the bot saw, and the weekly cycle it saw it in
+ *  (null state = never seen). See prevForCycle in events.js. */
 export async function getPrev(gameId) {
-  const { data } = await db().from("bot_game_state").select("last_confirmed").eq("game_id", gameId).maybeSingle();
-  return data ? data.last_confirmed : null;
+  const { data } = await db().from("bot_game_state").select("last_confirmed, cycle_opened_at").eq("game_id", gameId).maybeSingle();
+  return data ? { n: data.last_confirmed, cycle: data.cycle_opened_at } : null;
 }
-export const setPrev = (gameId, n) =>
-  db().from("bot_game_state").upsert({ game_id: gameId, last_confirmed: n, updated_at: new Date().toISOString() });
+export const setPrev = (gameId, n, cycle = null) =>
+  db().from("bot_game_state").upsert({ game_id: gameId, last_confirmed: n, cycle_opened_at: cycle, updated_at: new Date().toISOString() });
+
+/** Transition guard for keys that gained a weekly-cycle suffix (migration
+ *  68): true if the OLD-format key was already claimed in this cycle, so
+ *  the deploy doesn't repeat a message already sent this week. */
+export async function legacyClaimed(key, sinceIso) {
+  let q = db().from("bot_announcements").select("id").eq("dedupe_key", key);
+  if (sinceIso) q = q.gte("created_at", sinceIso);
+  const { data, error } = await q.limit(1);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
 
 /** Claim-before-send. Returns the row id, or null if this key was already announced. */
 export async function claim(groupId, gameId, kind, key) {

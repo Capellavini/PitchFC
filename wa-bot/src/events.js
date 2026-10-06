@@ -15,7 +15,24 @@ import { lisbonDayKey, lisbonMinutesOfDay } from "./time.js";
  *  Treinador Adjunto claims the SAME key after the organizer sends a
  *  reminder from the DM — the group never gets two (plan §8.5). Not
  *  cycle-keyed yet (plan §0.5 is a separate fix). */
-export const reminderKey = (game) => `reminder:${game.id}`;
+export const reminderKey = (game) => `reminder:${game.id}:${cycleOf(game)}`;
+
+/** A recurring game reuses its games row every week; cycle_opened_at marks
+ *  each weekly reset. Every once-per-game key carries it, or the dedupe row
+ *  claimed in week 1 would silently block every later week. */
+export const cycleOf = (game) => game.cycle_opened_at ?? "once";
+
+/** Previous confirmed count for decide(), or null when this is a fresh
+ *  weekly cycle (so the reset's drop to 0 isn't read as "abriu vaga" and
+ *  "Jogo aberto" can fire again). A stored state without a cycle is a
+ *  pre-migration row: treated as the current cycle once (no re-announce
+ *  on deploy), then overwritten with the cycle by setPrev. */
+export function prevForCycle(state, game) {
+  if (!state) return null;
+  if (state.cycle == null) return state.n;
+  const cur = game.cycle_opened_at ? new Date(game.cycle_opened_at).getTime() : null;
+  return cur !== null && new Date(state.cycle).getTime() === cur ? state.n : null;
+}
 
 /**
  * Proportional milestones, e.g. for 10 spots: 8 (80%, "2 left"), 10 (full),
@@ -46,14 +63,15 @@ export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, al
   const gid = game.id;
 
   if (game.status === "cancelled") {
-    return [{ kind: "cancelled", key: `cancelled:${gid}`, urgent: true }];
+    return [{ kind: "cancelled", key: `cancelled:${gid}:${cycleOf(game)}`, legacyKey: `cancelled:${gid}`, urgent: true }];
   }
   if (!["open", "full"].includes(game.status)) return out;
 
   const start = new Date(game.scheduled_at);
-  const ageH = (now - new Date(game.created_at)) / 36e5;
+  // Freshness of THIS week's cycle (a recycled row keeps its old created_at).
+  const ageH = (now - new Date(game.cycle_opened_at ?? game.created_at)) / 36e5;
   if (prev === null && ageH <= openMaxAgeH) {
-    out.push({ kind: "game_open", key: `game_open:${gid}` });
+    out.push({ kind: "game_open", key: `game_open:${gid}:${cycleOf(game)}`, legacyKey: `game_open:${gid}` });
   }
 
   if (prev !== null && confirmed !== prev) {
@@ -85,12 +103,12 @@ export function decide({ game, spots, confirmed, prev, now, openMaxAgeH = 12, al
 
   const hoursToGame = (start - now) / 36e5;
   if (hoursToGame > 0 && hoursToGame <= 24 && confirmed < spots) {
-    out.push({ kind: "reminder", key: reminderKey(game) });
+    out.push({ kind: "reminder", key: reminderKey(game), legacyKey: `reminder:${gid}` });
   }
 
   // Game day, morning onwards, until kickoff.
   if (hoursToGame > 0 && lisbonDayKey(start) === lisbonDayKey(now) && lisbonMinutesOfDay(now) >= dayOfMinutes) {
-    out.push({ kind: "matchday", key: `matchday:${gid}` });
+    out.push({ kind: "matchday", key: `matchday:${gid}:${cycleOf(game)}`, legacyKey: `matchday:${gid}` });
   }
   return out;
 }
@@ -112,3 +130,10 @@ export function decideMatchAwards({ matchday, now, minAgeH = 2, maxAgeH = 12 }) 
   if (ageH < minAgeH || ageH > maxAgeH) return [];
   return [{ kind: "match_awards", key: `match_awards:${matchday.id}` }];
 }
+
+/** groups.wa_bot_kinds allowlist (NULL/empty = every kind allowed). */
+export const kindAllowed = (group, kind) =>
+  !Array.isArray(group?.wa_bot_kinds) || group.wa_bot_kinds.length === 0 || group.wa_bot_kinds.includes(kind);
+
+/** groups.wa_bot_interactive === false → the bot never answers in the group. */
+export const isInteractive = (group) => group?.wa_bot_interactive !== false;

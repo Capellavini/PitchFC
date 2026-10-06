@@ -10,8 +10,8 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaile
 import qrcode from "qrcode-terminal";
 import pino from "pino";
 import { cfg } from "./config.js";
-import { botGroups, upcomingGames, getPrev, setPrev, claim, markSent, unclaim, sentSince, recentMatchdays, groupMembers, confirmedRoster, setStatus, hasOpenGame, createGame, cancelCurrentGame, logMessage } from "./db.js";
-import { decide, decidePostGame, decideMatchAwards, reminderKey } from "./events.js";
+import { botGroups, upcomingGames, getPrev, setPrev, legacyClaimed, claim, markSent, unclaim, sentSince, recentMatchdays, groupMembers, confirmedRoster, setStatus, hasOpenGame, createGame, cancelCurrentGame, logMessage } from "./db.js";
+import { decide, decidePostGame, decideMatchAwards, reminderKey, prevForCycle, kindAllowed, isInteractive } from "./events.js";
 import { render, pollContent } from "./messages.js";
 import { isQuietHour, lisbonDayKey, nextLisbonWeekdayAt, lisbonDateAt, todayLisbon, formatGameWhen } from "./time.js";
 import { answer, classifyIntent, pollApplies, classifyAdminIntent } from "./ask.js";
@@ -71,12 +71,19 @@ async function sendPoll(group, game) {
 // One announcement: guards -> claim -> send. Returns "sent" | "skipped" | "blocked".
 // "blocked" means "not now, retry next poll" (quiet hours, daily cap, dry-run, send error).
 async function dispatch(group, gameId, ev, ctx) {
+  // Per-group allowlist (groups.wa_bot_kinds, NULL = all): e.g. Goodweather
+  // only gets "game_open". Checked first so a disallowed kind never holds
+  // up the loop as "blocked".
+  if (!kindAllowed(group, ev.kind)) return "skipped";
+
   const now = new Date();
   const quiet = isQuietHour(cfg().quietStart, cfg().quietEnd, now);
   const spent = ev.urgent ? 0 : await sentSince(group.id, startOfLisbonDayIso());
   if (!ev.urgent && (quiet || spent >= cfg().maxPerDay)) return "blocked";
 
-  const text = render(ev.kind, { ...ctx, link: linkFor(group) }, group.wa_bot_lang || "pt");
+  if (ev.legacyKey && await legacyClaimed(ev.legacyKey, ctx.game?.cycle_opened_at ?? null)) return "skipped";
+
+  const text = render(ev.kind, { ...ctx, link: linkFor(group), appOnly: !isInteractive(group) }, group.wa_bot_lang || "pt");
   if (!cfg().autosend) {
     if (!dryLogged.has(ev.key)) { dryLogged.add(ev.key); log(`[dry-run] ${group.name} · ${ev.kind}\n${text}\n`); }
     return "blocked"; // dry-run must not advance state, or the real run would miss it
@@ -135,7 +142,7 @@ async function tickGroup(group) {
   const now = new Date();
   for (const game of await upcomingGames(group.id)) {
     const spots = game.spots || group.max_players || 10;
-    const prev = await getPrev(game.id);
+    const prev = prevForCycle(await getPrev(game.id), game);
 
     // Debounce count changes so a quick confirm+undo never reaches the group.
     if (prev !== null && game.confirmed !== prev) {
@@ -151,7 +158,7 @@ async function tickGroup(group) {
       const r = await dispatch(group, game.id, ev, ctx);
       if (r === "blocked") { blocked = true; if (!ev.urgent) break; }
     }
-    if (!blocked) await setPrev(game.id, game.confirmed);
+    if (!blocked) await setPrev(game.id, game.confirmed, game.cycle_opened_at ?? null);
   }
 
   // Post-game: one message per freshly finished matchday, plus a separate
@@ -221,6 +228,7 @@ async function postAdjuntoGroup(group, gameId, ev, rawCtx) {
   if (!GROUP_SAFE_KINDS.includes(ev.kind)) throw new Error(`not a group-safe kind: ${ev.kind}`);
   const g = (await botGroups()).find((x) => x.id === group.id);
   if (!g) return "no_bot";
+  if (!kindAllowed(g, ev.kind)) return "skipped"; // groups.wa_bot_kinds allowlist
   const text = render(ev.kind, { ...groupCtx(ev.kind, rawCtx), link: linkFor(g) }, g.wa_bot_lang || "pt");
   if (!cfg().autosend || !cfg().adjuntoAutosend) { log(`[adjunto dry-run] group ${g.name} · ${ev.kind}\n${text}\n`); return "dry"; }
   if (!ev.urgent && isQuietHour(cfg().quietStart, cfg().quietEnd, new Date())) return "quiet";
@@ -377,7 +385,7 @@ async function onPollMessage(m, inner) {
   const upd = inner?.pollUpdateMessage;
   if (!created && !upd) return false;
   const group = await groupByJid(jid);
-  if (!group) return true;
+  if (!group || !isInteractive(group)) return true; // non-interactive group: polls ignored
 
   if (created && !m.key.fromMe) {
     const secret = created.secret ?? m.message?.messageContextInfo?.messageSecret;
@@ -445,7 +453,7 @@ async function onMessage(m) {
     if (!mentionedMe && !repliedToMe) return;
 
     const group = await groupByJid(jid);
-    if (!group) return;
+    if (!group || !isInteractive(group)) return; // wa_bot_interactive=false: never answer
     const sender = m.key.participant || jid;
     if (Date.now() - (lastAsk.get(sender) || 0) < 20000) return;
     lastAsk.set(sender, Date.now());

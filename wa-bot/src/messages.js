@@ -11,10 +11,15 @@ const spotsLeft = {
 const at = (game) => (game.venue ? ` · ${game.venue}` : "");
 
 const T = {
+  // appOnly (groups.wa_bot_interactive = false): the bot doesn't read the
+  // chat there, so say plainly that "eu vou" in the group doesn't count.
   game_open: {
-    pt: ({ game, spots, link }) => `⚽ *Jogo aberto!*\n${formatGameWhen(game.scheduled_at, "pt")}${at(game)}\n${spots} vagas. Confirma aqui:\n${link}`,
-    ptbr: ({ game, spots, link }) => `⚽ *Rachão aberto!*\n${formatGameWhen(game.scheduled_at, "pt")}${at(game)}\n${spots} vagas. Confirme aqui:\n${link}`,
-    en: ({ game, spots, link }) => `⚽ *Game on!*\n${formatGameWhen(game.scheduled_at, "en")}${at(game)}\n${spots} spots. Sign up here:\n${link}`,
+    pt: ({ game, spots, link, appOnly }) => `⚽ *Jogo aberto!*\n${formatGameWhen(game.scheduled_at, "pt")}${at(game)}\n${spots} vagas. Confirma aqui:\n${link}`
+      + (appOnly ? `\n\n📲 A confirmação é feita *só na app* — "eu vou" ou "tô dentro" aqui no grupo não contam.` : ""),
+    ptbr: ({ game, spots, link, appOnly }) => `⚽ *Rachão aberto!*\n${formatGameWhen(game.scheduled_at, "pt")}${at(game)}\n${spots} vagas. Confirme aqui:\n${link}`
+      + (appOnly ? `\n\n📲 A confirmação é feita *só no app* — "eu vou" ou "tô dentro" aqui no grupo não valem.` : ""),
+    en: ({ game, spots, link, appOnly }) => `⚽ *Game on!*\n${formatGameWhen(game.scheduled_at, "en")}${at(game)}\n${spots} spots. Sign up here:\n${link}`
+      + (appOnly ? `\n\n📲 Sign-ups happen *in the app only* — "I'm in" here in the group doesn't count.` : ""),
   },
 
   // Proportional milestones: the kind depends on where `confirmed` sits
