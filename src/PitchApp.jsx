@@ -1142,7 +1142,7 @@ export default function PitchApp() {
 
     if (cloud.status === "anon") {
       if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} lang={lang} onLang={changeLang} />;
-      return shell(<AuthForm onSignUp={cloud.signUp} onSignIn={cloud.signIn} onResetPassword={cloud.resetPassword} onBack={() => setAuthOpen(false)} />);
+      return shell(<AuthForm onSignUp={cloud.signUp} onSignIn={cloud.signIn} onResetPassword={cloud.resetPassword} onBack={() => setAuthOpen(false)} lang={lang} onLang={changeLang} />);
     }
 
     if (cloud.status === "needsProfile") {

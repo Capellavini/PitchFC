@@ -126,8 +126,11 @@ export function firstName(name?: string | null, email?: string | null, lang: Lan
  * appLang uses the app's codes ("pt" | "pt-br" | "en"); groupLang the
  * bot's wa_bot_lang ("pt" | "ptbr" | "en" | "pt+en").
  */
-export function pickLang(appLang?: string | null, groupLang?: string | null): Lang {
+export function pickLang(appLang?: string | null, groupLang?: string | null, explicit = false): Lang {
   const a = (appLang || "").toLowerCase();
+  // Picked in the signup form's "Idioma preferido": PT-PT is a real choice
+  // then, not just the default, so it beats the group's bot language.
+  if (explicit && a === "pt") return "pt";
   if (a === "pt-br" || a === "ptbr") return "pt-br";
   if (a === "en") return "en";
   if (groupLang === "ptbr") return "pt-br";

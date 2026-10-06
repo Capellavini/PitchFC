@@ -740,6 +740,7 @@ const EN = {
   "Balizas a zero e defesas espetaculares do GR escolhido contam ao terminar o dia.": "Clean sheets and great saves for the chosen GK count when the day ends.",
   "Equilibrar equipas": "Balance teams", "As equipas já estão equilibradas por OVR.": "Teams are already balanced by OVR.",
   "Diferença de OVR entre equipas": "OVR gap between teams", "Troca jogadores da mesma posição, sem mudar nomes nem tamanhos.": "Swaps same-position players — names and sizes stay.",
+  "Idioma preferido": "Preferred language",
   "Líder": "Leader", "Toca para ver a tabela": "Tap to see the table", "Sem capitão": "No captain",
   "Declarar campeão": "Declare champion", "Declarar": "Declare", "Equipa…": "Team…",
   "Escolhe a equipa campeã do dia — para formatos sem fase final, ou para fechar à mão.": "Pick the day's champion — for formats without a play-off, or to close it out by hand.",
@@ -828,6 +829,7 @@ const EN = {
 const PT_BR = {
   "Equilibrar equipas": "Equilibrar times", "As equipas já estão equilibradas por OVR.": "Os times já estão equilibrados por OVR.",
   "Diferença de OVR entre equipas": "Diferença de OVR entre times", "Troca jogadores da mesma posição, sem mudar nomes nem tamanhos.": "Troca jogadores da mesma posição, sem mudar nomes nem tamanhos.",
+  "Idioma preferido": "Idioma preferido",
   "Toca para ver a tabela": "Toque para ver a tabela", "Equipa…": "Time…",
   "Escolhe a equipa campeã do dia — para formatos sem fase final, ou para fechar à mão.": "Escolha o time campeão do dia — para formatos sem fase final, ou para fechar na mão.",
   "Campeão do dia": "Campeão do dia",

@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
     let body: { lang?: string; join_token?: string } = {};
     try { body = await req.json(); } catch { /* no body is fine */ }
-    const meta = (user.user_metadata ?? {}) as { name?: string; lang?: string; join_token?: string };
+    const meta = (user.user_metadata ?? {}) as { name?: string; lang?: string; lang_chosen?: boolean; join_token?: string };
 
     // Claim: only one caller can insert the row for this user.
     const { data: claimed, error: cErr } = await admin.from("welcome_emails")
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
 
     try {
       const group = await resolveGroup(user.id, meta.join_token || body.join_token || null);
-      const lang = pickLang(meta.lang || body.lang, group?.wa_bot_lang);
+      const lang = pickLang(meta.lang || body.lang, group?.wa_bot_lang, meta.lang_chosen === true);
       const { subject, html, text } = renderWelcome({
         firstName: firstName(meta.name, user.email, lang),
         groupName: group?.name ?? null,

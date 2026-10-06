@@ -294,7 +294,7 @@ export function useCloud() {
     // Function reads both to name the group and pick the email's language.
     const joinToken = new URLSearchParams(window.location.search).get("join");
     const { data: res, error } = await supabase.auth.signUp({
-      email, password, options: { data: { ...meta, lang: getLang(), ...(joinToken ? { join_token: joinToken } : {}) } },
+      email, password, options: { data: { lang: getLang(), ...meta, ...(joinToken ? { join_token: joinToken } : {}) } },
     });
     if (error) return { error: error.message };
     trackEvent("sign_up", { method: "email" });

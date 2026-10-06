@@ -7,7 +7,9 @@ import PhoneInput from "./PhoneInput";
 
 /** Real account: email + password (+ name/phone on signup).
  *  Talks to Supabase Auth via the onSignUp / onSignIn callbacks. */
-export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }) {
+const LANG_OPTIONS = [["pt", "🇵🇹 PT-PT"], ["pt-br", "🇧🇷 PT-BR"], ["en", "🇬🇧 EN"]];
+
+export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack, lang = "pt", onLang }) {
   const [mode, setMode] = useState("signup"); // 'signup' | 'login'
   const [form, setForm] = useState({ name: "", phone: "", email: "", password: "" });
   const [busy, setBusy] = useState(false);
@@ -34,7 +36,7 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
     if (isSignup && !form.name.trim()) return setError(t("Diz-nos o teu nome."));
     setBusy(true);
     const res = isSignup
-      ? await onSignUp(form.email.trim(), form.password, { name: form.name.trim(), phone: form.phone.trim() })
+      ? await onSignUp(form.email.trim(), form.password, { name: form.name.trim(), phone: form.phone.trim(), lang, lang_chosen: true })
       : await onSignIn(form.email.trim(), form.password);
     setBusy(false);
     if (res?.error) return setError(res.error);
@@ -78,6 +80,22 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack }
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Telemóvel")}</div>
             <PhoneInput value={form.phone} onChange={(v) => set("phone", v)} onEnter={submit} />
+          </div>
+        )}
+        {isSignup && onLang && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: C.text2, marginBottom: 5 }}>{t("Idioma preferido")}</div>
+            <div role="radiogroup" aria-label={t("Idioma preferido")} style={{ display: "flex", gap: 6 }}>
+              {LANG_OPTIONS.map(([code, label]) => {
+                const active = lang === code;
+                return (
+                  <button key={code} type="button" role="radio" aria-checked={active} onClick={() => onLang(code)}
+                    style={{ flex: 1, minHeight: 44, borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 800, background: active ? C.accent : C.surface, color: active ? C.bg : C.text1, border: `1px solid ${active ? C.accent : C.border}` }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
         {field(Mail, "Email", "email", "email", t("tu@email.com"))}
