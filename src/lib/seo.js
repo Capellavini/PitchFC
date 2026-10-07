@@ -21,6 +21,10 @@ const ROUTES = {
     title: "PITCH League — competições de futebol amador | PITCH",
     description: "PITCH League: competições de futebol amador organizadas no PITCH. Inscreve a tua equipa na primeira liga.",
   },
+  "/pricing": {
+    title: "Planos e preços | PITCH",
+    description: "Jogar é grátis. Organizar melhor é outra história. Planos do PITCH para grupos (Free, Club, Club + AI) e para jogadores (Player, Player+).",
+  },
   "/privacidade": {
     title: "Política de Privacidade | PITCH",
     description: "Como o PITCH trata os teus dados pessoais, que cookies usa e como podes exercer os teus direitos (RGPD).",

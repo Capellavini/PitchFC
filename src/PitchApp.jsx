@@ -39,6 +39,7 @@ import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
 import PitchProPage from "./components/PitchProPage";
 import LegalPage from "./components/LegalPage";
+import PricingPage from "./components/PricingPage";
 import AuthLanding from "./components/AuthLanding";
 import FirstRunTour from "./components/FirstRunTour";
 import OnboardingPlayer from "./components/OnboardingPlayer";
@@ -1064,6 +1065,17 @@ export default function PitchApp() {
   // for a meeting, no login friction. ─────────────────────────────────
   if (path === "/pro") {
     return <PitchProPage />;
+  }
+
+  // ── Pricing (path /pricing) — full width, no shell, public. Knows who is
+  // logged in and which groups they organize so "Upgrade group" can ask
+  // WHICH group; checkout itself is a stub until billing exists. ───────
+  if (path === "/pricing") {
+    const managedGroups = cloudMode
+      ? (cloud.myGroups ?? []).filter((m) => !m.banned && (m.role === "organizer" || m.role === "assistant"))
+          .map((m) => ({ id: m.group_id, name: m.groups?.name || "—" }))
+      : [];
+    return <PricingPage user={cloudAuthed ? cloud.user : null} managedGroups={managedGroups} lang={lang} onLang={changeLang} />;
   }
 
   // ── Legal pages (paths /privacidade, /termos) — full width, no shell,

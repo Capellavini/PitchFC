@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/lib/phone.test.js src/lib/analytics.test.js src/lib/core/standings.test.js src/lib/core/rankings.test.js src/lib/core/teamDraw.test.js src/lib/core/format.test.js src/lib/core/insights.test.js",
+    "test": "node --test src/lib/phone.test.js src/lib/analytics.test.js src/lib/core/standings.test.js src/lib/core/rankings.test.js src/lib/core/teamDraw.test.js src/lib/core/format.test.js src/lib/core/insights.test.js src/lib/plans.test.js",
     "sync:core": "node scripts/sync-core.mjs"
   },
   "dependencies": {

@@ -1167,3 +1167,13 @@ const PT_BR = {
 };
 
 const DICTS = { en: EN, "pt-br": PT_BR };
+
+/** Lets a feature module ship its own EN / PT-BR strings (keys are the PT-PT
+ *  source text, like everywhere else) without growing the shared dictionaries
+ *  above — used by the pricing page. Never overrides an existing entry, so a
+ *  module can't silently change how a shared word reads elsewhere in the app. */
+export function registerStrings(lang, dict) {
+  const target = DICTS[lang];
+  if (!target) return;
+  for (const [k, v] of Object.entries(dict)) if (!(k in target)) target[k] = v;
+}
