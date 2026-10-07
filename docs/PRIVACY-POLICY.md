@@ -1,6 +1,6 @@
 # Política de Privacidade — PITCH
 
-**Última atualização:** 5 de outubro de 2026
+**Última atualização:** 7 de outubro de 2026
 
 > ⚠️ **Rascunho de trabalho.** Escrito pelo Leo (CMO/IA) e atualizado pelo Cris (CTO/IA) a pedido do Vinicius, adaptado ao que o PITCH recolhe e faz de verdade hoje. Não é aconselhamento jurídico — antes de qualquer integração de pagamento real (MB Way) e, idealmente, antes de escalar, passa por um advogado. A versão publicada é `src/components/LegalPage.jsx`; mantém os dois em sincronia.
 
@@ -20,6 +20,7 @@ Recolhemos apenas o necessário para o PITCH funcionar:
 - **Atividade no jogo:** confirmações/recusas de presença, pagamentos marcados como feitos, golos, assistências, votos de MVP, histórico de jogos.
 - **Conteúdo que publicas:** fotos, vídeos e comentários que partilhas no feed social.
 - **Mensagens ao Pitch AI:** se o teu grupo usar o bot de WhatsApp, o texto das mensagens que lhe diriges (por exemplo, "@Pitch eu vou" ou uma pergunta sobre o jogo) e as respostas que ele envia ficam registados (`bot_message_log`).
+- **País aproximado:** ao abrir a página de planos, o nosso fornecedor de alojamento (Vercel) deduz o país a partir do teu endereço IP, só nesse momento, para te mostrar os preços do teu mercado. Não guardamos o endereço IP nem o país, e não os enviamos a terceiros.
 - **Dados técnicos:** o idioma, o tema e a tua escolha sobre cookies (guardados no teu dispositivo) e, apenas se aceitares, dados de utilização recolhidos pelo Google Analytics (ecrãs visitados, ações como criar conta ou confirmar presença, tipo de dispositivo e país aproximado).
 
 **Não recolhemos** dados de cartão de crédito, dados bancários, nem processamos pagamentos diretamente — a mensalidade do campo é combinada e paga diretamente entre os jogadores (MB Way, dinheiro).

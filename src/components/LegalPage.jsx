@@ -14,7 +14,10 @@ import BtnGhost from "./BtnGhost";
 // Section shape: { h, id?, p?, ul?, p2?, action? } — `action: "cookies"`
 // renders the "manage cookie preferences" button (only when a GA4 property
 // is configured, i.e. when there is actually something to manage).
-const UPDATED = "Última atualização: 5 de outubro de 2026";
+const UPDATED = {
+  privacy: "Última atualização: 7 de outubro de 2026",
+  terms: "Última atualização: 5 de outubro de 2026",
+};
 
 const CONTENT = {
   privacy: {
@@ -38,6 +41,7 @@ const CONTENT = {
           "Atividade no jogo: confirmações/recusas de presença, pagamentos marcados como feitos, golos, assistências, votos de MVP, histórico de jogos.",
           "Conteúdo que publicas: fotos, vídeos e comentários que partilhas no feed social.",
           "Mensagens ao Pitch AI: se o teu grupo usar o bot de WhatsApp, o texto das mensagens que lhe diriges (por exemplo, “@Pitch eu vou” ou uma pergunta sobre o jogo) e as respostas que ele envia ficam registados.",
+          "País aproximado: ao abrir a página de planos, o nosso fornecedor de alojamento (Vercel) deduz o país a partir do teu endereço IP, só nesse momento, para te mostrar os preços do teu mercado. Não guardamos o endereço IP nem o país, e não os enviamos a terceiros.",
           "Dados técnicos: o idioma, o tema e a tua escolha sobre cookies (guardados no teu dispositivo) e, apenas se aceitares, dados de utilização recolhidos pelo Google Analytics (ecrãs visitados, ações como criar conta ou confirmar presença, tipo de dispositivo e país aproximado).",
         ],
         p2: [
@@ -262,7 +266,7 @@ export default function LegalPage({ type }) {
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "48px 20px 80px" }}>
         <h1 style={{ ...displayFont, fontSize: "clamp(28px, 5vw, 40px)", margin: "0 0 8px" }}>{data.title}</h1>
-        <div style={{ fontSize: 13, color: C.text3, marginBottom: 40 }}>PITCH · pitch-fc.com · {UPDATED}</div>
+        <div style={{ fontSize: 13, color: C.text3, marginBottom: 40 }}>PITCH · pitch-fc.com · {UPDATED[type]}</div>
 
         {data.sections.map((s) => (
           <section key={s.h} id={s.id} style={{ marginBottom: 30, scrollMarginTop: 72 }}>

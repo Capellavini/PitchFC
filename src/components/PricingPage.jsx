@@ -4,6 +4,7 @@ import { C, R, S, T, BRAND, displayFont } from "../theme";
 import { t } from "../lib/i18n";
 import { trackEvent } from "../lib/analytics";
 import { isGroupPlan, marketFromLang, manageSubscription, MARKET_IDS, PRICING } from "../lib/plans";
+import { cachedMarket, detectMarket } from "../lib/market";
 import { PAGE, FINAL, UPGRADE } from "../lib/pricingCopy";
 import BtnPrimary from "./BtnPrimary";
 import PricingGroupPlans from "./PricingGroupPlans";
@@ -15,7 +16,6 @@ import PricingFaq from "./PricingFaq";
 import UpgradeModal from "./UpgradeModal";
 
 const MAXW = 1120;
-const MARKET_KEY = "pitch.v2.pricingMarket";
 
 const CSS = `
 .pr-root *{box-sizing:border-box}
@@ -41,15 +41,11 @@ const sourceFromUrl = () => {
   return /^[a-z0-9_-]{1,30}$/i.test(s) ? s.toLowerCase() : "direct";
 };
 
-/** Explicit market choice (?market= or a saved manual switch), else null —
- *  in which case the market follows the UI language. No geo-detection. */
-const explicitMarket = () => {
+/** Internal override (?market=EU|BR) for the team to preview each market.
+ *  Not linked anywhere — visitors get the market of their own location. */
+const queryMarket = () => {
   const q = (new URLSearchParams(window.location.search).get("market") || "").toUpperCase();
-  if (MARKET_IDS.includes(q)) return q;
-  try {
-    const saved = localStorage.getItem(MARKET_KEY);
-    return MARKET_IDS.includes(saved) ? saved : null;
-  } catch { return null; }
+  return MARKET_IDS.includes(q) ? q : null;
 };
 
 const seg = (active) => ({
@@ -86,28 +82,47 @@ const caption = { fontSize: T.min, fontWeight: 800, letterSpacing: "0.08em", tex
  *  - lang, onLang    current UI language + setter (PT-PT / PT-BR / EN)
  * Prices come from lib/plans.js (central config, per market); checkout is
  * behind startCheckout(), and billing is off today.
+ *
+ * Market: each visitor sees ONLY their own market's prices. It comes from
+ * the country the hosting edge reports (api/geo.js → lib/market.js); if
+ * that's unavailable it falls back to the UI language. There's deliberately
+ * no market switch on the page.
  */
 export default function PricingPage({ user = null, managedGroups = [], currentPlans = null, lang = "pt", onLang }) {
   const [audience, setAudience] = useState("groups"); // groups | players
   const [billing, setBilling] = useState("monthly");   // monthly | annual
   const [size, setSize] = useState("standard");        // standard | large
-  const [chosenMarket, setChosenMarket] = useState(explicitMarket);
+  const forced = useMemo(queryMarket, []);
+  // undefined = still asking the edge · null = couldn't tell · "EU" | "BR" = known
+  const [geoMarket, setGeoMarket] = useState(() => (forced ? null : cachedMarket() ?? undefined));
   const [modal, setModal] = useState(null);            // { planId } | null
   const [notice, setNotice] = useState(false);
   const source = useMemo(sourceFromUrl, []);
-  const market = chosenMarket ?? marketFromLang(lang);
+  const marketSource = forced ? "query" : geoMarket ? "geo" : "locale";
+  const market = forced ?? geoMarket ?? marketFromLang(lang);
+  const marketReady = Boolean(forced) || geoMarket !== undefined;
   const currency = PRICING[market].currency;
   const loggedIn = Boolean(user);
   const isOrganizer = managedGroups.length > 0;
   const role = !loggedIn ? "anonymous" : isOrganizer ? "organizer" : "player";
   const sent = useRef(false);
 
-  // Fire once: a page view is a page view, even if the account loads after.
+  // Ask the edge which market this visitor is in (a couple of hundred ms at
+  // most; on any failure we simply fall back to the UI language).
   useEffect(() => {
-    if (sent.current) return;
+    if (forced || geoMarket !== undefined) return undefined;
+    let alive = true;
+    detectMarket().then((m) => { if (alive) setGeoMarket(m); });
+    return () => { alive = false; };
+  }, [forced, geoMarket]);
+
+  // Fire once, as soon as the market is known: a page view is a page view,
+  // even if the account loads after.
+  useEffect(() => {
+    if (sent.current || !marketReady) return;
     sent.current = true;
-    trackEvent("pricing_page_viewed", { source, logged_in: loggedIn, user_role: role, market, currency });
-  }, [source, loggedIn, role, market, currency]);
+    trackEvent("pricing_page_viewed", { source, logged_in: loggedIn, user_role: role, market, currency, market_source: marketSource });
+  }, [marketReady, source, loggedIn, role, market, currency, marketSource]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -127,11 +142,6 @@ export default function PricingPage({ user = null, managedGroups = [], currentPl
 
   const changeAudience = (id) => { setAudience(id); trackEvent("pricing_tab_changed", { tab: id, market, currency }); };
   const changeBilling = (id) => { setBilling(id); trackEvent("pricing_billing_changed", { billing_period: id, market, currency }); };
-  const changeMarket = (id) => {
-    setChosenMarket(id);
-    try { localStorage.setItem(MARKET_KEY, id); } catch { /* choice just won't persist */ }
-    trackEvent("pricing_market_changed", { market: id, currency: PRICING[id].currency });
-  };
 
   const onPlan = (planId) => {
     trackEvent("pricing_plan_clicked", { plan: planId === "player_free" ? "free" : planId, billing_period: billing, market, currency, group_size: groupSizeParam(planId), source });
@@ -177,13 +187,8 @@ export default function PricingPage({ user = null, managedGroups = [], currentPl
           <p style={{ fontSize: "clamp(15px, 2vw, 17px)", color: C.text2, lineHeight: 1.5, margin: "0 auto", maxWidth: 600 }}>{t(PAGE.heroSub)}</p>
         </section>
 
-        {/* ── toggles: market · audience · billing · group size ── */}
+        {/* ── toggles: audience · billing · group size (no market switch) ── */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: S.md, marginBottom: S.xxl }}>
-          <div style={{ width: "100%", maxWidth: 300 }}>
-            <div style={caption}>{t(PAGE.marketLabel)}</div>
-            <Segmented label={t(PAGE.marketLabel)} value={market} onChange={changeMarket}
-              options={[["EU", t(PAGE.marketEu)], ["BR", t(PAGE.marketBr)]]} />
-          </div>
           <div style={{ width: "100%", maxWidth: 420 }}>
             <Segmented label="Audience" value={audience} onChange={changeAudience}
               options={[["groups", t(PAGE.tabGroups)], ["players", t(PAGE.tabPlayers)]]} />
@@ -218,17 +223,20 @@ export default function PricingPage({ user = null, managedGroups = [], currentPl
           </div>
         )}
 
-        {/* ── plans ── */}
-        {audience === "groups"
+        {/* ── plans (held back for a beat until we know the visitor's market,
+            so nobody ever sees the other market's prices flash by) ── */}
+        {!marketReady ? (
+          <div role="status" aria-busy="true" style={{ minHeight: 420, display: "flex", alignItems: "center", justifyContent: "center", color: C.text3, fontSize: T.body }}>…</div>
+        ) : audience === "groups"
           ? <PricingGroupPlans billing={billing} size={size} market={market} upgradeLabel={upgradeLabel} current={current} onPlan={onPlan} onManage={onManage} />
           : <PricingPlayerPlans billing={billing} market={market} current={current.player_plus} onPlan={onPlan} onManage={onManage} />}
 
-        {audience === "groups" && (
+        {marketReady && audience === "groups" && (
           <p style={{ textAlign: "center", fontSize: T.meta, color: C.text2, margin: `${S.lg}px auto 0`, maxWidth: 560, lineHeight: 1.5 }}>{t(PAGE.groupLimitNote)}</p>
         )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 64, marginTop: 72 }}>
-          {audience === "groups" && <PricingPayments market={market} />}
+          {marketReady && audience === "groups" && <PricingPayments market={market} />}
           <PricingAiPair />
           <PricingComparison audience={audience} />
           <PricingFaq onOpen={(id) => trackEvent("pricing_faq_opened", { question: id, market })} />
