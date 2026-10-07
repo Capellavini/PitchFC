@@ -1,7 +1,7 @@
 import { Check, MessageCircle } from "lucide-react";
 import { C, R, S, T } from "../theme";
 import { t, getLang } from "../lib/i18n";
-import { planPrice, fmtPlanPrice } from "../lib/plans";
+import { planPrice, fmtMoney } from "../lib/plans";
 import { PAGE, PLANS } from "../lib/pricingCopy";
 import PricingPlanCard from "./PricingPlanCard";
 
@@ -36,6 +36,7 @@ function PlusPillars() {
             ))}
           </ul>
           {p.example && <Example>{t(p.example)}</Example>}
+          {p.note && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.sm, lineHeight: 1.45 }}>{t(p.note)}</div>}
           {p.examples && <div style={{ display: "flex", flexDirection: "column", gap: S.xs + 2 }}>{p.examples.map((ex) => <Example key={ex}>{t(ex)}</Example>)}</div>}
         </section>
       ))}
@@ -44,20 +45,20 @@ function PlusPillars() {
 }
 
 /** Player (free) · Player+ — exactly two options, no tiers. */
-export default function PricingPlayerPlans({ billing, onPlan }) {
+export default function PricingPlayerPlans({ billing, market, current = false, onPlan, onManage }) {
   const annual = billing === "annual";
-  const lang = getLang() === "en" ? "en" : "pt";
+  const lang = getLang();
   return (
     <div className="pr-grid pr-grid-2">
       <PricingPlanCard id="player_free" name={PLANS.player_free.name} tag={PLANS.player_free.tag} subtitle={PLANS.player_free.subtitle}
-        price={fmtPlanPrice(0, lang)} features={PLANS.player_free.features}
+        price={fmtMoney(0, market, lang)} features={PLANS.player_free.features}
         cta={PLANS.player_free.cta} onCta={() => onPlan("player_free")}
         footer={<div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, lineHeight: 1.45 }}>{t(PAGE.openMatchesFree)}</div>} />
 
       <PricingPlanCard id="player_plus" name={PLANS.player_plus.name} badge="Player+" highlighted subtitle={PLANS.player_plus.subtitle}
-        price={fmtPlanPrice(planPrice("player_plus", billing), lang)} unit={annual ? PAGE.perYear : PAGE.perMonth}
+        price={fmtMoney(planPrice("player_plus", billing, "standard", market), market, lang)} unit={annual ? PAGE.perYear : PAGE.perMonth}
         priceNote={annual ? <strong style={{ color: C.accent, fontWeight: 800 }}>{t(PAGE.perSaving)}</strong> : null}
-        cta={PLANS.player_plus.cta} ctaVariant="primary" onCta={() => onPlan("player_plus")}
+        cta={PLANS.player_plus.cta} ctaVariant="primary" onCta={() => onPlan("player_plus")} current={current} onManage={onManage}
         inherits={PLANS.player_plus.inherits} features={[]} body={<PlusPillars />} />
     </div>
   );

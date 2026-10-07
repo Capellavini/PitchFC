@@ -15,7 +15,8 @@ function Node({ Icon, label, strong = false }) {
 
 /** "Payments without the spreadsheet" — Player → Pitch → Organizer/Venue.
  *  Marked "coming soon": payments aren't live, so no fee is promised. */
-export default function PricingPayments() {
+export default function PricingPayments({ market = "EU" }) {
+  const methods = market === "BR" ? PAYMENTS.methodsBr : PAYMENTS.methodsEu;
   return (
     <section aria-labelledby="pr-payments" style={{ ...cardStyle, padding: S.xl }}>
       <div style={{ marginBottom: S.md }}><Chip variant="orange">{t(PAYMENTS.soon)}</Chip></div>
@@ -31,9 +32,12 @@ export default function PricingPayments() {
         <Node Icon={Building2} label={t(PAYMENTS.organizer)} />
       </div>
 
-      <p style={{ fontSize: T.body, color: C.text1, lineHeight: 1.55, margin: `${S.lg}px 0 ${S.sm}px` }}>{t(PAYMENTS.body1)}</p>
-      <p style={{ fontSize: T.body, color: C.text2, lineHeight: 1.55, margin: `0 0 ${S.sm}px` }}>{t(PAYMENTS.body2)}</p>
-      <p style={{ fontSize: T.body, color: C.text2, lineHeight: 1.55, margin: `0 0 ${S.md}px` }}>{t(PAYMENTS.body3)}</p>
+      <p style={{ fontSize: T.body, color: C.text1, lineHeight: 1.55, margin: `${S.lg}px 0 ${S.md}px` }}>{t(PAYMENTS.body1)}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: S.sm, marginBottom: S.md }}>
+        <span style={{ fontSize: T.meta, color: C.text2, fontWeight: 700 }}>{t(PAYMENTS.methodsLabel)}</span>
+        {methods.map((m) => <Chip key={m}>{t(m)}</Chip>)}
+      </div>
+      <p style={{ fontSize: T.body, color: C.text2, lineHeight: 1.55, margin: `0 0 ${S.md}px` }}>{t(PAYMENTS.venue)}</p>
       <p style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, margin: 0, paddingTop: S.md, borderTop: `1px solid ${C.border}` }}>{t(PAYMENTS.fees)}</p>
     </section>
   );

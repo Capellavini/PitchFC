@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, Check, Lock } from "lucide-react";
 import { C, R, S, T, TOUCH, displayFont } from "../theme";
 import { t, getLang } from "../lib/i18n";
-import { isGroupPlan, planPrice, fmtPlanPrice, startCheckout } from "../lib/plans";
+import { isGroupPlan, planPrice, fmtMoney, startCheckout } from "../lib/plans";
 import { PAGE, PLANS, UPGRADE } from "../lib/pricingCopy";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
@@ -18,26 +18,25 @@ const REQUIRED = { club: UPGRADE.availableClub, club_ai: UPGRADE.availableClubAi
  *     shows the price second. Never an aggressive paywall: "Not now" is as
  *     big as "Continue".
  *
- * Props: planId ("club" | "club_ai" | "player_plus"), billing, size,
+ * Props: planId ("club" | "club_ai" | "player_plus"), billing, size, market ("EU" | "BR"),
  *   groups [{ id, name }] (groups the user manages), feature? (PT-PT source
  *   string describing the locked feature), onClose, onSeePlans?.
  * Checkout goes through startCheckout() — billing is off today, so the
  * result is a friendly "not open yet, nothing charged".
  */
-export default function UpgradeModal({ planId, billing = "monthly", size = "standard", groups = [], feature = null, onClose, onSeePlans }) {
+export default function UpgradeModal({ planId, billing = "monthly", size = "standard", market = "EU", groups = [], feature = null, onClose, onSeePlans }) {
   const needsGroup = isGroupPlan(planId);
   const [groupId, setGroupId] = useState(groups.length === 1 ? groups[0].id : null);
   const [state, setState] = useState({ busy: false, result: null });
   const plan = PLANS[planId];
-  const lang = getLang() === "en" ? "en" : "pt";
   const annual = billing === "annual";
-  const price = fmtPlanPrice(planPrice(planId, billing, size), lang);
+  const price = fmtMoney(planPrice(planId, billing, size, market), market, getLang());
   const unit = needsGroup ? (annual ? PAGE.perYearGroup : PAGE.perMonthGroup) : (annual ? PAGE.perYear : PAGE.perMonth);
 
   const go = async () => {
     if (needsGroup && !groupId) return setState({ busy: false, result: { ok: false, reason: "group_required" } });
     setState({ busy: true, result: null });
-    const result = await startCheckout({ planId, billing, groupId, groupSize: size });
+    const result = await startCheckout({ planId, billingPeriod: billing, market, groupId, groupSize: size });
     if (result.ok && result.url) { window.location.href = result.url; return; }
     setState({ busy: false, result });
   };
