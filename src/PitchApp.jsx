@@ -34,6 +34,7 @@ import JoinGroup from "./components/JoinGroup";
 import RatePlayer from "./components/RatePlayer";
 import MagicConfirm from "./components/MagicConfirm";
 import LeaguePage from "./components/LeaguePage";
+import RivalsPage from "./components/RivalsPage";
 import AdminDashboardPage from "./components/admin/AdminDashboardPage";
 import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
@@ -1039,6 +1040,12 @@ export default function PitchApp() {
   const path = window.location.pathname.replace(/\/+$/, "");
   if (path === "/league") {
     return <LeaguePage onEnterApp={() => { window.location.href = "/"; }} />;
+  }
+
+  // ── PITCH Rivals (Teams & Challenges) early-access landing (path /rivals,
+  // alias /desafios) — full width, no shell, public, works logged-out. ───
+  if (path === "/rivals" || path === "/desafios") {
+    return <RivalsPage />;
   }
 
   // ── Desktop admin dashboard (path /admin) — full width, no shell, own
