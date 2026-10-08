@@ -7,6 +7,8 @@
 > 3. **Piloto:** ainda não há equipas — o Vinicius arranja 2 equipas reais para o primeiro confronto (o Leo pode recrutar capitães via CRM de ligas).
 > 4. **Marketing:** "vamos entrar forte" — o Leo desenha o formato de marketing e uma landing page dedicada.
 > 5. Reaproveitar o que for compatível do ramo antigo `worktree-agent-afcf9e49e011cab46` (28/09), mas **as migrações dele (005800/005900) têm de ser renumeradas acima da última aplicada** e **não** mexer nas políticas de escrita de `games`/`attendances`/`matchdays` (opção B torna isso desnecessário).
+> 7. **Nome: PITCH Rivals** (Vinicius, 2026-10-08). LP em `/rivals` (alias `/desafios`).
+> 8. **Também no v1:** entrada de jogador só por convite de equipa (sem grupo), convocatória/disponibilidade por jogo da equipa, métricas da equipa (V-E-D, golos, forma, sequência, confronto direto, presenças por jogador) e navegação grupo ↔ equipa (Jogar = grupos, Competir = Rivals, Perfil agrega ambos).
 > 6. Tudo atrás de feature flag (`teams`, `challenges` em `src/lib/flags.js`) até o teste com 2 equipas reais.
 
 ---
