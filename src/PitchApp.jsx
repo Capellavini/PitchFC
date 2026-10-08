@@ -1821,7 +1821,7 @@ export default function PitchApp() {
                     canManageTeams={canManageTeams}
                     totalGames={totalGamesPlayed}
                     myTeams={cloudMode ? cloud.myTeams : []} myPlayerId={me?.uuid}
-                    onCreateTeam={cloudMode ? cloud.createTeam : undefined} onFetchTeam={cloudMode ? cloud.fetchTeam : undefined}
+                    onCreateTeam={cloudMode && isEnabled("teams", { isAdmin: cloud.isAdmin }) ? cloud.createTeam : undefined} onFetchTeam={cloudMode ? cloud.fetchTeam : undefined}
                     onAddTeamMember={cloudMode ? cloud.addTeamMember : undefined} onRemoveTeamMember={cloudMode ? cloud.removeTeamMember : undefined}
                   />
                 }
