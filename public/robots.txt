@@ -12,3 +12,6 @@ Disallow: /*?rate=
 Disallow: /*?admin=
 
 Sitemap: https://pitch-fc.com/sitemap.xml
+
+# Pitch VAR: teste acessivel apenas por link direto
+Disallow: /VAR
