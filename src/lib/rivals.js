@@ -198,12 +198,70 @@ export const isNoGroup = ({ needsGroup, optIn = false, teamCount = 0, hasIntent 
  *  keep the existing order (live matchday → my RSVP → home).
  *  EXTENSION POINT (PR7): team match today / unanswered team RSVP ≤48h /
  *  leader action → "competir" before "home". */
-export function openingTab({ noGroup, teamCount = 0, matchdayLive = false, awaitingMyAnswer = false, teamAction = false }) {
-  if (noGroup) return teamCount > 0 ? "competir" : "home";
+export function openingTab({ noGroup, teamCount = 0, matchdayLive = false, awaitingMyAnswer = false, teamAction = false, teamMatchToday = false }) {
+  // Team-only users get the team-mode nav (decision 2026-10-13 c):
+  // Matchday on team match day, otherwise the Equipa tab.
+  if (noGroup) return teamCount > 0 ? (teamMatchToday ? "matchday" : "equipa") : "home";
   if (matchdayLive) return "matchday";
   if (awaitingMyAnswer) return "jogar";
   if (teamAction) return "competir";
   return "home";
+}
+
+/** Team-mode nav (decision 2026-10-13 c): a player with a team and no
+ *  group gets Home · Jogar · Matchday · Equipa · Perfil. */
+export const isTeamMode = ({ noGroup, teamCount = 0 }) => Boolean(noGroup && teamCount > 0);
+
+/** Map the requested tab to the nav in use: "competir" ⇄ "equipa". */
+export function resolveTab(tab, teamMode) {
+  if (teamMode) return tab === "competir" ? "equipa" : tab;
+  return tab === "equipa" ? "competir" : tab;
+}
+
+const dayKey = (ms, timezone) => {
+  try { return new Intl.DateTimeFormat("en-CA", { timeZone: timezone || "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms)); } catch { return new Date(ms).toISOString().slice(0, 10); }
+};
+
+/**
+ * The next agreed match of any of MY teams, normalised — or null.
+ * Defensive on purpose: team_matches arrive with the challenges PR
+ * (useTeams.matches, snake_case rows or camelCase objects); until then
+ * `matches` is undefined and every caller shows its empty state.
+ * A match stays "next" until 3h after kickoff. isToday uses the team's
+ * timezone; daysLeft counts calendar days.
+ */
+export function nextTeamMatch(matches, myTeams, now = Date.now()) {
+  if (!Array.isArray(matches) || !matches.length || !myTeams?.length) return null;
+  const mine = new Map(myTeams.map((tm) => [tm.id, tm]));
+  const pick = (...v) => v.find((x) => x !== undefined && x !== null);
+  const rows = [];
+  for (const m of matches) {
+    if (!m) continue;
+    const status = pick(m.matchStatus, m.match_status, m.status, "scheduled");
+    if (status !== "scheduled" && status !== "agreed") continue;
+    const kickoff = Date.parse(pick(m.kickoffAt, m.kickoff_at, ""));
+    if (!Number.isFinite(kickoff) || kickoff < now - 3 * 36e5) continue;
+    const homeId = pick(m.homeTeamId, m.home_team_id, m.homeTeam?.id, m.home_team?.id);
+    const awayId = pick(m.awayTeamId, m.away_team_id, m.awayTeam?.id, m.away_team?.id);
+    const teamId = mine.has(homeId) ? homeId : mine.has(awayId) ? awayId : pick(m.myTeamId, m.my_team_id);
+    const team = mine.get(teamId);
+    if (!team) continue;
+    const home = teamId === homeId;
+    const opp = pick(m.opponent, home ? pick(m.awayTeam, m.away_team) : pick(m.homeTeam, m.home_team), null);
+    const timezone = pick(m.timezone, team.timezone, "Europe/Lisbon");
+    const today = dayKey(now, timezone);
+    const day = dayKey(kickoff, timezone);
+    rows.push({
+      id: m.id, teamId, team, kickoffAt: new Date(kickoff).toISOString(), timezone,
+      opponent: opp ? { id: opp.id ?? null, name: opp.name ?? null, color: opp.color ?? null, logoUrl: opp.logoUrl ?? opp.logo_url ?? null, slug: opp.slug ?? null } : (m.opponentName ? { name: m.opponentName } : null),
+      venue: pick(m.venueName, m.venue_name, m.venue, null), format: pick(m.format, null),
+      myRsvp: pick(m.myAvailability, m.my_availability, null),
+      isToday: day === today,
+      daysLeft: Math.max(0, Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 864e5)),
+    });
+  }
+  rows.sort((a, b) => a.kickoffAt.localeCompare(b.kickoffAt));
+  return rows[0] ?? null;
 }
 
 /** Home items for my teams (no match items until PR7): a welcome line

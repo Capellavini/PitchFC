@@ -1,4 +1,4 @@
-import { Home, Zap, Trophy, User, Swords } from "lucide-react";
+import { Home, Zap, Trophy, User, Swords, Shield } from "lucide-react";
 import { C } from "../theme";
 import { tCtx } from "../lib/i18n";
 
@@ -21,8 +21,13 @@ const NAV = [
 /** `matchdayHot`: there's a game today / a live matchday, or an open
  *  game the player still hasn't answered — the center button turns
  *  solid lime and pulses. Otherwise it's a muted ("cold") circle, still
- *  tappable. */
-export default function BottomNav({ tab, onSelect, matchdayHot = false }) {
+ *  tappable.
+ *  `teamMode` (decision 2026-10-13 c): a player with a team and NO group
+ *  gets Home · Jogar · Matchday · Equipa · Perfil — the Competir slot
+ *  becomes the team hub (Rankings need a group). */
+const TEAM_NAV = NAV.map((n) => (n.id === "competir" ? { id: "equipa", Icon: Shield, label: "Equipa" } : n));
+
+export default function BottomNav({ tab, onSelect, matchdayHot = false, teamMode = false }) {
   // Keyframes need a real stylesheet; built from C at render time so the
   // pulse colour follows the active theme (never a hardcoded hex).
   const pulseCss = `@keyframes pitchMdPulse{0%{box-shadow:0 0 0 0 ${C.accentBorder}}70%{box-shadow:0 0 0 12px rgba(0,0,0,0)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}`;
@@ -32,7 +37,7 @@ export default function BottomNav({ tab, onSelect, matchdayHot = false }) {
     // short screen; same 430px column as the app shell.
     <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", zIndex: 20, background: C.surface, borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "flex-end", padding: "6px 8px calc(10px + env(safe-area-inset-bottom))" }}>
       <style>{pulseCss}</style>
-      {NAV.map(({ id, Icon, label, center }) => {
+      {(teamMode ? TEAM_NAV : NAV).map(({ id, Icon, label, center }) => {
         const active = tab === id;
         if (center) {
           const hot = matchdayHot;

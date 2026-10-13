@@ -28,8 +28,11 @@ import BtnGhost from "./BtnGhost";
  * (directed at that team, or a claimable link from my team page); after
  * sending, `onOpenChallenge(challengeId)` jumps to Desafios. A custom
  * `onChallenge(opponent, fromTeam)` still overrides it.
+ * `challenges` (rendered node, optional) adds a "Desafios" segment — the
+ * team-mode Equipa tab uses it (A minha equipa · Desafios · Descobrir).
+ * `focus.view` ("team" | "challenges" | "discover") switches segment.
  */
-export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, onDismissNotice, onChallenge: onChallengeProp, challengesOn = false, onOpenChallenge }) {
+export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, onDismissNotice, onChallenge: onChallengeProp, challengesOn = false, onOpenChallenge, challenges = null }) {
   const mine = teams.myTeams;
   // { opponent, fromTeamId } — the composer opened from a "Desafiar".
   const [composer, setComposer] = useState(null);
@@ -47,6 +50,7 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
 
   useEffect(() => {
     if (!focus) return;
+    if (focus.view && !focus.teamId && !focus.slug) { setView(focus.view === "challenges" && !challenges ? "team" : focus.view); setPublicSlug(null); }
     if (focus.teamId) { setSelectedId(focus.teamId); setView("team"); setPublicSlug(null); }
     if (focus.teamId && focus.invite) askInvite(focus.teamId);
     if (focus.slug) {
@@ -91,9 +95,9 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
       )}
 
       <SegmentedControl value={view} onChange={setView}
-        options={[{ id: "team", label: RC.myTeam }, { id: "discover", label: RC.segDiscover }]} />
+        options={[{ id: "team", label: RC.myTeam }, ...(challenges ? [{ id: "challenges", label: RC.segChallenges }] : []), { id: "discover", label: RC.segDiscover }]} />
 
-      {view === "discover" ? (
+      {view === "challenges" && challenges ? challenges : view === "discover" ? (
         <TeamDirectory teams={teams} home={home} onOpenTeam={openSlug} onChallenge={current ? onChallenge : undefined} />
       ) : teams.loading && !mine.length ? (
         <div aria-busy="true" style={{ fontSize: T.body, color: C.text2, padding: `${S.lg}px 0` }}>{t(RC.loading)}</div>

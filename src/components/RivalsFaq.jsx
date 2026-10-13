@@ -14,7 +14,7 @@ const ITEMS = [
   ["same", "Já uso o PITCH para o jogo da semana — é o mesmo?",
     "É a mesma app e o mesmo perfil de jogador. O vosso grupo da semana fica exatamente igual — a equipa é uma coisa à parte, com identidade própria, para jogar contra outras equipas."],
   ["when", "Quando abre?",
-    "Estamos a abrir por fases, com um grupo pequeno de equipas. Inscreve a tua e falamos contigo no WhatsApp para marcar o primeiro desafio."],
+    "Já podes criar a conta e a equipa e convidar o plantel. Os desafios entre equipas abrem por fases, com um grupo pequeno de equipas — o Pitch AI ajuda-te no WhatsApp a montar o plantel."],
 ];
 
 /** Accordion FAQ for the PITCH Rivals landing (/rivals). */
