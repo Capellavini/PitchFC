@@ -40,8 +40,10 @@ const ROUTES = {
   "/admin": { ...HOME, title: "PITCH — Admin", noindex: true },
 };
 
-// One-time links carrying a secret token, plus the owner deep link.
-const TOKEN_PARAMS = ["join", "confirm", "rate", "admin"];
+// One-time links carrying a secret token, the owner deep link, and the
+// PITCH Rivals deep links (team invites, challenges, team pages, pilot
+// opt-in) — reachable, never indexed.
+const TOKEN_PARAMS = ["join", "confirm", "rate", "admin", "tjoin", "desafio", "team", "rivals"];
 
 /** Pure: what the head should say for this URL. */
 export function routeMeta(pathname, search = "") {

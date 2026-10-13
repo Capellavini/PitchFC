@@ -10,7 +10,6 @@ import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import ListRow from "./ListRow";
-import TeamsSection from "./TeamsSection";
 
 const tierColor = (overall) => overall >= 80 ? C.gold : overall >= 70 ? C.silver : C.bronze;
 const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
@@ -20,11 +19,11 @@ const EMPTY_GUEST = { name: "", position: "Médio", overall: "" };
  * position · fiabilidade %, OVR chip) — tap opens the player's profile.
  * Organizer/assistant tools (confirm, remove, auxiliar, avulso, lock…)
  * sit behind a per-row "…" so the list stays readable. Invite via
- * WhatsApp for everyone; guest players for managers; the player's
- * Teams (cloud) at the bottom. Game-status grouping lives in Game
+ * WhatsApp for everyone; guest players for managers. (Teams moved to
+ * Competir → Equipa — PITCH Rivals.) Game-status grouping lives in Game
  * Detail now; invite-link management + bans in Definições.
  */
-export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onSetPlayerType, onSetAttendanceLock, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, canManageTeams, totalGames, myTeams = [], myPlayerId, onCreateTeam, onFetchTeam, onAddTeamMember, onRemoveTeamMember }) {
+export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUrl, isOrganizer, onToggleAssistant, onSetPlayerType, onSetAttendanceLock, onAddManualPlayer, onSetPlayerStatus, onRemoveGuestPlayer, onRemoveMember, canManageTeams, totalGames }) {
   const [sortAZ, setSortAZ] = useState(false);
   const [manageId, setManageId] = useState(null);
   const [guestOpen, setGuestOpen] = useState(false);
@@ -161,16 +160,6 @@ export default function GrupoTab({ group, game, openProfile, cloudMode, inviteUr
             <UserPlus size={16} /> {t("Adicionar convidado (sem conta)")}
           </BtnGhost>
         )
-      )}
-
-      {onCreateTeam && (
-        <div style={{ marginTop: S.xl }}>
-          <SectionLabel>{t("Equipas")}</SectionLabel>
-          <TeamsSection
-            myTeams={myTeams} groupRoster={group} groupName={game.groupName} myPlayerId={myPlayerId}
-            onCreateTeam={onCreateTeam} onFetchTeam={onFetchTeam} onAddTeamMember={onAddTeamMember} onRemoveTeamMember={onRemoveTeamMember}
-          />
-        </div>
       )}
     </div>
   );

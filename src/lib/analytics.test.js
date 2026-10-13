@@ -41,7 +41,7 @@ test("shared-by-link and owner-only routes are noindex", () => {
   for (const p of ["/pro", "/pitch-deck", "/roadmap", "/admin"]) assert.equal(routeMeta(p, "").noindex, true, p);
 });
 test("one-time token links are noindex even on an otherwise indexable path", () => {
-  for (const q of ["?join=abc", "?confirm=abc", "?rate=abc", "?admin=1"]) {
+  for (const q of ["?join=abc", "?confirm=abc", "?rate=abc", "?admin=1", "?tjoin=abc", "?desafio=abc", "?team=porto-fc", "?rivals=1"]) {
     assert.equal(routeMeta("/", q).noindex, true, q);
   }
   assert.equal(routeMeta("/", "?utm_source=instagram").noindex, false); // campaign links stay indexable

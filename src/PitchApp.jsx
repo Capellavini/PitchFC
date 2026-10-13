@@ -26,6 +26,11 @@ import { getThemeMode, setThemeMode } from "./lib/themeMode";
 import { playoffState } from "./lib/matchdayLive";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
+import { useTeams } from "./hooks/useTeams";
+import { readRivalsParams, rivalsVisible, marketForLang } from "./lib/rivals";
+import { readRivalsOptIn, saveRivalsOptIn } from "./lib/pendingIntent";
+import RivalsHub from "./components/RivalsHub";
+import TeamPublicPage from "./components/TeamPublicPage";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
@@ -181,6 +186,34 @@ export default function PitchApp() {
   const uploadMedia = cloud.user
     ? (file) => cloud.uploadMedia(file)
     : async (file) => ({ url: await fileToDataUrl(file) });
+
+  // ── PITCH Rivals (teams) ───────────────────────────────
+  // Deep links read once: ?team=<slug> (public page / my team) and the
+  // pilot opt-in ?rivals=1 (persisted). Teams load for any player row —
+  // incl. team-only players with no group (status needsGroup).
+  const [rivalsParams] = useState(() => readRivalsParams(window.location.search));
+  const [rivalsOptIn] = useState(() => rivalsParams.optIn || readRivalsOptIn());
+  useEffect(() => { if (rivalsParams.optIn) saveRivalsOptIn(true); }, [rivalsParams.optIn]);
+  const localMe = localMode ? group.find((p) => p.isMe) : null;
+  const rivals = useTeams({
+    cloudStatus: cloud.status, myPlayer: cloud.myPlayer, uploadMedia,
+    demoMe: localMe ? { id: `demo-me-${localMe.id}`, nick: localMe.nick, name: localMe.name, photo: localMe.photo, position: localMe.position } : null,
+  });
+  const [teamSlug, setTeamSlug] = useState(rivalsParams.team);
+  // { teamId? , slug?, n } — asks RivalsHub to show a team (bump n).
+  const [rivalsFocus, setRivalsFocus] = useState(null);
+  const [rivalsSession, setRivalsSession] = useState(false); // a Rivals link was opened this session
+  const [rivalsNotice, setRivalsNotice] = useState(null);
+  const [competirView, setCompetirView] = useState("rankings");
+  const rivalsOn = rivalsVisible({
+    flagOn: isEnabled("teams", { isAdmin: cloud.isAdmin }), teamCount: rivals.myTeams.length,
+    optIn: rivalsOptIn || rivalsSession,
+  });
+  const focusRivals = (focus) => {
+    setRivalsSession(true);
+    setRivalsFocus((f) => ({ ...focus, n: (f?.n || 0) + 1 }));
+    setCompetirView("equipa");
+  };
 
   // Register the push/PWA service worker once.
   useEffect(() => { registerServiceWorker(); }, []);
@@ -477,6 +510,17 @@ export default function PitchApp() {
   useEffect(() => {
     if (tabState === null && appDataReady) setTabRaw(openingTab);
   }, [tabState, appDataReady, openingTab]);
+  // ?team=<slug> once the app is open: Competir → Equipa on that team
+  // (mine → my team page; anyone else's → its public page).
+  useEffect(() => {
+    if (!teamSlug || !appDataReady) return;
+    focusRivals({ slug: teamSlug });
+    setTabRaw("competir");
+    setTeamSlug(null);
+    window.history.replaceState({}, "", window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamSlug, appDataReady]);
+  const clearTeamSlug = () => { setTeamSlug(null); window.history.replaceState({}, "", window.location.pathname); };
   // Which of the five tabs people actually use (analytics, consent-gated).
   useEffect(() => { if (tabState !== null) trackEvent("tab_view", { tab: tabState }); }, [tabState]);
 
@@ -1153,6 +1197,10 @@ export default function PitchApp() {
     }
 
     if (cloud.status === "anon") {
+      // ?team=<slug> logged out: the team's public page first.
+      if (teamSlug && !authOpen) {
+        return shell(<TeamPublicPage standalone teams={rivals} slug={teamSlug} onBack={clearTeamSlug} onEnter={() => setAuthOpen(true)} />);
+      }
       if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} lang={lang} onLang={changeLang} />;
       return shell(<AuthForm onSignUp={cloud.signUp} onSignIn={cloud.signIn} onResetPassword={cloud.resetPassword} onBack={() => setAuthOpen(false)} lang={lang} onLang={changeLang} />);
     }
@@ -1219,6 +1267,9 @@ export default function PitchApp() {
   } else {
     // ═══ LOCAL DEMO GATING ═══════════════════════════════
     if (!session.role) {
+      if (teamSlug && !authOpen) {
+        return shell(<TeamPublicPage standalone teams={rivals} slug={teamSlug} onBack={clearTeamSlug} onEnter={() => setAuthOpen(true)} />);
+      }
       if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} lang={lang} onLang={changeLang} />;
       return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} isDemo />);
     }
@@ -1606,7 +1657,7 @@ export default function PitchApp() {
       // MatchdayMvpVote lives in Matchday's after-state (shown while the
       // vote is open and there's no new game today). On a game day Matchday
       // shows the new game instead, so the open ballot is reached in Competir.
-      onPrimary: () => { if (isGameDay) { setCompetirBallot(true); selectTab("competir"); } else selectTab("matchday"); },
+      onPrimary: () => { if (isGameDay) { setCompetirBallot(true); setCompetirView("rankings"); selectTab("competir"); } else selectTab("matchday"); },
     } : null,
   ].filter(Boolean);
 
@@ -1820,9 +1871,6 @@ export default function PitchApp() {
                     onRemoveGuestPlayer={removeGuestPlayer} onRemoveMember={removeMember}
                     canManageTeams={canManageTeams}
                     totalGames={totalGamesPlayed}
-                    myTeams={cloudMode ? cloud.myTeams : []} myPlayerId={me?.uuid}
-                    onCreateTeam={cloudMode && isEnabled("teams", { isAdmin: cloud.isAdmin }) ? cloud.createTeam : undefined} onFetchTeam={cloudMode ? cloud.fetchTeam : undefined}
-                    onAddTeamMember={cloudMode ? cloud.addTeamMember : undefined} onRemoveTeamMember={cloudMode ? cloud.removeTeamMember : undefined}
                   />
                 }
                 stats={<GroupRecords records={recordsView} canDelete={isOrganizer && cloudMode} onDeleteMatchday={deleteMatchdayRecord} />}
@@ -1873,6 +1921,12 @@ export default function PitchApp() {
             postDates={cloudMode ? Object.fromEntries(cloud.posts.map((p) => [p.id, p.created_at])) : null}
             groupPicker={cloudMode && (cloud.myGroups?.length ?? 0) > 1 ? groupSwitcher : null}
             openBallot={competirBallot}
+            view={competirView} onViewChange={setCompetirView}
+            rivalsOn={rivalsOn} groupless={noGroup}
+            rivalsHub={(
+              <RivalsHub teams={rivals} market={marketForLang(lang)} focus={rivalsFocus}
+                notice={rivalsNotice} onDismissNotice={() => setRivalsNotice(null)} />
+            )}
           />
         )}
         {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (
@@ -1933,7 +1987,8 @@ export default function PitchApp() {
             // rows, and local demo's last matchday for form/records.
             groupName={game.groupName} city={groupSettings.city}
             myGroups={cloudMode ? cloud.myGroups : []} activeGroupId={cloudMode ? cloud.groupRow?.id : null}
-            myTeams={cloudMode ? cloud.myTeams : []}
+            myTeams={rivals.myTeams}
+            onOpenTeam={(teamId) => { focusRivals({ teamId }); selectTab("competir"); }}
             localMatchday={cloudMode ? null : lastMatchdayView}
           />
         )}
