@@ -257,32 +257,10 @@ export default function RivalsSignupForm({ account }) {
         )}
         {input("city", t(RC.suCity), { autoComplete: "address-level2", placeholder: t(RC.suCityPh) })}
         {input("team_name", t(RC.suTeamName), { placeholder: "Coletes FC", maxLength: 40 })}
-        {input("players_count", t(RC.suPlayers), { type: "number", inputMode: "numeric", min: 1, max: 60 })}
         {!loggedIn && input("email", t(RC.suEmail), { type: "email", autoComplete: "email" })}
         {!loggedIn && input("password", t(RC.suPassword), { type: "password", autoComplete: "new-password", "aria-describedby": "rv-password-hint" })}
       </div>
       {!loggedIn && <div id="rv-password-hint" style={{ fontSize: T.min, color: C.text2, marginTop: S.xs }}>{t(RC.suPasswordHint)}</div>}
-
-      <fieldset style={{ border: "none", padding: 0, margin: `${S.lg}px 0 0` }}>
-        <legend style={{ ...labelText, padding: 0, marginBottom: S.sm }}>{t(RC.suFormat)}</legend>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: S.sm }}>
-          {FORMATS.map(([id, label]) => (
-            <button key={id} type="button" aria-pressed={f.modality === id} aria-label={label}
-              onClick={() => set("modality", f.modality === id ? "" : id)} style={{ ...choice(f.modality === id), minWidth: 64 }}>
-              {id}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset style={{ border: "none", padding: 0, margin: `${S.lg}px 0 0` }}>
-        <legend style={{ ...labelText, padding: 0, marginBottom: S.sm }}>{t(RC.suPlays)}</legend>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: S.sm }}>
-          {PLAYS.map((p) => (
-            <button key={p} type="button" aria-pressed={f.plays === p} onClick={() => set("plays", f.plays === p ? "" : p)} style={choice(f.plays === p)}>{t(p)}</button>
-          ))}
-        </div>
-      </fieldset>
 
       {errorBox}
 

@@ -731,3 +731,20 @@ export function demoIncomingChallenge(state, teamId, now = Date.now()) {
   }, { id: cap.playerId, nick: cap.nick }, now);
   return r.error ? s : r.state;
 }
+
+/** Shared match rows for Jogar/Matchday, including both team identities.
+ * my_challenges may contain one item per membership: one fixture per ID. */
+export function matchesFromChallenges(challenges = []) {
+  const matches = new Map();
+  for (const ch of challenges) {
+    if (!ch?.match?.id || matches.has(ch.match.id)) continue;
+    matches.set(ch.match.id, {
+      ...ch.match,
+      challengeId: ch.id,
+      homeTeam: ch.challenger,
+      awayTeam: ch.challenged,
+      myTeamId: ch.myTeamId,
+    });
+  }
+  return [...matches.values()];
+}

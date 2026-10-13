@@ -188,3 +188,21 @@ test("normChallenge / normChallengeInvite read the RPC shapes", () => {
   assert.equal(inv.viewer.eligibleTeams[0].role, "vice");
   assert.equal(normChallengeInvite({ status: "not_found" }).status, "not_found");
 });
+
+
+test("an accepted challenge reaches team Jogar/Matchday once with the opponent", async () => {
+  const { matchesFromChallenges } = await import("./rivalsChallenges.js");
+  const { nextTeamMatch } = await import("./rivals.js");
+  const now = Date.parse("2026-10-13T12:00:00Z");
+  const a = { id: "a", name: "Coletes", timezone: "Europe/Lisbon" };
+  const b = { id: "b", name: "Galácticos", timezone: "Europe/Lisbon" };
+  const c = { id: "c", myTeamId: "a", challenger: a, challenged: b, match: {
+    id: "m", homeTeamId: "a", awayTeamId: "b", kickoffAt: "2026-10-13T20:00:00Z", matchStatus: "scheduled",
+  } };
+  const matches = matchesFromChallenges([c, { ...c, myTeamId: "b" }, { id: "pending", match: null }]);
+  assert.equal(matches.length, 1);
+  assert.equal(nextTeamMatch(matches, [a], now).opponent.name, "Galácticos");
+  assert.equal(nextTeamMatch(matches, [b], now).opponent.name, "Coletes");
+  assert.equal(nextTeamMatch(matches, [a], now).isToday, true);
+  assert.equal(nextTeamMatch(matchesFromChallenges([{ ...c, match: { ...c.match, matchStatus: "cancelled" } }]), [a], now), null);
+});

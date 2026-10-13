@@ -7,7 +7,7 @@ import {
 } from "../lib/rivals";
 import {
   demoChallengeInvite, demoChallengeOp, demoIncomingChallenge, demoMyChallenges, demoRivalMove, normChallenge,
-  normChallengeInvite, pendingActionCount, termsToRpc, withChallengeSeed, challengeInviteUrl,
+  normChallengeInvite, matchesFromChallenges, pendingActionCount, termsToRpc, withChallengeSeed, challengeInviteUrl,
 } from "../lib/rivalsChallenges";
 
 const RIVAL_DELAY_MS = 1800; // demo: the simulated rival captain "thinks" this long
@@ -290,6 +290,7 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
     if (cloudCapable) return cloudChallenges.map((r) => normChallenge(r, now));
     return meId ? demoMyChallenges(demoState, meId, now) : [];
   }, [cloudCapable, cloudChallenges, demoState, meId]);
+  const matches = useMemo(() => matchesFromChallenges(challenges), [challenges]);
   const pendingActions = useMemo(() => pendingActionCount(challenges), [challenges]);
   const myTeamIdsRef = useRef([]);
   myTeamIdsRef.current = myTeams.map((tm) => tm.id);
@@ -383,7 +384,7 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
     createTeam, updateTeam, archiveTeam, fetchTeam, fetchPublicTeam, listTeams, uploadBadge,
     getInvite, revokeInvite, previewInvite, acceptInvite,
     setMemberRole, transferCaptaincy, removeMember, leaveTeam,
-    challenges, pendingActions,
+    challenges, matches, pendingActions,
     createChallenge, respondChallenge, counterChallenge, cancelChallenge,
     proposeMatchChange, respondMatchChange, setFieldStatus, previewChallenge,
     refresh: load, resetDemo,

@@ -17,6 +17,15 @@ const HOME = {
 // index.html with a 200 for any URL) is treated as "not a real page".
 const ROUTES = {
   "/": HOME,
+  "/rivals": {
+    title: "PITCH Rivals — O próximo jogo começa com um desafio",
+    description: "Combina data, campo e custo numa só proposta. Cria a tua equipa no PITCH Rivals, convida o plantel e prepara o próximo desafio. Grátis.",
+  },
+  "/desafios": {
+    title: "PITCH Rivals — O próximo jogo começa com um desafio",
+    description: "Cria a tua equipa, convida o plantel e prepara o próximo desafio no PITCH Rivals.",
+    canonicalPath: "/rivals",
+  },
   "/league": {
     title: "PITCH League — competições de futebol amador | PITCH",
     description: "PITCH League: competições de futebol amador organizadas no PITCH. Inscreve a tua equipa na primeira liga.",
@@ -54,7 +63,7 @@ export function routeMeta(pathname, search = "") {
   return {
     title: m.title,
     description: m.description,
-    canonical: known ? SITE + (path === "/" ? "/" : path) : SITE + "/",
+    canonical: known ? SITE + (m.canonicalPath || (path === "/" ? "/" : path)) : SITE + "/",
     noindex: Boolean(m.noindex) || hasToken || !known,
   };
 }
