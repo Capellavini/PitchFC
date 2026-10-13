@@ -2,6 +2,14 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/VARMariEder",
+      "destination": "/VARMariEder/index.html"
+    },
+    {
+      "source": "/VARMariEder/",
+      "destination": "/VARMariEder/index.html"
+    },
+    {
       "source": "/VAR",
       "destination": "/VAR/index.html"
     },
@@ -26,6 +34,24 @@
     },
     {
       "source": "/VAR/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/VARMariEder/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/VARMariEder/sw.js",
       "headers": [
         {
           "key": "Cache-Control",

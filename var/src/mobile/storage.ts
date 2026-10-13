@@ -1,5 +1,6 @@
 import type { LocalClip } from './model';
-const NAME='pitch-cam-mobile';
+import {PUBLIC_VAR} from './paths';
+const NAME=PUBLIC_VAR?'pitch-var-mari-eder-mobile':'pitch-cam-mobile';
 export const GALLERY_LIMIT=200*1024**2;
 const open=()=>new Promise<IDBDatabase>((resolve,reject)=>{
   const r=indexedDB.open(NAME,1);

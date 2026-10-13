@@ -4,10 +4,11 @@ import type {PhoneRecorder} from './recorder';
 import type {LocalClip} from './model';
 import {listClips,loadClip,putClip,deleteClip} from './storage';
 import {exportMP4} from './export';
+import {PUBLIC_VAR} from './paths';
 export interface AvailableGame{id:string;groupId:string;groupName:string;venue:string;scheduledAt:string;playerId:string;matches:{id:number|string;n:number;concluded?:boolean;isBye?:boolean}[]}
 export interface CloudClip{id:string;path:string;expiresAt:string;occurredAt:string;goalId:string;groupName:string;ownGoal:boolean;bytes:number}
 const url=import.meta.env.VITE_SUPABASE_URL,key=import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const varClient=url&&key?createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true}}):undefined;
+export const varClient=!PUBLIC_VAR&&url&&key?createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true}}):undefined;
 export async function varRPC<T>(action:string,payload:Record<string,unknown>={}):Promise<T>{
  if(!varClient)throw Error('Conexão Pitch indisponível.');
  const {data,error}=await varClient.rpc('pitch_var',{action,payload});if(error)throw Error(error.message);return data as T;
@@ -19,6 +20,7 @@ export class ConnectedVar{
  onChange=()=>{};onError=(_s:string)=>{};onRefresh=()=>{};onRemoteStop=()=>{};
  private unsubscribe?:()=>void;
  async initialize(){
+  if(PUBLIC_VAR)return;
   this.deviceId=localStorage.getItem('pitch-var-device')||crypto.randomUUID();localStorage.setItem('pitch-var-device',this.deviceId);
   if(!varClient)return;
   this.user=(await varClient.auth.getSession()).data.session?.user;
