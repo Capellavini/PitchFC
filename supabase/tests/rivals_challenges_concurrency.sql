@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────
--- MANUAL concurrency check for migration 007100 (PITCH Rivals): two
+-- MANUAL concurrency check for migration 20261013140000 (PITCH Rivals): two
 -- leaders accept / claim the same challenge at the same time → exactly
 -- ONE match, the second caller gets the same match (already_agreed) or
 -- rivals:challenge_claimed.

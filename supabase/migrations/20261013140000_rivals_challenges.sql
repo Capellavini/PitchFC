@@ -1,7 +1,7 @@
 -- ─────────────────────────────────────────────────────────
 -- Migration — PITCH Rivals (2/3): challenges + the shared team match
 --
--- Plan: docs/RIVALS-PLAN.md §2 "007100_rivals_challenges" + §3 "Challenges"
+-- Plan: docs/RIVALS-PLAN.md §2 "20261013140000_rivals_challenges" + §3 "Challenges"
 -- RPCs. Spec: docs/TEAMS-CHALLENGES-SPEC.md (owner decisions block wins:
 -- response deadline = min(now + 24h, kickoff − 2h), decision 9).
 --
@@ -39,7 +39,7 @@
 --     (trigger); archive_team itself refuses while a match is scheduled.
 --
 -- Never touches games / attendances / matchdays (option B). Same policy
--- fingerprint technique as 007000 ('migration_baseline:007100').
+-- fingerprint technique as 007000 ('migration_baseline:20261013140000').
 --
 -- Errors: 'rivals:<code>' (src/lib/rivalsCopy.js maps them to copy).
 -- Idempotent: safe to re-run.
@@ -47,7 +47,7 @@
 
 -- ── 0. Regression baseline (first run only) ──────────────
 insert into public.rivals_audit_log (action, payload)
-select 'migration_baseline:007100', jsonb_build_object(
+select 'migration_baseline:20261013140000', jsonb_build_object(
   'group_policies_md5', (
     select md5(coalesce(string_agg(
       format('%s|%s|%s|%s|%s|%s|%s', tablename, policyname, permissive, cmd, roles::text,
@@ -56,7 +56,7 @@ select 'migration_baseline:007100', jsonb_build_object(
     from pg_policies
     where schemaname = 'public' and tablename in ('games', 'attendances', 'matchdays')
   ))
-where not exists (select 1 from public.rivals_audit_log where action = 'migration_baseline:007100');
+where not exists (select 1 from public.rivals_audit_log where action = 'migration_baseline:20261013140000');
 
 -- ── 1. team_challenges ───────────────────────────────────
 create table if not exists public.team_challenges (

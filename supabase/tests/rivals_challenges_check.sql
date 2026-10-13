@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────
--- Manual check for migration 20260101007100_rivals_challenges (PITCH
+-- Manual check for migration 20261013140000_rivals_challenges (PITCH
 -- Rivals 2/3). Run in Supabase Dashboard → SQL Editor (paste the whole
 -- file, Run) right AFTER the migration is applied. Everything runs inside
 -- a transaction that ROLLS BACK. One row per check — every row must be
@@ -147,7 +147,7 @@ select pg_temp.ok('games/attendances/matchdays policies identical to the ' || b 
               coalesce(qual, ''), coalesce(with_check, '')),
        E'\n' order by tablename, policyname), ''))
      from pg_policies where schemaname = 'public' and tablename in ('games','attendances','matchdays')))
-from unnest(array['migration_baseline:007000','migration_baseline:007100']) b;
+from unnest(array['migration_baseline:007000','migration_baseline:20261013140000']) b;
 select pg_temp.ok('no games/attendances/matchdays policy references challenges/matches',
   not exists (select 1 from pg_policies where schemaname = 'public' and tablename in ('games','attendances','matchdays')
                and (coalesce(qual, '') ilike '%challenge%' or coalesce(with_check, '') ilike '%challenge%'
