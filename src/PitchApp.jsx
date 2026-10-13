@@ -35,6 +35,9 @@ import { rivalsError } from "./lib/rivalsCopy";
 import RivalsHub from "./components/RivalsHub";
 import TeamPublicPage from "./components/TeamPublicPage";
 import TeamInvitePage from "./components/TeamInvitePage";
+import ChallengeInvitePage from "./components/ChallengeInvitePage";
+import ChallengesInbox from "./components/ChallengesInbox";
+import { readChallengeToken, challengesVisible } from "./lib/rivalsChallenges";
 import { registerServiceWorker, subscribeToPush } from "./lib/push";
 import LandingPage from "./components/LandingPage";
 import AuthForm from "./components/AuthForm";
@@ -233,6 +236,36 @@ export default function PitchApp() {
     if (fromMeta?.kind === "tjoin") setTeamToken(fromMeta.token);
   }, [teamToken, cloud.status, cloud.user]);
   const dropTeamToken = () => { clearPendingIntent(); setTeamToken(null); };
+  // ?desafio=<token> (team challenge link, PR5) — same pending-intent
+  // treatment as ?tjoin (localStorage + signUp metadata desafio_token).
+  const [challengeToken, setChallengeToken] = useState(() => {
+    const fromUrl = readChallengeToken(window.location.search);
+    if (fromUrl) { savePendingIntent({ kind: "desafio", token: fromUrl }); return fromUrl; }
+    const saved = readPendingIntent();
+    return saved?.kind === "desafio" ? saved.token : null;
+  });
+  useEffect(() => {
+    if (readChallengeToken(window.location.search)) window.history.replaceState({}, "", window.location.pathname);
+  }, []);
+  useEffect(() => {
+    if (challengeToken || teamToken || cloud.status !== "needsProfile") return;
+    const fromMeta = intentFromMetadata(cloud.user?.user_metadata);
+    if (fromMeta?.kind === "desafio") setChallengeToken(fromMeta.token);
+  }, [challengeToken, teamToken, cloud.status, cloud.user]);
+  const dropChallengeToken = () => { clearPendingIntent(); setChallengeToken(null); };
+  // { challengeId, match?, n } — asks ChallengesInbox to open one.
+  const [challengeFocus, setChallengeFocus] = useState(null);
+  const openChallenge = (challengeId, { match = false } = {}) => {
+    setRivalsSession(true);
+    setChallengeFocus((f) => ({ challengeId, match, n: (f?.n || 0) + 1 }));
+    setCompetirView("desafios");
+  };
+  const openChallengeFromInvite = (challengeId, opts) => {
+    dropChallengeToken();
+    setNoGroupOptIn(true); // a team player is never bounced into the JoinGroup wall
+    if (challengeId) openChallenge(challengeId, opts); else setCompetirView("desafios");
+    setTabRaw("competir");
+  };
   // Accepting is in flight (right after the quick player card): show the
   // loader rather than the invite page / JoinGroup wall for that instant.
   const [acceptingTeam, setAcceptingTeam] = useState(false);
@@ -255,13 +288,17 @@ export default function PitchApp() {
 
   const rivalsOn = rivalsVisible({
     flagOn: isEnabled("teams", { isAdmin: cloud.isAdmin }), teamCount: rivals.myTeams.length,
-    hasIntent: Boolean(teamToken), optIn: rivalsOptIn || rivalsSession,
+    hasIntent: Boolean(teamToken || challengeToken), optIn: rivalsOptIn || rivalsSession,
+  });
+  const challengesOn = challengesVisible({
+    rivalsOn, flagOn: isEnabled("challenges", { isAdmin: cloud.isAdmin }), teamCount: rivals.myTeams.length,
+    hasIntent: Boolean(challengeToken), optIn: rivalsOptIn || rivalsSession,
   });
   // Logged-in player without a group who can still use the app: chose to
   // explore, is in a team, or carries a team invite (lib/rivals isNoGroup).
   const noGroup = isNoGroup({
     needsGroup: cloud.status === "needsGroup", optIn: noGroupOptIn,
-    teamCount: rivals.myTeams.length, hasIntent: Boolean(teamToken),
+    teamCount: rivals.myTeams.length, hasIntent: Boolean(teamToken || challengeToken),
   });
   const cloudAuthed = cloudMode || noGroup; // user-level cloud features
 
@@ -1080,7 +1117,7 @@ export default function PitchApp() {
     setNoGroupOptIn(false);
     setManualJoinChoice(null);
     setJoinToken(null);
-    dropTeamToken(); setTeamSlug(null); setRivalsFocus(null); setRivalsNotice(null); setCompetirView("rankings"); setJoinGroupOpen(false);
+    dropTeamToken(); setChallengeToken(null); setChallengeFocus(null); setTeamSlug(null); setRivalsFocus(null); setRivalsNotice(null); setCompetirView("rankings"); setJoinGroupOpen(false);
     setTabRaw(null); // next login re-runs the contextual opening tab
   };
   const backToRolePick = () => setSession({ role: null, onboarded: false });
@@ -1096,7 +1133,7 @@ export default function PitchApp() {
       setNoGroupOptIn(false);
       setManualJoinChoice(null);
       setJoinToken(null);
-      dropTeamToken(); setTeamSlug(null); setRivalsFocus(null); setRivalsNotice(null); setCompetirView("rankings"); setJoinGroupOpen(false);
+      dropTeamToken(); setChallengeToken(null); setChallengeFocus(null); setTeamSlug(null); setRivalsFocus(null); setRivalsNotice(null); setCompetirView("rankings"); setJoinGroupOpen(false);
     }
     return res;
   };
@@ -1264,6 +1301,11 @@ export default function PitchApp() {
         return shell(<TeamInvitePage teams={rivals} token={teamToken} loggedIn={false}
           onSignup={() => setAuthOpen(true)} onDismiss={dropTeamToken} />);
       }
+      // ?desafio=<token> logged out: what the challenge is, BEFORE the landing.
+      if (challengeToken && !authOpen) {
+        return shell(<ChallengeInvitePage teams={rivals} token={challengeToken} loggedIn={false}
+          onSignup={() => setAuthOpen(true)} onDismiss={dropChallengeToken} />);
+      }
       // ?team=<slug> logged out: the team's public page first.
       if (teamSlug && !authOpen) {
         return shell(<TeamPublicPage standalone teams={rivals} slug={teamSlug} onBack={clearTeamSlug} onEnter={() => setAuthOpen(true)} />);
@@ -1272,7 +1314,7 @@ export default function PitchApp() {
       // Signing up from a team invite keeps it on the account (metadata
       // tjoin_token) so it survives the email-confirmation round trip.
       const signUpKeepingIntent = (email, password, meta) =>
-        cloud.signUp(email, password, { ...meta, ...(teamToken ? intentMetadata({ kind: "tjoin", token: teamToken }) : {}) });
+        cloud.signUp(email, password, { ...meta, ...(teamToken ? intentMetadata({ kind: "tjoin", token: teamToken }) : challengeToken ? intentMetadata({ kind: "desafio", token: challengeToken }) : {}) });
       return shell(<AuthForm onSignUp={signUpKeepingIntent} onSignIn={cloud.signIn} onResetPassword={cloud.resetPassword} onBack={() => setAuthOpen(false)} lang={lang} onLang={changeLang} />);
     }
 
@@ -1288,7 +1330,7 @@ export default function PitchApp() {
         // a full profile before ever being asked which group they're in.
         // A team invite (?tjoin) also skips the group step: team-first
         // players don't need a group (plan §4).
-        const needsLinkStep = !joinToken && !teamToken && manualJoinChoice === null;
+        const needsLinkStep = !joinToken && !teamToken && !challengeToken && manualJoinChoice === null;
         if (needsLinkStep) {
           return shell(
             <JoinGroup
@@ -1318,6 +1360,13 @@ export default function PitchApp() {
                 const created = await cloud.createPlayerProfile(form);
                 if (created?.error) { setAcceptingTeam(false); return created; }
                 await acceptTeamInvite(teamToken);
+                return {};
+              }
+              if (challengeToken && !effectiveToken) {
+                // Challenge link: quick card → back to the ?desafio page.
+                const created = await cloud.createPlayerProfile(form);
+                if (created?.error) return created;
+                setNoGroupOptIn(true);
                 return {};
               }
               const res = await cloud.joinGroupWithProfile(effectiveToken, form);
@@ -1357,6 +1406,10 @@ export default function PitchApp() {
         onOpenTeam={() => acceptTeamInvite(teamToken)}
         onDismiss={dropTeamToken} />);
     }
+    if (challengeToken && (cloud.status === "needsGroup" || cloudMode)) {
+      return shell(<ChallengeInvitePage teams={rivals} token={challengeToken} loggedIn
+        onOpenChallenge={openChallengeFromInvite} onDismiss={dropChallengeToken} />);
+    }
     if (cloud.status === "needsGroup" && (!noGroup || joinGroupOpen)) {
       return shell(<JoinGroup onJoin={cloud.joinGroupByToken} onLogout={logout}
         onSkip={() => { setNoGroupOptIn(true); setJoinGroupOpen(false); }}
@@ -1369,6 +1422,10 @@ export default function PitchApp() {
       if (teamToken && !authOpen) {
         return shell(<TeamInvitePage teams={rivals} token={teamToken} loggedIn={false}
           onSignup={() => setAuthOpen(true)} onDismiss={dropTeamToken} />);
+      }
+      if (challengeToken && !authOpen) {
+        return shell(<ChallengeInvitePage teams={rivals} token={challengeToken} loggedIn={false}
+          onSignup={() => setAuthOpen(true)} onDismiss={dropChallengeToken} />);
       }
       if (teamSlug && !authOpen) {
         return shell(<TeamPublicPage standalone teams={rivals} slug={teamSlug} onBack={clearTeamSlug} onEnter={() => setAuthOpen(true)} />);
@@ -1392,6 +1449,10 @@ export default function PitchApp() {
         onAccept={() => acceptTeamInvite(teamToken)}
         onOpenTeam={() => acceptTeamInvite(teamToken)}
         onDismiss={dropTeamToken} />);
+    }
+    if (challengeToken) {
+      return shell(<ChallengeInvitePage teams={rivals} token={challengeToken} loggedIn
+        onOpenChallenge={openChallengeFromInvite} onDismiss={dropChallengeToken} />);
     }
   }
 
@@ -2040,8 +2101,13 @@ export default function PitchApp() {
             rivalsOn={rivalsOn} groupless={noGroup}
             rivalsHub={(
               <RivalsHub teams={rivals} market={marketForLang(lang)} focus={rivalsFocus}
-                notice={rivalsNotice} onDismissNotice={() => setRivalsNotice(null)} />
+                notice={rivalsNotice} onDismissNotice={() => setRivalsNotice(null)}
+                challengesOn={challengesOn} onOpenChallenge={(id) => openChallenge(id)} />
             )}
+            challengesInbox={challengesOn ? (
+              <ChallengesInbox teams={rivals} focus={challengeFocus} onGoToTeam={() => setCompetirView("equipa")} />
+            ) : null}
+            challengesBadge={rivals.pendingActions}
           />
         )}
         {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (
