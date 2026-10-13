@@ -12,6 +12,9 @@
 --   • team_members + role 'vice', status active/left/removed, left_at;
 --                    one active captain + at most one active vice per team
 --                    (unique partial indexes); captain rows backfilled.
+--   • teams        + country ('PT'|'BR'), region, listed — PT + BR markets
+--                    from day one; team directory (list_teams) for
+--                    signed-in users (owner decisions 2026-10-08).
 --   • team_invites   (new) expiring / revocable / counted roster links.
 --   • rivals_audit_log (new) one row per state transition.
 --   • Helpers team_role / is_team_member / is_team_leader /
@@ -27,7 +30,8 @@
 --
 -- Legacy (migration 49) rosters: every existing team_members row is kept
 -- and stays 'active' (owner decision on consent-less auto-adds pending —
--- plan "Open questions" #3). The backfill only ADDS the missing captain
+-- plan "Open questions" #3; the owner reports none exist in production
+-- as of 2026-10-08, so this is belt-and-braces). The backfill only ADDS the missing captain
 -- rows / normalises roles; it never deletes or deactivates anyone.
 --
 -- Errors: every RPC raises 'rivals:<code>' (the app maps <code> to copy).
@@ -72,7 +76,13 @@ alter table public.teams
   add column if not exists updated_at       timestamptz not null default now(),
   add column if not exists archived_at      timestamptz,
   add column if not exists timezone         text not null default 'Europe/Lisbon',
-  add column if not exists currency         text not null default 'EUR';
+  add column if not exists currency         text not null default 'EUR',
+  -- Markets PT + BR from day one (owner, 2026-10-08). city stays free
+  -- text; region = district / state ("Porto", "SP") for "teams near me".
+  add column if not exists country          text not null default 'PT',
+  add column if not exists region           text,
+  -- Team directory (owner, 2026-10-08): the captain can hide the team.
+  add column if not exists listed           boolean not null default true;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'teams_preferred_format_check') then
@@ -81,6 +91,9 @@ do $$ begin
   end if;
   if not exists (select 1 from pg_constraint where conname = 'teams_currency_check') then
     alter table public.teams add constraint teams_currency_check check (currency in ('EUR','BRL'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'teams_country_check') then
+    alter table public.teams add constraint teams_country_check check (country in ('PT','BR'));
   end if;
 end $$;
 
@@ -238,13 +251,14 @@ $$;
 
 -- Internal: validate an editable-fields object (allow-list + formats).
 create or replace function public.rivals_validate_team_fields(f jsonb, p_allow_group boolean default false)
-returns void language plpgsql immutable set search_path = public as $$
+returns void language plpgsql stable set search_path = public as $$
 declare k text;
 begin
   if f is null then return; end if;
   if jsonb_typeof(f) <> 'object' then raise exception 'rivals:invalid_field'; end if;
   for k in select jsonb_object_keys(f) loop
-    if k not in ('name','city','color','secondary_color','home_venue','preferred_format','logo_url','timezone','currency')
+    if k not in ('name','city','region','country','listed','color','secondary_color','home_venue',
+                 'preferred_format','logo_url','timezone','currency')
        and not (p_allow_group and k = 'founded_by_group_id') then
       raise exception 'rivals:invalid_field' using detail = k;
     end if;
@@ -262,10 +276,18 @@ begin
   if f->>'currency' is not null and f->>'currency' not in ('EUR','BRL') then
     raise exception 'rivals:invalid_currency';
   end if;
-  if f->>'timezone' is not null and f->>'timezone' not in ('Europe/Lisbon','Atlantic/Azores','Atlantic/Madeira','America/Sao_Paulo') then
+  if f->>'country' is not null and f->>'country' not in ('PT','BR') then
+    raise exception 'rivals:invalid_country';
+  end if;
+  if f ? 'listed' and jsonb_typeof(f->'listed') <> 'boolean' then
+    raise exception 'rivals:invalid_field' using detail = 'listed';
+  end if;
+  -- Any real IANA zone (Lisbon / São Paulo are the defaults, others allowed).
+  if f->>'timezone' is not null and not exists (select 1 from pg_timezone_names where name = f->>'timezone') then
     raise exception 'rivals:invalid_timezone';
   end if;
-  if char_length(coalesce(f->>'city', '')) > 60 or char_length(coalesce(f->>'home_venue', '')) > 80 then
+  if char_length(coalesce(f->>'city', '')) > 60 or char_length(coalesce(f->>'region', '')) > 60
+     or char_length(coalesce(f->>'home_venue', '')) > 80 then
     raise exception 'rivals:field_too_long';
   end if;
   if f->>'logo_url' is not null and (f->>'logo_url' !~ '^https://' or char_length(f->>'logo_url') > 500) then
@@ -367,12 +389,16 @@ begin
 
   for i in 1..3 loop
     begin
-      insert into public.teams (name, slug, city, color, secondary_color, home_venue, preferred_format,
-                                logo_url, timezone, currency, captain_id, created_by, founded_by_group_id)
-      values (v_name, public.rivals_unique_slug(v_name), nullif(btrim(f->>'city'), ''),
+      -- Market defaults follow the country (the app derives country from
+      -- the UI language: pt-BR → BR, else PT) unless explicitly given.
+      insert into public.teams (name, slug, city, region, country, listed, color, secondary_color, home_venue,
+                                preferred_format, logo_url, timezone, currency, captain_id, created_by, founded_by_group_id)
+      values (v_name, public.rivals_unique_slug(v_name), nullif(btrim(f->>'city'), ''), nullif(btrim(f->>'region'), ''),
+              coalesce(f->>'country', 'PT'), coalesce((f->>'listed')::boolean, true),
               coalesce(f->>'color', '#C8FF00'), f->>'secondary_color', nullif(btrim(f->>'home_venue'), ''),
               coalesce(f->>'preferred_format', '7v7'), nullif(f->>'logo_url', ''),
-              coalesce(f->>'timezone', 'Europe/Lisbon'), coalesce(f->>'currency', 'EUR'),
+              coalesce(f->>'timezone', case when f->>'country' = 'BR' then 'America/Sao_Paulo' else 'Europe/Lisbon' end),
+              coalesce(f->>'currency', case when f->>'country' = 'BR' then 'BRL' else 'EUR' end),
               v_pid, v_pid, v_group)
       returning * into v_team;
       exit;
@@ -404,7 +430,7 @@ begin
   if not (public.is_admin() or v_role in ('captain','vice')) then
     raise exception 'rivals:not_team_leader' using errcode = '42501';
   end if;
-  if f ? 'name' and not (public.is_admin() or v_role = 'captain') then
+  if (f ? 'name' or f ? 'listed') and not (public.is_admin() or v_role = 'captain') then
     raise exception 'rivals:captain_only' using errcode = '42501';
   end if;
   perform public.rivals_validate_team_fields(f, false);
@@ -413,6 +439,9 @@ begin
     update public.teams set
       name             = case when f ? 'name'             then btrim(f->>'name') else name end,
       city             = case when f ? 'city'             then nullif(btrim(f->>'city'), '') else city end,
+      region           = case when f ? 'region'           then nullif(btrim(f->>'region'), '') else region end,
+      country          = case when f ? 'country'          then coalesce(f->>'country', country) else country end,
+      listed           = case when f ? 'listed'           then coalesce((f->>'listed')::boolean, listed) else listed end,
       color            = case when f ? 'color'            then coalesce(f->>'color', color) else color end,
       secondary_color  = case when f ? 'secondary_color'  then f->>'secondary_color' else secondary_color end,
       home_venue       = case when f ? 'home_venue'       then nullif(btrim(f->>'home_venue'), '') else home_venue end,
@@ -539,7 +568,8 @@ begin
     'status', v_status,
     'expires_at', v_inv.expires_at,
     'team', jsonb_build_object(
-      'name', v_team.name, 'slug', v_team.slug, 'city', v_team.city, 'color', v_team.color,
+      'name', v_team.name, 'slug', v_team.slug, 'city', v_team.city, 'region', v_team.region,
+      'country', v_team.country, 'color', v_team.color,
       'secondary_color', v_team.secondary_color, 'logo_url', v_team.logo_url,
       'preferred_format', v_team.preferred_format,
       'member_count', (select count(*) from public.team_members m where m.team_id = v_team.id and m.status = 'active')),
@@ -733,6 +763,7 @@ begin
   if not found then return null; end if;
   return jsonb_build_object(
     'id', v_team.id, 'name', v_team.name, 'slug', v_team.slug, 'city', v_team.city,
+    'region', v_team.region, 'country', v_team.country,
     'color', v_team.color, 'secondary_color', v_team.secondary_color, 'logo_url', v_team.logo_url,
     'preferred_format', v_team.preferred_format, 'home_venue', v_team.home_venue,
     'created_at', v_team.created_at, 'archived', v_team.archived_at is not null,
@@ -741,6 +772,82 @@ begin
     'record', jsonb_build_object('played', 0, 'wins', 0, 'draws', 0, 'losses', 0, 'goals_for', 0, 'goals_against', 0),
     'form', '[]'::jsonb);
 end $$;
+
+-- list_teams(...) — the team directory ("inventário de equipas", owner
+-- decision 2026-10-08, overrides the spec's "no public discovery" for
+-- teams). Signed-in users only (no anon). Listed + non-archived teams of
+-- one country; format / free-text query filter; p_city / p_region rank
+-- (same city first, then same region, then most recently active) and,
+-- with p_only_near, restrict to that region (or city when no region).
+-- Captain and vice are returned so the UI can highlight them. `record`
+-- and `form` are placeholders — EXTENSION POINT: 007200 replaces this
+-- with the confirmed-results record.
+-- → {items: [...], has_more}
+create or replace function public.list_teams(
+  p_country text default 'PT', p_region text default null, p_city text default null,
+  p_format text default null, p_query text default null,
+  p_limit int default 30, p_offset int default 0, p_only_near boolean default false)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare
+  v_pid    uuid := public.my_player_id();
+  v_region text := nullif(lower(btrim(coalesce(p_region, ''))), '');
+  v_city   text := nullif(lower(btrim(coalesce(p_city, ''))), '');
+  v_q      text := nullif(lower(btrim(coalesce(p_query, ''))), '');
+  v_limit  int := least(greatest(coalesce(p_limit, 30), 1), 50);
+  v_offset int := greatest(coalesce(p_offset, 0), 0);
+  v_items  jsonb;
+  v_count  int;
+begin
+  if v_pid is null then raise exception 'rivals:not_authenticated' using errcode = '42501'; end if;
+  if v_q is not null then v_q := replace(replace(replace(v_q, '\', '\\'), '%', '\%'), '_', '\_'); end if;
+
+  with base as (
+    select t.*,
+           (v_city is not null and lower(t.city) = v_city) as same_city,
+           (v_region is not null and lower(t.region) = v_region) as same_region
+      from public.teams t
+     where t.listed and t.archived_at is null
+       and t.country = coalesce(nullif(p_country, ''), 'PT')
+       and (p_format is null or p_format = '' or t.preferred_format = p_format)
+       and (v_q is null or lower(t.name) like '%' || v_q || '%' or lower(coalesce(t.city, '')) like '%' || v_q || '%'
+            or lower(coalesce(t.region, '')) like '%' || v_q || '%')
+       and (not coalesce(p_only_near, false)
+            or (v_region is not null and lower(t.region) = v_region)
+            or (v_region is null and v_city is not null and lower(t.city) = v_city))
+  ), page as (
+    select b.* from base b
+     order by b.same_city desc, b.same_region desc, b.updated_at desc, b.created_at desc, b.id
+     limit v_limit + 1 offset v_offset
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', p.id, 'name', p.name, 'slug', p.slug, 'city', p.city, 'region', p.region, 'country', p.country,
+           'color', p.color, 'secondary_color', p.secondary_color, 'logo_url', p.logo_url,
+           'preferred_format', p.preferred_format, 'created_at', p.created_at,
+           'same_city', p.same_city, 'same_region', p.same_region,
+           'member_count', (select count(*) from public.team_members m where m.team_id = p.id and m.status = 'active'),
+           'captain', (select jsonb_build_object('id', pl.id, 'nick', coalesce(nullif(pl.nick, ''), split_part(pl.name, ' ', 1)), 'photo_url', pl.photo_url)
+                         from public.team_members m join public.players pl on pl.id = m.player_id
+                        where m.team_id = p.id and m.role = 'captain' and m.status = 'active' limit 1),
+           'vice', (select jsonb_build_object('id', pl.id, 'nick', coalesce(nullif(pl.nick, ''), split_part(pl.name, ' ', 1)), 'photo_url', pl.photo_url)
+                      from public.team_members m join public.players pl on pl.id = m.player_id
+                     where m.team_id = p.id and m.role = 'vice' and m.status = 'active' limit 1),
+           'my_role', (select m.role from public.team_members m where m.team_id = p.id and m.player_id = v_pid and m.status = 'active'),
+           'record', jsonb_build_object('played', 0, 'wins', 0, 'draws', 0, 'losses', 0),
+           'form', '[]'::jsonb
+         ) order by p.same_city desc, p.same_region desc, p.updated_at desc, p.created_at desc, p.id), '[]'::jsonb),
+         count(*)
+    into v_items, v_count
+    from page p;
+
+  if v_count > v_limit then
+    v_items := v_items - v_limit;  -- drop the look-ahead row
+  end if;
+  return jsonb_build_object('items', v_items, 'has_more', v_count > v_limit);
+end $$;
+
+create index if not exists teams_directory_idx
+  on public.teams (country, lower(region), lower(city), updated_at desc)
+  where listed and archived_at is null;
 
 -- ── 9. EXECUTE grants (Supabase auto-grants anon/authenticated) ──
 do $$
@@ -759,7 +866,8 @@ begin
     'public.create_team(text, jsonb)', 'public.update_team(uuid, jsonb)', 'public.archive_team(uuid)',
     'public.create_team_invite(uuid, boolean, int, int)', 'public.revoke_team_invite(uuid)',
     'public.accept_team_invite(text)', 'public.set_member_role(uuid, uuid, text)',
-    'public.transfer_captaincy(uuid, uuid)', 'public.remove_team_member(uuid, uuid)', 'public.leave_team(uuid)'
+    'public.transfer_captaincy(uuid, uuid)', 'public.remove_team_member(uuid, uuid)', 'public.leave_team(uuid)',
+    'public.list_teams(text, text, text, text, text, int, int, boolean)'
   ] loop
     execute format('revoke execute on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated, service_role', f);

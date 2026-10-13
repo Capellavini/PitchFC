@@ -119,6 +119,8 @@ from (values
   ('public.team_invite_preview(text)',                   'authenticated', true),
   ('public.team_profile(text)',                          'anon',          true),
   ('public.team_profile(text)',                          'authenticated', true),
+  ('public.list_teams(text,text,text,text,text,int,int,boolean)', 'authenticated', true),
+  ('public.list_teams(text,text,text,text,text,int,int,boolean)', 'anon',          false),
   ('public.team_role(uuid)',                             'anon',          false),
   ('public.can_manage_team(uuid)',                       'authenticated', true),
   ('public.rivals_audit(uuid,text,jsonb)',               'authenticated', false),
@@ -323,6 +325,47 @@ select pg_temp.ok('member sees the team history (removed rows)',
   (select count(*) from public.team_members where team_id = pg_temp.kv('t1')::uuid and status = 'removed') = 1);
 reset role;
 
+-- ── 7b. Team directory (list_teams) ───────────────────────
+-- Ana = captain, Paulo = vice, city Matosinhos, country PT.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000f005","role":"authenticated","email":"rivals-test-carla@example.test"}';
+do $$
+declare r jsonb; it jsonb;
+begin
+  r := public.list_teams('PT', null, 'Matosinhos', null, 'Rivais Renomeados');
+  select x into it from jsonb_array_elements(r->'items') x where x->>'id' = pg_temp.kv('t1');
+  perform pg_temp.ok('directory: listed team found with captain + vice highlighted',
+    it is not null and it->'captain'->>'nick' = 'Ana' and it->'vice'->>'nick' = 'Paulo'
+    and (it->>'member_count')::int = 3 and (it->>'same_city')::boolean and it->>'my_role' is null
+    and (it->'record'->>'played')::int = 0, coalesce(it::text, r::text));
+  r := public.list_teams('BR', null, null, null, 'Rivais Renomeados');
+  perform pg_temp.ok('directory: country filter (PT team not in BR)',
+    not exists (select 1 from jsonb_array_elements(r->'items') x where x->>'id' = pg_temp.kv('t1')));
+  r := public.list_teams('PT', 'Algarve', null, null, 'Rivais Renomeados', 30, 0, true);
+  perform pg_temp.ok('directory: only-near restricts to the region',
+    not exists (select 1 from jsonb_array_elements(r->'items') x where x->>'id' = pg_temp.kv('t1')));
+end $$;
+reset role;
+update public.teams set listed = false where id = pg_temp.kv('t1')::uuid;
+set local role authenticated;
+select pg_temp.ok('directory: unlisted team is hidden',
+  not exists (select 1 from jsonb_array_elements(public.list_teams('PT', null, null, null, 'Rivais Renomeados')->'items') x
+               where x->>'id' = pg_temp.kv('t1')));
+reset role;
+update public.teams set listed = true where id = pg_temp.kv('t1')::uuid;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000f003","role":"authenticated","email":"rivals-test-paulo@example.test"}';
+select pg_temp.expect_err('vice cannot hide the team from the directory (captain only)',
+  format($q$select public.update_team(%L, '{"listed":false}')$q$, pg_temp.kv('t1')), 'rivals:captain_only');
+select pg_temp.ok('directory: my_role is returned for my own team',
+  exists (select 1 from jsonb_array_elements(public.list_teams('PT', null, null, null, 'Rivais Renomeados')->'items') x
+           where x->>'id' = pg_temp.kv('t1') and x->>'my_role' = 'vice'));
+reset role;
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+select pg_temp.expect_err('anon cannot browse the directory', $q$select public.list_teams('PT')$q$, 'permission denied');
+reset role;
+
 -- ── 8. Expired / revoked / used-up invites ────────────────
 update public.team_invites set expires_at = now() - interval '1 second' where token = pg_temp.kv('i1');
 set local role authenticated;
@@ -395,6 +438,17 @@ begin
     and t3->>'slug' = 'bruno-solo-2', t3::text);
 end $$;
 select pg_temp.expect_err('archived team: no new invites', format('select public.create_team_invite(%L)', pg_temp.kv('t2')), 'rivals:team_archived');
+select pg_temp.ok('directory: archived team is hidden',
+  not exists (select 1 from jsonb_array_elements(public.list_teams('PT', null, null, null, 'Bruno Solo')->'items') x
+               where x->>'id' = pg_temp.kv('t2')));
+do $$
+declare br jsonb;
+begin
+  br := public.create_team('Bruno Rio FC', '{"country":"BR","city":"Rio de Janeiro","region":"RJ"}');
+  perform pg_temp.ok('BR team defaults to BRL + America/Sao_Paulo',
+    (select currency = 'BRL' and timezone = 'America/Sao_Paulo' and country = 'BR' from public.teams where id = (br->>'team_id')::uuid), br::text);
+end $$;
+select pg_temp.expect_err('create_team rejects an unknown country', $q$select public.create_team('Equipa XX', '{"country":"ES"}')$q$, 'rivals:invalid_country');
 reset role;
 
 -- ── 10. Audit trail ───────────────────────────────────────
