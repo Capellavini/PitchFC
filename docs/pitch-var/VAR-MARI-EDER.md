@@ -9,3 +9,5 @@ Mantém o histórico circular, limites de memória, opções de economia, modo d
 Para reconstruir, na pasta var: definir VAR_BASE=/VARMariEder/ e VITE_VAR_PUBLIC=true, instalar dependências pelo lockfile e executar o build. Copiar dist para public/VARMariEder. Para a versão integrada, usar VAR_BASE=/VAR/ e VITE_VAR_PUBLIC=false. Os arquivos já publicados em public/VAR não foram substituídos nesta entrega.
 
 Validação: TypeScript, build público e 15 testes de replay/voz/zoom/integração aprovados. Nenhum acesso visual ao navegador foi usado.
+
+Tema de tênis: quadra e bola em SVG estático, identificação Mari & Eder, textos sobre pontos e rallies. A ilustração some no modo de campo, sem animações nem processamento adicional durante a captura.
