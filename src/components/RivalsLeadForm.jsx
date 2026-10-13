@@ -3,6 +3,7 @@ import { C, R, S, T, displayFont } from "../theme";
 import { supabase, supabaseEnabled } from "../lib/supabase";
 import { trackEvent } from "../lib/analytics";
 import BtnPrimary from "./BtnPrimary";
+import PhoneInput from "./PhoneInput";
 
 const FORMATS = [["F5", "Futebol 5"], ["F7", "Futebol 7"], ["F11", "Futebol 11"]];
 const PLAYS = ["Sim, com frequência", "De vez em quando", "Ainda não — queremos começar"];
@@ -27,7 +28,8 @@ function validate(f) {
   if (digits(f.whatsapp) < 9) e.whatsapp = "Precisamos de um número de WhatsApp válido.";
   if (!f.city.trim()) e.city = "Em que cidade jogam?";
   if (!f.team_name.trim()) e.team_name = "Como se chama a equipa?";
-  if (f.email.trim() && !/^\S+@\S+\.\S+$/.test(f.email.trim())) e.email = "Este email não parece válido.";
+  if (!f.email.trim()) e.email = "Precisamos do teu email.";
+  else if (!/^\S+@\S+\.\S+$/.test(f.email.trim())) e.email = "Este email não parece válido.";
   return e;
 }
 
@@ -50,7 +52,8 @@ export default function RivalsLeadForm() {
     const e = validate(f);
     setErrors(e);
     if (Object.keys(e).length) {
-      document.getElementById(`rv-${Object.keys(e)[0]}`)?.focus();
+      const el = document.getElementById(`rv-${Object.keys(e)[0]}`);
+      (el?.matches?.("input, textarea, select") ? el : el?.querySelector("input"))?.focus(); // WhatsApp is a wrapper div
       return;
     }
     if (!supabaseEnabled) { setStatus("demo"); return; }
@@ -107,13 +110,17 @@ export default function RivalsLeadForm() {
       <div className="rv-form-grid">
         {input("name", "O teu nome *", { autoComplete: "name" })}
         <div>
-          {input("whatsapp", "WhatsApp *", { type: "tel", inputMode: "tel", autoComplete: "tel", placeholder: "+351 912 345 678", "aria-describedby": "rv-whatsapp-hint" })}
-          {!errors.whatsapp && <div id="rv-whatsapp-hint" style={{ fontSize: T.min, color: C.text2, marginTop: 4 }}>Com indicativo do país (ex: +351).</div>}
+          <label htmlFor="rv-whatsapp" style={labelText}>WhatsApp *</label>
+          {/* Same country-code picker as signup/Perfil — value is always E.164. */}
+          <div id="rv-whatsapp" style={{ marginTop: 6 }}>
+            <PhoneInput value={f.whatsapp} onChange={(v) => set("whatsapp", v)} />
+          </div>
+          {errors.whatsapp && <div id="rv-whatsapp-err" style={{ color: C.red, fontSize: T.meta, marginTop: 4 }}>{errors.whatsapp}</div>}
         </div>
         {input("city", "Cidade *", { autoComplete: "address-level2", placeholder: "Porto, Matosinhos…" })}
         {input("team_name", "Nome da equipa *", { placeholder: "Coletes FC" })}
         {input("players_count", "Nº de jogadores no plantel", { type: "number", inputMode: "numeric", min: 1, max: 60 })}
-        {input("email", "Email (opcional)", { type: "email", autoComplete: "email" })}
+        {input("email", "Email *", { type: "email", autoComplete: "email" })}
       </div>
 
       <fieldset style={{ border: "none", padding: 0, margin: `${S.lg}px 0 0` }}>
