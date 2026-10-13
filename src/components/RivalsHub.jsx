@@ -30,11 +30,14 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
   const [selectedId, setSelectedId] = useState(null);
   const [publicSlug, setPublicSlug] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [inviteFor, setInviteFor] = useState(null); // team id that should open its invite sheet
+  // { teamId, n } — open that team's invite sheet (after create / Home CTA).
+  const [inviteFor, setInviteFor] = useState({ teamId: null, n: 0 });
+  const askInvite = (teamId) => setInviteFor((p) => ({ teamId, n: p.n + 1 }));
 
   useEffect(() => {
     if (!focus) return;
     if (focus.teamId) { setSelectedId(focus.teamId); setView("team"); setPublicSlug(null); }
+    if (focus.teamId && focus.invite) askInvite(focus.teamId);
     if (focus.slug) {
       const own = mine.find((tm) => tm.slug === focus.slug);
       if (own) { setSelectedId(own.id); setView("team"); setPublicSlug(null); } else setPublicSlug(focus.slug);
@@ -70,7 +73,7 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
       )}
 
       <SegmentedControl value={view} onChange={setView}
-        options={[{ id: "team", label: mine.length ? RC.myTeam : RC.segTeam }, { id: "discover", label: RC.segDiscover }]} />
+        options={[{ id: "team", label: RC.myTeam }, { id: "discover", label: RC.segDiscover }]} />
 
       {view === "discover" ? (
         <TeamDirectory teams={teams} home={home} onOpenTeam={openSlug} onChallenge={current ? onChallenge : undefined} />
@@ -87,8 +90,8 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
         <>
           {mine.length > 1 && <TeamSwitcher teams={mine} value={current.id} onChange={setSelectedId} onNew={() => setCreating(true)} />}
           <TeamPage key={current.id} teams={teams} teamId={current.id} onChallenge={onChallenge ? () => onChallenge(null, current) : undefined}
-            openInviteOnMount={inviteFor === current.id}
-            onLeft={() => { setSelectedId(null); setInviteFor(null); }} />
+            inviteSignal={inviteFor.teamId === current.id ? inviteFor.n : 0}
+            onLeft={() => setSelectedId(null)} />
           {mine.length === 1 && (
             <BtnGhost block onClick={() => setCreating(true)} style={{ marginBottom: S.xl }}><Plus size={16} /> {t(RC.newTeam)}</BtnGhost>
           )}
@@ -99,7 +102,7 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
         <CreateTeamSheet teams={teams} market={MARKETS[home.country] || market}
           defaults={{ city: current?.city, region: current?.region }}
           onClose={() => setCreating(false)}
-          onCreated={(teamId) => { setCreating(false); setSelectedId(teamId); setView("team"); setInviteFor(teamId); }} />
+          onCreated={(teamId) => { setCreating(false); setSelectedId(teamId); setView("team"); askInvite(teamId); }} />
       )}
     </div>
   );

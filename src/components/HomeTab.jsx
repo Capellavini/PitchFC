@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, CalendarPlus, Radio, ClipboardList } from "lucide-react";
+import { CalendarClock, CalendarPlus, Radio, ClipboardList, Shield } from "lucide-react";
+import { RC } from "../lib/rivalsCopy";
+import SectionLabel from "./SectionLabel";
+import TeamFeedItem from "./TeamFeedItem";
 import { S } from "../theme";
 import { t } from "../lib/i18n";
 import { fmtDayMonth } from "../lib/helpers";
@@ -37,12 +40,18 @@ import WorkoutCardModal from "./WorkoutCardModal";
  *  - peerRatings   cloud peer_ratings rows (LENDA feed item timing) | null.
  *  - kudos (cloud matchday_kudos rows) + onToggleKudos(mdId, toKey, given);
  *    without onToggleKudos (demo) Golaço is kept locally.
+ *  - teamItems     PITCH Rivals items (lib/rivals teamFeedItems), each with a
+ *                  team chip; onOpenTeam / onInviteTeam(teamId). teamOnly
+ *                  (no group, has a team) points the empty next-action
+ *                  card at Competir instead of Jogar. Group players with
+ *                  no team see no change.
  */
 export default function HomeTab({
   me, group = [], myKey, nextGame, nextActions = [], slots,
   liveMatchday, resultPending, onOpenJogar, onOpenMatchday, onOpenCompetir,
   feedMatchdays, localHistory, social, postTs, myGroupIds = [], friendsEnabled,
   kudos, onToggleKudos, attendanceStreak = 0, onCardGenerated, groupName, lastMatchdayForWorkout, peerRatings,
+  teamItems = [], teamOnly = false, onOpenTeam, onInviteTeam,
 }) {
   const [showCard, setShowCard] = useState(false);
   const [showWorkout, setShowWorkout] = useState(false);
@@ -128,12 +137,28 @@ export default function HomeTab({
           subtitle={`${nextGame.dateLabel} · ${nextGame.timeLabel}${nextGame.venue ? ` · ${nextGame.venue}` : ""}`}
           slots={nextIsActive ? slots : null} onOpen={nextIsActive ? onOpenJogar : undefined}
           primaryLabel={t("Ver jogo")} onPrimary={onOpenJogar} />
+      ) : teamOnly ? (
+        <NextActionCard neutral Icon={Shield}
+          eyebrow={t(RC.teamsLabel)}
+          title={t(RC.noTeamGameTitle)}
+          subtitle={t(RC.noTeamGameSub)}
+          primaryLabel={t(RC.openRivals)} onPrimary={onOpenCompetir} />
       ) : (
         <NextActionCard neutral Icon={CalendarPlus}
           eyebrow={t("SEM JOGO MARCADO")}
           title={t("Nada agendado por agora")}
           subtitle={t("Quando houver jogo num dos teus grupos, aparece aqui.")}
           primaryLabel={t("Ir para Jogar")} onPrimary={onOpenJogar} />
+      )}
+
+      {/* 1b — MY TEAMS (PITCH Rivals; only for players in a team) */}
+      {teamItems.length > 0 && (
+        <div style={{ marginBottom: S.lg }}>
+          <SectionLabel>{t(RC.teamsLabel)}</SectionLabel>
+          {teamItems.map((it) => (
+            <TeamFeedItem key={it.id} item={it} onOpen={() => onOpenTeam?.(it.teamId)} onInvite={() => onInviteTeam?.(it.teamId)} />
+          ))}
+        </div>
       )}
 
       {/* 2 — LAST RESULT (last 7 days) */}

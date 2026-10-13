@@ -27,10 +27,12 @@ const LOCALE = { pt: "pt-PT", "pt-br": "pt-BR", en: "en-GB" };
  * EXTENSION POINTS: next match + RSVP and pending challenges (PR5/PR7)
  * go between the header and the record; `onChallenge` arms "Desafiar".
  */
-export default function TeamPage({ teams, teamId, onLeft, onChallenge, openInviteOnMount = false }) {
+export default function TeamPage({ teams, teamId, onLeft, onChallenge, inviteSignal = 0 }) {
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState(null);
-  const [sheet, setSheet] = useState(openInviteOnMount ? "invite" : null); // invite | edit | member
+  const [sheet, setSheet] = useState(null); // invite | edit | member
+  // Bumped by the hub right after creating a team / from Home's "Convidar".
+  useEffect(() => { if (inviteSignal) setSheet("invite"); }, [inviteSignal]);
   const [member, setMember] = useState(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,15 +85,15 @@ export default function TeamPage({ teams, teamId, onLeft, onChallenge, openInvit
       </div>
 
       {/* Primary actions — ONE lime CTA */}
-      <div style={{ display: "flex", gap: S.sm, marginBottom: S.lg, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: S.sm, marginBottom: S.lg }}>
         {can(myRole, "invite") ? (
-          <BtnPrimary onClick={() => setSheet("invite")} style={{ flex: "1 1 160px" }}><UserPlus size={18} /> {t(RC.invitePlayers)}</BtnPrimary>
+          <BtnPrimary block onClick={() => setSheet("invite")}><UserPlus size={18} /> {t(RC.invitePlayers)}</BtnPrimary>
         ) : (
-          <BtnGhost onClick={() => openWhatsApp(tf(RC.shareTeamMessage, { url: shareUrl }))} style={{ flex: "1 1 160px" }}><Share2 size={16} /> {t(RC.shareTeam)}</BtnGhost>
+          <BtnGhost block onClick={() => openWhatsApp(tf(RC.shareTeamMessage, { url: shareUrl }))}><Share2 size={16} /> {t(RC.shareTeam)}</BtnGhost>
         )}
         {can(myRole, "challenge") && (
-          <BtnGhost onClick={onChallenge} disabled={!onChallenge} aria-label={onChallenge ? t(RC.challenge) : `${t(RC.challenge)} · ${t(RC.soon)}`} style={{ flex: "1 1 120px" }}>
-            <Swords size={16} /> {t(RC.challenge)}{!onChallenge && <span style={{ fontSize: T.min, color: C.text2 }}>· {t(RC.soon)}</span>}
+          <BtnGhost block onClick={onChallenge} disabled={!onChallenge}>
+            <Swords size={16} /> {t(RC.challenge)}{!onChallenge && <span style={{ fontSize: T.meta, color: C.text2, fontWeight: 600 }}>· {t(RC.soon)}</span>}
           </BtnGhost>
         )}
       </div>

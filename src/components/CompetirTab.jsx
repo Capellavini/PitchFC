@@ -49,7 +49,7 @@ export default function CompetirTab({ isAdmin, group = [], history = [], matchda
   // Flags map 1:1 to the segments; `challenges` requires `teams`.
   const challengesOn = teamsOn && isEnabled("challenges", { isAdmin });
   const subs = [
-    !groupless && { id: "rankings", label: "Rankings" },
+    (!groupless || !teamsOn) && { id: "rankings", label: "Rankings" },
     teamsOn && { id: "equipa", label: RC.segTeam },
     challengesOn && { id: "desafios", label: RC.segChallenges },
   ].filter(Boolean);

@@ -64,11 +64,17 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
   const demoRef = useRef(demoState);
   demoRef.current = demoState;
 
+  // load() reads the CURRENT session through refs: an action started on an
+  // earlier render (e.g. accepting an invite right after the player card
+  // is created) must not reload with a stale "no player yet" view.
+  const liveRef = useRef({});
+  liveRef.current = { cloudReady, cloudCapable, cloudStatus, playerId: myPlayer?.id };
   const load = useCallback(async () => {
-    if (!cloudReady) { setCloudTeams([]); setLoading(cloudCapable && cloudStatus === "loading"); return; }
+    const { cloudReady: ready, cloudCapable: capable, cloudStatus: status, playerId } = liveRef.current;
+    if (!ready) { setCloudTeams([]); setLoading(capable && (status === "loading" || status === "needsProfile")); return; }
     try {
       const mq = await supabase.from("team_members").select(`role,status,joined_at,teams(${TEAM_COLS})`)
-        .eq("player_id", myPlayer.id).eq("status", "active");
+        .eq("player_id", playerId).eq("status", "active");
       if (mq.error) throw mq.error;
       const rows = (mq.data ?? []).filter((m) => m.teams && !m.teams.archived_at);
       const ids = rows.map((m) => m.teams.id);
@@ -87,9 +93,9 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
       setLoading(false);
       setRevision((n) => n + 1);
     }
-  }, [cloudReady, cloudCapable, cloudStatus, myPlayer?.id]);
+  }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, cloudReady, myPlayer?.id]);
 
   // Realtime: roster / team changes → debounced reload (RLS applies).
   const timer = useRef(null);
