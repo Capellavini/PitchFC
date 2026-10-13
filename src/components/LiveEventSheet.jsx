@@ -4,6 +4,7 @@ import { C, R, S, T } from "../theme";
 import { t } from "../lib/i18n";
 import { playerColor } from "../lib/helpers";
 import { isSave } from "../lib/matchdayLive";
+import {varTimestamp} from "../lib/varProtocol.js";
 import { currentTimerMinute } from "../lib/matchTimer";
 import Avatar from "./Avatar";
 import BtnGhost from "./BtnGhost";
@@ -46,8 +47,9 @@ const grid = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))"
  *  - save   → team → player (the side's GR first) → onEpicSave.
  *  - sub    → team → who leaves → who comes in (this match only).
  */
-export default function LiveEventSheet({ kind, match, group, sides, roster, playerById, teamById, onGoal, onUpdateEvent, onEpicSave, onSubstitute, onRevertSub, allPlayers, onSwitchKind, onClose, initial }) {
+export default function LiveEventSheet({ kind, match, group, sides, roster, playerById, teamById, onGoal, onUpdateEvent, onEpicSave, onSubstitute, onRevertSub, allPlayers, onSwitchKind, onClose, initial, occurredAt }) {
   const [step, setStep] = useState(initial || {}); // { teamId, ownGoal, scorerId, goalIdx, outId }
+  const [markedAt]=useState(()=>occurredAt??varTimestamp());
   const m = match;
   const other = (teamId) => (teamId === m.homeId ? m.awayId : m.homeId);
   const teamName = (id) => teamById(id)?.name ?? "—";
@@ -78,7 +80,7 @@ export default function LiveEventSheet({ kind, match, group, sides, roster, play
               </div>
               <div style={grid}>
                 {roster(id).map((p) => (
-                  <PlayerPick key={p.id} p={p} group={group} onClick={() => { onGoal(m.id, { teamId: other(id), scorerId: p.id, ownGoal: true, minute: minute() }); onClose(); }} />
+                  <PlayerPick key={p.id} p={p} group={group} onClick={() => { onGoal(m.id, { teamId: other(id), scorerId: p.id, ownGoal: true, occurredAt:markedAt, minute: minute() }); onClose(); }} />
                 ))}
               </div>
             </div>
@@ -127,7 +129,7 @@ export default function LiveEventSheet({ kind, match, group, sides, roster, play
           <div style={grid}>
             {roster(fromTeam).map((p) => (
               <PlayerPick key={p.id} p={p} group={group} onClick={() => {
-                if (step.ownGoal) { onGoal(m.id, { teamId: step.teamId, scorerId: p.id, ownGoal: true, minute: minute() }); onClose(); }
+                if (step.ownGoal) { onGoal(m.id, { teamId: step.teamId, scorerId: p.id, ownGoal: true, occurredAt:markedAt, minute: minute() }); onClose(); }
                 else setStep((s) => ({ ...s, scorerId: p.id }));
               }} />
             ))}
@@ -139,9 +141,9 @@ export default function LiveEventSheet({ kind, match, group, sides, roster, play
       body = (
         <div style={grid}>
           {roster(step.teamId).filter((p) => p.id !== step.scorerId).map((p) => (
-            <PlayerPick key={p.id} p={p} group={group} onClick={() => { onGoal(m.id, { teamId: step.teamId, scorerId: step.scorerId, assistId: p.id, minute: minute() }); onClose(); }} />
+            <PlayerPick key={p.id} p={p} group={group} onClick={() => { onGoal(m.id, { teamId: step.teamId, scorerId: step.scorerId, assistId: p.id, occurredAt:markedAt, minute: minute() }); onClose(); }} />
           ))}
-          <button type="button" onClick={() => { onGoal(m.id, { teamId: step.teamId, scorerId: step.scorerId, assistId: null, minute: minute() }); onClose(); }}
+          <button type="button" onClick={() => { onGoal(m.id, { teamId: step.teamId, scorerId: step.scorerId, assistId: null, occurredAt:markedAt, minute: minute() }); onClose(); }}
             style={{ minHeight: 56, background: "transparent", color: C.text2, border: `1px dashed ${C.border}`, borderRadius: R.control, fontSize: T.body, fontWeight: 700, cursor: "pointer" }}>
             {t("Sem assistência")}
           </button>

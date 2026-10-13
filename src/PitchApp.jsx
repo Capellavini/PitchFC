@@ -18,6 +18,8 @@ import { drawTeams as drawTeamsCore, balanceTeams as balanceTeamsCore } from "./
 import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
 import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGHTS } from "./lib/fantasy";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
+import {stampVarGoal} from "./lib/varProtocol.js";
+import VarControls from "./components/VarControls";
 import { ADMIN_EMAILS } from "./lib/supabase";
 import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, fmtFullDay, isoDay, toIsoDay, fromIso, dateTimeFromIso, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor, lisbonTimeLabel } from "./lib/helpers";
 import { t, setLang, detectLang } from "./lib/i18n";
@@ -863,8 +865,10 @@ export default function PitchApp() {
     });
   const addMatch = (homeId, awayId) =>
     updateMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, homeId, awayId, homeGkId: defaultGkFor(homeId), awayGkId: defaultGkFor(awayId), events: [] }] }));
-  const addGoal = (matchId, event) =>
-    updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, event] } : m)) }));
+  const addGoal = (matchId, event) => {
+    const goal=stampVarGoal(event,baseGroup);
+    updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, goal] } : m)) }));
+  };
   const addEpicSave = (matchId, { teamId, playerId }) =>
     updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, { teamId, type: "epicSave", playerId }] } : m)) }));
   // Undo a misclicked goal/assist/save — safe any time before "Terminar
@@ -2130,6 +2134,7 @@ export default function PitchApp() {
         ) : (
           <MatchdayTab
             group={displayGroup} game={game}
+            varControl={cloudMode&&<VarControls gameId={cloud.game?.id} canManage={canManageTeams} confirmed={me?.status==="confirmed"}/>}
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} setTeamCaptain={setTeamCaptain} balanceTeams={balanceCurrentTeams} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
