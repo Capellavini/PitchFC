@@ -54,7 +54,7 @@ export async function findOrganizerByPhone(digits) {
   return data ?? [];
 }
 
-// ── PITCH Rivals captains (migration 20260101007150) ──────
+// ── PITCH Rivals captains (migration 20261013140500) ──────
 /** Active captain/vice memberships in live teams for this phone (newest team first). */
 export async function findCaptainByPhone(digits) {
   const { data, error } = await db().rpc("rivals_find_captain_by_phone", { p_digits: digits });

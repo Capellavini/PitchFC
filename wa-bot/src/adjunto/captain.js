@@ -2,7 +2,8 @@
 // 2026-10-13 b, docs/TEAMS-CHALLENGES-SPEC.md). A captain taps the CTA in
 // the app → wa.me opens with the prefilled message from
 // core/captainPhrase.js → this module answers it with a short team
-// onboarding guide and the team's ?tjoin= link.
+// onboarding guide and the team's ?tjoin= link, followed by a second short
+// message ready to forward to the team's WhatsApp group.
 //
 // Rules (same spirit as the Adjunto silence rule):
 //   • only ever a REPLY to that exact phrase (regex, no LLM) — the bot never
@@ -28,10 +29,13 @@ export const CAPTAIN_TEXTS = {
       `1️⃣ *Convida o plantel* — partilha este link no grupo de WhatsApp da malta:\n${url}`,
       "2️⃣ *Quem abre o link* cria conta (ou entra) e fica logo no plantel como jogador. Tu e o vice gerem quem fica.",
       "3️⃣ *Desafiar rivais* — na app, abre a tua equipa → Descobrir, escolhe o rival e toca em Desafiar.",
-      "4️⃣ *Dia de jogo* — a convocatória e o Matchday da equipa ficam na app, em Jogar e Matchday.",
+      "4️⃣ *Quando tiveres 5 jogadores*, já podes lançar o primeiro desafio 🔥",
       "",
       `O link expira ${days <= 1 ? "amanhã" : `em ${days} dias`}; geras outro em «Convidar jogadores».${others.length ? `\n(Também lideras: ${others.join(", ")} — os links estão na app.)` : ""}`,
+      "",
+      "👇 Reencaminha a próxima mensagem para o grupo da equipa.",
     ].join("\n"),
+    forward: ({ team, url }) => `⚽ Entra no plantel da *${team}* no PITCH: ${url} — leva 30 segundos!`,
     notFound: "Não encontrei nenhuma equipa onde sejas capitão ou vice com este número. Confirma o teu telemóvel no Perfil da app (com indicativo, ex.: +351…) e volta a mandar a mensagem.",
   },
   ptbr: {
@@ -41,10 +45,13 @@ export const CAPTAIN_TEXTS = {
       `1️⃣ *Convide o elenco* — compartilhe este link no grupo de WhatsApp da galera:\n${url}`,
       "2️⃣ *Quem abre o link* cria a conta (ou entra) e já fica no elenco como jogador. Você e o vice gerenciam quem fica.",
       "3️⃣ *Desafiar rivais* — no app, abra o seu time → Descobrir, escolha o rival e toque em Desafiar.",
-      "4️⃣ *Dia de jogo* — a convocação e o Matchday do time ficam no app, em Jogar e Matchday.",
+      "4️⃣ *Quando tiver 5 jogadores*, você já pode lançar o primeiro desafio 🔥",
       "",
       `O link expira ${days <= 1 ? "amanhã" : `em ${days} dias`}; você gera outro em «Convidar jogadores».${others.length ? `\n(Você também lidera: ${others.join(", ")} — os links estão no app.)` : ""}`,
+      "",
+      "👇 Encaminhe a próxima mensagem para o grupo do time.",
     ].join("\n"),
+    forward: ({ team, url }) => `⚽ Entra no elenco do *${team}* no PITCH: ${url} — leva 30 segundos!`,
     notFound: "Não encontrei nenhum time onde você seja capitão ou vice com este número. Confira seu celular no Perfil do app (com DDI, ex.: +55…) e mande a mensagem de novo.",
   },
   en: {
@@ -54,10 +61,13 @@ export const CAPTAIN_TEXTS = {
       `1️⃣ *Invite your squad* — share this link in your football WhatsApp group:\n${url}`,
       "2️⃣ *Whoever opens the link* signs up (or logs in) and joins the squad as a player. You and the vice manage who stays.",
       "3️⃣ *Challenge rivals* — in the app, open your team → Discover, pick the rival and tap Challenge.",
-      "4️⃣ *Match day* — the team's call-up and Matchday live in the app, under Play and Matchday.",
+      "4️⃣ *Once you have 5 players*, you can launch your first challenge 🔥",
       "",
       `The link expires ${days <= 1 ? "tomorrow" : `in ${days} days`}; create a new one in «Invite players».${others.length ? `\n(You also lead: ${others.join(", ")} — their links are in the app.)` : ""}`,
+      "",
+      "👇 Forward the next message to your team's group.",
     ].join("\n"),
+    forward: ({ team, url }) => `⚽ Join the *${team}* squad on PITCH: ${url} — takes 30 seconds!`,
     notFound: "I couldn't find a team where you're captain or vice with this number. Check your phone in the app's Profile (with country code, e.g. +351…) and send the message again.",
   },
 };
@@ -111,7 +121,10 @@ export function makeCaptainHandler(env) {
       const days = Math.max(1, Math.ceil((new Date(inv.expires_at).getTime() - env.now().getTime()) / (24 * H)));
       const others = rows.filter((r) => r.team_id !== team.team_id).map((r) => r.team_name);
       env.log(`rivals captain: guide for team ${String(team.team_id).slice(0, 8)} → ${maskJid(id.chatJid)}${inv.created ? " (new invite)" : ""}`);
-      return env.sendDm(id.chatJid, t.guide({ nick: team.nick, team: team.team_name, url, days, others }), { unlinked: true, eventKind: "rivals_captain_help" });
+      await env.sendDm(id.chatJid, t.guide({ nick: team.nick, team: team.team_name, url, days, others }), { unlinked: true, eventKind: "rivals_captain_help" });
+      // Second, forward-ready message for the team's WhatsApp group (same
+      // reply for throttling purposes — only one adjunto_dm_replies row).
+      return env.sendDm(id.chatJid, t.forward({ team: team.team_name, url }), { unlinked: true, eventKind: "rivals_captain_forward" });
     } catch (e) {
       // Never a half-baked reply: log and stay silent (the captain can retry).
       env.log("rivals captain lookup failed:", e?.message ?? e);

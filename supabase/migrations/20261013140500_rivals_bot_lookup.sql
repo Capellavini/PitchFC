@@ -22,7 +22,7 @@
 -- Both functions are SECURITY DEFINER and service_role ONLY (the bot);
 -- nobody else can execute them. No new tables (so no table grants).
 -- Never touches games / attendances / matchdays.
--- Sorts after 20260101007100 (challenges, built concurrently) on purpose;
+-- Sorts after 20261013140000_rivals_challenges (built concurrently) on purpose;
 -- it depends only on 007000 (teams/invites) and 006300/006400 (Adjunto).
 -- Idempotent: safe to re-run.
 -- ─────────────────────────────────────────────────────────
