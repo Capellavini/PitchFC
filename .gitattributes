@@ -1,0 +1,3 @@
+public/VAR/assets/*.js -whitespace
+public/VARMariEder/assets/*.js -whitespace
+public/VARMariEder/media-core/*.js -whitespace

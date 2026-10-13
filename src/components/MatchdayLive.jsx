@@ -4,6 +4,7 @@ import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { t, tCtx } from "../lib/i18n";
 import { playerColor } from "../lib/helpers";
 import { voiceSupported, listenOnce, parseGoalCommand } from "../lib/voice";
+import {varTimestamp} from "../lib/varProtocol.js";
 import { currentTimerMinute } from "../lib/matchTimer";
 import { goalsOf, isSave, playoffState, matchLabel, dayStats, standings } from "../lib/matchdayLive";
 import Avatar from "./Avatar";
@@ -101,17 +102,17 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
   // the reliable end-of-recording signal on a noisy pitch. The button must
   // never unmount mid-press (the finger lifting has nothing to fire on).
   const beginVoice = () => {
-    setVoice({ matchId: m.id, listening: true });
+    setVoice({ matchId: m.id, listening: true, occurredAt:varTimestamp() });
     voiceStopRef.current = listenOnce({
-      onResult: (transcript) => setVoice({ matchId: m.id, transcript, parsed: parseGoalCommand(transcript, m.homeId, matchRoster(m, m.homeId), m.awayId, matchRoster(m, m.awayId)) }),
-      onError: (error) => setVoice({ matchId: m.id, error }),
+      onResult: (transcript) => setVoice(prev=>({ ...prev, matchId: m.id, transcript, parsed: parseGoalCommand(transcript, m.homeId, matchRoster(m, m.homeId), m.awayId, matchRoster(m, m.awayId)) })),
+      onError: (error) => setVoice(prev=>({ ...prev, matchId: m.id, error })),
     });
   };
   const endVoice = () => { voiceStopRef.current?.(); voiceStopRef.current = null; };
   const confirmVoice = () => {
     if (!voice?.parsed) return;
     const { teamId, scorerId, assistId, ownGoal } = voice.parsed;
-    onGoal(voice.matchId, { teamId, scorerId, assistId, ownGoal, minute: currentTimerMinute() });
+    onGoal(voice.matchId, { teamId, scorerId, assistId, ownGoal, occurredAt:voice.occurredAt, minute: currentTimerMinute() });
     setVoice(null);
   };
 
@@ -179,7 +180,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
             organizer never scrolls to log a goal */}
         {canManage && !concluded && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: S.sm, marginBottom: S.md }}>
-            <ActionSquare Icon={Goal} label={t("Golo")} color={C.accent} onClick={() => setSheet({ kind: "goal" })} />
+            <ActionSquare Icon={Goal} label={t("Golo")} color={C.accent} onClick={() => setSheet({ kind: "goal", occurredAt:varTimestamp() })} />
             <ActionSquare Icon={Footprints} label={t("Assistência")} color={C.text1} onClick={() => setSheet({ kind: onUpdateEvent ? "assist" : "goal" })} />
             <ActionSquare Icon={Hand} label={tCtx("action", "Defesa")} color={C.blue} onClick={() => setSheet({ kind: "save" })} />
           </div>
@@ -448,7 +449,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
 
       {sheet && m && (
         <LiveEventSheet key={sheet.kind + JSON.stringify(sheet.initial || {})}
-          kind={sheet.kind} initial={sheet.initial} match={m} group={group}
+          kind={sheet.kind} initial={sheet.initial} occurredAt={sheet.occurredAt} match={m} group={group}
           sides={[m.homeId, m.awayId]} roster={(teamId) => matchRoster(m, teamId)} allPlayers={allPlayers}
           playerById={byId} teamById={teamById}
           onGoal={onGoal} onEpicSave={onEpicSave} onSubstitute={onSubstitute} onRevertSub={onRevertSub}

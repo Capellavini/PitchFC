@@ -1,0 +1,5 @@
+allowBuilds:
+  esbuild: true
+  ffmpeg-static: true
+minimumReleaseAgeExclude:
+  - '@fastify/static@10.1.6'
