@@ -9,6 +9,7 @@
 > 5. Reaproveitar o que for compatível do ramo antigo `worktree-agent-afcf9e49e011cab46` (28/09), mas **as migrações dele (005800/005900) têm de ser renumeradas acima da última aplicada** e **não** mexer nas políticas de escrita de `games`/`attendances`/`matchdays` (opção B torna isso desnecessário).
 > 7. **Nome: PITCH Rivals** (Vinicius, 2026-10-08). LP em `/rivals` (alias `/desafios`).
 > 8. **Também no v1:** entrada de jogador só por convite de equipa (sem grupo), convocatória/disponibilidade por jogo da equipa, métricas da equipa (V-E-D, golos, forma, sequência, confronto direto, presenças por jogador) e navegação grupo ↔ equipa (Jogar = grupos, Competir = Rivals, Perfil agrega ambos).
+> 9. **Decisões 2026-10-08 (2.ª ronda):** suporte de contestações = WhatsApp do bot (+351 913 813 845); prazo de resposta a desafio = **24h** (min(24h, kickoff−2h)); não há equipas antigas em produção; **Portugal e Brasil desde o início** (EUR/BRL, Lisboa/São Paulo); **inventário de equipas por região no v1** (descobrir equipas para desafiar, com capitão e vice destacados; equipa pode ocultar-se do diretório). LP /rivals publicada em produção (dae9433).
 > 6. Tudo atrás de feature flag (`teams`, `challenges` em `src/lib/flags.js`) até o teste com 2 equipas reais.
 
 ---
