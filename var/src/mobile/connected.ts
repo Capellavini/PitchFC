@@ -5,7 +5,7 @@ import type {LocalClip} from './model';
 import {listClips,loadClip,putClip,deleteClip} from './storage';
 import {exportMP4} from './export';
 import {PUBLIC_VAR} from './paths';
-export interface AvailableGame{id:string;groupId:string;groupName:string;venue:string;scheduledAt:string;playerId:string;matches:{id:number|string;n:number;concluded?:boolean;isBye?:boolean}[]}
+export interface AvailableGame{id:string;groupId:string;groupName:string;venue:string;scheduledAt:string;playerId:string;currentMatch?:{id:string;n:number}|null;matches:{id:number|string;n:number;concluded?:boolean;isBye?:boolean}[]}
 export interface CloudClip{id:string;path:string;expiresAt:string;occurredAt:string;goalId:string;groupName:string;ownGoal:boolean;bytes:number}
 const url=import.meta.env.VITE_SUPABASE_URL,key=import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const varClient=!PUBLIC_VAR&&url&&key?createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true}}):undefined;
@@ -14,7 +14,7 @@ export async function varRPC<T>(action:string,payload:Record<string,unknown>={})
  const {data,error}=await varClient.rpc('pitch_var',{action,payload});if(error)throw Error(error.message);return data as T;
 }
 export class ConnectedVar{
- user?:User;games:AvailableGame[]=[];cloud:CloudClip[]=[];sessionId?:string;game?:AvailableGame;matchId='';
+ user?:User;games:AvailableGame[]=[];cloud:CloudClip[]=[];sessionId?:string;game?:AvailableGame;matchId='';currentMatch?:{id:string;n:number}|null;
  offset=0;startServerMs=0;uncertainty=Infinity;deviceId='';uploading=false;uploadProgress='';warning='';
  private channel?:RealtimeChannel;private timer?:ReturnType<typeof setInterval>;private busy=false;private rerun=false;private known=new Set<string>();private stopping?:Promise<void>;
  onChange=()=>{};onError=(_s:string)=>{};onRefresh=()=>{};onRemoteStop=()=>{};
@@ -36,13 +36,13 @@ export class ConnectedVar{
   this.offset=r.serverMs-(wall+roundTrip/2);this.uncertainty=roundTrip/2;
   if(this.uncertainty>1500)throw Error('Conexão lenta para sincronizar o VAR. Tente novamente antes de gravar.');
  }
- async begin(engine:PhoneRecorder,game:AvailableGame,matchId:string){
-  await this.stop();this.game=game;this.matchId=matchId;this.known=new Set((await listClips()).filter(c=>c.state==='saved'&&c.association).map(c=>`${c.association!.sessionId}:${c.association!.goalId}`));
+ async begin(engine:PhoneRecorder,game:AvailableGame){
+  await this.stop();this.game=game;this.matchId='';this.known=new Set((await listClips()).filter(c=>c.state==='saved'&&c.association).map(c=>`${c.association!.sessionId}:${c.association!.goalId}`));
   const startServerMs=Date.now()+this.offset-engine.time()*1000;
   this.startServerMs=startServerMs;
-  const r=await varRPC<{sessionId:string}>('join',{gameId:game.id,matchId,deviceId:this.deviceId,startServerMs,uncertaintyMs:this.uncertainty});this.sessionId=r.sessionId;
+  const r=await varRPC<{sessionId:string;currentMatch?:{id:string;n:number}|null}>('join',{gameId:game.id,followMatchday:true,deviceId:this.deviceId,startServerMs,uncertaintyMs:this.uncertainty});this.sessionId=r.sessionId;this.currentMatch=r.currentMatch;this.matchId=String(r.currentMatch?.id??'');
   const sid=r.sessionId;
-  this.channel=varClient!.channel(`var-device-${sid}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'var_requests',filter:`session_id=eq.${sid}`},()=>{void this.process(engine,false);}).subscribe();
+  this.channel=varClient!.channel(`var-device-${sid}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'var_requests',filter:`session_id=eq.${sid}`},()=>{void this.process(engine,false);}).on('postgres_changes',{event:'UPDATE',schema:'public',table:'games',filter:`id=eq.${game.id}`},()=>{void this.process(engine,false);}).subscribe();
   this.timer=setInterval(()=>{void this.process(engine,true);},15000);
   await this.process(engine,true);this.onChange();
  }
@@ -55,12 +55,12 @@ export class ConnectedVar{
   if(!track||track.readyState!=='live'||track.muted||(engine.time()>12&&(engine.parts.at(-1)?.end??0)<engine.time()-12)){this.onError('A câmera deixou de produzir vídeo. Reinicie a gravação.');await this.stop();this.onRemoteStop();return;}
   this.busy=true;const sid=this.sessionId;
   try{
-   const response=await varRPC<{active:boolean;requests:{requestId:string;state:string;goal:GoalReplayRequest}[]}>(beat?'beat':'poll',{sessionId:sid});
+   const response=await varRPC<{active:boolean;currentMatch?:{id:string;n:number}|null;requests:{requestId:string;state:string;goal:GoalReplayRequest}[]}>(beat?'beat':'poll',{sessionId:sid});
    if(sid!==this.sessionId)return;
    if(!response.active){await this.stop();this.onRemoteStop();return;}
-   this.warning='';
+   this.warning='';this.currentMatch=response.currentMatch;this.matchId=String(response.currentMatch?.id??'');this.onChange();
    for(const item of response.requests){
-    const c=this.game;const plan=planGoalReplay(item.goal,{enabled:true,armed:true,active:engine.status.active,groupId:c.groupId,gameId:c.id,matchId:this.matchId,sessionId:sid,deviceId:this.deviceId,startServerMs:this.startServerMs,clockUncertaintyMs:this.uncertainty,elapsedSeconds:engine.time(),earliestSeconds:engine.parts[0]?.start??0,preSeconds:engine.settings.pre,postSeconds:engine.settings.post},this.known);
+    const c=this.game;const plan=planGoalReplay(item.goal,{followMatchday:true,enabled:true,armed:true,active:engine.status.active,groupId:c.groupId,gameId:c.id,matchId:this.matchId,sessionId:sid,deviceId:this.deviceId,startServerMs:this.startServerMs,clockUncertaintyMs:this.uncertainty,elapsedSeconds:engine.time(),earliestSeconds:engine.parts[0]?.start??0,preSeconds:engine.settings.pre,postSeconds:engine.settings.post},this.known);
     if(plan.status==='duplicate')continue;
     if(plan.status!=='ready'){await this.receipt(item.requestId,'expired',undefined,plan.status);continue;}
     plan.association.requestId=item.requestId;plan.association.operatorPlayerId=c.playerId;plan.association.uploaderUserId=this.user!.id;
@@ -79,7 +79,7 @@ export class ConnectedVar{
   if(this.stopping)return this.stopping;
   clearInterval(this.timer);this.timer=undefined;
   if(this.channel){void varClient?.removeChannel(this.channel);this.channel=undefined;}
-  const sid=this.sessionId;this.sessionId=undefined;this.onChange();
+  const sid=this.sessionId;this.sessionId=undefined;this.currentMatch=undefined;this.matchId='';this.onChange();
   if(!sid)return;
   this.stopping=varRPC('stop',{sessionId:sid}).then(()=>{}).catch(()=>{}).finally(()=>{this.stopping=undefined;});return this.stopping;
  }

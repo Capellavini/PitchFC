@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { C, BRAND, TOUCH } from "./theme";
 import { INITIAL_GROUP, INITIAL_MATERIAL, DEFAULT_SETTINGS, INITIAL_BOOKINGS, CLUB_EVENTS, OPEN_MATCHES } from "./data";
+import {concludeMatch} from "./lib/currentMatch.js";
 import { hashId } from "./lib/core/ids.js";
 import { drawTeams as drawTeamsCore, balanceTeams as balanceTeamsCore } from "./lib/core/teamDraw.js";
 import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
@@ -888,9 +889,10 @@ export default function PitchApp() {
         homeGkId: defaultGkFor(f.homeId), awayGkId: defaultGkFor(f.awayId),
         events: [], stage: "grupo",
       }));
-      updateMatchday({ startedAt: Date.now(), mode, config, matches });
+      updateMatchday({ startedAt: Date.now(), mode, config, matches, activeMatchId:matches[0]?.id??null });
     } else {
-      updateMatchday({ startedAt: Date.now(), mode, matches: [{ id: Date.now(), n: 1, homeId: teams[0].id, awayId: teams[1].id, homeGkId: defaultGkFor(teams[0].id), awayGkId: defaultGkFor(teams[1].id), events: [] }] });
+      const firstId=Date.now();
+      updateMatchday({ startedAt: Date.now(), mode, activeMatchId: firstId, matches: [{ id: firstId, n: 1, homeId: teams[0].id, awayId: teams[1].id, homeGkId: defaultGkFor(teams[0].id), awayGkId: defaultGkFor(teams[1].id), events: [] }] });
     }
   };
   // Personalizado: the organizer can crown a champion by hand (e.g. a
@@ -901,8 +903,11 @@ export default function PitchApp() {
       const { championId: _old, ...rest } = md;
       return teamId == null ? rest : { ...rest, championId: teamId };
     });
-  const addMatch = (homeId, awayId) =>
-    updateMatchday((md) => ({ ...md, matches: [...md.matches, { id: Date.now(), n: md.matches.length + 1, homeId, awayId, homeGkId: defaultGkFor(homeId), awayGkId: defaultGkFor(awayId), events: [] }] }));
+  const addMatch = (homeId, awayId) => {
+    const nextId=Date.now();
+    updateMatchday((md) => ({ ...md, activeMatchId:nextId, matches: [...md.matches, { id: nextId, n: md.matches.length + 1, homeId, awayId, homeGkId: defaultGkFor(homeId), awayGkId: defaultGkFor(awayId), events: [] }] }));
+  };
+  const setActiveMatch = (id) => updateMatchday(md => md?.matches.some(m=>m.id===id&&!m.concluded&&!m.isBye)?{...md,activeMatchId:id}:md);
   const addGoal = (matchId, event) => {
     const goal=stampVarGoal(event,baseGroup);
     updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: [...m.events, goal] } : m)) }));
@@ -921,7 +926,7 @@ export default function PitchApp() {
   // Explicit lock-in of a fixture's result — distinct from just entering a
   // score, and what drives the Fixtures tab's collapse-on-conclude UI.
   const setMatchConcluded = (matchId, concluded) =>
-    updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, concluded } : m)) }));
+    updateMatchday((md) => concludeMatch(md,matchId,concluded));
   // Per-match substitution: swaps who's selectable as scorer/assist/GK for
   // ONE match only — doesn't touch the permanent team draw or any other
   // match. `inId` can belong to any team currently in the draw (a
@@ -2200,7 +2205,7 @@ export default function PitchApp() {
             teams={teams} drawTeams={drawTeams} onClearTeams={clearTeams} renameTeam={renameTeam} movePlayer={movePlayer} setTeamCaptain={setTeamCaptain} balanceTeams={balanceCurrentTeams} canManageTeams={canManageTeams}
             teamsConfirmed={teamsConfirmed} onConfirmTeams={confirmTeams}
             teamsSetByName={teamsSetByName} teamsConfirmedByName={teamsConfirmedByName}
-            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetChampion: setChampion, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution,
+            matchdayProps={{ matchday, onStart: startMatchday, onAddMatch: addMatch, onGoal: addGoal, onEpicSave: addEpicSave, onRemoveEvent: removeMatchEvent, onSetGoalkeeper: setGoalkeeper, onSetMatchConcluded: setMatchConcluded, onSetActiveMatch:setActiveMatch, onEnd: endMatchday, onCancel: cancelMatchday, onAdvancePlayoff: advancePlayoff, onSetChampion: setChampion, onSetPenaltyWinner: setPenaltyWinner, onSubstitute: substitutePlayer, onRevertSub: revertSubstitution,
               // Redesign (Matchday "Assistência" button): patch one logged event in place
               // (e.g. attach an assist to an existing goal) — keeps its position/minute,
               // unlike remove + re-add. Same updateMatchday path as the other handlers.

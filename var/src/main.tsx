@@ -30,7 +30,7 @@ function TennisCourt(){return <div className="tennis-court" aria-hidden="true"><
 
 function App(){
   const engine=useRef(new PhoneRecorder()).current,voice=useRef(new FieldVoice()).current,network=useRef(new ConnectedVar()).current;
-  const [varGameId,setVarGameId]=useState(new URLSearchParams(location.search).get('game')??''),[varMatchId,setVarMatchId]=useState(''),[localOnly,setLocalOnly]=useState(PUBLIC_VAR);
+  const [varGameId,setVarGameId]=useState(new URLSearchParams(location.search).get('game')??''),[localOnly,setLocalOnly]=useState(PUBLIC_VAR);
   const [,rerender]=useState(0),[clips,setClips]=useState<LocalClip[]>([]),[tab,setTab]=useState<'camera'|'gallery'>(new URLSearchParams(location.search).get('view')==='goals'?'gallery':'camera');
   const [settings,setSettings]=useState<CaptureSettings>({quality:'balanced',pre:20,post:10,audio:false,demo:false});
   const [preview,setPreview]=useState(true),[field,setField]=useState(false),[voiceWanted,setVoiceWanted]=useState(true),[lang,setLang]=useState('pt-BR');
@@ -63,9 +63,9 @@ function App(){
     if(exportBusy.current||network.uploading)return;
     setBusy(true);setError('');setMessage('');setReady(undefined);
     try{
-      if(network.user&&!settings.demo&&!localOnly){if(!selectedGame||!selectedMatch){if(pairing.current){pairing.current.open=true;pairing.current.scrollIntoView({block:'nearest'});}throw Error('Escolha a partida e o jogo em Matchday.');}await network.clock();}
+      if(network.user&&!settings.demo&&!localOnly){if(!selectedGame){if(pairing.current){pairing.current.open=true;pairing.current.scrollIntoView({block:'nearest'});}throw Error('Escolha uma partida com VAR ativado pelo organizador.');}await network.clock();}
       await engine.start(settings);
-      if(network.user&&!settings.demo&&!localOnly){try{await network.begin(engine,selectedGame!,selectedMatch);}catch(e){await engine.stop();throw e;}}
+      if(network.user&&!settings.demo&&!localOnly){try{await network.begin(engine,selectedGame!);}catch(e){await engine.stop();throw e;}}
       setPreview(true);setTab('camera');
       if(pairing.current)pairing.current.open=false;
       setSettingsOpen(false);
@@ -108,7 +108,6 @@ function App(){
   }
   async function openCloud(c:CloudClip){setBusy(true);setError('');try{const blob=await network.download(c);setReady({id:c.id,blob,url:URL.createObjectURL(blob)});}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   const selectedGame=network.games.find(g=>g.id===varGameId)??network.games[0];
-  const selectedMatch=selectedGame?.matches.some(m=>String(m.id)===varMatchId&&!m.concluded&&!m.isBye)?varMatchId:'';
   const visibleClips=clips.filter(c=>!c.association||(c.association.uploaderUserId===network.user?.id&&c.association.scorerPlayerId===c.association.operatorPlayerId));
   const queued=clips.filter(c=>c.state==='saved'&&c.association&&c.association.uploaderUserId===network.user?.id&&!c.cloudUploaded&&!c.cloudExpired).length;
   const used=clips.filter(c=>c.state==='saved').reduce((n,c)=>n+c.bytes,0),active=engine.status.active;
@@ -122,7 +121,7 @@ function App(){
     <main>
       <div className="app-heading"><div><span className="eyebrow">{PUBLIC_VAR?'MARI & EDER · TÊNIS':'O JOGO EM REPLAY'}</span><h1>{tab==='gallery'?'Meus lances':PUBLIC_VAR?'Na quadra.':'Dentro do jogo.'}</h1></div><span className={`status-pill ${active?'live':''}`}><span className={`dot ${active?'live':''}`}/>{engine.status.pending?'Salvando':active?'Gravando':'Pronto'}</span></div>
       <nav aria-label="Área do VAR"><button className={tab==='camera'?'selected':''} aria-current={tab==='camera'?'page':undefined} onClick={()=>setTab('camera')}><UiIcon name="camera"/>Câmera</button><button className={tab==='gallery'?'selected':''} aria-current={tab==='gallery'?'page':undefined} onClick={()=>setTab('gallery')}><UiIcon name="play"/>Meus lances <span>{visibleClips.length+network.cloud.length}</span></button></nav>
-      {!PUBLIC_VAR&&<details className="connection-drawer" ref={pairing}><summary><span><small>MATCHDAY</small><strong>{network.user?(selectedGame?.groupName??'Escolher partida'):'Conectar ao Pitch'}</strong></span><span className="connection-meta">{network.sessionId?'Conectado':selectedMatch?'Jogo '+selectedGame?.matches.find(m=>String(m.id)===selectedMatch)?.n:'Configurar'} <UiIcon name="chevron"/></span></summary><VarConnection network={network} active={active} game={selectedGame} matchId={selectedMatch} onGame={id=>{setVarGameId(id);setVarMatchId('');}} onMatch={setVarMatchId} onError={setError}/></details>}
+      {!PUBLIC_VAR&&<details className="connection-drawer" ref={pairing}><summary><span><small>MATCHDAY</small><strong>{network.user?(selectedGame?.groupName??'Escolher partida'):'Conectar ao Pitch'}</strong></span><span className="connection-meta">{network.sessionId?(network.currentMatch?'Jogo '+network.currentMatch.n:'Aguardando jogo'):'Automático'} <UiIcon name="chevron"/></span></summary><VarConnection network={network} active={active} game={selectedGame} onGame={setVarGameId} onError={setError}/></details>}
       {error&&<div className="notice error" role="alert"><span>{error}</span><button aria-label="Fechar aviso" onClick={()=>setError('')}>×</button></div>}
       {message&&<div className="notice toast" role="status"><span>{message}</span><button aria-label="Fechar mensagem" onClick={()=>setMessage('')}>×</button></div>}
       {(queued>0||network.uploading)&&<aside className="upload-status" aria-live="polite"><span><strong>{network.uploading?'Enviando gols…':`${queued} lance(s) para enviar`}</strong><small>{network.uploadProgress||'Pare a câmera e mantenha a página aberta.'}</small></span><button className="compact-button" disabled={galleryBusy} onClick={()=>void network.uploadQueue()}>Enviar</button></aside>}

@@ -10,7 +10,7 @@
     "dev": "tsx server/static.ts",
     "start": "tsx server/static.ts",
     "build": "tsx scripts/prepare-mobile.ts && tsc --noEmit && vite build && tsx scripts/prepare-mobile.ts --manifest",
-    "test": "tsx --test tests/mobile.test.ts tests/matchday-var.test.ts"
+    "test": "tsx --test tests/mobile.test.ts tests/matchday-var.test.ts tests/auto-matchday.test.ts"
   },
   "dependencies": {
     "@fastify/static": "10.1.6",
