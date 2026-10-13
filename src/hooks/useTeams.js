@@ -5,6 +5,12 @@ import {
   demoMyTeams, demoInvitePreview, demoOp, demoSeed, emptyRecord, listTeamsLocal, normDirectoryItem, normMember,
   normRecord, normTeam, rivalsErrorCode, sortRoster, teamInviteUrl,
 } from "../lib/rivals";
+import {
+  demoChallengeInvite, demoChallengeOp, demoIncomingChallenge, demoMyChallenges, demoRivalMove, normChallenge,
+  normChallengeInvite, pendingActionCount, termsToRpc, withChallengeSeed, challengeInviteUrl,
+} from "../lib/rivalsChallenges";
+
+const RIVAL_DELAY_MS = 1800; // demo: the simulated rival captain "thinks" this long
 
 /**
  * PITCH Rivals — teams data layer (PR2). Group ≠ Team: a Team is a
@@ -27,8 +33,13 @@ import {
  * Every action resolves to { data } or { error: <code> } — never throws.
  * Turn a code into copy with rivalsError(code) (lib/rivalsCopy).
  *
- * EXTENSION POINT (PR4–PR7): challenges, matches, RSVP and records plug
- * in here (same {data}|{error} contract, same realtime channel).
+ * Challenges (PR5, migration 20261013140000): `challenges` = every
+ * challenge of my teams (my_challenges RPC; demo: rivalsChallenges.js
+ * mirror) with versions + the shared match; `pendingActions` = how many
+ * need me (a leader). Actions map 1:1 to the RPCs. In demo mode a
+ * simulated rival captain answers shortly after it becomes their turn.
+ * EXTENSION POINT (PR6–PR7): results, RSVP, lineup and records plug in
+ * here (same {data}|{error} contract, same realtime channel).
  */
 
 const TEAM_COLS = "id,name,slug,city,region,country,color,secondary_color,logo_url,preferred_format,home_venue,timezone,currency,listed,captain_id,created_at,archived_at";
@@ -55,12 +66,13 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
 
   // ── Cloud state ────────────────────────────────────────
   const [cloudTeams, setCloudTeams] = useState([]);
+  const [cloudChallenges, setCloudChallenges] = useState([]);
   const [loading, setLoading] = useState(cloudCapable);
   const [revision, setRevision] = useState(0);
 
   // ── Demo state ─────────────────────────────────────────
   const [demo, setDemo] = usePersistentState("rivalsDemo", null);
-  const demoState = useMemo(() => (demo && demo.v === 1 ? demo : demoSeed()), [demo]);
+  const demoState = useMemo(() => withChallengeSeed(demo && demo.v === 1 ? demo : demoSeed()), [demo]);
   const demoRef = useRef(demoState);
   demoRef.current = demoState;
 
@@ -71,7 +83,12 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
   liveRef.current = { cloudReady, cloudCapable, cloudStatus, playerId: myPlayer?.id };
   const load = useCallback(async () => {
     const { cloudReady: ready, cloudCapable: capable, cloudStatus: status, playerId } = liveRef.current;
-    if (!ready) { setCloudTeams([]); setLoading(capable && (status === "loading" || status === "needsProfile")); return; }
+    if (!ready) { setCloudTeams([]); setCloudChallenges([]); setLoading(capable && (status === "loading" || status === "needsProfile")); return; }
+    // Challenges load independently: tolerate migration 20261013140000 not applied yet.
+    const challengesQ = supabase.rpc("my_challenges").then((r) => {
+      if (r.error) throw r.error;
+      setCloudChallenges(r.data?.items ?? []);
+    }).catch((e) => { console.warn("PITCH Rivals: challenges unavailable", e?.message || e); setCloudChallenges([]); });
     try {
       const mq = await supabase.from("team_members").select(`role,status,joined_at,teams(${TEAM_COLS})`)
         .eq("player_id", playerId).eq("status", "active");
@@ -90,6 +107,7 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
       console.warn("PITCH Rivals: teams unavailable", e?.message || e);
       setCloudTeams([]);
     } finally {
+      await challengesQ;
       setLoading(false);
       setRevision((n) => n + 1);
     }
@@ -105,6 +123,8 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
     const ch = supabase.channel(`pitch-rivals-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, bump)
       .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_challenges" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_matches" }, bump)
       .subscribe();
     return () => { clearTimeout(timer.current); supabase.removeChannel(ch); };
   }, [cloudReady, load]);
@@ -144,8 +164,14 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
       return rpc("create_team", { p_name: (name || "").trim(), p_fields: camelToRpc(rest) },
         (d) => ({ teamId: d.team_id, slug: d.slug, created: d.created }));
     }
-    return demoCall("create_team", { name, fields: rest });
-  }, [cloudCapable, rpc, demoCall]);
+    const r = demoCall("create_team", { name, fields: rest });
+    // Demo: a rival challenges the new team so the inbox has something to answer.
+    if (!r.error && r.data.created) {
+      const next = demoIncomingChallenge(demoRef.current, r.data.teamId);
+      if (next !== demoRef.current) { demoRef.current = next; setDemo(next); }
+    }
+    return r;
+  }, [cloudCapable, rpc, demoCall, setDemo]);
 
   const updateTeam = useCallback(async (teamId, fields) => (cloudCapable
     ? rpc("update_team", { p_team_id: teamId, p_fields: camelToRpc(fields) }, (d) => ({ teamId: d.team_id, slug: d.slug }))
@@ -258,6 +284,92 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
     ? rpc("leave_team", { p_team_id: teamId }, (d) => ({ archived: Boolean(d?.archived) }))
     : demoCall("leave_team", { teamId })), [cloudCapable, rpc, demoCall]);
 
+  // ── Challenges ─────────────────────────────────────────
+  const challenges = useMemo(() => {
+    const now = Date.now();
+    if (cloudCapable) return cloudChallenges.map((r) => normChallenge(r, now));
+    return meId ? demoMyChallenges(demoState, meId, now) : [];
+  }, [cloudCapable, cloudChallenges, demoState, meId]);
+  const pendingActions = useMemo(() => pendingActionCount(challenges), [challenges]);
+  const myTeamIdsRef = useRef([]);
+  myTeamIdsRef.current = myTeams.map((tm) => tm.id);
+
+  // Demo: the rival captain answers a moment after it becomes their turn.
+  const rivalTimers = useRef([]);
+  useEffect(() => () => rivalTimers.current.forEach(clearTimeout), []);
+  const scheduleRival = useCallback((challengeId) => {
+    const id = setTimeout(() => {
+      const mv = demoRivalMove(demoRef.current, challengeId, myTeamIdsRef.current);
+      if (!mv) return;
+      demoRef.current = mv.state;
+      setDemo(mv.state);
+      setRevision((n) => n + 1);
+    }, RIVAL_DELAY_MS);
+    rivalTimers.current.push(id);
+  }, [setDemo]);
+
+  const demoChallengeCall = useCallback((op, args, map = (x) => x, challengeIdOf = null) => {
+    if (!demoMe?.id) return { error: "not_authenticated" };
+    const r = demoChallengeOp(demoRef.current, op, args, demoMe);
+    if (r.error) return { error: r.error };
+    demoRef.current = r.state;
+    setDemo(r.state);
+    setRevision((n) => n + 1);
+    const cid = challengeIdOf ? challengeIdOf(r.data) : null;
+    if (cid) scheduleRival(cid);
+    return { data: map(r.data) };
+  }, [demoMe, setDemo, scheduleRival]);
+
+  const origin = typeof window !== "undefined" ? window.location.origin : undefined;
+  const withUrl = (d) => (d?.token ? { ...d, url: challengeInviteUrl(d.token, origin) } : d);
+
+  /** New challenge: toTeamId null → claimable link. terms = camelCase. */
+  const createChallenge = useCallback(async ({ fromTeamId, toTeamId = null, terms, clientRef }) => (cloudCapable
+    ? rpc("create_challenge", { p_from_team: fromTeamId, p_to_team: toTeamId, p_terms: termsToRpc(terms), p_client_ref: clientRef || null },
+      (d) => withUrl({ challengeId: d.challenge_id, token: d.token, status: d.status, mode: d.mode, created: d.created, expiresAt: d.expires_at }))
+    : demoChallengeCall("create_challenge", { fromTeamId, toTeamId, terms, clientRef }, withUrl, (d) => d.challengeId)),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [cloudCapable, rpc, demoChallengeCall]);
+
+  /** accept | decline the current version (asTeamId + token claim a link). */
+  const respondChallenge = useCallback(async (challengeId, version, action, { asTeamId = null, token = null, reason = null } = {}) => (cloudCapable
+    ? rpc("respond_challenge", { p_challenge_id: challengeId, p_version: version, p_action: action, p_as_team: asTeamId, p_token: token, p_reason: reason },
+      (d) => ({ challengeId: d.challenge_id, status: d.status, matchId: d.match_id, alreadyAgreed: Boolean(d.already_agreed) }))
+    : demoChallengeCall("respond_challenge", { challengeId, version, action, asTeamId, token, reason }, (x) => x, (d) => (d.status === "agreed" ? d.challengeId : null))),
+  [cloudCapable, rpc, demoChallengeCall]);
+
+  const counterChallenge = useCallback(async (challengeId, baseVersion, terms, { asTeamId = null, token = null } = {}) => (cloudCapable
+    ? rpc("counter_challenge", { p_challenge_id: challengeId, p_base_version: baseVersion, p_terms: termsToRpc(terms), p_as_team: asTeamId, p_token: token },
+      (d) => ({ challengeId: d.challenge_id, version: d.version, status: d.status, turnTeamId: d.turn_team_id }))
+    : demoChallengeCall("counter_challenge", { challengeId, baseVersion, terms, asTeamId, token }, (x) => x, (d) => d.challengeId)),
+  [cloudCapable, rpc, demoChallengeCall]);
+
+  const cancelChallenge = useCallback(async (challengeId, reason = null) => (cloudCapable
+    ? rpc("cancel_challenge", { p_challenge_id: challengeId, p_reason: reason },
+      (d) => ({ challengeId: d.challenge_id, status: d.status, matchStatus: d.match_status }))
+    : demoChallengeCall("cancel_challenge", { challengeId, reason })), [cloudCapable, rpc, demoChallengeCall]);
+
+  const proposeMatchChange = useCallback(async (matchId, baseVersion, terms, { asTeamId = null } = {}) => (cloudCapable
+    ? rpc("propose_match_change", { p_match_id: matchId, p_base_version: baseVersion, p_terms: termsToRpc(terms), p_as_team: asTeamId },
+      (d) => ({ matchId: d.match_id, challengeId: d.challenge_id, version: d.version }))
+    : demoChallengeCall("propose_match_change", { matchId, baseVersion, terms, asTeamId }, (x) => x, (d) => d.challengeId)),
+  [cloudCapable, rpc, demoChallengeCall]);
+
+  const respondMatchChange = useCallback(async (matchId, version, action, { asTeamId = null } = {}) => (cloudCapable
+    ? rpc("respond_match_change", { p_match_id: matchId, p_version: version, p_action: action, p_as_team: asTeamId },
+      (d) => ({ matchId: d.match_id, accepted: Boolean(d.accepted), fieldStatus: d.field_status }))
+    : demoChallengeCall("respond_match_change", { matchId, version, action, asTeamId })), [cloudCapable, rpc, demoChallengeCall]);
+
+  const setFieldStatus = useCallback(async (matchId, status, note = null) => (cloudCapable
+    ? rpc("set_field_status", { p_match_id: matchId, p_status: status, p_note: note }, (d) => ({ matchId: d.match_id, fieldStatus: d.field_status }))
+    : demoChallengeCall("set_field_status", { matchId, status, note })), [cloudCapable, rpc, demoChallengeCall]);
+
+  /** What a ?desafio= link is — works logged out (get_challenge_invite). */
+  const previewChallenge = useCallback(async (token) => {
+    if (cloudCapable) return rpc("get_challenge_invite", { p_token: token }, normChallengeInvite, { reload: false });
+    return { data: demoChallengeInvite(demoRef.current, token, meId) };
+  }, [cloudCapable, rpc, meId]);
+
   const resetDemo = useCallback(() => setDemo(null), [setDemo]);
 
   return {
@@ -269,6 +381,9 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
     createTeam, updateTeam, archiveTeam, fetchTeam, fetchPublicTeam, listTeams, uploadBadge,
     getInvite, revokeInvite, previewInvite, acceptInvite,
     setMemberRole, transferCaptaincy, removeMember, leaveTeam,
+    challenges, pendingActions,
+    createChallenge, respondChallenge, counterChallenge, cancelChallenge,
+    proposeMatchChange, respondMatchChange, setFieldStatus, previewChallenge,
     refresh: load, resetDemo,
   };
 }

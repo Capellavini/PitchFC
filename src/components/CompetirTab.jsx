@@ -5,12 +5,11 @@ import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import { t } from "../lib/i18n";
 import { RC, RIVALS_BRAND } from "../lib/rivalsCopy";
-import { isEnabled } from "../lib/flags";
+
 import PageHeader from "./PageHeader";
 import SegmentedControl from "./SegmentedControl";
 import SectionLabel from "./SectionLabel";
 import Chip from "./Chip";
-import ChallengesPanel from "./ChallengesPanel";
 import Leaderboard from "./Leaderboard";
 import ComparePlayers from "./ComparePlayers";
 import MatchdayMvpVote from "./MatchdayMvpVote";
@@ -35,7 +34,7 @@ import GoalOfTheWeek from "./GoalOfTheWeek";
  *  Data: `group` (season totals per player), `history` (one row per
  *  matchday), `matchdaySummaries` (newest-first day summaries — Forma,
  *  team-day records, compare), `lastMatchday` (summary.lines) and `mvp`. */
-export default function CompetirTab({ isAdmin, group = [], history = [], matchdaySummaries = [], lastMatchday, mvp, social, postDates, groupName, groupPicker, openBallot = false, rivalsOn = false, rivalsHub = null, groupless = false, view: viewProp, onViewChange }) {
+export default function CompetirTab({ isAdmin, group = [], history = [], matchdaySummaries = [], lastMatchday, mvp, social, postDates, groupName, groupPicker, openBallot = false, rivalsOn = false, rivalsHub = null, challengesInbox = null, challengesBadge = 0, groupless = false, view: viewProp, onViewChange }) {
   const [subLocal, setSubLocal] = useState("rankings");
   const sub = viewProp ?? subLocal;
   const setSub = onViewChange ?? setSubLocal;
@@ -47,11 +46,14 @@ export default function CompetirTab({ isAdmin, group = [], history = [], matchda
   const myBallotDone = Boolean(mvp?.myVotes?.[1]);
   const teamsOn = Boolean(rivalsOn && rivalsHub);
   // Flags map 1:1 to the segments; `challenges` requires `teams`.
-  const challengesOn = teamsOn && isEnabled("challenges", { isAdmin });
+  // `challengesInbox` is only passed when challenges are visible for this
+  // viewer (lib/rivalsChallenges challengesVisible); `challengesBadge` =
+  // how many need me.
+  const challengesOn = teamsOn && Boolean(challengesInbox);
   const subs = [
     (!groupless || !teamsOn) && { id: "rankings", label: "Rankings" },
     teamsOn && { id: "equipa", label: RC.segTeam },
-    challengesOn && { id: "desafios", label: RC.segChallenges },
+    challengesOn && { id: "desafios", label: RC.segChallenges, badge: challengesBadge > 0 },
   ].filter(Boolean);
   const view = subs.some((s) => s.id === sub) ? sub : (subs[0]?.id ?? "rankings");
 
@@ -112,7 +114,7 @@ export default function CompetirTab({ isAdmin, group = [], history = [], matchda
         </>
       )}
       {view === "equipa" && rivalsHub}
-      {view === "desafios" && <ChallengesPanel />}
+      {view === "desafios" && challengesInbox}
     </div>
   );
 }
