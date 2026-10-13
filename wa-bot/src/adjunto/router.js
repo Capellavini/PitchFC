@@ -6,9 +6,11 @@
 //
 // Silence rule: an unlinked sender gets no reply, no typing, no read
 // receipt — except (a) an activation code (valid → welcome; invalid/expired
-// → "gera outro na app", max 3/hour/jid) and (b) the activation phrase
-// (decision 11; "não encontrei…" max 1/jid/24h). The bot never sends read
-// receipts in DMs at all.
+// → "gera outro na app", max 3/hour/jid), (b) the activation phrase
+// (decision 11; "não encontrei…" max 1/jid/24h) and (c) the PITCH Rivals
+// captain phrase the app prefills ("Criei a equipa «X» e quero ajuda…",
+// core/captainPhrase.js → captain.js: team guide max 3/hour/jid, "não
+// encontrei" max 1/jid/24h). The bot never sends read receipts in DMs.
 //
 // Everything with side effects goes through `env` (see index.js), so the
 // router is tested end-to-end with fakes.
@@ -18,6 +20,8 @@ import * as onboarding from "./onboarding.js";
 import * as actions from "./actions.js";
 import * as teamsflow from "./teamsflow.js";
 import { runAgentTurn } from "./agent.js";
+import { makeCaptainHandler } from "./captain.js";
+import { parseCaptainPhrase } from "../core/captainPhrase.js";
 import { TOOL_DEFS, runTool } from "./tools.js";
 import { budgetState, addUsage } from "./budget.js";
 import { T, dmLang } from "./texts.js";
@@ -42,6 +46,7 @@ export function makeRouter(env) {
   const bursts = new Map();
   const degradedNoticed = new Set();
   const lidMapping = () => env.lidMapping?.() ?? null;
+  const handleCaptain = makeCaptainHandler(env);
 
   const withLock = (key, fn) => {
     const prev = locks.get(key) ?? Promise.resolve();
@@ -126,6 +131,10 @@ export function makeRouter(env) {
     const text = extractText(m);
     if (!text) return;
     const id = await resolveDmIdentity(m.key, lidMapping());
+    // PITCH Rivals captain phrase: answered for linked AND unlinked senders
+    // with a deterministic guide (never the agent).
+    const captain = parseCaptainPhrase(text);
+    if (captain) return handleCaptain(id, captain);
     const link = await env.store.findLink(id);
     if (!link) {
       if (parseActivationCode(text)) return handleCode(id, text);

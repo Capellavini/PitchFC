@@ -54,6 +54,21 @@ export async function findOrganizerByPhone(digits) {
   return data ?? [];
 }
 
+// ── PITCH Rivals captains (migration 20260101007150) ──────
+/** Active captain/vice memberships in live teams for this phone (newest team first). */
+export async function findCaptainByPhone(digits) {
+  const { data, error } = await db().rpc("rivals_find_captain_by_phone", { p_digits: digits });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** The team's live ?tjoin invite ({token, expires_at, …}), created if none is valid. */
+export async function botTeamInvite(teamId, playerId) {
+  const { data, error } = await db().rpc("rivals_bot_team_invite", { p_team_id: teamId, p_player_id: playerId });
+  if (error) throw error;
+  return data;
+}
+
 // ── groups / memberships ──────────────────────────────────
 export async function membership(playerId, groupId) {
   return one(db().from("player_group_memberships").select("role, banned").eq("player_id", playerId).eq("group_id", groupId).maybeSingle());
