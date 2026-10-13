@@ -8,11 +8,12 @@ import { openWhatsApp } from "../lib/whatsapp";
 import Sheet from "./Sheet";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
+import PitchAiTeamCta from "./PitchAiTeamCta";
 
 /** The team's roster invite (leaders): one live link that expires in 14
  *  days. Copy / WhatsApp / new link (old one stops working) / disable.
  *  Joining through it always gives role "player" (server rule). */
-export default function TeamInviteSheet({ teams, team, onClose }) {
+export default function TeamInviteSheet({ teams, team, onClose, showPitchAi = false }) {
   const [inv, setInv] = useState(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState(null);
@@ -65,6 +66,7 @@ export default function TeamInviteSheet({ teams, team, onClose }) {
           </BtnPrimary>
           <BtnGhost block onClick={copy}>{copied ? <Check size={16} color={C.green} /> : <Copy size={16} />} {copied ? t(RC.copied) : t(RC.copyLink)}</BtnGhost>
           <div style={{ fontSize: T.meta, color: C.text2, margin: `${S.xs}px 0` }}>{t(RC.shareGroupHint)}</div>
+          {showPitchAi && <PitchAiTeamCta team={team} compact />}
         </div>
       )}
 

@@ -23,8 +23,11 @@ import BtnGhost from "./BtnGhost";
  * to show a team; bump `n` to re-apply. `notice` = one-off message (e.g.
  * an invite that failed after signup), dismissible.
  * EXTENSION POINT (PR5): `onChallenge(team)` arms every "Desafiar".
+ * `challenges` (rendered node, optional) adds a "Desafios" segment — the
+ * team-mode Equipa tab uses it (A minha equipa · Desafios · Descobrir).
+ * `focus.view` ("team" | "challenges" | "discover") switches segment.
  */
-export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, onDismissNotice, onChallenge }) {
+export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, onDismissNotice, onChallenge, challenges = null }) {
   const mine = teams.myTeams;
   const [view, setView] = useState("team");
   const [selectedId, setSelectedId] = useState(null);
@@ -36,6 +39,7 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
 
   useEffect(() => {
     if (!focus) return;
+    if (focus.view && !focus.teamId && !focus.slug) { setView(focus.view === "challenges" && !challenges ? "team" : focus.view); setPublicSlug(null); }
     if (focus.teamId) { setSelectedId(focus.teamId); setView("team"); setPublicSlug(null); }
     if (focus.teamId && focus.invite) askInvite(focus.teamId);
     if (focus.slug) {
@@ -73,9 +77,9 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
       )}
 
       <SegmentedControl value={view} onChange={setView}
-        options={[{ id: "team", label: RC.myTeam }, { id: "discover", label: RC.segDiscover }]} />
+        options={[{ id: "team", label: RC.myTeam }, ...(challenges ? [{ id: "challenges", label: RC.segChallenges }] : []), { id: "discover", label: RC.segDiscover }]} />
 
-      {view === "discover" ? (
+      {view === "challenges" && challenges ? challenges : view === "discover" ? (
         <TeamDirectory teams={teams} home={home} onOpenTeam={openSlug} onChallenge={current ? onChallenge : undefined} />
       ) : teams.loading && !mine.length ? (
         <div aria-busy="true" style={{ fontSize: T.body, color: C.text2, padding: `${S.lg}px 0` }}>{t(RC.loading)}</div>

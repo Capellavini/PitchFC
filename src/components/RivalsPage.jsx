@@ -5,12 +5,12 @@ import { trackEvent } from "../lib/analytics";
 import BtnPrimary from "./BtnPrimary";
 import RivalsChallengeCard from "./RivalsChallengeCard";
 import RivalsResultCard from "./RivalsResultCard";
-import RivalsLeadForm from "./RivalsLeadForm";
+import RivalsSignupForm from "./RivalsSignupForm";
 import RivalsFaq from "./RivalsFaq";
 
 const MAXW = 1120;
 const TITLE = "PITCH Rivals — A tua equipa contra a cidade";
-const DESCRIPTION = "Cria a tua equipa, desafia rivais por link e deixa o resultado para a história — confirmado pelos dois lados. PITCH Rivals: em breve, inscreve a tua equipa no acesso antecipado.";
+const DESCRIPTION = "Cria a tua equipa, desafia rivais por link e deixa o resultado para a história — confirmado pelos dois lados. PITCH Rivals: cria já a tua conta e a tua equipa, grátis.";
 
 const CSS = `
 .rv-root *{box-sizing:border-box}
@@ -100,9 +100,11 @@ function usePageMeta(title, description) {
  * /rivals and /desafios (alias). Public, full width, no app shell, works
  * logged-out. Feature isn't live yet (docs/TEAMS-CHALLENGES-SPEC.md): copy
  * must never claim field bookings, payments or automatic charges.
- * Leads go to `leads` via submit_lead() with source "rivals".
+ * The form creates the captain account + team (RivalsSignupForm, decision
+ * 2026-10-13 a) and still files the lead (submit_lead, source "rivals").
+ * `account` comes from PitchApp (auth + the create-team intent hand-off).
  */
-export default function RivalsPage() {
+export default function RivalsPage({ account }) {
   usePageMeta(TITLE, DESCRIPTION);
   useEffect(() => { trackEvent("rivals_page_viewed", { path: window.location.pathname }); }, []);
 
@@ -122,7 +124,7 @@ export default function RivalsPage() {
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: S.lg }}>
             <a className="rv-navlink rv-hide-sm" href="#como-funciona" onClick={(e) => { e.preventDefault(); scrollTo("como-funciona"); }}>Como funciona</a>
             <a className="rv-navlink rv-hide-sm" href="#faq" onClick={(e) => { e.preventDefault(); scrollTo("faq"); }}>FAQ</a>
-            <BtnPrimary onClick={() => toForm("nav")} style={{ minHeight: 44, fontSize: 13 }}>Inscrever equipa</BtnPrimary>
+            <BtnPrimary onClick={() => toForm("nav")} style={{ minHeight: 44, fontSize: 13 }}>Criar equipa</BtnPrimary>
           </div>
         </div>
       </nav>
@@ -134,7 +136,7 @@ export default function RivalsPage() {
             <div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: S.sm, background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: R.pill, padding: "6px 12px", marginBottom: S.lg }}>
                 <span className="rv-pulse" style={{ width: 8, height: 8, borderRadius: 4, background: C.accent, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: C.accent }}>PITCH RIVALS · EM BREVE</span>
+                <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: C.accent }}>PITCH RIVALS · ACESSO ANTECIPADO</span>
               </div>
               <h1 className="rv-h1" style={{ ...displayFont, fontSize: "clamp(40px, 11vw, 64px)", lineHeight: 0.96, margin: `0 0 ${S.lg + 4}px` }}>
                 A tua equipa<br /><span className="rv-nowrap">contra <span style={{ color: C.accent }}>a cidade.</span></span>
@@ -144,7 +146,7 @@ export default function RivalsPage() {
               </p>
               <div className="rv-ctas">
                 <BtnPrimary onClick={() => toForm("hero")} style={{ minHeight: 52, fontSize: 16, padding: "0 26px" }}>
-                  Inscrever a minha equipa <ArrowRight size={18} aria-hidden />
+                  Criar a minha equipa <ArrowRight size={18} aria-hidden />
                 </BtnPrimary>
                 <button type="button" onClick={() => scrollTo("como-funciona")} style={{ ...ghostBtn, minHeight: 52 }}>Como funciona</button>
               </div>
@@ -213,12 +215,12 @@ export default function RivalsPage() {
         {/* ── 6. early-access form ── */}
         <section id="inscrever" className="rv-sec" aria-labelledby="rv-form" style={{ ...fieldBackdrop(0.8, 0.97), borderTop: `1px solid ${C.border}`, scrollMarginTop: 60 }}>
           <div className="rv-wrap" style={{ maxWidth: 760 }}>
-            <p style={{ ...eyebrow, textAlign: "center" }}>Acesso antecipado</p>
-            <h2 id="rv-form" style={{ ...h2, textAlign: "center" }}>Inscreve a tua equipa.</h2>
+            <p style={{ ...eyebrow, textAlign: "center" }}>Grátis · em 2 minutos</p>
+            <h2 id="rv-form" style={{ ...h2, textAlign: "center" }}>Cria a tua equipa.</h2>
             <p style={{ ...lead, textAlign: "center", margin: `0 auto ${S.xl + 4}px` }}>
-              Estamos a abrir o PITCH Rivals por fases. Deixa os dados do capitão e falamos contigo no WhatsApp para marcar o primeiro desafio.
+              Crias a tua conta PITCH e a equipa num só passo — ficas como capitão. Confirmas o email e convidas o plantel por link. Os desafios entre equipas abrem por fases.
             </p>
-            <RivalsLeadForm />
+            <RivalsSignupForm account={account} />
           </div>
         </section>
 
@@ -238,9 +240,9 @@ export default function RivalsPage() {
               <h2 style={{ ...displayFont, fontSize: "clamp(28px, 5.4vw, 48px)", lineHeight: 1.02, margin: `0 0 ${S.md}px` }}>
                 Escolhe o rival.<br />Marca o jogo. <span style={{ color: C.accent }}>Fica para a história.</span>
               </h2>
-              <p style={{ ...lead, margin: `0 auto ${S.xl}px` }}>PITCH Rivals chega em breve. As primeiras equipas jogam primeiro.</p>
+              <p style={{ ...lead, margin: `0 auto ${S.xl}px` }}>Os desafios abrem por fases. As primeiras equipas jogam primeiro.</p>
               <BtnPrimary onClick={() => toForm("footer")} style={{ minHeight: 52, fontSize: 16, padding: "0 26px" }}>
-                Inscrever a minha equipa <ArrowRight size={18} aria-hidden />
+                Criar a minha equipa <ArrowRight size={18} aria-hidden />
               </BtnPrimary>
             </div>
           </div>
@@ -251,7 +253,7 @@ export default function RivalsPage() {
         <div className="rv-wrap" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: S.md, paddingTop: S.xl, paddingBottom: S.xl }}>
           <div style={{ display: "flex", alignItems: "center", gap: S.md }}>
             <img src={BRAND.logo} alt="PITCH" style={{ height: 18, display: "block" }} />
-            <span style={{ fontSize: T.meta, color: C.text2 }}>PITCH Rivals · em breve</span>
+            <span style={{ fontSize: T.meta, color: C.text2 }}>PITCH Rivals · acesso antecipado</span>
           </div>
           <a href="/" className="rv-navlink" style={{ gap: 6 }}>pitch-fc.com <ArrowRight size={14} aria-hidden /></a>
         </div>

@@ -27,8 +27,13 @@ import { playoffState } from "./lib/matchdayLive";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
 import { useTeams } from "./hooks/useTeams";
-import { readRivalsParams, rivalsVisible, marketForLang, isNoGroup, openingTab as pickOpeningTab, teamFeedItems } from "./lib/rivals";
-import { readRivalsOptIn, saveRivalsOptIn, savePendingIntent, readPendingIntent, clearPendingIntent, intentFromMetadata, intentMetadata } from "./lib/pendingIntent";
+import { readRivalsParams, rivalsVisible, marketForLang, isNoGroup, openingTab as pickOpeningTab, teamFeedItems, isTeamMode, resolveTab, nextTeamMatch } from "./lib/rivals";
+import { readRivalsOptIn, saveRivalsOptIn, savePendingIntent, readPendingIntent, clearPendingIntent, intentFromMetadata, intentMetadata,
+  saveCreateIntent, readCreateIntent, clearCreateIntent, createIntentFromMetadata, createIntentMetadata } from "./lib/pendingIntent";
+import EquipaTab from "./components/EquipaTab";
+import TeamJogarTab from "./components/TeamJogarTab";
+import TeamMatchdayTab from "./components/TeamMatchdayTab";
+import ChallengesPanel from "./components/ChallengesPanel";
 import { rivalsError } from "./lib/rivalsCopy";
 import RivalsHub from "./components/RivalsHub";
 import TeamPublicPage from "./components/TeamPublicPage";
@@ -90,7 +95,8 @@ const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui
 // Any caller still using a pre-redesign id lands on its new home instead
 // of a blank screen (Social → Home feed, Jogo → Jogar, Compete →
 // Competir, Clube → Perfil's settings where the admin entry lives).
-const TAB_IDS = ["home", "jogar", "matchday", "competir", "perfil"];
+// "equipa" = the team-mode Competir slot (team + no group, see resolveTab).
+const TAB_IDS = ["home", "jogar", "matchday", "competir", "perfil", "equipa"];
 const LEGACY_TABS = { jogo: "jogar", social: "home", compete: "competir", stats: "jogar", grupo: "jogar", fantasy: "competir", clube: "perfil" };
 const normalizeTab = (id) => (TAB_IDS.includes(id) ? id : LEGACY_TABS[id] ?? "home");
 
@@ -231,6 +237,38 @@ export default function PitchApp() {
     if (fromMeta?.kind === "tjoin") setTeamToken(fromMeta.token);
   }, [teamToken, cloud.status, cloud.user]);
   const dropTeamToken = () => { clearPendingIntent(); setTeamToken(null); };
+
+  // Pending "create my team" from the /rivals form (decision 2026-10-13 a):
+  // { kind: "create_team", team, captain? }. Same two copies as ?tjoin —
+  // localStorage (this browser) and user_metadata.pending_intent (written
+  // at signUp; another device after the confirmation email). Resumed by
+  // the effect below once there's a player card: create_team → team page
+  // with the invite sheet open. Cleared on success (both copies).
+  const [createIntent, setCreateIntent] = useState(() => readCreateIntent());
+  const [creatingTeam, setCreatingTeam] = useState(false);
+  const [routeTick, setRouteTick] = useState(0); // re-render after a pushState hand-off
+  useEffect(() => {
+    if (createIntent || !cloud.user || cloud.status === "anon" || cloud.status === "loading") return;
+    const fromMeta = createIntentFromMetadata(cloud.user.user_metadata);
+    if (fromMeta) setCreateIntent(fromMeta);
+  }, [createIntent, cloud.status, cloud.user]);
+  const dropCreateIntent = () => {
+    clearCreateIntent();
+    setCreateIntent(null);
+    if (cloud.user?.user_metadata?.pending_intent) cloud.clearUserMeta(["pending_intent"]);
+  };
+  // /rivals hands over to the app: keep the intent, go to "/" without a
+  // reload (gating then shows the quick card / creates the team).
+  const startCreateTeam = (intent, { demo = false } = {}) => {
+    if (!intent) return;
+    saveCreateIntent(intent);
+    setCreateIntent(intent);
+    // Demo "signup": a fresh player session with no group of its own, so
+    // the team-mode nav can be previewed (session.teamOnly).
+    if (demo) setSession({ role: "player", onboarded: false, teamOnly: true });
+    window.history.pushState({}, "", "/");
+    setRouteTick((n) => n + 1);
+  };
   // Accepting is in flight (right after the quick player card): show the
   // loader rather than the invite page / JoinGroup wall for that instant.
   const [acceptingTeam, setAcceptingTeam] = useState(false);
@@ -259,9 +297,44 @@ export default function PitchApp() {
   // explore, is in a team, or carries a team invite (lib/rivals isNoGroup).
   const noGroup = isNoGroup({
     needsGroup: cloud.status === "needsGroup", optIn: noGroupOptIn,
-    teamCount: rivals.myTeams.length, hasIntent: Boolean(teamToken),
+    teamCount: rivals.myTeams.length, hasIntent: Boolean(teamToken || createIntent),
   });
   const cloudAuthed = cloudMode || noGroup; // user-level cloud features
+  // Team-mode nav (decision 2026-10-13 c): team + no group → Home · Jogar ·
+  // Matchday · Equipa · Perfil. Joining a group later flips it back to the
+  // full nav automatically (noGroup goes false). Local demo previews it via
+  // the /rivals demo signup (session.teamOnly).
+  const teamOnlyDemo = localMode && Boolean(session.teamOnly);
+  const teamMode = isTeamMode({ noGroup: noGroup || teamOnlyDemo, teamCount: rivals.myTeams.length });
+  const teamNextMatch = teamMode ? nextTeamMatch(rivals.matches, rivals.myTeams) : null;
+
+  // Resume a pending create-team intent once a player card exists.
+  const createRunRef = useRef(null);
+  const canCreateTeam = localMode
+    ? Boolean(session.role && session.onboarded && localMe)
+    : Boolean(cloud.myPlayer) && ["ready", "needsGroup"].includes(cloud.status);
+  useEffect(() => {
+    if (!createIntent || !canCreateTeam) return;
+    const key = JSON.stringify(createIntent.team);
+    if (createRunRef.current === key) return;
+    createRunRef.current = key;
+    (async () => {
+      setCreatingTeam(true);
+      const r = await rivals.createTeam(createIntent.team);
+      setCreatingTeam(false);
+      if (r.error && ["network", "unknown", "try_again", "not_authenticated"].includes(r.error)) {
+        createRunRef.current = null; // retryable: keep the intent (next load / reload retries)
+        setRivalsNotice(rivalsError(r.error));
+        return;
+      }
+      dropCreateIntent();
+      if (!localMode) setNoGroupOptIn(true); // never bounce a new captain into the JoinGroup wall
+      setRivalsNotice(r.error ? rivalsError(r.error) : null);
+      focusRivals(r.error ? {} : { teamId: r.data.teamId, invite: true });
+      setTabRaw("competir"); // → "equipa" in team mode
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createIntent, canCreateTeam]);
 
   // Register the push/PWA service worker once.
   useEffect(() => { registerServiceWorker(); }, []);
@@ -311,8 +384,8 @@ export default function PitchApp() {
   // skip the organizer/player role picker (AuthLanding) that a cold
   // signup still needs.
   useEffect(() => {
-    if ((joinToken || teamToken) && cloud.status === "needsProfile" && !pendingRole) setPendingRole("player");
-  }, [joinToken, teamToken, cloud.status, pendingRole]);
+    if ((joinToken || teamToken || createIntent) && cloud.status === "needsProfile" && !pendingRole) setPendingRole("player");
+  }, [joinToken, teamToken, createIntent, cloud.status, pendingRole]);
 
   // ?admin=1: reliable deep link to the owner panel. Consumed once into
   // state; the panel itself explains access if the viewer isn't an admin.
@@ -549,10 +622,11 @@ export default function PitchApp() {
     && kickoffAt.getTime() - Date.now() < 7 * 24 * 3600 * 1000
     && kickoffAt.getTime() - Date.now() > -3 * 3600 * 1000;
   const awaitingMyAnswer = hasGameThisWeek && confWin.isOpen && me?.status === "pending";
-  // lib/rivals openingTab: team-only → competir; otherwise unchanged
+  // lib/rivals openingTab: team-only → equipa (matchday on team match day); otherwise unchanged
   // (live matchday → my RSVP → home). PR7 adds team-match triggers.
-  const openingTab = pickOpeningTab({ noGroup, teamCount: rivals.myTeams.length, matchdayLive: Boolean(matchday), awaitingMyAnswer });
-  const tab = tabState ?? openingTab;
+  const openingTab = pickOpeningTab({ noGroup: noGroup || teamOnlyDemo, teamCount: rivals.myTeams.length, teamMatchToday: Boolean(teamNextMatch?.isToday), matchdayLive: Boolean(matchday), awaitingMyAnswer });
+  // Team mode swaps Competir for Equipa (resolveTab maps one id to the other).
+  const tab = resolveTab(tabState ?? openingTab, teamMode);
   // Home's "Votar MVP" on a game day lands in Competir with the ballot
   // already expanded; any other visit shows it as a one-line card.
   const [competirBallot, setCompetirBallot] = useState(false);
@@ -1077,6 +1151,7 @@ export default function PitchApp() {
     setManualJoinChoice(null);
     setJoinToken(null);
     dropTeamToken(); setTeamSlug(null); setRivalsFocus(null); setRivalsNotice(null); setCompetirView("rankings"); setJoinGroupOpen(false);
+    clearCreateIntent(); setCreateIntent(null); createRunRef.current = null;
     setTabRaw(null); // next login re-runs the contextual opening tab
   };
   const backToRolePick = () => setSession({ role: null, onboarded: false });
@@ -1140,7 +1215,24 @@ export default function PitchApp() {
   // ── PITCH Rivals (Teams & Challenges) early-access landing (path /rivals,
   // alias /desafios) — full width, no shell, public, works logged-out. ───
   if (path === "/rivals" || path === "/desafios") {
-    return <RivalsPage />;
+    const demoLogged = Boolean(session.role && session.onboarded);
+    return (
+      <RivalsPage account={localMode ? {
+        mode: "demo", loggedIn: demoLogged, who: me?.name || me?.nick,
+        start: (intent) => startCreateTeam(intent, { demo: !demoLogged }),
+      } : {
+        mode: "cloud", loggedIn: Boolean(cloud.user), who: cloud.user?.email,
+        // The intent rides on the account (metadata) AND in this browser,
+        // so the confirmation link can resume it on any device.
+        signUp: async (email, password, meta, intent) => {
+          const r = await cloud.signUp(email, password, { ...meta, ...createIntentMetadata(intent) });
+          if (!r?.error && !r?.alreadyRegistered) saveCreateIntent(intent);
+          return r;
+        },
+        signIn: cloud.signIn, resend: cloud.resendSignup, resetPassword: cloud.resetPassword,
+        start: (intent) => startCreateTeam(intent),
+      }} />
+    );
   }
 
   // ── Desktop admin dashboard (path /admin) — full width, no shell, own
@@ -1284,7 +1376,7 @@ export default function PitchApp() {
         // a full profile before ever being asked which group they're in.
         // A team invite (?tjoin) also skips the group step: team-first
         // players don't need a group (plan §4).
-        const needsLinkStep = !joinToken && !teamToken && manualJoinChoice === null;
+        const needsLinkStep = !joinToken && !teamToken && !createIntent && manualJoinChoice === null;
         if (needsLinkStep) {
           return shell(
             <JoinGroup
@@ -1316,6 +1408,15 @@ export default function PitchApp() {
                 await acceptTeamInvite(teamToken);
                 return {};
               }
+              if (createIntent && !effectiveToken) {
+                // /rivals signup: quick card (name/position; phone came
+                // from the form) → the create-team effect takes over.
+                setCreatingTeam(true);
+                const created = await cloud.createPlayerProfile(form);
+                if (created?.error) { setCreatingTeam(false); return created; }
+                setNoGroupOptIn(true);
+                return {};
+              }
               const res = await cloud.joinGroupWithProfile(effectiveToken, form);
               // Joined a group AND carrying a team invite: accept it too.
               if (teamToken && !res?.error) acceptTeamInvite(teamToken);
@@ -1339,7 +1440,7 @@ export default function PitchApp() {
       );
     }
 
-    if (acceptingTeam || (cloud.status === "needsGroup" && rivals.loading && !noGroupOptIn)) {
+    if (acceptingTeam || creatingTeam || (cloud.status === "needsGroup" && rivals.loading && !noGroupOptIn)) {
       return shell(
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
           <img src={BRAND.logo} alt="PITCH App" style={{ height: 30 }} />
@@ -1375,7 +1476,11 @@ export default function PitchApp() {
     if (!session.onboarded) {
       return shell(
         session.role === "player" ? (
-          <OnboardingPlayer me={me} onBack={backToRolePick} uploadMedia={uploadMedia}
+          <OnboardingPlayer uploadMedia={uploadMedia}
+            // /rivals demo signup: the same quick card as cloud, prefilled from the form.
+            quick={Boolean(createIntent)}
+            me={createIntent?.captain?.name ? { ...me, name: createIntent.captain.name, nick: createIntent.captain.name.split(" ")[0], phone: createIntent.captain.phone || me?.phone } : me}
+            onBack={() => { if (createIntent) dropCreateIntent(); backToRolePick(); }}
             onDone={(form) => { updateProfile(form); setSession((s) => ({ ...s, onboarded: true })); }} />
         ) : (
           <OnboardingOrganizer settings={settings} onBack={backToRolePick}
@@ -1844,6 +1949,13 @@ export default function PitchApp() {
   // PITCH Rivals entry points (Home items, no-group link, Perfil rows).
   const openTeamsTab = (teamId, invite = false) => { focusRivals(teamId ? { teamId, invite } : {}); selectTab("competir"); };
   const homeTeamItems = teamFeedItems(rivals.myTeams);
+  // Open the Rivals hub on a segment ("team" | "challenges" | "discover").
+  const openRivalsView = (view) => {
+    setRivalsSession(true);
+    setRivalsFocus((f) => ({ view, n: (f?.n || 0) + 1 }));
+    setCompetirView("equipa");
+    selectTab("competir");
+  };
 
   // ── Main app ───────────────────────────────────────────
   return shell(
@@ -1899,7 +2011,14 @@ export default function PitchApp() {
             onOpenTeam={(teamId) => openTeamsTab(teamId)} onInviteTeam={(teamId) => openTeamsTab(teamId, true)}
           />
         )}
-        {tab === "jogar" && (
+        {tab === "jogar" && teamMode && (
+          <TeamJogarTab nextMatch={teamNextMatch}
+            // RSVP lands with the results/RSVP PR: useTeams.setAvailability(matchId, status) → {data}|{error}.
+            onRsvp={teamNextMatch && rivals.setAvailability ? (status) => rivals.setAvailability(teamNextMatch.id, status) : undefined}
+            onOpenTeam={() => openTeamsTab()} onFindRivals={() => openRivalsView("discover")}
+            onJoinGroup={localMode ? undefined : openJoinGroup} />
+        )}
+        {tab === "jogar" && !teamMode && (
           // Jogar (redesign v1): Jogos | Grupos + pushed Game Detail and
           // Group page (Plantel · Stats · Fantasy · Definições). Render
           // functions keep every screen wired to root state.
@@ -2003,7 +2122,10 @@ export default function PitchApp() {
             )}
           />
         )}
-        {tab === "matchday" && (noGroup ? (
+        {tab === "matchday" && teamMode && (
+          <TeamMatchdayTab teams={rivals} nextMatch={teamNextMatch} onFindRivals={() => openRivalsView("discover")} />
+        )}
+        {tab === "matchday" && !teamMode && (noGroup ? (
           <NoGroupState onJoinGroup={openJoinGroup} onOpenTeams={rivals.myTeams.length ? () => openTeamsTab() : undefined} />
         ) : (
           <MatchdayTab
@@ -2023,6 +2145,13 @@ export default function PitchApp() {
             social={social}
           />
         ))}
+        {tab === "equipa" && (
+          <EquipaTab hub={(
+            <RivalsHub teams={rivals} market={marketForLang(lang)} focus={rivalsFocus}
+              notice={rivalsNotice} onDismissNotice={() => setRivalsNotice(null)}
+              challenges={isEnabled("challenges", { isAdmin: cloud.isAdmin }) ? <ChallengesPanel /> : null} />
+          )} />
+        )}
         {tab === "competir" && (
           <CompetirTab
             isAdmin={cloud.isAdmin}
@@ -2104,7 +2233,7 @@ export default function PitchApp() {
         )}
       </div>
 
-      <BottomNav tab={tab} matchdayHot={matchdayHot} onSelect={selectTab} />
+      <BottomNav tab={tab} teamMode={teamMode} matchdayHot={teamMode ? Boolean(teamNextMatch?.isToday) : matchdayHot} onSelect={selectTab} />
     </>
   );
 }
