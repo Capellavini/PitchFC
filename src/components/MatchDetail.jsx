@@ -106,7 +106,7 @@ export default function MatchDetail({ teams, challengeId, onBack }) {
             {termValue("venueName", terms)}
             {terms.venueAddress && <div style={{ fontSize: T.meta, color: C.text2, fontWeight: 500 }}>{terms.venueAddress}</div>}
             {map && (
-              <a href={map} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: TOUCH.min, color: C.accent, fontSize: T.meta + 1, fontWeight: 700 }}>
+              <a href={map} target="_blank" rel="noopener noreferrer" style={{ display: "flex", width: "fit-content", alignItems: "center", gap: 4, minHeight: TOUCH.min, color: C.accent, fontSize: T.meta + 1, fontWeight: 700 }}>
                 <ExternalLink size={14} aria-hidden /> {t(CC.openMap)}
               </a>
             )}

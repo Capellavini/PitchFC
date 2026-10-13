@@ -298,14 +298,16 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
   const rivalTimers = useRef([]);
   useEffect(() => () => rivalTimers.current.forEach(clearTimeout), []);
   const scheduleRival = useCallback((challengeId) => {
-    const id = setTimeout(() => {
+    const step = () => {
       const mv = demoRivalMove(demoRef.current, challengeId, myTeamIdsRef.current);
       if (!mv) return;
       demoRef.current = mv.state;
       setDemo(mv.state);
       setRevision((n) => n + 1);
-    }, RIVAL_DELAY_MS);
-    rivalTimers.current.push(id);
+      // Chain (accept → confirm the pitch …) until the rival has nothing left to do.
+      rivalTimers.current.push(setTimeout(step, RIVAL_DELAY_MS));
+    };
+    rivalTimers.current.push(setTimeout(step, RIVAL_DELAY_MS));
   }, [setDemo]);
 
   const demoChallengeCall = useCallback((op, args, map = (x) => x, challengeIdOf = null) => {
