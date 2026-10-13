@@ -3,7 +3,10 @@ import { Pencil, Camera, Settings, Cross, ArrowLeft, Users, Shield } from "lucid
 import { C, S, R, T, TOUCH, cardStyle, displayFont } from "../theme";
 import { POSITIONS, FEET, NATIONALITIES } from "../data";
 import { encodePayload, computeOverall, playerColor } from "../lib/helpers";
-import { t, tCtx } from "../lib/i18n";
+import { t, tCtx, getLang } from "../lib/i18n";
+import { RC, tf } from "../lib/rivalsCopy";
+import { sinceLabel } from "../lib/rivals";
+import TeamBadge from "./TeamBadge";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
 import { formFor, careerRecordsFor } from "../lib/profileStats";
 import FutCard from "./FutCard";
@@ -50,7 +53,7 @@ const roleLabel = (role) => (role === "organizer" ? t("Organizador") : role === 
  *  behind the gear (SettingsScreen, rendered by PitchApp via
  *  `onOpenSettings`). Viewing someone else's profile (openProfile) hides
  *  gear/edit and shows the cloud RatingForm instead of the ratings card. */
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, isOrganizer, addPeerRating, cloudMode, onSubmitRating, uploadMedia, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember, onOpenSettings, personalRecords, attendanceStreak = 0, groupName, city, myGroups = [], activeGroupId, myTeams = [], localMatchday }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, isOrganizer, addPeerRating, cloudMode, onSubmitRating, uploadMedia, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember, onOpenSettings, personalRecords, attendanceStreak = 0, groupName, city, myGroups = [], activeGroupId, myTeams = [], onOpenTeam, localMatchday }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -208,7 +211,14 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
   const groupRows = isOwn && myGroups.length
     ? myGroups.map((m) => ({ id: m.group_id, name: m.groups?.name ?? "—", meta: [roleLabel(m.role), m.groups?.venue].filter(Boolean).join(" · "), active: m.group_id === activeGroupId }))
     : (groupName ? [{ id: "current", name: groupName, meta: player.isOrganizerPlayer ? t("Organizador") : player.isAssistant ? t("Auxiliar") : t("Membro"), active: true }] : []);
-  const teamRows = isOwn ? myTeams.filter((m) => m.teams).map((m) => ({ id: m.team_id, name: m.teams.name, meta: [m.role === "captain" ? t("Capitão") : t("Plantel"), m.teams.city].filter(Boolean).join(" · ") })) : [];
+  // PITCH Rivals teams (useTeams shape): current role + "desde". Team
+  // career metrics land with the results phase (PR6/PR7).
+  const sinceLocale = { pt: "pt-PT", "pt-br": "pt-BR", en: "en-GB" }[getLang()] || "pt-PT";
+  const teamRows = isOwn ? myTeams.map((tm) => ({
+    id: tm.id, team: tm, name: tm.name,
+    meta: [t(tm.role === "captain" ? RC.roleCaptain : tm.role === "vice" ? RC.roleVice : RC.rolePlayer),
+      tm.since ? tf(RC.since, { date: sinceLabel(tm.since, sinceLocale) }) : null, tm.city].filter(Boolean).join(" · "),
+  })) : [];
 
   return (
     <div style={{ padding: `0 ${S.lg}px ${S.xl}px` }}>
@@ -325,8 +335,9 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
                     right={g.active && groupRows.length > 1 ? <Chip variant="green">{t("Ativo")}</Chip> : null} />
                 ))}
                 {teamRows.map((tm, i) => (
-                  <ListRow key={`t${tm.id}`} divider={groupRows.length + i > 0} leading={iconDisc(Shield)} title={tm.name} meta={tm.meta}
-                    right={<Chip>{t("Equipa")}</Chip>} />
+                  <ListRow key={`t${tm.id}`} divider={groupRows.length + i > 0} leading={<TeamBadge team={tm.team} size={36} />} title={tm.name} meta={tm.meta}
+                    right={<Chip Icon={Shield}>{t(RC.teamChip)}</Chip>}
+                    onClick={onOpenTeam ? () => onOpenTeam(tm.id) : undefined} />
                 ))}
               </div>
             </div>

@@ -4,12 +4,12 @@ import { C, R, S, T, cardStyle } from "../theme";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import { t } from "../lib/i18n";
+import { RC, RIVALS_BRAND } from "../lib/rivalsCopy";
 import { isEnabled } from "../lib/flags";
 import PageHeader from "./PageHeader";
 import SegmentedControl from "./SegmentedControl";
 import SectionLabel from "./SectionLabel";
 import Chip from "./Chip";
-import TeamsPanel from "./TeamsPanel";
 import ChallengesPanel from "./ChallengesPanel";
 import Leaderboard from "./Leaderboard";
 import ComparePlayers from "./ComparePlayers";
@@ -23,28 +23,37 @@ import GoalOfTheWeek from "./GoalOfTheWeek";
  *  classification (opens on Impacto; Golos, Assistências, MVP,
  *  Guarda-redes, Forma, Fiabilidade % + "Mais") → weekly podium → Golo da
  *  Semana. Fantasy/Pitch Manager is NOT here (it lives in the group page).
- *  The Rankings | Equipas | Desafios switcher only appears when the
- *  `teams`/`challenges` flags are on.
+ *  The Rankings | Equipa | Desafios switcher only appears when PITCH
+ *  Rivals is visible for this viewer (`rivalsOn` — flag, own team, team
+ *  invite intent or the ?rivals=1 pilot opt-in; see lib/rivals
+ *  rivalsVisible). A player with a team but no group (`groupless`) gets
+ *  Rivals alone: no Rankings (they belong to a group).
+ *
+ *  `rivalsHub` is the rendered RivalsHub; `view`/`onViewChange` let
+ *  PitchApp deep-link into the Equipa segment (?team=, ?tjoin=, Home).
  *
  *  Data: `group` (season totals per player), `history` (one row per
  *  matchday), `matchdaySummaries` (newest-first day summaries — Forma,
  *  team-day records, compare), `lastMatchday` (summary.lines) and `mvp`. */
-export default function CompetirTab({ isAdmin, group = [], history = [], matchdaySummaries = [], lastMatchday, mvp, social, postDates, groupName, groupPicker, openBallot = false }) {
-  const [sub, setSub] = useState("rankings");
+export default function CompetirTab({ isAdmin, group = [], history = [], matchdaySummaries = [], lastMatchday, mvp, social, postDates, groupName, groupPicker, openBallot = false, rivalsOn = false, rivalsHub = null, groupless = false, view: viewProp, onViewChange }) {
+  const [subLocal, setSubLocal] = useState("rankings");
+  const sub = viewProp ?? subLocal;
+  const setSub = onViewChange ?? setSubLocal;
   const [comparing, setComparing] = useState(false);
   // Open MVP ballot starts as a one-line card (the full ballot is tall
   // and would push the classification off screen) — unless PitchApp
   // deep-linked here from Home's "Votar MVP" (openBallot).
   const [ballotOpen, setBallotOpen] = useState(openBallot);
   const myBallotDone = Boolean(mvp?.myVotes?.[1]);
-  const teamsOn = isEnabled("teams", { isAdmin });
-  const challengesOn = isEnabled("challenges", { isAdmin });
+  const teamsOn = Boolean(rivalsOn && rivalsHub);
+  // Flags map 1:1 to the segments; `challenges` requires `teams`.
+  const challengesOn = teamsOn && isEnabled("challenges", { isAdmin });
   const subs = [
-    { id: "rankings", label: "Rankings" },
-    teamsOn && { id: "equipas", label: "Equipas" },
-    challengesOn && { id: "desafios", label: "Desafios" },
+    (!groupless || !teamsOn) && { id: "rankings", label: "Rankings" },
+    teamsOn && { id: "equipa", label: RC.segTeam },
+    challengesOn && { id: "desafios", label: RC.segChallenges },
   ].filter(Boolean);
-  const view = subs.some((s) => s.id === sub) ? sub : "rankings";
+  const view = subs.some((s) => s.id === sub) ? sub : (subs[0]?.id ?? "rankings");
 
   // Matchdays held this season. The local demo seeds season totals
   // (gamesPlayed) beyond the 5 mock history rows, so never let the
@@ -59,8 +68,8 @@ export default function CompetirTab({ isAdmin, group = [], history = [], matchda
     <div style={{ padding: `0 ${S.lg}px` }}>
       <PageHeader
         title={t("Competir")}
-        subtitle={`${t("Temporada")} · ${seasonDays} ${seasonDays === 1 ? t("dia de jogo") : t("dias de jogo")}`}
-        right={groupPicker || (groupName ? <Chip Icon={Users}>{groupName}</Chip> : null)}
+        subtitle={view === "rankings" ? `${t("Temporada")} · ${seasonDays} ${seasonDays === 1 ? t("dia de jogo") : t("dias de jogo")}` : RIVALS_BRAND}
+        right={view !== "rankings" ? null : (groupPicker || (groupName ? <Chip Icon={Users}>{groupName}</Chip> : null))}
       />
 
       {subs.length > 1 && <SegmentedControl options={subs} value={view} onChange={setSub} />}
@@ -102,7 +111,7 @@ export default function CompetirTab({ isAdmin, group = [], history = [], matchda
           <GoalOfTheWeek social={social} group={group} postDates={postDates} />
         </>
       )}
-      {view === "equipas" && <TeamsPanel />}
+      {view === "equipa" && rivalsHub}
       {view === "desafios" && <ChallengesPanel />}
     </div>
   );

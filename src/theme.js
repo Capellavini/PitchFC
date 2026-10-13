@@ -166,6 +166,31 @@ export const AVATAR_PALETTE = [
   "#A78BFA", "#FB923C", "#34D399", "#60A5FA",
 ];
 
+/** Kit colours a captain can pick for a Team (primary + secondary). These
+ *  are DATA the user chooses (stored on teams.color / secondary_color),
+ *  not UI chrome — identical across light/dark on purpose, like the
+ *  gold/silver/bronze card tiers. Each has a translated name for a11y. */
+export const TEAM_COLORS = [
+  "#C8FF00", "#FFFFFF", "#0A0F18", "#FF3B5C", "#FF9F0A", "#E8C547",
+  "#00D08A", "#0E5C36", "#4895FF", "#1B3A8C", "#A78BFA", "#8B1E3F",
+];
+
+/** Text input / select look for forms — a function so it reads the
+ *  CURRENT palette (see applyPalette). ≥44px tall for touch. */
+export const inputStyle = () => ({
+  width: "100%", boxSizing: "border-box", minHeight: TOUCH.min, background: C.card, color: C.text1,
+  border: `1px solid ${C.border}`, borderRadius: R.control, padding: "10px 12px", fontSize: T.body, outline: "none",
+  fontFamily: "inherit",
+});
+
+/** Legible text colour on top of an arbitrary (team) colour. */
+export const inkOn = (hex) => {
+  const n = parseInt(String(hex || "").replace("#", ""), 16);
+  if (Number.isNaN(n)) return DARK.text1;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? DARK.bg : DARK.text1;
+};
+
 /** Applies the light or dark palette by mutating C/cardStyle/
  *  AVATAR_PALETTE IN PLACE (never reassigning the export bindings, so
  *  every existing `import { C } from "../theme"` keeps working
