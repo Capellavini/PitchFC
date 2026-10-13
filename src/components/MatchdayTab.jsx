@@ -26,7 +26,7 @@ import TeamDraw from "./TeamDraw";
  * its MVP vote is still open and there's no new game today. A manager can
  * jump from "after" back to "before" to prepare another round.
  */
-export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeams, renameTeam, movePlayer, setTeamCaptain, balanceTeams, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null, mvp = null, lastMatchday = null, onCardGenerated, social }) {
+export default function MatchdayTab({ group, game, varControl=null, teams, drawTeams, onClearTeams, renameTeam, movePlayer, setTeamCaptain, balanceTeams, canManageTeams, teamsConfirmed, onConfirmTeams, teamsSetByName, teamsConfirmedByName, matchdayProps, prompt = null, coldView = null, mvp = null, lastMatchday = null, onCardGenerated, social }) {
   const [forceBefore, setForceBefore] = useState(false);
   const [liveView, setLiveView] = useState("jogo"); // equipas | jogo | stats (live state only)
   const confirmed = group.filter((p) => p.status === "confirmed");
@@ -54,6 +54,7 @@ export default function MatchdayTab({ group, game, teams, drawTeams, onClearTeam
   const wrap = (children, step = null, stepNav = null) => (
     <div style={{ padding: `0 ${S.lg}px ${S.xl}px` }}>
       <PageHeader title="Matchday" subtitle={subtitle} />
+      {varControl}
       {step != null && <MatchdayStepper step={step} {...(stepNav || {})} />}
       {prompt && <div style={{ marginBottom: S.xl }}>{prompt}</div>}
       {children}
