@@ -63,14 +63,16 @@ function App(){
     if(exportBusy.current||network.uploading)return;
     setBusy(true);setError('');setMessage('');setReady(undefined);
     try{
-      if(network.user&&!settings.demo&&!localOnly){if(!selectedGame){if(pairing.current){pairing.current.open=true;pairing.current.scrollIntoView({block:'nearest'});}throw Error('Escolha uma partida com VAR ativado pelo organizador.');}await network.clock();}
+      // No match with VAR enabled → free mode: the camera still records and "Salvar lance" keeps clips on this phone, just without goal association.
+      const linked=!!(network.user&&!settings.demo&&!localOnly&&selectedGame);
+      if(linked)await network.clock();
       await engine.start(settings);
-      if(network.user&&!settings.demo&&!localOnly){try{await network.begin(engine,selectedGame!);}catch(e){await engine.stop();throw e;}}
+      if(linked){try{await network.begin(engine,selectedGame!);}catch(e){await engine.stop();throw e;}}
       setPreview(true);setTab('camera');
       if(pairing.current)pairing.current.open=false;
       setSettingsOpen(false);
       if(voiceWanted){try{voice.start(lang);}catch(e){setError((e as Error).message);}}
-      setMessage('Câmera ativa. Mantenha a tela desbloqueada.');
+      setMessage(linked||PUBLIC_VAR||!network.user||settings.demo||localOnly?'Câmera ativa. Mantenha a tela desbloqueada.':'Modo livre: sem partida com VAR. Salve os lances pelo botão; eles ficam neste celular.');
     }catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
   async function stop(upload=true){setBusy(true);voice.stop();await engine.stop();await network.stop();setField(false);setBusy(false);setMessage(PUBLIC_VAR?'Gravação encerrada. Os lances estão neste celular; abra Meus lances para assistir ou compartilhar.':'Gravação encerrada. Mantenha a página aberta até concluir o envio dos gols.');if(!PUBLIC_VAR&&upload&&!document.hidden)void network.uploadQueue();}
