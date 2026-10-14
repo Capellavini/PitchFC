@@ -11,6 +11,7 @@ import TeamRoster from "./TeamRoster";
 import TeamInviteSheet from "./TeamInviteSheet";
 import TeamEditSheet from "./TeamEditSheet";
 import MemberActionsSheet from "./MemberActionsSheet";
+import PitchAiTeamCta from "./PitchAiTeamCta";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
@@ -98,6 +99,9 @@ export default function TeamPage({ teams, teamId, onLeft, onChallenge, inviteSig
         )}
       </div>
 
+      {/* Pitch AI (decision 2026-10-13 b): leaders of a squad still under 5. */}
+      {can(myRole, "invite") && n < 5 && <PitchAiTeamCta team={team} />}
+
       <TeamRecordStrip record={record} />
 
       <SectionLabel right={can(myRole, "invite") ? (
@@ -132,7 +136,7 @@ export default function TeamPage({ teams, teamId, onLeft, onChallenge, inviteSig
         </div>
       )}
 
-      {sheet === "invite" && <TeamInviteSheet teams={teams} team={team} onClose={() => setSheet(null)} />}
+      {sheet === "invite" && <TeamInviteSheet teams={teams} team={team} showPitchAi={n < 5} onClose={() => setSheet(null)} />}
       {sheet === "edit" && (
         <TeamEditSheet teams={teams} team={team} myRole={myRole} onClose={() => setSheet(null)}
           onSaved={() => setSheet(null)} onArchived={() => { setSheet(null); onLeft?.(team.id); }} />

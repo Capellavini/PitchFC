@@ -12,12 +12,14 @@ export interface GoalReplayRequest {
   sessionId:string;occurredAt:string;recordedAt:string;ownGoal:boolean;revision:number;
 }
 export interface VarCaptureContext {
+  followMatchday?:boolean;
   enabled:boolean;armed:boolean;active:boolean;groupId:string;gameId:string;matchId:string;sessionId:string;deviceId:string;
   // Instante de início do vídeo no relógio sincronizado com servidor; nunca usar relógio do João cru.
   startServerMs:number;clockUncertaintyMs:number;elapsedSeconds:number;earliestSeconds:number;
   preSeconds:number;postSeconds:number;
 }
 export interface EligibleVarDevice {
+  followMatchday?:boolean;
   groupId:string;gameId:string;matchId:string;sessionId:string;deviceId:string;operatorPlayerId:string;
   armed:boolean;active:boolean;captureStartedServerMs:number;leaseExpiresServerMs:number;
 }
@@ -28,7 +30,7 @@ export function fanOutMatchdayGoal(goal:Omit<GoalReplayRequest,'sessionId'>,sess
   if(!options.enabled||!Number.isFinite(options.nowServerMs))return [];
   const seen=new Set<string>();const targets:{deviceId:string;request:GoalReplayRequest}[]=[];
   for(const s of sessions){
-    if(!s.armed||!s.active||s.groupId!==goal.groupId||s.gameId!==goal.gameId||s.matchId!==goal.matchId
+    if(!s.armed||!s.active||s.groupId!==goal.groupId||s.gameId!==goal.gameId||(!s.followMatchday&&s.matchId!==goal.matchId)
       ||!options.confirmedPlayerIds.has(s.operatorPlayerId)||!uuid.test(s.deviceId)||!uuid.test(s.operatorPlayerId)
       ||!Number.isFinite(s.captureStartedServerMs)||Date.parse(goal.occurredAt)<s.captureStartedServerMs
       ||!Number.isFinite(s.leaseExpiresServerMs)||s.leaseExpiresServerMs<=options.nowServerMs||seen.has(s.sessionId))continue;
@@ -55,7 +57,7 @@ export function planGoalReplay(value:unknown,c:VarCaptureContext,knownKeys:Reado
   if(!c.active)return {status:'not_recording'};
   if(!validateGoalRequest(value))return {status:'invalid'};
   const r=value;
-  if(r.groupId!==c.groupId||r.gameId!==c.gameId||r.matchId!==c.matchId||r.sessionId!==c.sessionId)return {status:'wrong_session'};
+  if(r.groupId!==c.groupId||r.gameId!==c.gameId||(!c.followMatchday&&r.matchId!==c.matchId)||r.sessionId!==c.sessionId)return {status:'wrong_session'};
   // A revisão muda a atribuição, não a identidade do vídeo; correções exigem fluxo separado.
   const key=`${r.sessionId}:${r.goalId}`;
   if(knownKeys.has(key))return {status:'duplicate'};

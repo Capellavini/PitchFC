@@ -3,7 +3,8 @@ import { Plus, X } from "lucide-react";
 import { C, R, S, T, TOUCH } from "../theme";
 import { t } from "../lib/i18n";
 import { RC } from "../lib/rivalsCopy";
-import { MARKETS } from "../lib/rivals";
+import { MARKETS, isLeader } from "../lib/rivals";
+import ChallengeComposer from "./ChallengeComposer";
 import SegmentedControl from "./SegmentedControl";
 import TeamEmptyState from "./TeamEmptyState";
 import TeamSwitcher from "./TeamSwitcher";
@@ -22,10 +23,23 @@ import BtnGhost from "./BtnGhost";
  * `focus` = { teamId?, slug?, n } — deep links / Home / Perfil ask the hub
  * to show a team; bump `n` to re-apply. `notice` = one-off message (e.g.
  * an invite that failed after signup), dismissible.
- * EXTENSION POINT (PR5): `onChallenge(team)` arms every "Desafiar".
+ * Challenges (PR5): with `challengesOn`, every "Desafiar" (team page,
+ * directory card, public team page) opens the ChallengeComposer here
+ * (directed at that team, or a claimable link from my team page); after
+ * sending, `onOpenChallenge(challengeId)` jumps to Desafios. A custom
+ * `onChallenge(opponent, fromTeam)` still overrides it.
+ * `challenges` (rendered node, optional) adds a "Desafios" segment — the
+ * team-mode Equipa tab uses it (A minha equipa · Desafios · Descobrir).
+ * `focus.view` ("team" | "challenges" | "discover") switches segment.
  */
-export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, onDismissNotice, onChallenge }) {
+export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, onDismissNotice, onChallenge: onChallengeProp, challengesOn = false, onOpenChallenge, challenges = null }) {
   const mine = teams.myTeams;
+  // { opponent, fromTeamId } — the composer opened from a "Desafiar".
+  const [composer, setComposer] = useState(null);
+  const leads = mine.some((tm) => isLeader(tm.role));
+  const onChallenge = onChallengeProp || (challengesOn && leads
+    ? (opponent, fromTeam) => setComposer({ opponent: opponent || null, fromTeamId: fromTeam?.id || null })
+    : undefined);
   const [view, setView] = useState("team");
   const [selectedId, setSelectedId] = useState(null);
   const [publicSlug, setPublicSlug] = useState(null);
@@ -36,6 +50,7 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
 
   useEffect(() => {
     if (!focus) return;
+    if (focus.view && !focus.teamId && !focus.slug) { setView(focus.view === "challenges" && !challenges ? "team" : focus.view); setPublicSlug(null); }
     if (focus.teamId) { setSelectedId(focus.teamId); setView("team"); setPublicSlug(null); }
     if (focus.teamId && focus.invite) askInvite(focus.teamId);
     if (focus.slug) {
@@ -55,8 +70,15 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
 
   if (publicSlug) {
     return (
-      <TeamPublicPage teams={teams} slug={publicSlug} onBack={() => setPublicSlug(null)} onChallenge={onChallenge}
-        onOpenMine={(id) => { setPublicSlug(null); setSelectedId(id); setView("team"); }} />
+      <>
+        <TeamPublicPage teams={teams} slug={publicSlug} onBack={() => setPublicSlug(null)} onChallenge={onChallenge}
+          onOpenMine={(id) => { setPublicSlug(null); setSelectedId(id); setView("team"); }} />
+        {composer && (
+          <ChallengeComposer teams={teams} mode="new" opponent={composer.opponent} fromTeamId={composer.fromTeamId || mine[0]?.id}
+            onClose={() => setComposer(null)}
+            onDone={(d) => { setComposer(null); if (d?.challengeId) onOpenChallenge?.(d.challengeId); }} />
+        )}
+      </>
     );
   }
 
@@ -73,9 +95,9 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
       )}
 
       <SegmentedControl value={view} onChange={setView}
-        options={[{ id: "team", label: RC.myTeam }, { id: "discover", label: RC.segDiscover }]} />
+        options={[{ id: "team", label: RC.myTeam }, ...(challenges ? [{ id: "challenges", label: RC.segChallenges }] : []), { id: "discover", label: RC.segDiscover }]} />
 
-      {view === "discover" ? (
+      {view === "challenges" && challenges ? challenges : view === "discover" ? (
         <TeamDirectory teams={teams} home={home} onOpenTeam={openSlug} onChallenge={current ? onChallenge : undefined} />
       ) : teams.loading && !mine.length ? (
         <div aria-busy="true" style={{ fontSize: T.body, color: C.text2, padding: `${S.lg}px 0` }}>{t(RC.loading)}</div>
@@ -96,6 +118,12 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
             <BtnGhost block onClick={() => setCreating(true)} style={{ marginBottom: S.xl }}><Plus size={16} /> {t(RC.newTeam)}</BtnGhost>
           )}
         </>
+      )}
+
+      {composer && (
+        <ChallengeComposer teams={teams} mode="new" opponent={composer.opponent} fromTeamId={composer.fromTeamId || current?.id}
+          onClose={() => setComposer(null)}
+          onDone={(d) => { setComposer(null); if (d?.challengeId) onOpenChallenge?.(d.challengeId); }} />
       )}
 
       {creating && (

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   intentFromSearch, intentFromMetadata, intentMetadata, savePendingIntent, readPendingIntent,
   clearPendingIntent, readRivalsOptIn, saveRivalsOptIn, INTENT_KEY, INTENT_TTL_MS,
+  CREATE_KEY, formatFromModality, countryFromPhone, sanitizeTeamDraft, makeCreateIntent, createIntentMetadata,
+  createIntentFromMetadata, saveCreateIntent, readCreateIntent, clearCreateIntent,
 } from "./pendingIntent.js";
 
 const memStorage = () => {
@@ -48,4 +50,42 @@ test("rivals opt-in flag", () => {
   assert.equal(readRivalsOptIn({ storage }), true);
   saveRivalsOptIn(false, { storage });
   assert.equal(readRivalsOptIn({ storage }), false);
+});
+
+test("create-team draft: sanitised, formats and market mapped", () => {
+  assert.equal(formatFromModality("F7"), "7v7");
+  assert.equal(formatFromModality(""), null);
+  assert.equal(countryFromPhone("+5511987654321"), "BR");
+  assert.equal(countryFromPhone("+351912345678"), "PT");
+  assert.deepEqual(sanitizeTeamDraft({ name: "  Coletes   FC ", city: " Porto ", format: "7v7", country: "BR", evil: 1 }),
+    { name: "Coletes FC", country: "BR", city: "Porto", format: "7v7" });
+  assert.equal(sanitizeTeamDraft({ name: "X" }), null);
+  assert.deepEqual(sanitizeTeamDraft({ name: "Abc", format: "F7" }), { name: "Abc", country: "PT" });
+  assert.equal(sanitizeTeamDraft(null), null);
+});
+
+test("create-team intent ⇄ signUp metadata", () => {
+  const meta = createIntentMetadata({ team: { name: "Coletes FC", city: "Porto", format: "7v7" } });
+  assert.deepEqual(meta, { pending_intent: { kind: "create_team", team: { name: "Coletes FC", country: "PT", city: "Porto", format: "7v7" } } });
+  assert.deepEqual(createIntentFromMetadata({ ...meta, name: "Rui", phone: "+351911111111" }),
+    { kind: "create_team", team: { name: "Coletes FC", country: "PT", city: "Porto", format: "7v7" }, captain: { name: "Rui", phone: "+351911111111" } });
+  assert.equal(createIntentFromMetadata({ pending_intent: null }), null);
+  assert.equal(createIntentFromMetadata({ pending_intent: { kind: "tjoin" } }), null);
+  assert.deepEqual(createIntentMetadata(null), {});
+});
+
+test("create-team intent: save / read / expire / clear, separate from the tjoin intent", () => {
+  const storage = memStorage();
+  const now = 1_000_000_000_000;
+  savePendingIntent({ kind: "tjoin", token: "abcd1234efgh" }, { storage, now });
+  saveCreateIntent(makeCreateIntent({ name: "Coletes FC" }, { name: "Rui" }), { storage, now });
+  assert.deepEqual(readCreateIntent({ storage, now: now + 1000 }), { kind: "create_team", team: { name: "Coletes FC", country: "PT" }, captain: { name: "Rui", phone: "" } });
+  assert.deepEqual(readPendingIntent({ storage, now }), { kind: "tjoin", token: "abcd1234efgh" });
+  assert.equal(readCreateIntent({ storage, now: now + INTENT_TTL_MS + 1 }), null);
+  assert.equal(storage.getItem(CREATE_KEY), null);
+  saveCreateIntent(makeCreateIntent({ name: "Coletes FC" }), { storage, now });
+  clearCreateIntent({ storage });
+  assert.equal(readCreateIntent({ storage, now }), null);
+  storage.setItem(CREATE_KEY, "{bad json");
+  assert.equal(readCreateIntent({ storage, now }), null);
 });

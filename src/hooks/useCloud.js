@@ -36,6 +36,19 @@ const weekdayFromDateStr = (dateStr) => {
   return new Date(y, mo - 1, da).getDay();
 };
 
+/** Supabase auth error → a stable code the UI can branch on. */
+const authErrorCode = (error) => {
+  if (!error) return null;
+  if (error.name === "AuthRetryableFetchError" || error.status === 0) return "network";
+  if (error.code) return error.code; // weak_password, user_already_exists, invalid_credentials, email_not_confirmed, over_email_send_rate_limit…
+  const m = String(error.message || "").toLowerCase();
+  if (m.includes("already registered")) return "user_already_exists";
+  if (m.includes("password")) return "weak_password";
+  if (m.includes("invalid login")) return "invalid_credentials";
+  if (m.includes("not confirmed")) return "email_not_confirmed";
+  return null;
+};
+
 const EMPTY = {
   user: null, myPlayer: null, groupRow: null,
   players: [], game: null, attendances: [], events: [], bookings: [],
@@ -285,19 +298,51 @@ export function useCloud() {
     // the user signed up in — on the account itself: the send-welcome Edge
     // Function reads both to name the group and pick the email's language.
     const joinToken = new URLSearchParams(window.location.search).get("join");
-    const { data: res, error } = await supabase.auth.signUp({
-      email, password, options: { data: { lang: getLang(), ...meta, ...(joinToken ? { join_token: joinToken } : {}) } },
-    });
-    if (error) return { error: error.message };
-    trackEvent("sign_up", { method: "email" });
+    let res, error;
+    try {
+      ({ data: res, error } = await supabase.auth.signUp({
+        email, password, options: { data: { lang: getLang(), ...meta, ...(joinToken ? { join_token: joinToken } : {}) } },
+      }));
+    } catch (e) {
+      return { error: e?.message || "network", code: "network" };
+    }
+    if (error) return { error: error.message, code: authErrorCode(error) };
+    // With "Confirm email" ON, Supabase answers an already-registered email
+    // with a fake user that has no identities (anti-enumeration) — no email
+    // is sent, so tell the caller to offer a login instead.
+    const alreadyRegistered = Array.isArray(res?.user?.identities) && res.user.identities.length === 0;
+    if (!alreadyRegistered) trackEvent("sign_up", { method: "email" });
     // Confirmation OFF → session present, user is in. ON → needs email.
-    return { needsConfirm: !res.session };
+    return { needsConfirm: !res?.session, alreadyRegistered };
   };
 
   const signIn = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    let error;
+    try {
+      ({ error } = await supabase.auth.signInWithPassword({ email, password }));
+    } catch (e) {
+      return { error: e?.message || "network", code: "network" };
+    }
     if (!error) trackEvent("login", { method: "email" });
-    return error ? { error: error.message } : {};
+    return error ? { error: error.message, code: authErrorCode(error) } : {};
+  };
+
+  /** Re-send the signup confirmation email. */
+  const resendSignup = async (email) => {
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email });
+      return error ? { error: error.message, code: authErrorCode(error) } : {};
+    } catch (e) {
+      return { error: e?.message || "network", code: "network" };
+    }
+  };
+
+  /** Drop keys from the account's user_metadata (e.g. a consumed
+   *  pending_intent, so a later login elsewhere never replays it). */
+  const clearUserMeta = async (keys) => {
+    try {
+      await supabase.auth.updateUser({ data: Object.fromEntries(keys.map((k) => [k, null])) });
+    } catch { /* best effort */ }
   };
 
   const signOut = async () => { await supabase.auth.signOut(); };
@@ -1459,7 +1504,7 @@ export function useCloud() {
     // email (vinicius.capella@ziarimoveis.com.br).
     isFantasyAdmin: (data.user?.email || "").toLowerCase() === "capella.vinicius@gmail.com",
     canSeeFantasy: Boolean(data.user),
-    signUp, signIn, signOut,
+    signUp, signIn, signOut, resendSignup, clearUserMeta,
     recovery, clearRecovery, resetPassword, updatePassword, updateEmail, signOutEverywhere,
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, resolveInviteToken, joinGroupWithProfile, switchActiveGroup, removeMember, banMember, unbanMember,
     setMyStatus, setPaid, setAttendanceLock, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,

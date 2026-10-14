@@ -193,8 +193,8 @@ const adjunto = () => (adjuntoP ??= import("./adjunto/index.js").then(({ createA
   },
 })));
 
-/** DM to a linked organizer (or one of the two allowed replies to an
- *  unlinked sender). Dry-run unless ADJUNTO_AUTOSEND=true. The message id is
+/** DM to a linked organizer (or one of the allowed replies to an unlinked
+ *  sender: activation code/phrase, PITCH Rivals captain guide). Dry-run unless ADJUNTO_AUTOSEND=true. The message id is
  *  generated up front and recorded, so the bot's own sends never look like a
  *  human takeover. Read receipts are never sent. */
 async function sendAdjuntoDm(target, text, { groupId = null, eventKind = null } = {}) {

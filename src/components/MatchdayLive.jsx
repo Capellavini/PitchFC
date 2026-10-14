@@ -1,3 +1,4 @@
+import {currentMatch} from "../lib/currentMatch.js";
 import { useState, useRef, Fragment } from "react";
 import { Goal, Footprints, Hand, Flag, RotateCcw, Plus, Check, X, Undo2, ArrowLeftRight, Mic, LayoutGrid, ArrowRightCircle, Swords, Trophy, Settings2 } from "lucide-react";
 import { C, R, S, T, cardStyle, displayFont } from "../theme";
@@ -50,7 +51,7 @@ function ActionSquare({ Icon, label, color, onClick }) {
  * Organizer/assistant writes; everyone else gets the same screen
  * read-only (synced via games.live_matchday in cloud mode).
  */
-export default function MatchdayLive({ matchday, teams, group, canManage, onAddMatch, onGoal, onEpicSave, onRemoveEvent, onUpdateEvent, onSetGoalkeeper, onSetMatchConcluded, onEnd, onCancel, onAdvancePlayoff, onSetChampion, onSetPenaltyWinner, onSubstitute, onRevertSub, view = "jogo" }) {
+export default function MatchdayLive({ matchday, teams, group, canManage, onAddMatch, onGoal, onEpicSave, onRemoveEvent, onUpdateEvent, onSetGoalkeeper, onSetMatchConcluded, onSetActiveMatch, onEnd, onCancel, onAdvancePlayoff, onSetChampion, onSetPenaltyWinner, onSubstitute, onRevertSub, view = "jogo" }) {
   const [selectedId, setSelectedId] = useState(null);
   const [sheet, setSheet] = useState(null); // { kind, initial? }
   const [composing, setComposing] = useState(null); // { homeId, awayId }
@@ -84,7 +85,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
 
   // Focus: explicit pick, else the latest match still being played, else the last one.
   const playable = matches.filter((m) => !m.isBye);
-  const fallback = [...playable].reverse().find((m) => !m.concluded) ?? playable[playable.length - 1] ?? matches[matches.length - 1];
+  const fallback = currentMatch(matchday) ?? playable[playable.length - 1] ?? matches[matches.length - 1];
   const m = matches.find((x) => x.id === selectedId) ?? fallback;
 
   const startCompose = () => {
@@ -365,7 +366,7 @@ export default function MatchdayLive({ matchday, teams, group, canManage, onAddM
               {matches.map((x) => {
                 const active = m && x.id === m.id;
                 return (
-                  <button key={x.id} type="button" onClick={() => setSelectedId(x.id)} style={pill(active)}>
+                  <button key={x.id} type="button" onClick={() => {if(canManage&&!x.concluded&&onSetActiveMatch){setSelectedId(null);onSetActiveMatch(x.id);}else setSelectedId(x.id);}} style={pill(active)}>
                     {x.concluded && <Check size={14} color={active ? C.bg : C.green} />}
                     {matchLabel(x, roundSize)}
                     {x.concluded && !x.isBye && <span style={{ opacity: 0.8 }}>{goalsOf(x, x.homeId)}–{goalsOf(x, x.awayId)}</span>}

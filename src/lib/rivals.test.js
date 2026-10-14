@@ -5,8 +5,38 @@ import {
   normTeam, normMember, normDirectoryItem, sortRoster, can, inviteStatus, inviteDaysLeft,
   rivalsVisible, isNoGroup, openingTab, teamFeedItems, challengeDeadline, marketForLang, MARKETS,
   supportWhatsAppUrl, listTeamsLocal, demoSeed, demoOp, demoInvitePreview, demoMyTeams, DEMO_INVITE_TOKEN,
-  validateTeamFields, hasPlayed, emptyRecord,
+  validateTeamFields, hasPlayed, emptyRecord, isTeamMode, resolveTab, nextTeamMatch,
 } from "./rivals.js";
+
+test("team mode: only with a team and no group; competir ⇄ equipa", () => {
+  assert.equal(isTeamMode({ noGroup: true, teamCount: 1 }), true);
+  assert.equal(isTeamMode({ noGroup: true, teamCount: 0 }), false);
+  assert.equal(isTeamMode({ noGroup: false, teamCount: 3 }), false);
+  assert.equal(resolveTab("competir", true), "equipa");
+  assert.equal(resolveTab("equipa", false), "competir");
+  assert.equal(resolveTab("jogar", true), "jogar");
+});
+
+test("next team match: defensive, mine only, soonest, today in the team's timezone", () => {
+  const now = Date.parse("2026-10-13T12:00:00Z");
+  const mine = [{ id: "a", name: "Coletes", timezone: "Europe/Lisbon" }];
+  assert.equal(nextTeamMatch(undefined, mine, now), null);
+  assert.equal(nextTeamMatch([], mine, now), null);
+  const later = { id: "m2", home_team_id: "a", away_team_id: "x", away_team: { id: "x", name: "Rivais FC" }, kickoff_at: "2026-10-16T19:00:00Z", match_status: "scheduled" };
+  const today = { id: "m1", homeTeamId: "y", awayTeamId: "a", homeTeam: { id: "y", name: "Hoje FC" }, kickoffAt: "2026-10-13T20:00:00Z" };
+  const other = { id: "m0", home_team_id: "q", away_team_id: "r", kickoff_at: "2026-10-13T13:00:00Z" };
+  const cancelled = { id: "mc", home_team_id: "a", away_team_id: "x", kickoff_at: "2026-10-13T13:00:00Z", match_status: "cancelled" };
+  const old = { id: "mo", home_team_id: "a", away_team_id: "x", kickoff_at: "2026-10-12T12:00:00Z" };
+  const n = nextTeamMatch([later, today, other, cancelled, old], mine, now);
+  assert.equal(n.id, "m1");
+  assert.equal(n.opponent.name, "Hoje FC");
+  assert.equal(n.isToday, true);
+  assert.equal(n.daysLeft, 0);
+  const l = nextTeamMatch([later], mine, now);
+  assert.equal(l.opponent.name, "Rivais FC");
+  assert.equal(l.isToday, false);
+  assert.equal(l.daysLeft, 3);
+});
 
 const NOW = Date.parse("2026-10-13T12:00:00Z");
 const ana = { id: "ana", nick: "Ana", name: "Ana Silva" };
@@ -99,7 +129,8 @@ test("visibility, no-group and opening-tab rules", () => {
   assert.equal(isNoGroup({ needsGroup: true }), false);
   assert.equal(isNoGroup({ needsGroup: true, teamCount: 1 }), true);
   assert.equal(isNoGroup({ needsGroup: true, hasIntent: true }), true);
-  assert.equal(openingTab({ noGroup: true, teamCount: 1 }), "competir");
+  assert.equal(openingTab({ noGroup: true, teamCount: 1 }), "equipa");
+  assert.equal(openingTab({ noGroup: true, teamCount: 1, teamMatchToday: true }), "matchday");
   assert.equal(openingTab({ noGroup: true, teamCount: 0 }), "home");
   assert.equal(openingTab({ noGroup: false, matchdayLive: true, teamAction: true }), "matchday");
   assert.equal(openingTab({ noGroup: false, awaitingMyAnswer: true }), "jogar");

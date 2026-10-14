@@ -43,9 +43,9 @@ export function makeWorld({ confirmed = 10, hoursToKickoff = 20, format = null, 
 
 const md5 = (v) => `md5:${JSON.stringify(v ?? null)}`;
 
-export function makeStore(world, { orgRows = null } = {}) {
+export function makeStore(world, { orgRows = null, captainRows = null } = {}) {
   const s = world.state;
-  const db = { links: [], threads: new Map(), messages: [], proposals: [], usage: new Map(), dmReplies: [], codes: [], writes: [] };
+  const db = { links: [], threads: new Map(), messages: [], proposals: [], usage: new Map(), dmReplies: [], codes: [], writes: [], invites: [] };
   let pid = 0, lid = 0;
   const store = {
     db,
@@ -71,6 +71,18 @@ export function makeStore(world, { orgRows = null } = {}) {
       if (orgRows) return orgRows(digits);
       return s.members.filter((m) => ["organizer", "assistant"].includes(m.role) && m.players.phone.replace(/\D/g, "") === digits)
         .map((m) => ({ player_id: m.player_id, group_id: GROUP_ID, group_name: s.group.name, role: m.role, nick: m.players.nick }));
+    },
+    // PITCH Rivals captains: rows like rivals_find_captain_by_phone.
+    async findCaptainByPhone(digits) {
+      if (store.captainLookupError) throw store.captainLookupError;
+      return (captainRows ? captainRows(digits) : []);
+    },
+    async botTeamInvite(teamId, playerId) {
+      db.writes.push({ op: "rpc rivals_bot_team_invite", teamId, playerId });
+      let inv = db.invites.find((i) => i.teamId === teamId);
+      const created = !inv;
+      if (!inv) { inv = { teamId, token: `tok${teamId}`, expires_at: new Date(NOW.getTime() + 14 * 864e5).toISOString() }; db.invites.push(inv); }
+      return { token: inv.token, expires_at: inv.expires_at, uses: 0, max_uses: null, created };
     },
     async membership(playerId) { const m = s.members.find((x) => x.player_id === playerId); return m ? { role: m.role, banned: m.banned } : null; },
     async managedGroups(playerId) {
