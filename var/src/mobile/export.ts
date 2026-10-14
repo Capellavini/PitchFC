@@ -1,11 +1,11 @@
 import type { LocalClip } from './model';
-import {asset} from './paths';
+import {coreAsset} from './paths';
 export async function exportMP4(clip:LocalClip,onProgress:(n:number)=>void):Promise<Blob>{
   const {FFmpeg}=await import('@ffmpeg/ffmpeg');const ff=new FFmpeg();
   let log='';ff.on('log',e=>{log=(log+e.message+'\n').slice(-2000);});
   ff.on('progress',e=>onProgress(Math.min(99,Math.max(0,Math.round(e.progress*100)))));
   try{
-    await ff.load({coreURL:new URL(asset('media-core/ffmpeg-core.js'),location.href).href,wasmURL:new URL(asset('media-core/ffmpeg-core.wasm'),location.href).href});
+    await ff.load({coreURL:new URL(coreAsset('ffmpeg-core.js'),location.href).href,wasmURL:new URL(coreAsset('ffmpeg-core.wasm'),location.href).href});
     const entries=[];
     for(let i=0;i<clip.parts.length;i++){
       const part=clip.parts[i],name=`part-${i}.${part.blob.type.includes('mp4')?'mp4':'webm'}`;
