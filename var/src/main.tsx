@@ -88,7 +88,8 @@ function App(){
       for(const url of files)await cache.add(new Request(url,{cache:'reload'}));
       await cache.add(BASE);await cache.put(asset('offline-ready'),new Response('ready'));
       const keep=new Set([...files,BASE,asset('offline-ready')]);
-      for(const request of await cache.keys())if(!keep.has(new URL(request.url).pathname))await cache.delete(request);
+      // Entradas locais são caminhos; o core remoto (VITE_FFMPEG_CORE_BASE) é URL absoluta.
+      for(const request of await cache.keys()){const u=new URL(request.url);if(!keep.has(u.pathname)&&!keep.has(u.href))await cache.delete(request);}
       await navigator.storage?.persist?.();
       setOffline(true);setMessage('Página e processador prontos para uso offline. Reconhecimento de voz pode continuar exigindo internet.');
     }catch(e){setError((e as Error).message);}finally{setOfflineBusy(false);}
