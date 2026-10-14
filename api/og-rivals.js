@@ -1,13 +1,14 @@
 // Edge function: PITCH Rivals share previews.
 //
-// vercel.json rewrites `/?desafio=...`, `/?tjoin=...` and `/?team=...` here.
+// middleware.js (Vercel Routing Middleware) rewrites `/?desafio=...`, `/?tjoin=...` and
+// `/?team=...` here. (A plain vercel.json rewrite with source "/" never fires:
+// "/" is served from the static index.html before rewrites run.)
 // We serve the site's normal /index.html with the og:/twitter:/title tags
 // rewritten for that link (crawlers don't run JS). Humans get the identical
 // HTML + scripts, so the SPA behaves exactly as before.
 //
-// Loop safety: we fetch `/index.html`, which the `/` rewrites do not match
-// (and they also carry `missing: x-og-rivals`, a header we set on our own
-// subrequest). On ANY error or timeout we return the untouched index.html.
+// Loop safety: we fetch `/index.html`, which the middleware matcher ("/" only)
+// never matches. On ANY error or timeout we return the untouched index.html.
 import { parseOgRequest, rpcFor, buildOgMeta, applyOgToHtml } from "./_og.js";
 
 export const config = { runtime: "edge" };

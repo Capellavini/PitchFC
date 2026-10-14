@@ -18,24 +18,6 @@
       "destination": "/VAR/index.html"
     },
     {
-      "source": "/",
-      "has": [{ "type": "query", "key": "desafio" }],
-      "missing": [{ "type": "header", "key": "x-og-rivals" }],
-      "destination": "/api/og-rivals"
-    },
-    {
-      "source": "/",
-      "has": [{ "type": "query", "key": "tjoin" }],
-      "missing": [{ "type": "header", "key": "x-og-rivals" }],
-      "destination": "/api/og-rivals"
-    },
-    {
-      "source": "/",
-      "has": [{ "type": "query", "key": "team" }],
-      "missing": [{ "type": "header", "key": "x-og-rivals" }],
-      "destination": "/api/og-rivals"
-    },
-    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
