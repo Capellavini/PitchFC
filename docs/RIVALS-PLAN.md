@@ -77,7 +77,7 @@ SQL: `supabase/tests/rivals_{teams,challenges,results}_check.sql` (begin/rollbac
 - **PR2** rivals.js, useTeams (teams), primitives, RivalsHub, TeamPage, CreateTeamSheet, invite/roster sheets, ?team/?tjoin, rivalsCopy; delete TeamsSection + useCloud team fns.
 - **PR3** team-first entry + no-group navigation (gating, opening tab, NoGroupState/Home/Perfil, pending intent, signUp metadata).
 - **PR4** 007100 (shipped as `20261013140000_rivals_challenges.sql` — migrations now use real timestamps; a name sorting before the last applied one breaks `supabase db push`) + challenges check. **PR5** challenges UI (inbox, composer, detail+diff, cancel, field status, ChallengeInvitePage, claimable).
-- **PR6** 007200 (results, RSVP, lineup, metric fns, cron) + check. **PR7** match UI (RSVP, availability, report/confirm/contest/correct, lineup, record/form/H2H, Home feed, TeamMatchdayCard, Perfil career).
+- **PR6** ✅ 007200 shipped as `20261014120000_rivals_results.sql` (results revisions, RSVP, lineup, player stats, derived metric fns, rematch RPC; cron unchanged) + `supabase/tests/rivals_results_check.sql` — SQL ↔ app interface in `docs/RIVALS-RESULTS-CONTRACT.md` (see its "Deviations"). **PR7** match UI (RSVP, availability, report/confirm/contest/correct, lineup, record/form/H2H, Home feed, TeamMatchdayCard, Perfil career).
 - **PR8** OG function + rewrites + image + translated WhatsApp messages. **PR9 (step 4)** rematch, share cards, milestones.
 - Rollout: flags off for regular users; pilot captains via `?rivals=1`; demo-mode run first, then a real match; watch `rivals_audit_log`; global flags on only after one match concluded with no divergence, together with the `/rivals` LP launch.
 
