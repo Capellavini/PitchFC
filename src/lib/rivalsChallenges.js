@@ -83,8 +83,42 @@ export function normMatch(r) {
     officialAwayScore: r.official_away_score ?? r.officialAwayScore ?? null,
     cancelledByTeamId: r.cancelled_by_team_id ?? r.cancelledByTeamId ?? null,
     cancelledAt: r.cancelled_at ?? r.cancelledAt ?? null, cancelReason: r.cancel_reason ?? r.cancelReason ?? null,
+    // PR6/PR7 (20261014120000): result summary + my team's call-up numbers. All optional — an
+    // older server just omits them.
+    confirmedRevision: r.confirmed_revision ?? r.confirmedRevision ?? null,
+    resultConfirmedAt: r.result_confirmed_at ?? r.resultConfirmedAt ?? null,
+    notPlayedReason: r.not_played_reason ?? r.notPlayedReason ?? null,
+    result: normResultSummary(r.result, r),
+    myAvailability: r.my_availability ?? r.myAvailability ?? null,
+    availabilityCounts: normCounts(r.availability_counts ?? r.availabilityCounts),
+    lineupCount: Number(r.lineup_count ?? r.lineupCount ?? 0),
+    statsRecorded: Boolean(r.stats_recorded ?? r.statsRecorded),
   };
 }
+const normCounts = (c) => ({ yes: Number(c?.yes || 0), no: Number(c?.no || 0), maybe: Number(c?.maybe || 0), pending: Number(c?.pending || 0) });
+function normOpenRevision(o) {
+  if (!o) return null;
+  return {
+    revision: Number(o.revision), kind: o.kind, status: o.status ?? "proposed",
+    homeScore: Number(o.home_score ?? o.homeScore), awayScore: Number(o.away_score ?? o.awayScore),
+    reportedByTeamId: o.reported_by_team_id ?? o.reportedByTeamId ?? null, reportedByPlayerId: o.reported_by_player_id ?? o.reportedByPlayerId ?? null,
+    note: o.note ?? null, createdAt: o.created_at ?? o.createdAt ?? null, respondedAt: o.responded_at ?? o.respondedAt ?? null,
+    respondedByPlayerId: o.responded_by_player_id ?? o.respondedByPlayerId ?? null,
+  };
+}
+/** match.result { status, official_*, open_revision, revisions_count } — falls back to the match's own columns. */
+function normResultSummary(s, r) {
+  const status = s?.status ?? r.result_status ?? r.resultStatus ?? "none";
+  const num = (v) => (v == null ? null : Number(v));
+  return {
+    status,
+    officialHomeScore: num(s?.official_home_score ?? s?.officialHomeScore ?? r.official_home_score ?? r.officialHomeScore),
+    officialAwayScore: num(s?.official_away_score ?? s?.officialAwayScore ?? r.official_away_score ?? r.officialAwayScore),
+    openRevision: normOpenRevision(s?.open_revision ?? s?.openRevision),
+    revisionsCount: Number(s?.revisions_count ?? s?.revisionsCount ?? 0),
+  };
+}
+export { normOpenRevision };
 /** my_challenges item (or a demo row already shaped) → app shape. */
 export function normChallenge(r, now = Date.now()) {
   const ch = {
@@ -607,7 +641,7 @@ const card = (state, id) => {
   return t ? { ...t, captainNick: captainOf(state, id)?.nick ?? null } : null;
 };
 /** My challenges in the demo, same shape as normChallenge(my_challenges item). */
-export function demoMyChallenges(state, meId, now = Date.now()) {
+export function demoMyChallenges(state, meId, now = Date.now(), decorateMatch = null) {
   const mine = new Set((state.members || []).filter((m) => m.playerId === meId && m.status === "active").map((m) => m.teamId));
   return (state.challenges || [])
     .filter((c) => mine.has(c.challengerTeamId) || mine.has(c.challengedTeamId))
@@ -616,7 +650,8 @@ export function demoMyChallenges(state, meId, now = Date.now()) {
       return normChallenge({
         ...c, token: mine.has(c.challengerTeamId) ? c.token : null,
         challenger: card(state, c.challengerTeamId), challenged: c.challengedTeamId ? card(state, c.challengedTeamId) : null,
-        myTeamId, myRole: roleIn(state, myTeamId, meId), match: (state.matches || []).find((m) => m.challengeId === c.id) || null,
+        myTeamId, myRole: roleIn(state, myTeamId, meId),
+        match: (() => { const m = (state.matches || []).find((x) => x.challengeId === c.id) || null; return m && decorateMatch ? decorateMatch(m, myTeamId) : m; })(),
       }, now);
     })
     .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
@@ -744,6 +779,7 @@ export function matchesFromChallenges(challenges = []) {
       homeTeam: ch.challenger,
       awayTeam: ch.challenged,
       myTeamId: ch.myTeamId,
+      myRole: ch.myRole,
     });
   }
   return [...matches.values()];

@@ -159,14 +159,29 @@ export function can(role, action, targetRole) {
   }
 }
 
-// ── Record (W-D-L) — derived server-side from PR6 on ────
-export const emptyRecord = () => ({ played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, form: [] });
-export function normRecord(r) {
+// ── Record (W-D-L) — derived from CONFIRMED matches only ──
+// (server: team_record(); demo: rivalsResults.teamRecord()). Provisional
+// scores, cancellations and "not played" never count as losses.
+export const emptyRecord = () => ({
+  played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDiff: 0, form: [],
+  streak: { type: null, n: 0 }, biggestWin: null, cleanSheets: 0, cancellations: 0, lateCancellations: 0, notPlayed: 0,
+});
+/** team_record / team_profile.record (snake_case, `gf`/`ga`) or an app-shaped record → record. */
+export function normRecord(r, formOverride) {
   if (!r) return emptyRecord();
+  const gf = Number(r.gf ?? r.goals_for ?? r.goalsFor ?? 0);
+  const ga = Number(r.ga ?? r.goals_against ?? r.goalsAgainst ?? 0);
+  const form = Array.isArray(formOverride) ? formOverride : Array.isArray(r.form) ? r.form : [];
+  const st = r.streak || {};
+  const bw = r.biggest_win ?? r.biggestWin ?? null;
   return {
     played: Number(r.played || 0), wins: Number(r.wins || 0), draws: Number(r.draws || 0), losses: Number(r.losses || 0),
-    goalsFor: Number(r.goals_for ?? r.goalsFor ?? 0), goalsAgainst: Number(r.goals_against ?? r.goalsAgainst ?? 0),
-    form: Array.isArray(r.form) ? r.form : [],
+    goalsFor: gf, goalsAgainst: ga, goalDiff: Number(r.gd ?? r.goalDiff ?? gf - ga), form,
+    streak: { type: st.type ?? null, n: Number(st.n || 0) },
+    biggestWin: bw ? { opponent: bw.opponent ?? null, score: bw.score ?? null } : null,
+    cleanSheets: Number(r.clean_sheets ?? r.cleanSheets ?? 0),
+    cancellations: Number(r.cancellations || 0), lateCancellations: Number(r.late_cancellations ?? r.lateCancellations ?? 0),
+    notPlayed: Number(r.not_played ?? r.notPlayed ?? 0),
   };
 }
 export const hasPlayed = (record) => Number(record?.played || 0) > 0;
@@ -256,6 +271,9 @@ export function nextTeamMatch(matches, myTeams, now = Date.now()) {
       opponent: opp ? { id: opp.id ?? null, name: opp.name ?? null, color: opp.color ?? null, logoUrl: opp.logoUrl ?? opp.logo_url ?? null, slug: opp.slug ?? null } : (m.opponentName ? { name: m.opponentName } : null),
       venue: pick(m.venueName, m.venue_name, m.venue, null), format: pick(m.format, null),
       myRsvp: pick(m.myAvailability, m.my_availability, null),
+      // PR7: what the team-mode screens need to act on the match.
+      challengeId: pick(m.challengeId, m.challenge_id, null), myRole: team.role ?? null, match: m,
+      kickoffPassed: kickoff <= now,
       isToday: day === today,
       daysLeft: Math.max(0, Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 864e5)),
     });
