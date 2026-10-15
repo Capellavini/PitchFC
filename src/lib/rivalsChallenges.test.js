@@ -170,7 +170,18 @@ test("views, buckets, rival simulation, incoming challenge", () => {
   const agreed = demoMyChallenges(s, "ana", NOW).find((c) => c.id === sent.id);
   assert.equal(challengeView(agreed, NOW).nextAction, "confirm_field");
   assert.equal(currentTerms(agreed).kickoffAt, agreed.match.kickoffAt);
-  assert.equal(challengeView(agreed, Date.parse(agreed.match.kickoffAt) + 1).bucket, "history");
+  // PR7: after kickoff the match stays in Sent/Received while its result is open (the leader has to
+  // report it); it only moves to History once the result is closed — or nobody reported for 2 weeks.
+  const afterKickoff = Date.parse(agreed.match.kickoffAt) + 1;
+  const kicked = challengeView(agreed, afterKickoff);
+  assert.equal(kicked.stage, "kicked_off");
+  assert.equal(kicked.bucket, "sent");
+  assert.equal(kicked.nextAction, "report_result");
+  assert.equal(kicked.needsAction, true);
+  assert.equal(challengeView(agreed, afterKickoff + 15 * 864e5).bucket, "history");
+  const settled = { ...agreed, match: { ...agreed.match, matchStatus: "played", result: { status: "confirmed", officialHomeScore: 2, officialAwayScore: 1, openRevision: null, revisionsCount: 1 } } };
+  assert.equal(challengeView(settled, afterKickoff).bucket, "history");
+  assert.equal(challengeView(settled, afterKickoff).needsAction, false);
   const b = inboxBuckets(demoMyChallenges(s, "ana", NOW), NOW);
   assert.equal(b.received.length + b.sent.length + b.history.length, 2);
 });

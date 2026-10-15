@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────
 
 import { CHALLENGE_RESPONSE_HOURS, CHALLENGE_DEADLINE_BEFORE_KICKOFF_HOURS, DEFAULT_FORMAT, TEAM_FORMATS, isLeader, normTeam } from "./rivals.js";
+import { resultView } from "./rivalsResults.js";
 
 export const MIN_KICKOFF_LEAD_HOURS = 3; // ⇒ the 24h/kickoff−2h window is ≥ 1h
 export const MAX_KICKOFF_DAYS = 180;
@@ -171,6 +172,8 @@ export function previousTerms(ch, n) {
  * stage: respond | awaiting | open_link | change_review | change_waiting |
  *        agreed | kicked_off | match_cancelled | declined | cancelled | expired
  * nextAction: respond | review_change | confirm_field | share_link | wait | details
+ *             | report_result | confirm_result   (after kickoff, PR7)
+ * result: resultView() of the match once it has kicked off (else null).
  */
 export function challengeView(ch, now = Date.now()) {
   const side = ch.myTeamId && ch.myTeamId === ch.challenger?.id ? "challenger" : "challenged";
@@ -193,18 +196,27 @@ export function challengeView(ch, now = Date.now()) {
   } else stage = status; // declined | cancelled | expired
 
   const responsible = m ? (m.fieldResponsible === side) : false;
+  // After kickoff the shared result drives the stage (PR7): report it, or
+  // confirm / contest the other team's — only the OTHER team can confirm.
+  const result = stage === "kicked_off" ? resultView(m, { myTeamId: ch.myTeamId, leader, now }) : null;
   let nextAction = "details";
   if (stage === "respond") nextAction = leader ? "respond" : "wait";
   else if (stage === "change_review") nextAction = leader ? "review_change" : "wait";
   else if (stage === "open_link") nextAction = leader ? "share_link" : "wait";
   else if (stage === "awaiting" || stage === "change_waiting") nextAction = "wait";
   else if (stage === "agreed" && responsible && leader && m.fieldStatus !== "confirmed") nextAction = "confirm_field";
+  else if (result?.canRespond) nextAction = "confirm_result";
+  else if (result?.canReport) nextAction = "report_result";
 
-  const terminal = ["declined", "cancelled", "expired", "match_cancelled", "kicked_off"].includes(stage);
+  // A kicked-off match stays in Sent / Received while its result is open (a
+  // match nobody reported for two weeks moves on to History).
+  const unresolved = result && ["ready", "reported", "disputed", "correction"].includes(result.phase)
+    && !(result.phase === "ready" && now - Date.parse(m.kickoffAt) > 14 * 864e5);
+  const terminal = ["declined", "cancelled", "expired", "match_cancelled"].includes(stage) || (stage === "kicked_off" && !unresolved);
   const bucket = terminal ? "history" : side === "challenger" ? "sent" : "received";
   return {
-    side, myTeam, opponent, leader, myTurn, stage, nextAction, bucket, status,
-    needsAction: ["respond", "review_change", "confirm_field"].includes(nextAction),
+    side, myTeam, opponent, leader, myTurn, stage, nextAction, bucket, status, result,
+    needsAction: ["respond", "review_change", "confirm_field", "confirm_result", "report_result"].includes(nextAction),
   };
 }
 

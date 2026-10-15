@@ -7,6 +7,7 @@
 // translated (it's a plain constant, not an L() entry).
 
 import { registerStrings, t } from "./i18n.js";
+import { MATCH_ERRORS } from "./rivalsMatchCopy.js";
 
 const EN = {};
 const BR = {};
@@ -298,11 +299,9 @@ export const RC = {
   noTeamGameBody: L("Quando a equipa tiver um jogo combinado, aparece aqui com a convocatória.", "When your team has a match agreed, it shows up here with the call-up.", "Quando o time tiver um jogo combinado, ele aparece aqui com a convocação."),
   alsoGroups: L("Também jogas uma pelada semanal? Entra no grupo", "Also play a weekly game? Join the group", "Também joga uma pelada semanal? Entre no grupo"),
   matchdayToday: L("HOJE HÁ JOGO", "MATCH DAY", "HOJE TEM JOGO"),
-  scoreSoon: L("Marcar golos (em breve)", "Log goals (soon)", "Marcar gols (em breve)"),
-  scoreSoonHint: L("Golos e assistências por jogador nos jogos de equipa chegam na próxima versão.", "Per-player goals and assists for team matches arrive in the next version.", "Gols e assistências por jogador nos jogos de time chegam na próxima versão."),
   tactics: L("Tática — {team}", "Tactics — {team}", "Tática — {team}"),
   tacticsNeedPlayers: L("O quadro tático abre com 7 ou mais jogadores no plantel.", "The tactics board opens with 7 or more players in the squad.", "O quadro tático abre com 7 ou mais jogadores no elenco."),
-  matchdayCountdownBody: L("No dia do jogo, o Matchday da equipa abre aqui: quadro tático e marcador.", "On match day, the team's Matchday opens here: tactics board and scoring.", "No dia do jogo, o Matchday do time abre aqui: quadro tático e placar."),
+  matchdayCountdownBody: L("No dia do jogo, o Matchday da equipa abre aqui: quadro tático, quem joga e, no fim, golos e assistências.", "On match day, the team's Matchday opens here: tactics board, who's playing and, afterwards, goals and assists.", "No dia do jogo, o Matchday do time abre aqui: quadro tático, quem joga e, no fim, gols e assistências."),
   matchdayEmptyTitle: L("Sem jogo da equipa hoje", "No team match today", "Sem jogo do time hoje"),
 };
 
@@ -327,7 +326,7 @@ export const CC = {
   stageChangeReview: L("Pedem uma alteração", "Change requested", "Pediram uma alteração"),
   stageChangeWaiting: L("Alteração enviada", "Change sent"),
   stageAgreed: L("Combinado", "Agreed"),
-  stageKickedOff: L("Jogado · resultado em breve", "Played · result coming soon"),
+  stageKickedOff: L("O jogo já começou", "The match has started"),
   stageMatchCancelled: L("Jogo cancelado", "Match cancelled"),
   stageDeclined: L("Recusado", "Declined"),
   stageCancelled: L("Cancelado", "Cancelled"),
@@ -459,7 +458,6 @@ export const CC = {
   cancelMatchConfirm: L("Cancelar o jogo? Fica registado quem cancelou — não conta como derrota para ninguém.", "Cancel the match? Who cancelled is recorded — it doesn't count as a loss for anyone.", "Cancelar o jogo? Fica registrado quem cancelou — não conta como derrota para ninguém."),
   matchCancelledBy: L("Cancelado por {team}", "Cancelled by {team}"),
   result: L("RESULTADO", "RESULT"),
-  resultSoon: L("O resultado partilhado chega em breve: uma equipa regista o placar e a outra confirma.", "Shared results are coming soon: one team reports the score and the other confirms.", "O resultado compartilhado chega em breve: um time registra o placar e o outro confirma."),
   home: L("Casa", "Home"),
   away: L("Fora", "Away"),
 
@@ -554,7 +552,7 @@ export function rivalsError(code) {
   if (code === "try_again") return t(ERRORS.network);
   if (code === "badge_not_image") return t(RC.badgeNotImage);
   if (code === "badge_too_big") return t(RC.badgeTooBig);
-  return t(ERRORS[code] || ERRORS.unknown);
+  return t(ERRORS[code] || MATCH_ERRORS[code] || ERRORS.unknown);
 }
 
 registerStrings("en", EN);

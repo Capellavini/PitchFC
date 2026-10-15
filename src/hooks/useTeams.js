@@ -9,8 +9,13 @@ import {
   demoChallengeInvite, demoChallengeOp, demoIncomingChallenge, demoMyChallenges, demoRivalMove, normChallenge,
   normChallengeInvite, matchesFromChallenges, pendingActionCount, termsToRpc, withChallengeSeed, challengeInviteUrl,
 } from "../lib/rivalsChallenges";
+import {
+  decorateDemoMatch, demoReadResults, demoResultOp, demoRivalResultMove, normAvailability, normCareer, normH2H, normLineup,
+  normPlayerStats, normResult, normResultList, normScout, normSeasonStats, normTop, teamPlayerStats, teamRecord, topFrom,
+} from "../lib/rivalsResults";
 
 const RIVAL_DELAY_MS = 1800; // demo: the simulated rival captain "thinks" this long
+const RIVAL_RESULT_DELAY_MS = 3500; // demo: …and takes a bit longer to answer a result
 
 /**
  * PITCH Rivals — teams data layer (PR2). Group ≠ Team: a Team is a
@@ -38,12 +43,23 @@ const RIVAL_DELAY_MS = 1800; // demo: the simulated rival captain "thinks" this 
  * mirror) with versions + the shared match; `pendingActions` = how many
  * need me (a leader). Actions map 1:1 to the RPCs. In demo mode a
  * simulated rival captain answers shortly after it becomes their turn.
- * EXTENSION POINT (PR6–PR7): results, RSVP, lineup and records plug in
- * here (same {data}|{error} contract, same realtime channel).
+ *
+ * Results (PR7, migration 20261014120000, docs/RIVALS-RESULTS-CONTRACT.md):
+ * RSVP (set_match_availability), lineup, post-game player stats and the
+ * shared result (report → the OTHER team confirms; contest; correction;
+ * withdraw; not played) are 1:1 actions; the reads (availability, lineup,
+ * results, stats, record, head-to-head, scouting, career) return
+ * normalised camelCase data. In demo mode a simulated rival captain
+ * confirms whatever my team proposes (rivalsResults.demoRivalResultMove)
+ * and `demoTools` lets a lone tester fast-forward kickoff / make the rival
+ * report first. Only CONFIRMED results ever feed a record.
  */
 
 const TEAM_COLS = "id,name,slug,city,region,country,color,secondary_color,logo_url,preferred_format,home_venue,timezone,currency,listed,captain_id,created_at,archived_at";
 const MEMBER_COLS = "player_id,role,status,joined_at,players(nick,name,photo_url,position)";
+
+/** report / confirm / contest / correction / withdraw all answer with the contract's `result` object (maybe wrapped). */
+const resultOf = (d) => normResult(d?.result ? { ...d, ...d.result } : d);
 
 const camelToRpc = (f = {}) => {
   const map = { name: "name", city: "city", region: "region", country: "country", listed: "listed", color: "color",
@@ -126,7 +142,16 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "team_challenges" }, bump)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_matches" }, bump)
       .subscribe();
-    return () => { clearTimeout(timer.current); supabase.removeChannel(ch); };
+    // Results tables live on their OWN channel: if 20261014120000 isn't applied
+    // (or the tables aren't in the realtime publication) only this one errors
+    // and the team / challenge updates above keep working.
+    const resultsCh = supabase.channel(`pitch-rivals-results-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_match_results" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_match_availability" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_match_lineup" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_match_player_stats" }, bump)
+      .subscribe();
+    return () => { clearTimeout(timer.current); supabase.removeChannel(ch); supabase.removeChannel(resultsCh); };
   }, [cloudReady, load]);
 
   const myTeams = useMemo(
@@ -193,7 +218,16 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
         if (tq.error) return { error: rivalsErrorCode(tq.error) };
         if (!tq.data) return { error: "team_not_found" };
         const members = sortRoster((mq.data ?? []).map(normMember));
-        return { data: { team: normTeam(tq.data), members, myRole: members.find((m) => m.playerId === meId)?.role ?? null, record: emptyRecord() } };
+        // Record + top scorers come from the PR6 read functions; an older server just has none.
+        const [rq, sq] = await Promise.all([
+          supabase.rpc("team_record", { p_team_id: teamId }).then((r) => r, () => ({ error: true })),
+          supabase.rpc("team_player_stats", { p_team_id: teamId }).then((r) => r, () => ({ error: true })),
+        ]);
+        const players = sq.error ? [] : normSeasonStats(sq.data).items;
+        return { data: {
+          team: normTeam(tq.data), members, myRole: members.find((m) => m.playerId === meId)?.role ?? null,
+          record: rq.error ? emptyRecord() : normRecord(rq.data), topScorers: topFrom(players, "goals"), topAssisters: topFrom(players, "assists"),
+        } };
       } catch (e) {
         return { error: rivalsErrorCode(e) };
       }
@@ -202,7 +236,11 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
     const team = s.teams.find((x) => x.id === teamId);
     if (!team) return { error: "team_not_found" };
     const members = sortRoster(s.members.filter((m) => m.teamId === teamId && m.status === "active"));
-    return { data: { team, members, myRole: members.find((m) => m.playerId === meId)?.role ?? null, record: emptyRecord() } };
+    const players = teamPlayerStats(s, teamId);
+    return { data: {
+      team, members, myRole: members.find((m) => m.playerId === meId)?.role ?? null,
+      record: teamRecord(s, teamId), topScorers: topFrom(players, "goals"), topAssisters: topFrom(players, "assists"),
+    } };
   }, [cloudCapable, meId]);
 
   /** Public identity by slug (?team=) — works logged out (team_profile). */
@@ -212,13 +250,21 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
       if (r.error) return r;
       if (!r.data) return { error: "team_not_found" };
       const d = r.data;
-      return { data: { team: normTeam(d), memberCount: Number(d.member_count || 0), myRole: d.my_role ?? null, record: normRecord(d.record) } };
+      // team_profile: record + form for everyone; top scorers/assisters only when signed in (server decides).
+      return { data: {
+        team: normTeam(d), memberCount: Number(d.member_count || 0), myRole: d.my_role ?? null,
+        record: normRecord(d.record, d.form), topScorers: normTop(d.top_scorers), topAssisters: normTop(d.top_assisters),
+      } };
     }
     const s = demoRef.current;
     const team = s.teams.find((x) => x.slug === slug);
     if (!team) return { error: "team_not_found" };
     const active = s.members.filter((m) => m.teamId === team.id && m.status === "active");
-    return { data: { team, memberCount: active.length, myRole: active.find((m) => m.playerId === meId)?.role ?? null, record: emptyRecord() } };
+    const players = meId ? teamPlayerStats(s, team.id) : [];
+    return { data: {
+      team, memberCount: active.length, myRole: active.find((m) => m.playerId === meId)?.role ?? null,
+      record: teamRecord(s, team.id), topScorers: topFrom(players, "goals"), topAssisters: topFrom(players, "assists"),
+    } };
   }, [cloudCapable, rpc, meId]);
 
   /** The team directory (signed-in only). */
@@ -288,7 +334,7 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
   const challenges = useMemo(() => {
     const now = Date.now();
     if (cloudCapable) return cloudChallenges.map((r) => normChallenge(r, now));
-    return meId ? demoMyChallenges(demoState, meId, now) : [];
+    return meId ? demoMyChallenges(demoState, meId, now, (m, teamId) => decorateDemoMatch(demoState, m, teamId, meId)) : [];
   }, [cloudCapable, cloudChallenges, demoState, meId]);
   const matches = useMemo(() => matchesFromChallenges(challenges), [challenges]);
   const pendingActions = useMemo(() => pendingActionCount(challenges), [challenges]);
@@ -373,6 +419,104 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
     return { data: demoChallengeInvite(demoRef.current, token, meId) };
   }, [cloudCapable, rpc, meId]);
 
+  // ── Results, call-up, lineup, stats (PR7) ──────────────
+  // Demo: whatever MY team proposes, the rival captain confirms a few seconds later.
+  const scheduleRivalResult = useCallback((matchId) => {
+    rivalTimers.current.push(setTimeout(() => {
+      const mv = demoRivalResultMove(demoRef.current, matchId, myTeamIdsRef.current);
+      if (!mv) return;
+      demoRef.current = mv.state;
+      setDemo(mv.state);
+      setRevision((n) => n + 1);
+    }, RIVAL_RESULT_DELAY_MS));
+  }, [setDemo]);
+  // A reload in the middle of the wait must not leave the demo rival "thinking" forever.
+  useEffect(() => {
+    if (cloudCapable || !meId) return;
+    const mine = new Set(myTeamIdsRef.current);
+    for (const r of demoRef.current.results || []) if (r.status === "proposed" && mine.has(r.reportedByTeamId)) scheduleRivalResult(r.matchId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloudCapable, meId]);
+
+  const demoResultCall = useCallback((op, args, map = (x) => x, { rivalReplies = false } = {}) => {
+    if (!demoMe?.id) return { error: "not_authenticated" };
+    const r = demoResultOp(demoRef.current, op, args, demoMe, Date.now(), { userTeamIds: myTeamIdsRef.current });
+    if (r.error) return { error: r.error };
+    demoRef.current = r.state;
+    setDemo(r.state);
+    setRevision((n) => n + 1);
+    if (rivalReplies) scheduleRivalResult(args.matchId);
+    return { data: map(r.data) };
+  }, [demoMe, setDemo, scheduleRivalResult]);
+
+  const demoRead = useCallback((op, args, map = (x) => x) => {
+    if (!demoMe?.id) return { error: "not_authenticated" };
+    const r = demoReadResults(demoRef.current, op, args, demoMe);
+    return r.error ? { error: r.error } : { data: map(r.data) };
+  }, [demoMe]);
+
+  /** Vou · Não vou · Talvez — my own answer, before kickoff. status: yes | no | maybe. */
+  const setMatchAvailability = useCallback(async (matchId, status) => (cloudCapable
+    ? rpc("set_match_availability", { p_match_id: matchId, p_status: status }, (d) => ({ matchId: d.match_id, teamId: d.team_id, status: d.status }))
+    : demoResultCall("set_match_availability", { matchId, status })), [cloudCapable, rpc, demoResultCall]);
+
+  /** Leaders: replace my team's squad sheet for the match (≤ 22 players). */
+  const setMatchLineup = useCallback(async (matchId, playerIds) => (cloudCapable
+    ? rpc("set_match_lineup", { p_match_id: matchId, p_player_ids: playerIds }, (d) => ({ matchId: d.match_id, teamId: d.team_id, count: Number(d.count), statsRemoved: Number(d.stats_removed || 0) }))
+    : demoResultCall("set_match_lineup", { matchId, playerIds })), [cloudCapable, rpc, demoResultCall]);
+
+  /** Leaders, after kickoff: goals/assists per player — post-game entry, not a live engine. stats = [{ playerId, goals, assists }]. */
+  const setMatchPlayerStats = useCallback(async (matchId, stats) => (cloudCapable
+    ? rpc("set_match_player_stats", { p_match_id: matchId, p_stats: stats.map((s) => ({ player_id: s.playerId, goals: s.goals, assists: s.assists })) },
+      (d) => ({ matchId: d.match_id, teamId: d.team_id, count: Number(d.count) }))
+    : demoResultCall("set_match_player_stats", { matchId, stats })), [cloudCapable, rpc, demoResultCall]);
+
+  /** Scores are HOME / AWAY (the challenger is home) — see lib/rivalsResults toHomeAway. */
+  const reportMatchResult = useCallback(async (matchId, homeScore, awayScore, note = null) => (cloudCapable
+    ? rpc("report_match_result", { p_match_id: matchId, p_home_score: homeScore, p_away_score: awayScore, p_note: note || null }, resultOf)
+    : demoResultCall("report_match_result", { matchId, homeScore, awayScore, note }, resultOf, { rivalReplies: true })), [cloudCapable, rpc, demoResultCall]);
+
+  const confirmMatchResult = useCallback(async (matchId, revision) => (cloudCapable
+    ? rpc("confirm_match_result", { p_match_id: matchId, p_revision: revision }, resultOf)
+    : demoResultCall("confirm_match_result", { matchId, revision }, resultOf)), [cloudCapable, rpc, demoResultCall]);
+
+  const contestMatchResult = useCallback(async (matchId, revision, homeScore, awayScore, note = null) => (cloudCapable
+    ? rpc("contest_match_result", { p_match_id: matchId, p_revision: revision, p_home_score: homeScore, p_away_score: awayScore, p_note: note || null }, resultOf)
+    : demoResultCall("contest_match_result", { matchId, revision, homeScore, awayScore, note }, resultOf, { rivalReplies: true })), [cloudCapable, rpc, demoResultCall]);
+
+  const proposeResultCorrection = useCallback(async (matchId, homeScore, awayScore, note = null) => (cloudCapable
+    ? rpc("propose_result_correction", { p_match_id: matchId, p_home_score: homeScore, p_away_score: awayScore, p_note: note || null }, resultOf)
+    : demoResultCall("propose_result_correction", { matchId, homeScore, awayScore, note }, resultOf, { rivalReplies: true })), [cloudCapable, rpc, demoResultCall]);
+
+  const withdrawResultProposal = useCallback(async (matchId, revision) => (cloudCapable
+    ? rpc("withdraw_result_proposal", { p_match_id: matchId, p_revision: revision }, resultOf)
+    : demoResultCall("withdraw_result_proposal", { matchId, revision }, resultOf)), [cloudCapable, rpc, demoResultCall]);
+
+  const markMatchNotPlayed = useCallback(async (matchId, reason = null) => (cloudCapable
+    ? rpc("mark_match_not_played", { p_match_id: matchId, p_reason: reason || null }, (d) => ({ matchId: d.match_id, matchStatus: d.match_status ?? "not_played" }))
+    : demoResultCall("mark_match_not_played", { matchId, reason })), [cloudCapable, rpc, demoResultCall]);
+
+  // Reads: { data } | { error }, camelCase. Components refetch on `revision`.
+  const read = useCallback((name, args, demoArgs, map, demoOpName = name) => (cloudCapable
+    ? rpc(name, args, map, { reload: false })
+    : Promise.resolve(demoRead(demoOpName, demoArgs, map))), [cloudCapable, rpc, demoRead]);
+
+  const getMatchAvailability = useCallback((matchId) => read("get_match_availability", { p_match_id: matchId }, { matchId }, normAvailability), [read]);
+  const getMatchLineup = useCallback((matchId) => read("get_match_lineup", { p_match_id: matchId }, { matchId }, normLineup), [read]);
+  const getMatchResults = useCallback((matchId) => read("get_match_results", { p_match_id: matchId }, { matchId }, normResultList), [read]);
+  const getMatchPlayerStats = useCallback((matchId) => read("get_match_player_stats", { p_match_id: matchId }, { matchId }, normPlayerStats), [read]);
+  const getTeamRecord = useCallback((teamId) => read("team_record", { p_team_id: teamId }, { teamId }, (d) => normRecord(d)), [read]);
+  const getHeadToHead = useCallback((teamId, opponentId) => read("team_head_to_head", { p_team_id: teamId, p_opponent_id: opponentId }, { teamId, opponentId }, normH2H), [read]);
+  const getTeamPlayerStats = useCallback((teamId) => read("team_player_stats", { p_team_id: teamId }, { teamId }, normSeasonStats), [read]);
+  const scoutOpponent = useCallback((matchId) => read("scout_opponent", { p_match_id: matchId }, { matchId }, normScout), [read]);
+  const getMyTeamCareer = useCallback(() => read("my_team_career", {}, {}, normCareer), [read]);
+
+  // Demo only: fast-forward kickoff / let the rival report first, so one tester can walk the whole loop.
+  const demoTools = useMemo(() => (cloudCapable ? null : {
+    advanceMatch: (matchId) => demoResultCall("demo_advance_match", { matchId }),
+    rivalReports: (matchId) => demoResultCall("demo_rival_reports", { matchId }),
+  }), [cloudCapable, demoResultCall]);
+
   const resetDemo = useCallback(() => setDemo(null), [setDemo]);
 
   return {
@@ -387,6 +531,11 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
     challenges, matches, pendingActions,
     createChallenge, respondChallenge, counterChallenge, cancelChallenge,
     proposeMatchChange, respondMatchChange, setFieldStatus, previewChallenge,
+    setMatchAvailability, setAvailability: setMatchAvailability, setMatchLineup, setMatchPlayerStats,
+    reportMatchResult, confirmMatchResult, contestMatchResult, proposeResultCorrection, withdrawResultProposal, markMatchNotPlayed,
+    getMatchAvailability, getMatchLineup, getMatchResults, getMatchPlayerStats,
+    getTeamRecord, getHeadToHead, getTeamPlayerStats, scoutOpponent, getMyTeamCareer,
+    demoTools,
     refresh: load, resetDemo,
   };
 }

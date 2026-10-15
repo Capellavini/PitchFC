@@ -23,6 +23,7 @@ export const MAX_STAT = 30;
 export const MAX_LINEUP = 22;
 /** Contesting is blocked once a match already has this many revisions → "Fala connosco". */
 export const MAX_REVISIONS = 4;
+export const MAX_TOTAL_REVISIONS = 30;
 export const HELP_AFTER_DAYS = 7;
 export const AVAILABILITY_STATUSES = ["yes", "no", "maybe"];
 const DAY = 864e5;
@@ -41,6 +42,13 @@ export function normResult(r) {
     reportedByPlayerId: pickKey(r, "reportedByPlayerId", "reported_by_player_id") ?? null,
     respondedByPlayerId: pickKey(r, "respondedByPlayerId", "responded_by_player_id") ?? null,
     note: r.note ?? null, createdAt: pickKey(r, "createdAt", "created_at") ?? null, respondedAt: pickKey(r, "respondedAt", "responded_at") ?? null,
+    // additive keys of the mutations (contract deviation 6)
+    match: r.match ? {
+      id: r.match.id, matchStatus: pickKey(r.match, "matchStatus", "match_status"), resultStatus: pickKey(r.match, "resultStatus", "result_status"),
+      officialHomeScore: pickKey(r.match, "officialHomeScore", "official_home_score") ?? null, officialAwayScore: pickKey(r.match, "officialAwayScore", "official_away_score") ?? null,
+      confirmedRevision: pickKey(r.match, "confirmedRevision", "confirmed_revision") ?? null, resultConfirmedAt: pickKey(r.match, "resultConfirmedAt", "result_confirmed_at") ?? null,
+    } : null,
+    alreadyConfirmed: Boolean(pickKey(r, "alreadyConfirmed", "already_confirmed")), alreadyWithdrawn: Boolean(pickKey(r, "alreadyWithdrawn", "already_withdrawn")),
   };
 }
 const person = (r) => ({
@@ -90,7 +98,8 @@ export function normH2H(d) {
 /** Full-name display: nick first, then name. */
 export const personLabel = (p) => p?.nick || p?.name || "—";
 const withOvr = (r) => ({
-  ...person(r), attrs: r.attrs ?? null, ovr: computeOverall(r.position, r.attrs),
+  // OVR is computed here from the attrs (never stored); an unrated player has none.
+  ...person(r), attrs: r.attrs ?? null, ovr: r.attrs ? computeOverall(r.position, r.attrs) : null,
   appearances: num(r.appearances), goals: num(r.goals), assists: num(r.assists),
   memberSince: pickKey(r, "memberSince", "member_since") ?? null,
 });
@@ -110,6 +119,9 @@ export const normCareer = (d) => ({
 });
 /** team_profile top_scorers / top_assisters → [{ nick, n }]. */
 export const normTop = (list) => (Array.isArray(list) ? list.map((x) => ({ nick: x.nick ?? x.name ?? "—", n: num(x.n ?? x.goals ?? x.assists) })) : []);
+/** Top 3 by `key` ("goals" | "assists") out of team_player_stats items (zeros never make the list). */
+export const topFrom = (items, key) => (items || []).filter((p) => p[key] > 0)
+  .sort((a, b) => (b[key] - a[key]) || (b.appearances - a.appearances)).slice(0, 3).map((p) => ({ nick: p.nick || p.name || "—", n: p[key] }));
 
 // ── Outcome + view helpers ──────────────────────────────
 export const resultOutcome = (mine, theirs) => (mine > theirs ? "W" : mine < theirs ? "L" : "D");
@@ -135,6 +147,10 @@ export function resultView(match, { myTeamId, leader = false, now = Date.now() }
   const open = res.openRevision || null;
   const kicked = Date.parse(match?.kickoffAt) <= now;
   const revisionsCount = res.revisionsCount || 0;
+  // Before any confirmation every revision belongs to the chain, so a 4th can never be proposed (3 are
+  // already "stuck"). After a confirmation the chain is shorter than revisionsCount and only the server
+  // knows: it answers needs_help and the UI shows the help card then.
+  const stuck = Boolean(open) && !hasOfficial && revisionsCount >= MAX_REVISIONS - 1;
   const party = Boolean(myTeamId) && (match?.homeTeamId === myTeamId || match?.awayTeamId === myTeamId);
 
   let phase;
@@ -155,11 +171,12 @@ export function resultView(match, { myTeamId, leader = false, now = Date.now() }
     canReport: lead && phase === "ready",
     canMarkNotPlayed: lead && phase === "ready",
     canRespond: lead && Boolean(open) && !byMe,
-    canContest: lead && Boolean(open) && !byMe && revisionsCount < MAX_REVISIONS,
+    canContest: lead && Boolean(open) && !byMe && !stuck,
     canWithdraw: lead && Boolean(open) && byMe,
     canCorrect: lead && phase === "confirmed",
     // stale: a proposal nobody answered for a week; stuck: four revisions and still no agreement
-    needsHelp: Boolean(open) && (revisionsCount >= MAX_REVISIONS || age > HELP_AFTER_DAYS * DAY),
+    needsHelp: Boolean(open) && (stuck || age > HELP_AFTER_DAYS * DAY),
+    stuck,
     /** Anyone on the team (not only leaders) can see the call-up, lineup and stats. */
     waitingOnOther: Boolean(open) && byMe,
   };
@@ -345,7 +362,20 @@ export function decorateDemoMatch(state, m, myTeamId, meId) {
 // ─────────────────────────────────────────────────────────
 const patchMatch = (state, id, patch) => ({ ...state, matches: state.matches.map((m) => (m.id === id ? { ...m, ...patch } : m)) });
 const touch = (state, challengeId, now) => ({ ...state, challenges: (state.challenges || []).map((c) => (c.id === challengeId ? { ...c, updatedAt: iso(now) } : c)) });
-const resultData = (r) => ({ ...r });
+/** The result object every mutation answers with, plus the match summary (contract deviation 6). */
+function resultOut(state, row, extra = {}) {
+  const m = matchOf(state, row.matchId);
+  return {
+    ...row,
+    match: m && {
+      id: m.id, matchStatus: m.matchStatus, resultStatus: m.resultStatus || "none", officialHomeScore: m.officialHomeScore ?? null,
+      officialAwayScore: m.officialAwayScore ?? null, confirmedRevision: m.confirmedRevision ?? null, resultConfirmedAt: m.resultConfirmedAt ?? null,
+    },
+    ...extra,
+  };
+}
+/** Revisions after the last confirmed one (withdrawn included) — the chain needs_help is counted on. */
+const chainOf = (m, rs) => rs.filter((r) => r.revision > (m.confirmedRevision ?? 0));
 
 /** Who am I in this match: member teams, leader teams. */
 function standing(state, m, meId) {
@@ -387,7 +417,10 @@ function demoLineup(state, a, me) {
   const roster = new Set(activeMembers(state, g.team).map((x) => x.playerId));
   if (!ids.every((id) => roster.has(id))) return ERR("invalid_lineup");
   const rows = ids.map((playerId) => ({ matchId: m.id, playerId, teamId: g.team, setByPlayerId: me.id }));
-  return { state: { ...state, lineups: withFilledRows(state.lineups || [], (r) => r.matchId === m.id && r.teamId === g.team, rows) }, data: { matchId: m.id, teamId: g.team, count: ids.length } };
+  // Players dropped from the list lose their goals/assists rows (the server deletes them too).
+  const dropped = (state.playerStats || []).filter((r) => r.matchId === m.id && r.teamId === g.team && !ids.includes(r.playerId));
+  const playerStats = (state.playerStats || []).filter((r) => !dropped.includes(r));
+  return { state: { ...state, playerStats, lineups: withFilledRows(state.lineups || [], (r) => r.matchId === m.id && r.teamId === g.team, rows) }, data: { matchId: m.id, teamId: g.team, count: ids.length, statsRemoved: dropped.length } };
 }
 
 function demoPlayerStats(state, a, me, now) {
@@ -430,7 +463,7 @@ function demoReport(state, a, me, now) {
     respondedByPlayerId: null, respondedAt: null, note: tidyNote(a.note), createdAt: iso(now),
   };
   const next = touch(patchMatch({ ...state, results: [...(state.results || []), row] }, m.id, { resultStatus: "reported" }), m.challengeId, now);
-  return { state: next, data: resultData(row) };
+  return { state: next, data: resultOut(next, row) };
 }
 
 /** Shared gate of confirm / contest: the latest open revision, answered by the OTHER team's leader. */
@@ -444,11 +477,20 @@ function respondGate(state, a, me) {
   if (!open) return ERR("no_open_proposal");
   if (a.revision !== open.revision) return ERR("stale_revision");
   const team = s.leaderTeams.find((id) => id !== open.reportedByTeamId);
-  if (!team) return ERR("own_proposal");
+  // A player who leads both teams may propose, but never confirms / contests his own proposal.
+  if (!team || open.reportedByPlayerId === me.id) return ERR("own_proposal");
   return { m, open, team };
 }
 
 function demoConfirm(state, a, me, now) {
+  // Repeated confirm of an already confirmed revision → success flag (idempotent), nothing changes.
+  const done = resultsOf(state, a.matchId).find((r) => r.revision === a.revision && r.status === "confirmed");
+  if (done && !openOf(state, a.matchId)) {
+    const m0 = matchOf(state, a.matchId);
+    if (m0 && standing(state, m0, me.id).leaderTeams.some((id) => id !== done.reportedByTeamId) && done.reportedByPlayerId !== me.id) {
+      return { state, data: resultOut(state, done, { alreadyConfirmed: true }) };
+    }
+  }
   const g = respondGate(state, a, me);
   if (g.error) return g;
   const { m, open } = g;
@@ -462,7 +504,7 @@ function demoConfirm(state, a, me, now) {
     officialHomeScore: open.homeScore, officialAwayScore: open.awayScore, resultStatus: "confirmed",
     confirmedRevision: open.revision, resultConfirmedAt: iso(now), matchStatus: "played",
   }), m.challengeId, now);
-  return { state: next, data: resultData(results.find((r) => r.matchId === m.id && r.revision === open.revision)) };
+  return { state: next, data: resultOut(next, results.find((r) => r.matchId === m.id && r.revision === open.revision)) };
 }
 
 function demoContest(state, a, me, now) {
@@ -473,14 +515,18 @@ function demoContest(state, a, me, now) {
   if (noteTooLong(a.note)) return ERR("note_too_long");
   if (a.homeScore === open.homeScore && a.awayScore === open.awayScore) return ERR("same_score");
   const rs = resultsOf(state, m.id);
-  if (rs.length >= MAX_REVISIONS) return ERR("needs_help");
+  // needs_help: the new revision would be the 4th of the current chain (revisions after the last
+  // confirmed one, withdrawn included) — or beyond #30 for the match.
+  if (chainOf(m, rs).length >= MAX_REVISIONS - 1 || rs.length >= MAX_TOTAL_REVISIONS) return ERR("needs_help");
   const row = {
     matchId: m.id, revision: rs[rs.length - 1].revision + 1, kind: "counter", status: "proposed",
     homeScore: a.homeScore, awayScore: a.awayScore, reportedByTeamId: team, reportedByPlayerId: me.id,
     respondedByPlayerId: null, respondedAt: null, note: tidyNote(a.note), createdAt: iso(now),
   };
   const results = (state.results || []).map((r) => (r === open ? { ...r, status: "disputed", respondedByPlayerId: me.id, respondedAt: iso(now) } : r));
-  return { state: touch(patchMatch({ ...state, results: [...results, row] }, m.id, { resultStatus: "disputed" }), m.challengeId, now), data: resultData(row) };
+  // result_status is 'disputed' only for the FIRST report; while a correction chain is open it stays 'confirmed'.
+  const next = touch(patchMatch({ ...state, results: [...results, row] }, m.id, hasOfficialRow(m) ? {} : { resultStatus: "disputed" }), m.challengeId, now);
+  return { state: next, data: resultOut(next, row) };
 }
 
 function demoCorrection(state, a, me, now) {
@@ -488,8 +534,8 @@ function demoCorrection(state, a, me, now) {
   if (!m) return ERR("match_not_found");
   const g = needLeader(state, m, me.id);
   if (g.error) return g;
-  if (openOf(state, m.id)) return ERR("result_exists");
-  if (!hasOfficialRow(m)) return ERR("invalid_status");
+  if (!hasOfficialRow(m)) return ERR("result_not_confirmed");
+  if (openOf(state, m.id)) return ERR("proposal_open");
   if (!validScore(a.homeScore) || !validScore(a.awayScore)) return ERR("invalid_score");
   if (noteTooLong(a.note)) return ERR("note_too_long");
   if (a.homeScore === m.officialHomeScore && a.awayScore === m.officialAwayScore) return ERR("same_score");
@@ -499,22 +545,35 @@ function demoCorrection(state, a, me, now) {
     homeScore: a.homeScore, awayScore: a.awayScore, reportedByTeamId: g.team, reportedByPlayerId: me.id,
     respondedByPlayerId: null, respondedAt: null, note: tidyNote(a.note), createdAt: iso(now),
   };
-  // The official score (and so every metric) stays exactly as it was until the other team confirms.
-  return { state: touch(patchMatch({ ...state, results: [...(state.results || []), row] }, m.id, { resultStatus: "reported" }), m.challengeId, now), data: resultData(row) };
+  // The official score (and result_status 'confirmed', and so every metric) stays exactly as it was
+  // until the other team confirms; the UI reads the open revision (kind 'correction').
+  const next = touch({ ...state, results: [...(state.results || []), row] }, m.challengeId, now);
+  return { state: next, data: resultOut(next, row) };
 }
 
 function demoWithdraw(state, a, me, now) {
   const m = matchOf(state, a.matchId);
   if (!m) return ERR("match_not_found");
-  const open = openOf(state, m.id);
-  if (!open) return ERR("no_open_proposal");
-  if (a.revision !== open.revision) return ERR("stale_revision");
   const s = standing(state, m, me.id);
   if (!s.memberTeams.length) return ERR("not_team_member");
-  if (!s.leaderTeams.includes(open.reportedByTeamId)) return ERR("not_team_leader");
-  const results = (state.results || []).map((r) => (r === open ? { ...r, status: "withdrawn", respondedByPlayerId: me.id, respondedAt: iso(now) } : r));
-  const resultStatus = hasOfficialRow(m) ? "confirmed" : "none";
-  return { state: touch(patchMatch({ ...state, results }, m.id, { resultStatus }), m.challengeId, now), data: resultData(results.find((r) => r.matchId === m.id && r.revision === open.revision)) };
+  if (!s.leaderTeams.length) return ERR("not_team_leader");
+  const open = openOf(state, m.id);
+  const gone = resultsOf(state, m.id).find((r) => r.revision === a.revision && r.status === "withdrawn");
+  if (!open && gone && s.leaderTeams.includes(gone.reportedByTeamId)) return { state, data: resultOut(state, gone, { alreadyWithdrawn: true }) };
+  if (!open) return ERR("no_open_proposal");
+  if (a.revision !== open.revision) return ERR("stale_revision");
+  if (!s.leaderTeams.includes(open.reportedByTeamId)) return ERR("not_proposer");
+  // Withdrawing a counter re-opens the revision it contested (a dispute never dead-ends).
+  const reopen = open.kind === "counter" ? resultsOf(state, m.id).find((r) => r.revision === open.revision - 1 && r.status === "disputed") : null;
+  const results = (state.results || []).map((r) => {
+    if (r === open) return { ...r, status: "withdrawn", respondedByPlayerId: me.id, respondedAt: iso(now) };
+    if (reopen && r === reopen) return { ...r, status: "proposed", respondedByPlayerId: null, respondedAt: null };
+    return r;
+  });
+  // First report → none; a correction → no change; a counter → back to the contested report (or still confirmed).
+  const patch = hasOfficialRow(m) ? {} : { resultStatus: reopen ? "reported" : "none" };
+  const next = touch(patchMatch({ ...state, results }, m.id, patch), m.challengeId, now);
+  return { state: next, data: resultOut(next, results.find((r) => r.matchId === m.id && r.revision === open.revision)) };
 }
 
 function demoNotPlayed(state, a, me, now) {
@@ -648,7 +707,9 @@ export function demoReadResults(state, op, args, me) {
       const teams = m.matchStatus === "played" ? [m.homeTeamId, m.awayTeamId] : s.memberTeams;
       const items = (state.lineups || []).filter((l) => l.matchId === m.id && teams.includes(l.teamId)).map((l) => {
         const mem = (state.members || []).find((x) => x.teamId === l.teamId && x.playerId === l.playerId);
-        return { teamId: l.teamId, ...personOf(mem || { playerId: l.playerId }) };
+        const p = personOf(mem || { playerId: l.playerId });
+        // Opponent players: first name only (same privacy line as scout_opponent).
+        return { teamId: l.teamId, ...p, name: s.memberTeams.includes(l.teamId) || !p.name ? p.name : String(p.name).split(" ")[0] };
       });
       return { data: { items } };
     }
@@ -664,7 +725,7 @@ export function demoReadResults(state, op, args, me) {
       return { data: { items } };
     }
     case "scout_opponent": {
-      if (!["scheduled", "played"].includes(m.matchStatus)) return ERR("match_not_scheduled");
+      if (!["scheduled", "played"].includes(m.matchStatus)) return ERR("scout_unavailable");
       const mineId = s.memberTeams[0];
       const oppId = m.homeTeamId === mineId ? m.awayTeamId : m.homeTeamId;
       const opp = (state.teams || []).find((x) => x.id === oppId);

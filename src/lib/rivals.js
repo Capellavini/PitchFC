@@ -132,7 +132,8 @@ export function normDirectoryItem(r) {
     vice: r.vice ? { id: r.vice.id, nick: r.vice.nick, photoUrl: r.vice.photo_url ?? r.vice.photoUrl ?? null } : null,
     myRole: r.my_role ?? r.myRole ?? null,
     sameCity: Boolean(r.same_city ?? r.sameCity), sameRegion: Boolean(r.same_region ?? r.sameRegion),
-    record: r.record ? normRecord(r.record) : emptyRecord(),
+    // list_teams items carry the real record {played,wins,draws,losses} + form (top-level)
+    record: r.record ? normRecord(r.record, r.form) : emptyRecord(),
   };
 }
 

@@ -73,7 +73,7 @@ test("lineup: leaders only, own active members only, ≤ 22, replaces", () => {
   fail(s, "set_match_lineup", { matchId: "m1", playerIds: ["rui", "rui"] }, ana, "invalid_lineup");
   fail(s, "set_match_lineup", { matchId: "m1", playerIds: Array.from({ length: 23 }, (_, i) => `p${i}`) }, ana, "invalid_lineup");
   const a = run(s, "set_match_lineup", { matchId: "m1", playerIds: ["ana", "rui"] }, vasco); // vice may
-  assert.deepEqual(a.data, { matchId: "m1", teamId: "A", count: 2 });
+  assert.deepEqual(a.data, { matchId: "m1", teamId: "A", count: 2, statsRemoved: 0 });
   const b = run(a.state, "set_match_lineup", { matchId: "m1", playerIds: ["vasco"] }, ana);
   assert.equal(b.state.lineups.filter((l) => l.teamId === "A").length, 1);
   // each team's lineup is separate and the opponent's is hidden until the match is played
@@ -116,16 +116,24 @@ test("report → only the OTHER team confirms; nothing is official before that",
   assert.equal(m.confirmedRevision, 1);
   assert.equal(teamRecord(ok.state, "A").wins, 1);
   assert.equal(teamRecord(ok.state, "B").losses, 1);
-  fail(ok.state, "confirm_match_result", { matchId: "m1", revision: 1 }, paulo, "no_open_proposal");
+  assert.equal(run(ok.state, "confirm_match_result", { matchId: "m1", revision: 1 }, paulo).data.alreadyConfirmed, true); // idempotent
+  assert.equal(demoResultOp(ok.state, "confirm_match_result", { matchId: "m1", revision: 2 }, paulo, NOW).error, "no_open_proposal");
 });
 
 test("withdraw: only the proposer's leader; first report → back to none and can be re-reported", () => {
   const rep = run(fixture(), "report_match_result", { matchId: "m1", homeScore: 1, awayScore: 0 }, ana);
-  fail(rep.state, "withdraw_result_proposal", { matchId: "m1", revision: 1 }, paulo, "not_team_leader");
+  fail(rep.state, "withdraw_result_proposal", { matchId: "m1", revision: 1 }, paulo, "not_proposer"); // a leader of the OTHER team
+  fail(rep.state, "withdraw_result_proposal", { matchId: "m1", revision: 1 }, bruno, "not_team_leader");
+  fail(rep.state, "withdraw_result_proposal", { matchId: "m1", revision: 1 }, carla, "not_team_member");
   fail(rep.state, "withdraw_result_proposal", { matchId: "m1", revision: 2 }, ana, "stale_revision");
   const w = run(rep.state, "withdraw_result_proposal", { matchId: "m1", revision: 1 }, vasco);
   assert.equal(w.data.status, "withdrawn");
+  assert.equal(w.data.match.resultStatus, "none"); // the mutation also answers with the match summary
   assert.equal(matchOf(w.state).resultStatus, "none");
+  // a repeated withdraw is idempotent (already_withdrawn) and changes nothing
+  const again0 = run(w.state, "withdraw_result_proposal", { matchId: "m1", revision: 1 }, ana);
+  assert.equal(again0.data.alreadyWithdrawn, true);
+  assert.deepEqual(again0.state, w.state);
   fail(w.state, "confirm_match_result", { matchId: "m1", revision: 1 }, paulo, "no_open_proposal");
   const again = run(w.state, "report_match_result", { matchId: "m1", homeScore: 2, awayScore: 2 }, paulo);
   assert.equal(again.data.revision, 2); // revisions are never reused
@@ -144,16 +152,74 @@ test("contest → counter revision; same score refused; confirming the counter e
   // now it's A's turn to answer, and B can't confirm its own counter
   fail(c.state, "confirm_match_result", { matchId: "m1", revision: 2 }, paulo, "own_proposal");
   fail(c.state, "confirm_match_result", { matchId: "m1", revision: 1 }, ana, "stale_revision"); // old revision
-  // A counters again, B again → revision 4 exists; the 5th contest is refused
+  // A counters again → revision 3; a contest that would create the 4th revision of the chain → needs_help
   s = run(c.state, "contest_match_result", { matchId: "m1", revision: 2, homeScore: 3, awayScore: 1 }, ana).state;
-  s = run(s, "contest_match_result", { matchId: "m1", revision: 3, homeScore: 1, awayScore: 1 }, paulo).state;
-  assert.equal(s.results.length, MAX_REVISIONS);
-  fail(s, "contest_match_result", { matchId: "m1", revision: 4, homeScore: 5, awayScore: 5 }, ana, "needs_help");
+  assert.equal(s.results.length, MAX_REVISIONS - 1);
+  fail(s, "contest_match_result", { matchId: "m1", revision: 3, homeScore: 1, awayScore: 1 }, paulo, "needs_help");
   // …but the other team can still simply confirm the last proposal
-  const done = run(s, "confirm_match_result", { matchId: "m1", revision: 4 }, ana);
-  assert.equal(matchOf(done.state).officialHomeScore, 1);
+  const done = run(s, "confirm_match_result", { matchId: "m1", revision: 3 }, paulo);
+  assert.equal(matchOf(done.state).officialHomeScore, 3);
   assert.equal(done.state.results.filter((r) => r.status === "confirmed").length, 1);
-  assert.equal(done.state.results.filter((r) => r.status === "disputed").length, 3);
+  // contested revisions stay "disputed" (history as it happened), only a previously CONFIRMED one is superseded
+  assert.equal(done.state.results.filter((r) => r.status === "disputed").length, 2);
+  // a repeated confirm is idempotent
+  const dup = run(done.state, "confirm_match_result", { matchId: "m1", revision: 3 }, paulo);
+  assert.equal(dup.data.alreadyConfirmed, true);
+  assert.deepEqual(dup.state, done.state);
+});
+
+test("withdrawing a counter re-opens the revision it contested (a dispute never dead-ends)", () => {
+  let s = run(fixture(), "report_match_result", { matchId: "m1", homeScore: 3, awayScore: 2 }, ana).state;
+  s = run(s, "contest_match_result", { matchId: "m1", revision: 1, homeScore: 2, awayScore: 2 }, paulo).state;
+  assert.equal(matchOf(s).resultStatus, "disputed");
+  const w = run(s, "withdraw_result_proposal", { matchId: "m1", revision: 2 }, paulo);
+  assert.deepEqual(w.state.results.map((r) => r.status), ["proposed", "withdrawn"]);
+  assert.equal(matchOf(w.state).resultStatus, "reported");
+  // A's original report is open again, waiting for B
+  fail(w.state, "confirm_match_result", { matchId: "m1", revision: 1 }, ana, "own_proposal");
+  assert.equal(run(w.state, "confirm_match_result", { matchId: "m1", revision: 1 }, paulo).data.status, "confirmed");
+  // in a correction chain the match stays confirmed throughout
+  let c = run(fixture(), "report_match_result", { matchId: "m1", homeScore: 3, awayScore: 2 }, ana).state;
+  c = run(c, "confirm_match_result", { matchId: "m1", revision: 1 }, paulo).state;
+  c = run(c, "propose_result_correction", { matchId: "m1", homeScore: 2, awayScore: 3 }, paulo).state;
+  c = run(c, "contest_match_result", { matchId: "m1", revision: 2, homeScore: 4, awayScore: 3 }, ana).state;
+  assert.equal(matchOf(c).resultStatus, "confirmed"); // 'disputed' is only for the FIRST report
+  const cw = run(c, "withdraw_result_proposal", { matchId: "m1", revision: 3 }, ana);
+  assert.equal(matchOf(cw.state).resultStatus, "confirmed");
+  assert.deepEqual(cw.state.results.map((r) => r.status), ["confirmed", "proposed", "withdrawn"]);
+  // the chain counts only revisions AFTER the last confirmed one: here 2 (correction + counter) → one more contest is fine
+  const more = run(cw.state, "contest_match_result", { matchId: "m1", revision: 2, homeScore: 1, awayScore: 1 }, ana);
+  assert.equal(more.data.revision, 4);
+});
+
+test("a player who leads both teams may propose but never confirms his own proposal", () => {
+  const s = fixture();
+  const both = { ...s, members: [...s.members, mem("B", "ana", "vice")] };
+  const rep = run(both, "report_match_result", { matchId: "m1", homeScore: 1, awayScore: 0 }, ana);
+  assert.equal(rep.data.reportedByTeamId, "A"); // the HOME team is used
+  fail(rep.state, "confirm_match_result", { matchId: "m1", revision: 1 }, ana, "own_proposal");
+  fail(rep.state, "contest_match_result", { matchId: "m1", revision: 1, homeScore: 0, awayScore: 0 }, ana, "own_proposal");
+  // another leader of B can
+  assert.equal(run(rep.state, "confirm_match_result", { matchId: "m1", revision: 1 }, paulo).data.status, "confirmed");
+});
+
+test("lineup drops stats of removed players; opponent lineup shows first names only; scout needs a live match", () => {
+  let s = run(fixture(), "set_match_lineup", { matchId: "m1", playerIds: ["ana", "rui"] }, ana).state;
+  s = run(s, "set_match_player_stats", { matchId: "m1", stats: [{ playerId: "rui", goals: 2, assists: 0 }, { playerId: "ana", goals: 1, assists: 1 }] }, ana).state;
+  const r = run(s, "set_match_lineup", { matchId: "m1", playerIds: ["ana"] }, ana);
+  assert.equal(r.data.statsRemoved, 1);
+  assert.deepEqual(r.state.playerStats.map((x) => x.playerId), ["ana"]);
+  // B's lineup as seen by A once the match is played: first name only
+  let p = { ...s, members: s.members.map((m) => (m.playerId === "bruno" ? { ...m, name: "Bruno Almeida" } : m)) };
+  p = run(p, "set_match_lineup", { matchId: "m1", playerIds: ["bruno"] }, paulo).state;
+  p = run(p, "report_match_result", { matchId: "m1", homeScore: 1, awayScore: 0 }, ana).state;
+  p = run(p, "confirm_match_result", { matchId: "m1", revision: 1 }, paulo).state;
+  const seen = demoReadResults(p, "get_match_lineup", { matchId: "m1" }, ana).data.items;
+  assert.equal(seen.find((x) => x.playerId === "bruno").name, "Bruno");
+  assert.equal(demoReadResults(p, "get_match_lineup", { matchId: "m1" }, paulo).data.items.find((x) => x.playerId === "bruno").name, "Bruno Almeida");
+  // scout on a not-played match
+  const np = run(fixture(), "mark_match_not_played", { matchId: "m1" }, ana).state;
+  assert.equal(demoReadResults(np, "scout_opponent", { matchId: "m1" }, ana).error, "scout_unavailable");
 });
 
 test("correction keeps the official score (and every metric) until the other team confirms", () => {
@@ -168,7 +234,11 @@ test("correction keeps the official score (and every metric) until the other tea
   assert.equal(matchOf(cor.state).officialHomeScore, 3);
   assert.equal(teamRecord(cor.state, "A").wins, 1);
   assert.equal(teamRecord(cor.state, "B").losses, 1);
-  fail(cor.state, "propose_result_correction", { matchId: "m1", homeScore: 0, awayScore: 0 }, ana, "result_exists");
+  // result_status stays 'confirmed' during the correction: the UI reads the open revision instead
+  assert.equal(matchOf(cor.state).resultStatus, "confirmed");
+  assert.equal(cor.data.match.resultStatus, "confirmed");
+  fail(cor.state, "propose_result_correction", { matchId: "m1", homeScore: 0, awayScore: 0 }, ana, "proposal_open");
+  fail(fixture(), "propose_result_correction", { matchId: "m1", homeScore: 0, awayScore: 0 }, ana, "result_not_confirmed");
   fail(cor.state, "confirm_match_result", { matchId: "m1", revision: 2 }, paulo, "own_proposal");
   // withdrawing the correction restores "confirmed" and the score stands
   const back = run(cor.state, "withdraw_result_proposal", { matchId: "m1", revision: 2 }, paulo);
@@ -337,15 +407,22 @@ test("resultView: phases, who can do what, help after 4 revisions or 7 days", ()
   assert.equal(cor.official.outcome, "D"); // still the old official result
   assert.equal(cor.waitingOnOther, true);
   assert.equal(view(s, "B", true).canRespond, true);
-  // four revisions → can't contest any more
+  // three revisions already → a contest would create the 4th: blocked, "Fala connosco", confirming still possible
   let s4 = run(fixture(), "report_match_result", { matchId: "m1", homeScore: 1, awayScore: 0 }, ana).state;
   s4 = run(s4, "contest_match_result", { matchId: "m1", revision: 1, homeScore: 0, awayScore: 0 }, paulo).state;
+  assert.equal(view(s4, "A", true).canContest, true);
+  assert.equal(view(s4, "A", true).needsHelp, false);
   s4 = run(s4, "contest_match_result", { matchId: "m1", revision: 2, homeScore: 2, awayScore: 0 }, ana).state;
-  s4 = run(s4, "contest_match_result", { matchId: "m1", revision: 3, homeScore: 0, awayScore: 3 }, paulo).state;
-  const stuck = view(s4, "A", true);
+  const stuck = view(s4, "B", true);
   assert.equal(stuck.canContest, false);
   assert.equal(stuck.canRespond, true);
+  assert.equal(stuck.stuck, true);
   assert.equal(stuck.needsHelp, true);
+  // after a confirmation the chain is shorter than the total, so the UI doesn't pre-block (the server decides)
+  const settled4 = run(s4, "confirm_match_result", { matchId: "m1", revision: 3 }, paulo).state;
+  const corr = run(settled4,"propose_result_correction", { matchId: "m1", homeScore: 5, awayScore: 5 }, ana).state;
+  assert.equal(view(corr, "B", true).canContest, true);
+  assert.equal(view(corr, "B", true).phase, "correction");
 });
 
 test("feed items: confirm-waiting first, then report-nudges, then recent confirmed results", () => {
