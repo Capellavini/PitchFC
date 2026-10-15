@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { Share2, Swords, UserPlus, Settings, LogOut, MapPin } from "lucide-react";
+import { Image as ImageIcon, Share2, Swords, UserPlus, Settings, LogOut, MapPin } from "lucide-react";
 import { C, S, T, TOUCH, displayFont } from "../theme";
 import { t, getLang } from "../lib/i18n";
 import { CC, RC, rivalsError, tf } from "../lib/rivalsCopy";
-import { can, nextTeamMatch, sinceLabel, teamShareUrl } from "../lib/rivals";
+import { can, hasPlayed, nextTeamMatch, sinceLabel, teamShareUrl } from "../lib/rivals";
+import { SC } from "../lib/rivalsShareCopy";
+import { teamCardData, teamCardFile } from "../lib/rivalsCardData";
+import { renderTeamCard } from "../lib/rivalsCards";
 import { openWhatsApp } from "../lib/whatsapp";
 import TeamBadge from "./TeamBadge";
 import TeamRecordStrip from "./TeamRecordStrip";
+import TeamMilestones from "./TeamMilestones";
+import RivalsCardModal from "./RivalsCardModal";
 import TeamTopPlayers from "./TeamTopPlayers";
 import TeamNextMatchCard from "./TeamNextMatchCard";
 import TeamMatchRsvp from "./TeamMatchRsvp";
@@ -37,7 +42,7 @@ const LOCALE = { pt: "pt-PT", "pt-br": "pt-BR", en: "en-GB" };
 export default function TeamPage({ teams, teamId, onLeft, onChallenge, onOpenMatch, inviteSignal = 0 }) {
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState(null);
-  const [sheet, setSheet] = useState(null); // invite | edit | member
+  const [sheet, setSheet] = useState(null); // invite | edit | member | card
   // Bumped by the hub right after creating a team / from Home's "Convidar".
   useEffect(() => { if (inviteSignal) setSheet("invite"); }, [inviteSignal]);
   const [member, setMember] = useState(null);
@@ -119,7 +124,11 @@ export default function TeamPage({ teams, teamId, onLeft, onChallenge, onOpenMat
       )}
 
       <TeamRecordStrip record={record} />
+      <TeamMilestones record={record} />
       <TeamTopPlayers scorers={topScorers} assisters={topAssisters} />
+      {hasPlayed(record) && (
+        <BtnGhost block onClick={() => setSheet("card")} style={{ marginBottom: S.lg }}><ImageIcon size={16} aria-hidden /> {t(SC.shareTeamCard)}</BtnGhost>
+      )}
       <TeamLatestResults matches={teams.matches} teamId={team.id} onOpenMatch={onOpenMatch} />
 
       <SectionLabel right={can(myRole, "invite") ? (
@@ -154,6 +163,10 @@ export default function TeamPage({ teams, teamId, onLeft, onChallenge, onOpenMat
         </div>
       )}
 
+      {sheet === "card" && (
+        <RivalsCardModal title={t(SC.cardTeamAlt)} filename={teamCardFile(teamCardData(detail))} onClose={() => setSheet(null)}
+          render={() => renderTeamCard(teamCardData(detail))} />
+      )}
       {sheet === "invite" && <TeamInviteSheet teams={teams} team={team} showPitchAi={n < 5} onClose={() => setSheet(null)} />}
       {sheet === "edit" && (
         <TeamEditSheet teams={teams} team={team} myRole={myRole} onClose={() => setSheet(null)}

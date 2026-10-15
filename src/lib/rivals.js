@@ -568,6 +568,84 @@ export function demoInvitePreview(state, token, meId, now = Date.now()) {
   };
 }
 
+// ── Milestones (PR9) ────────────────────────────────────
+// Pure, derived from CONFIRMED numbers only (team_record / my_team_career) — nothing
+// is stored. Cumulative ladders (games, wins, clean sheets, thrashing) never go
+// back down; "live" ones (win streak, unbeaten run) describe the CURRENT run, since
+// the server only keeps the current streak and the last five results.
+export const GAMES_LADDER = [1, 5, 10, 25, 50, 100];
+export const WINS_LADDER = [1, 5, 10, 25, 50];
+export const CLEAN_LADDER = [1, 5, 10, 25];
+export const WIN_STREAK_LADDER = [3, 5, 10];
+export const UNBEATEN_RUN = 5; // the form window is the last five results
+export const BIG_WIN_MARGIN = 4;
+export const PLAYER_APPEARANCES_LADDER = [1, 5, 10, 25, 50];
+export const PLAYER_GOALS_LADDER = [1, 5, 10, 25, 50];
+export const PLAYER_ASSISTS_LADDER = [1, 5, 10, 25];
+
+/** The highest rung of `ladder` that `value` has reached, or null. */
+export const topRung = (ladder, value) => ladder.reduce((best, n) => (Number(value) >= n ? n : best), null);
+/** The first rung above `value`, or null when the ladder is done. */
+export const nextRung = (ladder, value) => ladder.find((n) => n > Number(value || 0)) ?? null;
+/** "4-1" → margin 3 (0 when it can't be read). */
+export function scoreMargin(score) {
+  const m = String(score || "").match(/^(\d+)\D+(\d+)$/);
+  return m ? Number(m[1]) - Number(m[2]) : 0;
+}
+/** Consecutive results without a loss, newest first, out of the form window. */
+export function unbeatenRun(form = []) {
+  const i = form.indexOf("L");
+  return i < 0 ? form.length : i;
+}
+
+/**
+ * The team's milestones: [{ id, kind, n, live }], the highest rung of each
+ * ladder. kind: games | wins | clean | bigwin | streak | unbeaten. `record` is a
+ * normRecord(). An empty record has none.
+ */
+export function teamMilestones(record) {
+  const r = record || emptyRecord();
+  const out = [];
+  const add = (kind, n, live = false) => { if (n != null) out.push({ id: `${kind}_${n}`, kind, n, live }); };
+  add("wins", topRung(WINS_LADDER, r.wins));
+  add("games", topRung(GAMES_LADDER, r.played));
+  add("clean", topRung(CLEAN_LADDER, r.cleanSheets));
+  const margin = scoreMargin(r.biggestWin?.score);
+  if (margin >= BIG_WIN_MARGIN) add("bigwin", margin);
+  if (r.streak?.type === "W") add("streak", topRung(WIN_STREAK_LADDER, r.streak.n), true);
+  if (unbeatenRun(r.form) >= UNBEATEN_RUN) add("unbeaten", UNBEATEN_RUN, true);
+  return out;
+}
+
+/**
+ * The closest cumulative milestone still to reach → { kind, n, have, left } or
+ * null. Ties go to games, then wins, then clean sheets. A team with no games
+ * is told about the first one.
+ */
+export function nextMilestone(record) {
+  const r = record || emptyRecord();
+  const ladders = [["games", GAMES_LADDER, r.played], ["wins", WINS_LADDER, r.wins], ["clean", CLEAN_LADDER, r.cleanSheets]];
+  let best = null;
+  for (const [kind, ladder, have] of ladders) {
+    const n = nextRung(ladder, have);
+    if (n == null) continue;
+    const left = n - Number(have || 0);
+    if (!best || left < best.left) best = { kind, n, have: Number(have || 0), left };
+  }
+  return best;
+}
+
+/** A player's milestones in one team (a my_team_career item): the highest rung of each ladder. */
+export function playerMilestones(career) {
+  const c = career || {};
+  const out = [];
+  const add = (kind, ladder, value) => { const n = topRung(ladder, value); if (n != null) out.push({ id: `p_${kind}_${n}`, kind, n, live: false }); };
+  add("appearances", PLAYER_APPEARANCES_LADDER, c.appearances);
+  add("goals", PLAYER_GOALS_LADDER, c.goals);
+  add("assists", PLAYER_ASSISTS_LADDER, c.assists);
+  return out;
+}
+
 /** My active teams in the demo (same shape as the cloud myTeams). */
 export function demoMyTeams(state, meId) {
   return (state.members || [])

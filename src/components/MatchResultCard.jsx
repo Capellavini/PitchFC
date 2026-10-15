@@ -1,16 +1,22 @@
 import { useState } from "react";
-import { AlertCircle, Ban, CheckCircle2, Clock, GitCompareArrows, History, Hourglass, Pencil } from "lucide-react";
+import { AlertCircle, Ban, CheckCircle2, Clock, GitCompareArrows, History, Hourglass, Pencil, Repeat, Share2 } from "lucide-react";
 import { C, R, S, T, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
 import { CC, RC, rivalsError, tf } from "../lib/rivalsCopy";
 import { MC } from "../lib/rivalsMatchCopy";
 import { resultView } from "../lib/rivalsResults";
 import { kickoffLabel } from "../lib/challengeLabels";
+import { rematchState } from "../lib/rivalsChallenges";
+import { resultCardData, resultCardFile } from "../lib/rivalsCardData";
+import { renderResultCard } from "../lib/rivalsCards";
+import { SC } from "../lib/rivalsShareCopy";
 import SectionLabel from "./SectionLabel";
 import MatchScore from "./MatchScore";
 import ResultSheet from "./ResultSheet";
 import ResultDisputeView from "./ResultDisputeView";
 import ResultHelpCard from "./ResultHelpCard";
+import ChallengeComposer from "./ChallengeComposer";
+import RivalsCardModal from "./RivalsCardModal";
 import ReasonConfirm from "./ReasonConfirm";
 import Chip from "./Chip";
 import BtnPrimary from "./BtnPrimary";
@@ -25,6 +31,9 @@ const OUTCOME = { W: [RC.win, "green"], D: [RC.draw, "orange"], L: [RC.loss, "re
  *   before · ready · reported · disputed · confirmed · correction · not_played
  * Leaders get the action for the state (log / confirm-or-contest / withdraw /
  * correct / "não se realizou"); plain members only read.
+ * Once the result is official (PR9) any member can share it as a card, and a
+ * leader can ask for a rematch (same terms, new date) unless a challenge between
+ * the two teams is already open.
  * Props: teams (useTeams), ch, view (challengeView), m (match), onNotice(text).
  */
 export default function MatchResultCard({ teams, ch, view, m, onNotice }) {
@@ -35,6 +44,8 @@ export default function MatchResultCard({ teams, ch, view, m, onNotice }) {
   const [sheet, setSheet] = useState(null); // report | respond | correct | withdraw
   const [history, setHistory] = useState(false);
   const [confirmNP, setConfirmNP] = useState(false);
+  const [rematch, setRematch] = useState(false);
+  const [card, setCard] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -64,6 +75,8 @@ export default function MatchResultCard({ teams, ch, view, m, onNotice }) {
   const shownScore = showOfficial ? rv.official : rv.open;
   const provisional = !showOfficial && Boolean(rv.open);
   const [outLabel, outTone] = rv.official ? OUTCOME[rv.official.outcome] : [];
+  const rematchAs = rv.phase === "confirmed" ? rematchState(m, teams.challenges, { myTeamId: ch.myTeamId, leader: view.leader }) : "not_eligible";
+  const cardData = rv.phase === "confirmed" ? resultCardData(ch) : null;
 
   return (
     <>
@@ -115,7 +128,12 @@ export default function MatchResultCard({ teams, ch, view, m, onNotice }) {
           {rv.canWithdraw && <BtnGhost block onClick={() => setSheet("withdraw")}>{t(MC.withdrawAction)}</BtnGhost>}
           {rv.canCorrect && <BtnGhost block onClick={() => setSheet("correct")}><Pencil size={16} aria-hidden /> {t(MC.correctAction)}</BtnGhost>}
           {rv.canMarkNotPlayed && !confirmNP && <BtnGhost block onClick={() => setConfirmNP(true)} disabled={busy}>{t(MC.notPlayedAction)}</BtnGhost>}
+          {rematchAs === "available" && <BtnPrimary block onClick={() => setRematch(true)}><Repeat size={16} aria-hidden /> {t(SC.rematchAction)}</BtnPrimary>}
+          {cardData && <BtnGhost block onClick={() => setCard(true)}><Share2 size={16} aria-hidden /> {t(SC.shareResult)}</BtnGhost>}
         </div>
+        {rv.phase === "confirmed" && rematchAs === "pair_open" && <div style={{ fontSize: T.meta + 1, color: C.text2, lineHeight: 1.5, marginTop: S.sm }}>{t(SC.rematchPairOpen)}</div>}
+        {rv.phase === "confirmed" && rematchAs === "done" && <div style={{ fontSize: T.meta + 1, color: C.green, fontWeight: 700, lineHeight: 1.5, marginTop: S.sm }}>{t(SC.rematchDone)}</div>}
+        {rv.phase === "confirmed" && !view.leader && <div style={{ fontSize: T.meta + 1, color: C.text2, lineHeight: 1.5, marginTop: S.sm }}>{t(SC.rematchOnlyLeaders)}</div>}
         {confirmNP && <ReasonConfirm text={t(MC.notPlayedConfirm)} confirmLabel={t(MC.notPlayedConfirmLabel)} busy={busy} onCancel={() => setConfirmNP(false)} onConfirm={markNotPlayed} />}
 
         {rv.needsHelp && (
@@ -134,6 +152,19 @@ export default function MatchResultCard({ teams, ch, view, m, onNotice }) {
           </div>
         )}
       </div>
+
+      {/* stays mounted after sending (the open pair flips rematchAs) so the share screen can show */}
+      {rematch && (
+        <ChallengeComposer teams={teams} mode="rematch" base={{ match: m, myTeam: my, opponent: opp }}
+          onClose={() => setRematch(false)} onDone={() => { setRematch(false); onNotice?.(t(SC.rematchSentToast)); }} />
+      )}
+      {card && cardData && (
+        <RivalsCardModal title={t(SC.cardResultAlt)} filename={resultCardFile(cardData)} onClose={() => setCard(false)}
+          render={async () => {
+            const [st, h2h] = await Promise.all([teams.getMatchPlayerStats(m.id), opp?.id ? teams.getHeadToHead(ch.myTeamId, opp.id) : Promise.resolve({})]);
+            return renderResultCard(resultCardData(ch, { stats: st.data?.items || [], h2h: h2h.data || null }));
+          }} />
+      )}
 
       {/* If the state moves under an open sheet (the other team answered meanwhile) it simply goes away. */}
       {sheet && (sheet === "report" ? rv.canReport : sheet === "correct" ? rv.canCorrect : Boolean(rv.open)) && (

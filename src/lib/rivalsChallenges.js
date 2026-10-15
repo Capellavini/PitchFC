@@ -132,6 +132,7 @@ export function normChallenge(r, now = Date.now()) {
     createdAt: r.created_at ?? r.createdAt, updatedAt: r.updated_at ?? r.updatedAt,
     decidedAt: r.decided_at ?? r.decidedAt ?? null, decidedByTeamId: r.decided_by_team_id ?? r.decidedByTeamId ?? null,
     reason: r.reason ?? null,
+    rematchOfMatchId: r.rematch_of_match_id ?? r.rematchOfMatchId ?? null,
     challenger: normChallengeTeam(r.challenger), challenged: normChallengeTeam(r.challenged),
     myTeamId: r.my_team_id ?? r.myTeamId ?? null, myRole: r.my_role ?? r.myRole ?? null,
     versions: (r.versions || []).map(normVersion).sort((a, b) => a.version - b.version),
@@ -333,6 +334,58 @@ export const defaultTerms = (team) => ({
 export const responseDeadline = (kickoffIso, now = Date.now()) =>
   new Date(Math.min(now + CHALLENGE_RESPONSE_HOURS * 3600e3, Date.parse(kickoffIso) - CHALLENGE_DEADLINE_BEFORE_KICKOFF_HOURS * 3600e3)).toISOString();
 
+// ── Rematch (PR9) ───────────────────────────────────────
+/** Terms a rematch starts from, seen from `myTeamId` (mirror of create_rematch):
+ *  the match's terms, no note, and the two "relative" fields flipped when I was
+ *  the away team so they keep pointing at the same real team. kickoffAt is NOT
+ *  copied — see rematchDraft. */
+export function rematchTerms(match, myTeamId) {
+  const terms = { ...normTerms(match), note: null, kickoffAt: null };
+  if (match?.homeTeamId && myTeamId !== match.homeTeamId) {
+    terms.fieldResponsible = terms.fieldResponsible === "challenger" ? "challenged" : "challenger";
+    if (terms.costSplit === "challenger") terms.costSplit = "challenged";
+    else if (terms.costSplit === "challenged") terms.costSplit = "challenger";
+  }
+  return terms;
+}
+/** Suggested date for the rematch: same weekday and local time, the first week
+ *  that is at least MIN_KICKOFF_LEAD_HOURS (+ a day of margin) ahead. The user
+ *  can change it — the RPC requires a kickoff, so the form always sends one. */
+export function rematchKickoff(match, now = Date.now()) {
+  const tz = match?.timezone || "Europe/Lisbon";
+  const { date, time } = zonedParts(match?.kickoffAt, tz);
+  const min = now + (MIN_KICKOFF_LEAD_HOURS + 24) * 3600e3;
+  let d = date;
+  let iso = null;
+  for (let i = 0; i < 80; i += 1) {
+    const [y, m, day] = d.split("-").map(Number);
+    d = new Date(Date.UTC(y, m - 1, day + 7)).toISOString().slice(0, 10);
+    iso = zonedToIso(d, time, tz);
+    if (Date.parse(iso) >= min) break;
+  }
+  return iso;
+}
+/** Everything the composer needs: the terms plus the suggested kickoff. */
+export const rematchDraft = (match, myTeamId, now = Date.now()) => ({ ...rematchTerms(match, myTeamId), kickoffAt: rematchKickoff(match, now) });
+
+/**
+ * Can I ask for a rematch of this match? (UI mirror of create_rematch's gate.)
+ *  available     leader of one of the two teams, played + confirmed result
+ *  pair_open     a challenge between the two teams is already open → answer that first
+ *  done          a rematch of THIS match was already agreed
+ *  not_eligible  anything else (no result yet, cancelled, not played, plain member…)
+ * `challenges` = useTeams().challenges.
+ */
+export function rematchState(match, challenges = [], { myTeamId, leader = false, now = Date.now() } = {}) {
+  if (!match || !myTeamId || !leader) return "not_eligible";
+  if (match.matchStatus !== "played" || match.resultStatus !== "confirmed") return "not_eligible";
+  const pair = [match.homeTeamId, match.awayTeamId].sort().join();
+  const same = (c) => [c.challenger?.id, c.challenged?.id].sort().join() === pair;
+  if (challenges.some((c) => c.rematchOfMatchId === match.id && c.status === "agreed")) return "done";
+  if (challenges.some((c) => same(c) && effectiveStatus(c, now) === "pending")) return "pair_open";
+  return "available";
+}
+
 // ── Local demo (mirror of the 20261013140000 RPCs) ───────────────
 export const DEMO_CHALLENGE_TOKEN = "democ4a11e0e5f1b2d3c4e5f6a7b8c9d0";
 const ERR = (code) => ({ error: code });
@@ -390,11 +443,24 @@ function demoCreate(state, a, me, now) {
     id: nextId("demo-c-", now), mode: to ? "directed" : "claimable", token: a.token || demoToken(now), status: "pending",
     challengerTeamId: from.id, challengedTeamId: to?.id ?? null, currentVersion: 1, turnTeamId: to?.id ?? null,
     expiresAt: responseDeadline(terms.kickoffAt, now), pendingChangeVersion: null, createdBy: me.id, clientRef: a.clientRef || null,
-    decidedByTeamId: null, decidedAt: null, reason: null, createdAt: iso(now), updatedAt: iso(now),
+    decidedByTeamId: null, decidedAt: null, reason: null, rematchOfMatchId: a.rematchOfMatchId ?? null, createdAt: iso(now), updatedAt: iso(now),
     versions: [{ ...terms, version: 1, kind: "proposal", proposedByTeamId: from.id, outcome: null, respondedAt: null, createdAt: iso(now) }],
   };
   s = { ...s, challenges: [...s.challenges, ch] };
   return { state: s, data: { challengeId: ch.id, token: ch.token, status: "pending", created: true, mode: ch.mode } };
+}
+
+/** create_rematch mirror: a leader of either team, PLAYED match with a CONFIRMED result;
+ *  the caller's team challenges the OTHER team (directed), kickoff required. */
+function demoRematch(state, a, me, now) {
+  const m = state.matches.find((x) => x.id === a.matchId);
+  if (!m) return ERR("match_not_found");
+  const from = [m.homeTeamId, m.awayTeamId].find((id) => leads(state, id, me.id));
+  if (!from) return ERR("not_team_leader");
+  if (m.matchStatus !== "played" || m.resultStatus !== "confirmed") return ERR("not_eligible_rematch");
+  if (!a.terms || a.terms.kickoffAt == null || a.terms.kickoffAt === "") return ERR("invalid_kickoff");
+  const to = from === m.homeTeamId ? m.awayTeamId : m.homeTeamId;
+  return demoCreate(state, { fromTeamId: from, toTeamId: to, terms: { ...rematchTerms(m, from), ...a.terms }, clientRef: a.clientRef, rematchOfMatchId: m.id }, me, now);
 }
 
 // Acting team (mirror of rivals_acting_team).
@@ -621,6 +687,7 @@ export function demoChallengeOp(state, op, args = {}, me, now = Date.now()) {
   const s = { ...state, challenges: state.challenges || [], matches: state.matches || [] };
   switch (op) {
     case "create_challenge": return demoCreate(s, args, me, now);
+    case "create_rematch": return demoRematch(s, args, me, now);
     case "respond_challenge": return demoRespond(s, args, me, now);
     case "counter_challenge": return demoCounter(s, args, me, now);
     case "cancel_challenge": return demoCancel(s, args, me, now);

@@ -5,10 +5,11 @@ import { t } from "../lib/i18n";
 import { CC, RC, rivalsError, tf } from "../lib/rivalsCopy";
 import { TEAM_FORMATS, isLeader } from "../lib/rivals";
 import {
-  COST_SPLITS, DURATIONS, defaultTerms, diffTerms, newClientRef, normTerms, parseCost, responseDeadline,
+  COST_SPLITS, DURATIONS, defaultTerms, diffTerms, newClientRef, normTerms, parseCost, rematchDraft, responseDeadline,
   validateTerms, zonedParts, zonedToIso,
 } from "../lib/rivalsChallenges";
 import { kickoffLabel, splitLabel, termValue, tzCity } from "../lib/challengeLabels";
+import { SC } from "../lib/rivalsShareCopy";
 import Sheet from "./Sheet";
 import FormField from "./FormField";
 import OptionPills from "./OptionPills";
@@ -25,29 +26,36 @@ import ChallengeShareActions from "./ChallengeShareActions";
  *                   desafio"); ends on a share screen (WhatsApp + copy).
  *  mode "counter" → counterChallenge on base.challengeId / base.baseVersion.
  *  mode "change"  → proposeMatchChange on base.matchId (after agreement).
+ *  mode "rematch" → createRematch: `base` = { match, myTeam, opponent }; my team
+ *                   challenges the other one with the same terms (sides flipped
+ *                   when I was away) and a suggested new date; ends on the same
+ *                   share screen as "new".
  * `base` (counter/change) = { challengeId, matchId, baseVersion, terms,
  *   challenger, challenged, mySide, asTeamId, token }.
  * Date + time are typed in the team's timezone. Cost is informational
  * only (PITCH never books or charges). onDone(result) after success.
  */
 export default function ChallengeComposer({ teams, mode = "new", fromTeamId, opponent: opponentProp = null, openLink = false, base, onClose, onDone }) {
+  const isRematch = mode === "rematch";
   const leaderTeams = teams.myTeams.filter((tm) => isLeader(tm.role));
-  const [fromId, setFromId] = useState(fromTeamId && leaderTeams.some((x) => x.id === fromTeamId) ? fromTeamId : leaderTeams[0]?.id || "");
-  const fromTeam = leaderTeams.find((x) => x.id === fromId) || null;
-  const [opponent, setOpponent] = useState(opponentProp);
-  const [linkMode, setLinkMode] = useState(Boolean(openLink && !opponentProp));
-  const isNew = mode === "new";
+  const [fromId, setFromId] = useState(isRematch ? base.myTeam.id : fromTeamId && leaderTeams.some((x) => x.id === fromTeamId) ? fromTeamId : leaderTeams[0]?.id || "");
+  const fromTeam = isRematch ? base.myTeam : leaderTeams.find((x) => x.id === fromId) || null;
+  const [opponent, setOpponent] = useState(isRematch ? base.opponent : opponentProp);
+  const [linkMode, setLinkMode] = useState(Boolean(openLink && !opponentProp && !isRematch));
+  // "creating" = a brand-new challenge (new, or a rematch — which is one too); counter/change edit an existing one.
+  const isNew = mode === "new" || isRematch;
   const mySide = isNew ? "challenger" : base?.mySide || "challenger";
 
   const start = useMemo(() => {
+    if (isRematch) return rematchDraft(base.match, base.myTeam.id);
     if (!isNew) return normTerms(base.terms);
     const d = defaultTerms(fromTeam);
     const { date } = zonedParts(new Date(Date.now() + 7 * 864e5).toISOString(), d.timezone);
     return { ...d, kickoffAt: zonedToIso(date, "20:00", d.timezone) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const tz = isNew ? fromTeam?.timezone || start.timezone : start.timezone;
-  const currency = isNew ? fromTeam?.currency || start.currency : start.currency;
+  const tz = isRematch ? start.timezone : isNew ? fromTeam?.timezone || start.timezone : start.timezone;
+  const currency = isRematch ? start.currency : isNew ? fromTeam?.currency || start.currency : start.currency;
   const startParts = zonedParts(start.kickoffAt, tz);
 
   const [f, setF] = useState({
@@ -64,7 +72,7 @@ export default function ChallengeComposer({ teams, mode = "new", fromTeamId, opp
   const costCents = parseCost(f.cost);
   const terms = {
     kickoffAt: zonedToIso(f.date, f.time, tz), timezone: tz, format: f.format, durationMin: Number(f.durationMin),
-    venueName: f.venueName.trim() || null, venueAddress: f.venueAddress.trim() || null, venueUrl: isNew ? null : start.venueUrl,
+    venueName: f.venueName.trim() || null, venueAddress: f.venueAddress.trim() || null, venueUrl: isNew && !isRematch ? null : start.venueUrl,
     fieldResponsible: f.fieldResponsible, costCents: Number.isNaN(costCents) ? null : costCents, currency,
     costSplit: f.costSplit, note: f.note.trim() || null,
   };
@@ -84,7 +92,8 @@ export default function ChallengeComposer({ teams, mode = "new", fromTeamId, opp
     if (!isNew && !changed.length) { setError(rivalsError("no_changes")); return; }
     setBusy(true);
     let r;
-    if (isNew) r = await teams.createChallenge({ fromTeamId: fromTeam.id, toTeamId: linkMode ? null : opponent.id, terms, clientRef });
+    if (isRematch) r = await teams.createRematch({ matchId: base.match.id, terms, clientRef });
+    else if (isNew) r = await teams.createChallenge({ fromTeamId: fromTeam.id, toTeamId: linkMode ? null : opponent.id, terms, clientRef });
     else if (mode === "counter") r = await teams.counterChallenge(base.challengeId, base.baseVersion, terms, { asTeamId: base.asTeamId, token: base.token });
     else r = await teams.proposeMatchChange(base.matchId, base.baseVersion, terms, { asTeamId: base.asTeamId });
     setBusy(false);
@@ -116,8 +125,8 @@ export default function ChallengeComposer({ teams, mode = "new", fromTeamId, opp
     );
   }
 
-  const title = t(mode === "counter" ? CC.composerCounter : mode === "change" ? CC.composerChange : CC.composerNew);
-  const cta = busy ? t(CC.sending) : t(mode === "counter" ? CC.sendCounter : mode === "change" ? CC.sendChange : linkMode ? CC.createLink : CC.send);
+  const title = t(isRematch ? SC.rematchTitle : mode === "counter" ? CC.composerCounter : mode === "change" ? CC.composerChange : CC.composerNew);
+  const cta = busy ? t(CC.sending) : t(isRematch ? SC.rematchSend : mode === "counter" ? CC.sendCounter : mode === "change" ? CC.sendChange : linkMode ? CC.createLink : CC.send);
   const sideLabel = (side) => t(side === mySide ? CC.us : CC.them);
   const mark = (k) => (changed.includes(k) ? ` · ${t(CC.changed)}` : "");
 
@@ -131,7 +140,9 @@ export default function ChallengeComposer({ teams, mode = "new", fromTeamId, opp
         <BtnPrimary block onClick={submit} disabled={busy || (isNew && !fromTeam)}>{cta}</BtnPrimary>
       </>
     )}>
-      {isNew && leaderTeams.length > 1 && (
+      {isRematch && <div style={{ fontSize: T.meta + 1, color: C.text2, lineHeight: 1.5, marginBottom: S.md }}>{t(SC.rematchHint)}</div>}
+
+      {isNew && !isRematch && leaderTeams.length > 1 && (
         <FormField label={t(CC.yourTeam)}>
           <select value={fromId} onChange={(e) => setFromId(e.target.value)} style={inputStyle()}>
             {leaderTeams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
@@ -157,7 +168,7 @@ export default function ChallengeComposer({ teams, mode = "new", fromTeamId, opp
                 <div style={{ fontSize: T.body, fontWeight: 800, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opponent.name}</div>
                 <div style={{ fontSize: T.meta, color: C.text2 }}>{[opponent.city || opponent.region, opponent.format].filter(Boolean).join(" · ")}</div>
               </div>
-              {!opponentProp && (
+              {!opponentProp && !isRematch && (
                 <button type="button" onClick={() => setOpponent(null)} style={{ minHeight: TOUCH.min, minWidth: TOUCH.min, background: "none", border: "none", color: C.accent, fontWeight: 700, fontSize: T.meta + 1, cursor: "pointer" }}>{t(CC.change)}</button>
               )}
             </div>

@@ -44,6 +44,9 @@ const RIVAL_RESULT_DELAY_MS = 3500; // demo: …and takes a bit longer to answer
  * need me (a leader). Actions map 1:1 to the RPCs. In demo mode a
  * simulated rival captain answers shortly after it becomes their turn.
  *
+ * Rematch (PR9): createRematch → create_rematch RPC (demo: rivalsChallenges mirror); the rival
+ * captain answers it like any other challenge.
+ *
  * Results (PR7, migration 20261014120000, docs/RIVALS-RESULTS-CONTRACT.md):
  * RSVP (set_match_availability), lineup, post-game player stats and the
  * shared result (report → the OTHER team confirms; contest; correction;
@@ -391,6 +394,15 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia, watch = f
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [cloudCapable, rpc, demoChallengeCall]);
 
+  /** Rematch of a PLAYED match with a CONFIRMED result (PR9): my team challenges the OTHER one,
+   *  directed, linked through rematch_of_match_id. terms (camelCase) must carry kickoffAt. */
+  const createRematch = useCallback(async ({ matchId, terms, clientRef }) => (cloudCapable
+    ? rpc("create_rematch", { p_match_id: matchId, p_terms: termsToRpc(terms), p_client_ref: clientRef || null },
+      (d) => withUrl({ challengeId: d.challenge_id, token: d.token, status: d.status, mode: d.mode, created: d.created, expiresAt: d.expires_at }))
+    : demoChallengeCall("create_rematch", { matchId, terms, clientRef }, withUrl, (d) => d.challengeId)),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [cloudCapable, rpc, demoChallengeCall]);
+
   /** accept | decline the current version (asTeamId + token claim a link). */
   const respondChallenge = useCallback(async (challengeId, version, action, { asTeamId = null, token = null, reason = null } = {}) => (cloudCapable
     ? rpc("respond_challenge", { p_challenge_id: challengeId, p_version: version, p_action: action, p_as_team: asTeamId, p_token: token, p_reason: reason },
@@ -540,7 +552,7 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia, watch = f
     getInvite, revokeInvite, previewInvite, acceptInvite,
     setMemberRole, transferCaptaincy, removeMember, leaveTeam,
     challenges, matches, pendingActions,
-    createChallenge, respondChallenge, counterChallenge, cancelChallenge,
+    createChallenge, createRematch, respondChallenge, counterChallenge, cancelChallenge,
     proposeMatchChange, respondMatchChange, setFieldStatus, previewChallenge,
     setMatchAvailability, setAvailability: setMatchAvailability, setMatchLineup, setMatchPlayerStats,
     reportMatchResult, confirmMatchResult, contestMatchResult, proposeResultCorrection, withdrawResultProposal, markMatchNotPlayed,

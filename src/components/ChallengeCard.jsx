@@ -2,12 +2,14 @@ import { Link2 } from "lucide-react";
 import { C, R, S, T, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
 import { CC } from "../lib/rivalsCopy";
+import { SC } from "../lib/rivalsShareCopy";
 import { MC } from "../lib/rivalsMatchCopy";
 import { currentTerms } from "../lib/rivalsChallenges";
 import { kickoffLabel, termValue } from "../lib/challengeLabels";
 import TeamBadge from "./TeamBadge";
 import ChallengeStageLine from "./ChallengeStageLine";
 import FieldStatusBadge from "./FieldStatusBadge";
+import Chip from "./Chip";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 
@@ -44,6 +46,7 @@ export default function ChallengeCard({ item, onOpen }) {
       <div style={{ display: "flex", alignItems: "center", gap: S.sm, flexWrap: "wrap", marginTop: S.md }}>
         <ChallengeStageLine ch={ch} view={view} />
         {showField && <FieldStatusBadge status={ch.match.fieldStatus} />}
+        {ch.rematchOfMatchId && <Chip>{t(SC.rematchChip)}</Chip>}
       </div>
       <div style={{ marginTop: S.md }}>
         {view.needsAction

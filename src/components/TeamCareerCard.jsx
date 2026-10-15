@@ -2,9 +2,12 @@ import { C, S, T, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
 import { RC, tf } from "../lib/rivalsCopy";
 import { MC } from "../lib/rivalsMatchCopy";
+import { playerMilestones } from "../lib/rivals";
+import { milestoneLabel } from "../lib/rivalsShareCopy";
 import { useRivalsRead } from "../hooks/useRivalsRead";
 import SectionLabel from "./SectionLabel";
 import StatTile from "./StatTile";
+import Chip from "./Chip";
 
 /** My numbers in my teams (Perfil): games, W-D-L, goals, assists per team —
  *  from CONFIRMED team matches where I was in "quem joga". Renders nothing
@@ -31,6 +34,11 @@ export default function TeamCareerCard({ teams }) {
                 <StatTile value={r.losses} label={t(RC.lossShort)} color={C.red} />
                 <StatTile value={r.goals} label={t(MC.goalsShort)} />
                 <StatTile value={r.assists} label={t(MC.assistsShort)} />
+              </div>
+            )}
+            {r.appearances > 0 && playerMilestones(r).length > 0 && (
+              <div role="list" style={{ display: "flex", flexWrap: "wrap", gap: S.sm, marginTop: S.sm }}>
+                {playerMilestones(r).map((m) => <span key={m.id} role="listitem"><Chip variant="green">{milestoneLabel(m)}</Chip></span>)}
               </div>
             )}
             {r.appearances === 0 && <div style={{ fontSize: T.meta + 1, color: C.text2, marginTop: S.xs }}>{t(MC.careerEmpty)}</div>}
