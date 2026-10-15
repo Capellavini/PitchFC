@@ -75,7 +75,14 @@ const normInvite = (r) => r && ({
   url: teamInviteUrl(r.token, typeof window !== "undefined" ? window.location.origin : undefined),
 });
 
-export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
+/**
+ * `watch`: true for people who can see Rivals without a team yet (admins,
+ * ?rivals=1 pilot opt-in). Everyone else is only "live" once they belong to a
+ * team — so regular group users (the vast majority) pay nothing beyond ONE
+ * team_members lookup: no my_challenges call, no realtime channels, and no
+ * reload storm when other people's teams change.
+ */
+export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia, watch = false }) {
   const cloudCapable = supabaseEnabled && !["off", "failed"].includes(cloudStatus);
   const cloudReady = cloudCapable && ["ready", "needsGroup"].includes(cloudStatus) && Boolean(myPlayer?.id);
   const meId = cloudCapable ? myPlayer?.id ?? null : demoMe?.id ?? null;
@@ -96,21 +103,24 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
   // earlier render (e.g. accepting an invite right after the player card
   // is created) must not reload with a stale "no player yet" view.
   const liveRef = useRef({});
-  liveRef.current = { cloudReady, cloudCapable, cloudStatus, playerId: myPlayer?.id };
+  liveRef.current = { cloudReady, cloudCapable, cloudStatus, playerId: myPlayer?.id, watch };
   const load = useCallback(async () => {
-    const { cloudReady: ready, cloudCapable: capable, cloudStatus: status, playerId } = liveRef.current;
+    const { cloudReady: ready, cloudCapable: capable, cloudStatus: status, playerId, watch: watching } = liveRef.current;
     if (!ready) { setCloudTeams([]); setCloudChallenges([]); setLoading(capable && (status === "loading" || status === "needsProfile")); return; }
     // Challenges load independently: tolerate migration 20261013140000 not applied yet.
-    const challengesQ = supabase.rpc("my_challenges").then((r) => {
+    const loadChallenges = () => supabase.rpc("my_challenges").then((r) => {
       if (r.error) throw r.error;
       setCloudChallenges(r.data?.items ?? []);
     }).catch((e) => { console.warn("PITCH Rivals: challenges unavailable", e?.message || e); setCloudChallenges([]); });
+    // Only ask for challenges when the person can have any (watching, or in a team — decided below).
+    let challengesQ = watching ? loadChallenges() : Promise.resolve();
     try {
       const mq = await supabase.from("team_members").select(`role,status,joined_at,teams(${TEAM_COLS})`)
         .eq("player_id", playerId).eq("status", "active");
       if (mq.error) throw mq.error;
       const rows = (mq.data ?? []).filter((m) => m.teams && !m.teams.archived_at);
       const ids = rows.map((m) => m.teams.id);
+      if (!watching) { if (rows.length) challengesQ = loadChallenges(); else setCloudChallenges([]); }
       let counts = {};
       if (ids.length) {
         const cq = await supabase.from("team_members").select("team_id").in("team_id", ids).eq("status", "active");
@@ -133,8 +143,9 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
 
   // Realtime: roster / team changes → debounced reload (RLS applies).
   const timer = useRef(null);
+  const live = cloudReady && (watch || cloudTeams.length > 0);
   useEffect(() => {
-    if (!cloudReady) return undefined;
+    if (!live) return undefined;
     const bump = () => { clearTimeout(timer.current); timer.current = setTimeout(load, 250); };
     const ch = supabase.channel(`pitch-rivals-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, bump)
@@ -152,7 +163,7 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "team_match_player_stats" }, bump)
       .subscribe();
     return () => { clearTimeout(timer.current); supabase.removeChannel(ch); supabase.removeChannel(resultsCh); };
-  }, [cloudReady, load]);
+  }, [live, load]);
 
   const myTeams = useMemo(
     () => (cloudCapable ? cloudTeams : (meId ? demoMyTeams(demoState, meId) : [])),

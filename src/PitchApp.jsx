@@ -207,7 +207,7 @@ export default function PitchApp() {
   useEffect(() => { if (rivalsParams.optIn) saveRivalsOptIn(true); }, [rivalsParams.optIn]);
   const localMe = localMode ? group.find((p) => p.isMe) : null;
   const rivals = useTeams({
-    cloudStatus: cloud.status, myPlayer: cloud.myPlayer, uploadMedia,
+    cloudStatus: cloud.status, myPlayer: cloud.myPlayer, uploadMedia, watch: rivalsOptIn || Boolean(cloud.isAdmin),
     demoMe: localMe ? { id: `demo-me-${localMe.id}`, nick: localMe.nick, name: localMe.name, photo: localMe.photo, position: localMe.position } : null,
   });
   const [teamSlug, setTeamSlug] = useState(rivalsParams.team);
