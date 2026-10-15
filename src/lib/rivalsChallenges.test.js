@@ -167,6 +167,10 @@ test("views, buckets, rival simulation, incoming challenge", () => {
   assert.equal(v.stage, "respond");
   assert.equal(v.bucket, "sent");
   s = run(s, "respond_challenge", { challengeId: sent.id, version: 2, action: "accept" }, ana).state;
+  // accepting the rival's COUNTER (I am the challenger): the match is still challenger (home) vs challenged (away)
+  const mt = s.matches.find((x) => x.challengeId === sent.id);
+  assert.equal(mt.homeTeamId, A);
+  assert.equal(mt.awayTeamId, "demo-t-mu");
   const agreed = demoMyChallenges(s, "ana", NOW).find((c) => c.id === sent.id);
   assert.equal(challengeView(agreed, NOW).nextAction, "confirm_field");
   assert.equal(currentTerms(agreed).kickoffAt, agreed.match.kickoffAt);

@@ -466,7 +466,7 @@ function demoRespond(state, a, me, now) {
     return { state: s, data: { challengeId: ch.id, status: "declined", matchId: null, alreadyAgreed: false } };
   }
   const match = {
-    ...normTerms(ver), id: nextId("demo-m-", now), challengeId: ch.id, homeTeamId: ch.challengerTeamId, awayTeamId: team,
+    ...normTerms(ver), id: nextId("demo-m-", now), challengeId: ch.id, homeTeamId: ch.challengerTeamId, awayTeamId: ch.challengedTeamId, // not `team`: after a counter the ACCEPTING team is the challenger itself
     agreedVersion: ver.version, matchStatus: "scheduled", fieldStatus: "unconfirmed", fieldNote: null, fieldStatusAt: null,
     resultStatus: "none", officialHomeScore: null, officialAwayScore: null, cancelledByTeamId: null, cancelledAt: null, cancelReason: null,
     createdAt: iso(now),
