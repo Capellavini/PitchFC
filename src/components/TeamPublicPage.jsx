@@ -5,6 +5,7 @@ import { t } from "../lib/i18n";
 import { RC, RIVALS_BRAND, rivalsError, tf } from "../lib/rivalsCopy";
 import TeamBadge from "./TeamBadge";
 import TeamRecordStrip from "./TeamRecordStrip";
+import TeamTopPlayers from "./TeamTopPlayers";
 import BackHeader from "./BackHeader";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
@@ -48,7 +49,7 @@ export default function TeamPublicPage({ teams, slug, onBack, onEnter, onOpenMin
     );
   }
 
-  const { team, memberCount: n, myRole, record } = state.data;
+  const { team, memberCount: n, myRole, record, topScorers, topAssisters } = state.data;
   return wrap(
     <>
       <div style={{ ...cardStyle, textAlign: "center", padding: `${S.xl}px ${S.lg}px`, marginBottom: S.lg }}>
@@ -60,7 +61,9 @@ export default function TeamPublicPage({ teams, slug, onBack, onEnter, onOpenMin
         </div>
         {team.archived && <div role="status" style={{ marginTop: S.md, fontSize: T.meta, color: C.orange, background: C.orangeDim, borderRadius: R.control, padding: S.sm }}>{t(RC.archivedTeam)}</div>}
       </div>
+      {/* The team card: record, form, streak (confirmed results only) + top scorers when signed in */}
       <TeamRecordStrip record={record} />
+      <TeamTopPlayers scorers={topScorers} assisters={topAssisters} />
       {myRole ? (
         <BtnPrimary block onClick={() => onOpenMine?.(team.id)}>{t(RC.openMyTeam)}</BtnPrimary>
       ) : onEnter ? (

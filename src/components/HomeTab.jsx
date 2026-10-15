@@ -41,7 +41,7 @@ import WorkoutCardModal from "./WorkoutCardModal";
  *  - kudos (cloud matchday_kudos rows) + onToggleKudos(mdId, toKey, given);
  *    without onToggleKudos (demo) Golaço is kept locally.
  *  - teamItems     PITCH Rivals items (lib/rivals teamFeedItems), each with a
- *                  team chip; onOpenTeam / onInviteTeam(teamId). teamOnly
+ *                  team chip; onOpenTeam / onInviteTeam(teamId) / onOpenMatch(challengeId) (result items). teamOnly
  *                  (no group, has a team) points the empty next-action
  *                  card at Competir instead of Jogar. Group players with
  *                  no team see no change.
@@ -51,7 +51,7 @@ export default function HomeTab({
   liveMatchday, resultPending, onOpenJogar, onOpenMatchday, onOpenCompetir,
   feedMatchdays, localHistory, social, postTs, myGroupIds = [], friendsEnabled,
   kudos, onToggleKudos, attendanceStreak = 0, onCardGenerated, groupName, lastMatchdayForWorkout, peerRatings,
-  teamItems = [], teamOnly = false, onOpenTeam, onInviteTeam,
+  teamItems = [], teamOnly = false, onOpenTeam, onInviteTeam, onOpenMatch,
 }) {
   const [showCard, setShowCard] = useState(false);
   const [showWorkout, setShowWorkout] = useState(false);
@@ -156,7 +156,7 @@ export default function HomeTab({
         <div style={{ marginBottom: S.lg }}>
           <SectionLabel>{t(RC.teamsLabel)}</SectionLabel>
           {teamItems.map((it) => (
-            <TeamFeedItem key={it.id} item={it} onOpen={() => onOpenTeam?.(it.teamId)} onInvite={() => onInviteTeam?.(it.teamId)} />
+            <TeamFeedItem key={it.id} item={it} onOpen={() => onOpenTeam?.(it.teamId)} onInvite={() => onInviteTeam?.(it.teamId)} onOpenMatch={onOpenMatch} />
           ))}
         </div>
       )}

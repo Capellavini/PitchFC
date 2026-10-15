@@ -2,6 +2,7 @@ import { Link2 } from "lucide-react";
 import { C, R, S, T, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
 import { CC } from "../lib/rivalsCopy";
+import { MC } from "../lib/rivalsMatchCopy";
 import { currentTerms } from "../lib/rivalsChallenges";
 import { kickoffLabel, termValue } from "../lib/challengeLabels";
 import TeamBadge from "./TeamBadge";
@@ -10,7 +11,10 @@ import FieldStatusBadge from "./FieldStatusBadge";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 
-const ACTION = { respond: CC.actRespond, review_change: CC.actReviewChange, confirm_field: CC.actConfirmField, share_link: CC.actShareLink };
+const ACTION = {
+  respond: CC.actRespond, review_change: CC.actReviewChange, confirm_field: CC.actConfirmField, share_link: CC.actShareLink,
+  report_result: MC.actReportResult, confirm_result: MC.actConfirmResult,
+};
 
 /** One challenge in the inbox: opponent + crest, when, format, pitch (and
  *  its confirmation once agreed), where the negotiation stands, and ONE

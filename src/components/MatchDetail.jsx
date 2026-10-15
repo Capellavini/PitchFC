@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { Ban, CalendarClock, Check, ExternalLink, MapPin, MessageCircle, Wallet, X } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, displayFont, inputStyle } from "../theme";
+import { C, S, T, TOUCH, cardStyle, displayFont, inputStyle } from "../theme";
 import { t } from "../lib/i18n";
 import { CC, RC, RIVALS_BRAND, rivalsError, tf } from "../lib/rivalsCopy";
 import { FIELD_STATUSES, challengeView, normTerms, openChange } from "../lib/rivalsChallenges";
 import { kickoffLabel, mapsUrl, splitLabel, termValue } from "../lib/challengeLabels";
+import { resultView } from "../lib/rivalsResults";
 import { openWhatsApp } from "../lib/whatsapp";
 import BackHeader from "./BackHeader";
+import MatchCallUp from "./MatchCallUp";
+import MatchResultCard from "./MatchResultCard";
+import MatchStatsBlock from "./MatchStatsBlock";
+import HeadToHead from "./HeadToHead";
+import OpponentScout from "./OpponentScout";
+import DemoMatchTools from "./DemoMatchTools";
 import SectionLabel from "./SectionLabel";
 import TeamBadge from "./TeamBadge";
 import FieldStatusBadge from "./FieldStatusBadge";
@@ -24,8 +31,10 @@ const FIELD_LABEL = { confirmed: CC.setFieldConfirmed, unavailable: CC.setFieldU
  * this: when, where (+ map), format/duration, cost (informational), the
  * pitch status (separate; only the responsible team's leader sets it),
  * a pending change to review, "Pedir alteração", cancel (never a loss).
- * EXTENSION POINT (PR6/PR7): the result block (report / confirm /
- * contest), RSVP and lineup replace the placeholder below.
+ * PR7 adds, below that: the call-up (RSVP · counts · quem joga), scouting
+ * of the opponent and "Confronto #N" before kickoff; the shared result
+ * (report → the OTHER team confirms · contest · correction) and post-game
+ * goals/assists once it has started.
  */
 export default function MatchDetail({ teams, challengeId, onBack }) {
   const ch = teams.challenges.find((c) => c.id === challengeId);
@@ -51,7 +60,11 @@ export default function MatchDetail({ teams, challengeId, onBack }) {
   const change = openChange(ch);
   const now = Date.now();
   const scheduled = m.matchStatus === "scheduled";
+  const cancelled = m.matchStatus === "cancelled";
   const before = Date.parse(m.kickoffAt) > now;
+  const rv = resultView(m, { myTeamId: ch.myTeamId, leader: view.leader, now });
+  const showMatchBlocks = !cancelled;
+  const onNotice = (text) => { setError(null); if (text) setNotice(text); };
   const responsibleTeam = m.fieldResponsible === "challenger" ? ch.challenger : ch.challenged;
   const iAmResponsible = view.leader && responsibleTeam?.id === ch.myTeamId;
   const cancelledBy = m.cancelledByTeamId === ch.challenger?.id ? ch.challenger : ch.challenged;
@@ -92,13 +105,13 @@ export default function MatchDetail({ teams, challengeId, onBack }) {
           <div aria-hidden style={{ order: 1, ...displayFont, fontSize: T.h, color: C.text2 }}>VS</div>
         </div>
         <div role="status" aria-live="polite" style={{ display: "flex", justifyContent: "center", gap: S.sm, flexWrap: "wrap", marginTop: S.md }}>
-          {scheduled ? <FieldStatusBadge status={m.fieldStatus} /> : (
+          {scheduled ? <FieldStatusBadge status={m.fieldStatus} /> : cancelled ? (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: T.meta + 1, fontWeight: 700, color: C.red }}>
               <Ban size={15} aria-hidden /> {t(CC.stageMatchCancelled)} · {tf(CC.matchCancelledBy, { team: cancelledBy?.name || "" })}
             </span>
-          )}
+          ) : null}
         </div>
-        {!scheduled && m.cancelReason && <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginTop: S.xs }}>{tf(CC.reasonLine, { reason: m.cancelReason })}</div>}
+        {cancelled && m.cancelReason && <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginTop: S.xs }}>{tf(CC.reasonLine, { reason: m.cancelReason })}</div>}
 
         <div style={{ marginTop: S.md }}>
           <Row Icon={CalendarClock} label={t(CC.when)}>{kickoffLabel(m.kickoffAt, m.timezone)}<div style={{ fontSize: T.meta, color: C.text2, fontWeight: 500 }}>{tf(CC.formatLine, { format: m.format, n: m.durationMin })}</div></Row>
@@ -182,11 +195,21 @@ export default function MatchDetail({ teams, challengeId, onBack }) {
         </>
       )}
 
-      {/* EXTENSION POINT (PR6): shared result — report / confirm / contest */}
-      <SectionLabel>{t(CC.result)}</SectionLabel>
-      <div style={{ ...cardStyle, marginBottom: S.lg, background: C.surface, borderRadius: R.card }}>
-        <div style={{ fontSize: T.meta + 1, color: C.text2, lineHeight: 1.5 }}>{t(CC.resultSoon)}</div>
-      </div>
+      {/* PR7: before kickoff the call-up, scouting and head-to-head matter most;
+          once it has started the shared result and the goals/assists come first. */}
+      {showMatchBlocks && (rv.kicked ? [
+        <MatchResultCard key="result" teams={teams} ch={ch} view={view} m={m} onNotice={onNotice} />,
+        <MatchStatsBlock key="stats" teams={teams} ch={ch} view={view} m={m} rv={rv} onNotice={onNotice} />,
+        <MatchCallUp key="callup" teams={teams} ch={ch} view={view} m={m} onNotice={onNotice} />,
+        <HeadToHead key="h2h" teams={teams} teamId={ch.myTeamId} opponent={view.opponent} />,
+        <OpponentScout key="scout" teams={teams} matchId={m.id} opponent={view.opponent} />,
+      ] : [
+        <MatchCallUp key="callup" teams={teams} ch={ch} view={view} m={m} onNotice={onNotice} />,
+        <OpponentScout key="scout" teams={teams} matchId={m.id} opponent={view.opponent} />,
+        <HeadToHead key="h2h" teams={teams} teamId={ch.myTeamId} opponent={view.opponent} />,
+        <MatchResultCard key="result" teams={teams} ch={ch} view={view} m={m} onNotice={onNotice} />,
+      ])}
+      <DemoMatchTools tools={teams.demoTools} matchId={m.id} scheduled={scheduled} kicked={rv.kicked} resultNone={rv.phase === "ready"} />
 
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", marginBottom: S.xl }}>
         {scheduled && before && view.leader && !change && (

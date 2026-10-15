@@ -31,8 +31,11 @@ import BtnGhost from "./BtnGhost";
  * `challenges` (rendered node, optional) adds a "Desafios" segment — the
  * team-mode Equipa tab uses it (A minha equipa · Desafios · Descobrir).
  * `focus.view` ("team" | "challenges" | "discover") switches segment.
+ * `onOpenMatch(challengeId)` (PR7) opens a match from the team page (next
+ * match / latest results) — only with the Desafios section on, since the
+ * match screen lives there.
  */
-export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, onDismissNotice, onChallenge: onChallengeProp, challengesOn = false, onOpenChallenge, challenges = null }) {
+export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, onDismissNotice, onChallenge: onChallengeProp, challengesOn = false, onOpenChallenge, onOpenMatch, challenges = null }) {
   const mine = teams.myTeams;
   // { opponent, fromTeamId } — the composer opened from a "Desafiar".
   const [composer, setComposer] = useState(null);
@@ -112,6 +115,7 @@ export default function RivalsHub({ teams, market = MARKETS.PT, focus, notice, o
         <>
           {mine.length > 1 && <TeamSwitcher teams={mine} value={current.id} onChange={setSelectedId} onNew={() => setCreating(true)} />}
           <TeamPage key={current.id} teams={teams} teamId={current.id} onChallenge={onChallenge ? () => onChallenge(null, current) : undefined}
+            onOpenMatch={challengesOn ? onOpenMatch : undefined}
             inviteSignal={inviteFor.teamId === current.id ? inviteFor.n : 0}
             onLeft={() => setSelectedId(null)} />
           {mine.length === 1 && (

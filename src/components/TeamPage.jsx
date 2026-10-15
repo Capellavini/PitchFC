@@ -2,11 +2,15 @@ import { useEffect, useState } from "react";
 import { Share2, Swords, UserPlus, Settings, LogOut, MapPin } from "lucide-react";
 import { C, S, T, TOUCH, displayFont } from "../theme";
 import { t, getLang } from "../lib/i18n";
-import { RC, rivalsError, tf } from "../lib/rivalsCopy";
-import { can, sinceLabel, teamShareUrl } from "../lib/rivals";
+import { CC, RC, rivalsError, tf } from "../lib/rivalsCopy";
+import { can, nextTeamMatch, sinceLabel, teamShareUrl } from "../lib/rivals";
 import { openWhatsApp } from "../lib/whatsapp";
 import TeamBadge from "./TeamBadge";
 import TeamRecordStrip from "./TeamRecordStrip";
+import TeamTopPlayers from "./TeamTopPlayers";
+import TeamNextMatchCard from "./TeamNextMatchCard";
+import TeamMatchRsvp from "./TeamMatchRsvp";
+import TeamLatestResults from "./TeamLatestResults";
 import TeamRoster from "./TeamRoster";
 import TeamInviteSheet from "./TeamInviteSheet";
 import TeamEditSheet from "./TeamEditSheet";
@@ -25,10 +29,12 @@ const LOCALE = { pt: "pt-PT", "pt-br": "pt-BR", en: "en-GB" };
  *    share, leave.
  *  - captain/vice: + invite players, edit, roster management.
  *  - captain only: rename, vice, armband, hide from directory, archive.
- * EXTENSION POINTS: next match + RSVP and pending challenges (PR5/PR7)
+ * PR7: the team's next match with the call-up (every member), the real
+ * record / form / streak, top scorers and the latest confirmed results.
+ * EXTENSION POINT: pending challenges (PR5)
  * go between the header and the record; `onChallenge` arms "Desafiar".
  */
-export default function TeamPage({ teams, teamId, onLeft, onChallenge, inviteSignal = 0 }) {
+export default function TeamPage({ teams, teamId, onLeft, onChallenge, onOpenMatch, inviteSignal = 0 }) {
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState(null);
   const [sheet, setSheet] = useState(null); // invite | edit | member
@@ -51,11 +57,14 @@ export default function TeamPage({ teams, teamId, onLeft, onChallenge, inviteSig
   if (error && !detail) return <div role="alert" style={{ fontSize: T.body, color: C.red, padding: `${S.lg}px 0` }}>{error}</div>;
   if (!detail) return <div aria-busy="true" style={{ fontSize: T.body, color: C.text2, padding: `${S.lg}px 0` }}>{t(RC.loading)}</div>;
 
-  const { team, members, myRole, record } = detail;
+  const { team, members, myRole, record, topScorers, topAssisters } = detail;
   const me = members.find((m) => m.playerId === teams.myPlayerId);
   const n = members.length;
   const meta = [team.city, team.format, n === 1 ? t(RC.playersOne) : tf(RC.playersN, { n })].filter(Boolean).join(" · ");
   const shareUrl = teamShareUrl(team.slug, window.location.origin);
+  // Next agreed match of THIS team: the call-up lives right here for every member.
+  const mineTeam = teams.myTeams.find((x) => x.id === team.id);
+  const next = mineTeam ? nextTeamMatch(teams.matches, [mineTeam]) : null;
 
   const leave = async () => {
     setBusy(true);
@@ -102,7 +111,16 @@ export default function TeamPage({ teams, teamId, onLeft, onChallenge, inviteSig
       {/* Pitch AI (decision 2026-10-13 b): leaders of a squad still under 5. */}
       {can(myRole, "invite") && n < 5 && <PitchAiTeamCta team={team} />}
 
+      {next && (
+        <TeamNextMatchCard match={next}>
+          <TeamMatchRsvp key={next.id} value={next.myRsvp} onRsvp={(status) => teams.setMatchAvailability(next.id, status)} />
+          {onOpenMatch && next.challengeId && <BtnGhost block onClick={() => onOpenMatch(next.challengeId)} style={{ marginTop: S.md }}>{t(CC.openMatch)}</BtnGhost>}
+        </TeamNextMatchCard>
+      )}
+
       <TeamRecordStrip record={record} />
+      <TeamTopPlayers scorers={topScorers} assisters={topAssisters} />
+      <TeamLatestResults matches={teams.matches} teamId={team.id} onOpenMatch={onOpenMatch} />
 
       <SectionLabel right={can(myRole, "invite") ? (
         <button type="button" onClick={() => openWhatsApp(tf(RC.shareTeamMessage, { url: shareUrl }))} aria-label={t(RC.shareTeam)}

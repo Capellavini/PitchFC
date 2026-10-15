@@ -91,7 +91,7 @@ export default function ChallengesInbox({ teams, focus, onGoToTeam }) {
         {teams.loading && !items.length ? (
           <div style={{ fontSize: T.body, color: C.text2 }}>{t(CC.loadingChallenges)}</div>
         ) : items.length ? (
-          items.map((item) => <ChallengeCard key={item.ch.id} item={item} onOpen={() => (item.ch.match && ["confirm_field", "review_change"].includes(item.view.nextAction) ? setMatchId(item.ch.id) : setOpenId(item.ch.id))} />)
+          items.map((item) => <ChallengeCard key={item.ch.id} item={item} onOpen={() => (item.ch.match && ["confirm_field", "review_change", "report_result", "confirm_result"].includes(item.view.nextAction) ? setMatchId(item.ch.id) : setOpenId(item.ch.id))} />)
         ) : (
           <div style={{ ...cardStyle, textAlign: "center", padding: `${S.xl}px ${S.lg}px` }}>
             <div style={{ fontSize: T.meta + 1, color: C.text2, lineHeight: 1.5 }}>{t(current.empty)}</div>

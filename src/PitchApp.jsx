@@ -31,6 +31,7 @@ import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner
 import { useCloud } from "./hooks/useCloud";
 import { useTeams } from "./hooks/useTeams";
 import { readRivalsParams, rivalsVisible, marketForLang, isNoGroup, openingTab as pickOpeningTab, teamFeedItems, isTeamMode, resolveTab, nextTeamMatch } from "./lib/rivals";
+import { matchFeedItems } from "./lib/rivalsResults";
 import { readRivalsOptIn, saveRivalsOptIn, savePendingIntent, readPendingIntent, clearPendingIntent, intentFromMetadata, intentMetadata,
   saveCreateIntent, readCreateIntent, clearCreateIntent, createIntentFromMetadata, createIntentMetadata } from "./lib/pendingIntent";
 import EquipaTab from "./components/EquipaTab";
@@ -2019,7 +2020,14 @@ export default function PitchApp() {
   };
   // PITCH Rivals entry points (Home items, no-group link, Perfil rows).
   const openTeamsTab = (teamId, invite = false) => { focusRivals(teamId ? { teamId, invite } : {}); selectTab("competir"); };
-  const homeTeamItems = teamFeedItems(rivals.myTeams);
+  // Home items about my teams: a result waiting for ME comes first, then team nudges, then recent results.
+  const matchItems = matchFeedItems(rivals.matches);
+  const homeTeamItems = [...matchItems.filter((i) => i.needsAction), ...teamFeedItems(rivals.myTeams), ...matchItems.filter((i) => !i.needsAction)];
+  // A match opens in Desafios (Equipa → Desafios in team mode, Competir otherwise).
+  const openMatch = (challengeId) => {
+    openChallenge(challengeId, { match: true });
+    if (!teamMode) { setCompetirView("desafios"); selectTab("competir"); }
+  };
   // Open the Rivals hub on a segment ("team" | "challenges" | "discover").
   const openRivalsView = (view) => {
     setRivalsSession(true);
@@ -2079,14 +2087,13 @@ export default function PitchApp() {
             peerRatings={cloudMode ? cloud.ratings : null}
             onCardGenerated={cloudMode ? cloud.logCardGenerated : undefined}
             teamItems={homeTeamItems} teamOnly={noGroup && rivals.myTeams.length > 0}
-            onOpenTeam={(teamId) => openTeamsTab(teamId)} onInviteTeam={(teamId) => openTeamsTab(teamId, true)}
+            onOpenTeam={(teamId) => openTeamsTab(teamId)} onInviteTeam={(teamId) => openTeamsTab(teamId, true)} onOpenMatch={openMatch}
           />
         )}
         {tab === "jogar" && teamMode && (
-          <TeamJogarTab nextMatch={teamNextMatch}
-            // RSVP lands with the results/RSVP PR: useTeams.setAvailability(matchId, status) → {data}|{error}.
-            onRsvp={teamNextMatch && rivals.setAvailability ? (status) => rivals.setAvailability(teamNextMatch.id, status) : undefined}
-            onOpenTeam={() => openTeamsTab()} onFindRivals={() => openRivalsView("discover")}
+          <TeamJogarTab teams={rivals} nextMatch={teamNextMatch}
+            onRsvp={teamNextMatch ? (status) => rivals.setMatchAvailability(teamNextMatch.id, status) : undefined}
+            onOpenTeam={() => openTeamsTab()} onOpenMatch={openMatch} onFindRivals={() => openRivalsView("discover")}
             onJoinGroup={localMode ? undefined : openJoinGroup} />
         )}
         {tab === "jogar" && !teamMode && (
@@ -2194,7 +2201,7 @@ export default function PitchApp() {
           />
         )}
         {tab === "matchday" && teamMode && (
-          <TeamMatchdayTab teams={rivals} nextMatch={teamNextMatch} onFindRivals={() => openRivalsView("discover")} />
+          <TeamMatchdayTab teams={rivals} nextMatch={teamNextMatch} onOpenMatch={openMatch} onFindRivals={() => openRivalsView("discover")} />
         )}
         {tab === "matchday" && !teamMode && (noGroup ? (
           <NoGroupState onJoinGroup={openJoinGroup} onOpenTeams={rivals.myTeams.length ? () => openTeamsTab() : undefined} />
@@ -2221,7 +2228,7 @@ export default function PitchApp() {
           <EquipaTab hub={(
             <RivalsHub teams={rivals} market={marketForLang(lang)} focus={rivalsFocus}
               notice={rivalsNotice} onDismissNotice={() => setRivalsNotice(null)}
-              challengesOn={challengesOn} onOpenChallenge={(id) => openChallenge(id)}
+              challengesOn={challengesOn} onOpenChallenge={(id) => openChallenge(id)} onOpenMatch={openMatch}
               challenges={challengesOn ? (
                 <ChallengesInbox teams={rivals} focus={challengeFocus} onGoToTeam={() => setRivalsFocus((f) => ({ view: "team", n: (f?.n || 0) + 1 }))} />
               ) : null} />
@@ -2240,7 +2247,7 @@ export default function PitchApp() {
             rivalsHub={(
               <RivalsHub teams={rivals} market={marketForLang(lang)} focus={rivalsFocus}
                 notice={rivalsNotice} onDismissNotice={() => setRivalsNotice(null)}
-                challengesOn={challengesOn} onOpenChallenge={(id) => openChallenge(id)} />
+                challengesOn={challengesOn} onOpenChallenge={(id) => openChallenge(id)} onOpenMatch={openMatch} />
             )}
             challengesInbox={challengesOn ? (
               <ChallengesInbox teams={rivals} focus={challengeFocus} onGoToTeam={() => setCompetirView("equipa")} />
@@ -2306,7 +2313,7 @@ export default function PitchApp() {
             // rows, and local demo's last matchday for form/records.
             groupName={game.groupName} city={groupSettings.city}
             myGroups={cloudMode ? cloud.myGroups : []} activeGroupId={cloudMode ? cloud.groupRow?.id : null}
-            myTeams={rivals.myTeams}
+            myTeams={rivals.myTeams} teamsApi={rivals}
             onOpenTeam={(teamId) => { focusRivals({ teamId }); selectTab("competir"); }}
             localMatchday={cloudMode ? null : lastMatchdayView}
           />

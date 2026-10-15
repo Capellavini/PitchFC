@@ -7,6 +7,7 @@ import { t, tCtx, getLang } from "../lib/i18n";
 import { RC, tf } from "../lib/rivalsCopy";
 import { sinceLabel } from "../lib/rivals";
 import TeamBadge from "./TeamBadge";
+import TeamCareerCard from "./TeamCareerCard";
 import { openWhatsApp, rateRequestMessage } from "../lib/whatsapp";
 import { formFor, careerRecordsFor } from "../lib/profileStats";
 import FutCard from "./FutCard";
@@ -53,7 +54,7 @@ const roleLabel = (role) => (role === "organizer" ? t("Organizador") : role === 
  *  behind the gear (SettingsScreen, rendered by PitchApp via
  *  `onOpenSettings`). Viewing someone else's profile (openProfile) hides
  *  gear/edit and shows the cloud RatingForm instead of the ratings card. */
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, isOrganizer, addPeerRating, cloudMode, onSubmitRating, uploadMedia, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember, onOpenSettings, personalRecords, attendanceStreak = 0, groupName, city, myGroups = [], activeGroupId, myTeams = [], onOpenTeam, localMatchday }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, isOrganizer, addPeerRating, cloudMode, onSubmitRating, uploadMedia, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember, onOpenSettings, personalRecords, attendanceStreak = 0, groupName, city, myGroups = [], activeGroupId, myTeams = [], onOpenTeam, teamsApi, localMatchday }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -211,8 +212,8 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
   const groupRows = isOwn && myGroups.length
     ? myGroups.map((m) => ({ id: m.group_id, name: m.groups?.name ?? "—", meta: [roleLabel(m.role), m.groups?.venue].filter(Boolean).join(" · "), active: m.group_id === activeGroupId }))
     : (groupName ? [{ id: "current", name: groupName, meta: player.isOrganizerPlayer ? t("Organizador") : player.isAssistant ? t("Auxiliar") : t("Membro"), active: true }] : []);
-  // PITCH Rivals teams (useTeams shape): current role + "desde". Team
-  // career metrics land with the results phase (PR6/PR7).
+  // PITCH Rivals teams (useTeams shape): current role + "desde"; the career
+  // numbers (my_team_career) are the TeamCareerCard below.
   const sinceLocale = { pt: "pt-PT", "pt-br": "pt-BR", en: "en-GB" }[getLang()] || "pt-PT";
   const teamRows = isOwn ? myTeams.map((tm) => ({
     id: tm.id, team: tm, name: tm.name,
@@ -342,6 +343,9 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
               </div>
             </div>
           )}
+
+          {/* PITCH Rivals: my numbers in my teams (confirmed team matches only) */}
+          {isOwn && teamRows.length > 0 && teamsApi && <TeamCareerCard teams={teamsApi} />}
 
           {/* Ban — organizer-only, viewing a teammate's profile. Kept off
               the roster list on purpose (see onRemoveMember there) so this

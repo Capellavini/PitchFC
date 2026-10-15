@@ -3,6 +3,7 @@ import { Ban, Check, MessageCircle, Repeat, X } from "lucide-react";
 import { C, S, T, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
 import { CC, RIVALS_BRAND, rivalsError, tf } from "../lib/rivalsCopy";
+import { MC } from "../lib/rivalsMatchCopy";
 import { challengeInviteUrl, challengeView, previousTerms, versionOf, diffTerms } from "../lib/rivalsChallenges";
 import { kickoffLabel, termValue } from "../lib/challengeLabels";
 import { openWhatsApp } from "../lib/whatsapp";
@@ -10,6 +11,7 @@ import BackHeader from "./BackHeader";
 import SectionLabel from "./SectionLabel";
 import TeamBadge from "./TeamBadge";
 import ChallengeStageLine from "./ChallengeStageLine";
+import HeadToHead from "./HeadToHead";
 import ChallengeTerms from "./ChallengeTerms";
 import ChallengeTimeline from "./ChallengeTimeline";
 import ChallengeComposer from "./ChallengeComposer";
@@ -95,6 +97,8 @@ export default function ChallengeDetail({ teams, challengeId, onBack, onOpenMatc
         {ch.reason && ["declined", "cancelled"].includes(view.status) && (
           <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginTop: S.xs }}>{tf(CC.reasonLine, { reason: ch.reason })}</div>
         )}
+        {/* "Confronto #N" — what the two teams have already played (confirmed results only) */}
+        {view.opponent?.id && view.myTeam?.id && <HeadToHead compact teams={teams} teamId={view.myTeam.id} opponent={view.opponent} />}
       </div>
 
       <div aria-live="polite">
@@ -121,7 +125,10 @@ export default function ChallengeDetail({ teams, challengeId, onBack, onOpenMatc
           <div style={{ fontSize: T.meta + 1, color: C.text2, lineHeight: 1.5 }}>{t(CC.askCaptainToAnswer)}</div>
         )}
         {ch.match && (
-          <BtnPrimary block onClick={() => onOpenMatch?.(ch.id)}>{view.nextAction === "review_change" ? t(CC.actReviewChange) : view.nextAction === "confirm_field" ? t(CC.actConfirmField) : t(CC.openMatch)}</BtnPrimary>
+          <BtnPrimary block onClick={() => onOpenMatch?.(ch.id)}>{{
+            review_change: t(CC.actReviewChange), confirm_field: t(CC.actConfirmField),
+            report_result: t(MC.actReportResult), confirm_result: t(MC.actConfirmResult),
+          }[view.nextAction] || t(CC.openMatch)}</BtnPrimary>
         )}
       </div>
 
