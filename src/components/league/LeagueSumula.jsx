@@ -55,7 +55,7 @@ export default function LeagueSumula({ match, log, score, lang }) {
             <History size={14} color={C.text2} aria-hidden style={{ flexShrink: 0, marginTop: 3 }} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: T.body }}>{t(STATE_LABEL[h.from])} → <b>{t(STATE_LABEL[h.to])}</b></div>
-              <div style={{ fontSize: T.meta, color: C.text2 }}>{h.by || "—"} ({t(ROLE_LABEL[h.role])}){h.at ? ` · ${fmtDateTime(h.at, lang)}` : ""}</div>
+              <div style={{ fontSize: T.meta, color: C.text2 }}>{h.by || "—"}{h.by && h.by.includes(t(ROLE_LABEL[h.role])) ? "" : ` (${t(ROLE_LABEL[h.role])})`}{h.at ? ` · ${fmtDateTime(h.at, lang)}` : ""}</div>
               {h.reason && <div style={{ fontSize: T.meta, color: C.text1, marginTop: 2 }}>{t("Motivo")}: {h.reason}</div>}
             </div>
           </li>

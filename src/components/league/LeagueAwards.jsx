@@ -70,7 +70,7 @@ export default function LeagueAwards({ ctx, match }) {
             </div>
           );
         })}
-        <div style={{ fontSize: T.meta, color: C.text2, marginBottom: open ? S.md : 0 }}>{tf(t("{n} votos"), { n: tally.total })}{open ? ` · ${t("resultado parcial — não é final")}` : ""}</div>
+        <div style={{ fontSize: T.meta, color: C.text2, marginBottom: open ? S.md : 0 }}>{tally.total === 1 ? t("1 voto") : tf(t("{n} votos"), { n: tally.total })}{open ? ` · ${t("resultado parcial — não é final")}` : ""}</div>
         {open && candidates.length > 0 && (
           <div role="radiogroup" aria-label={t(LG.fansMvp)} style={{ display: "flex", flexWrap: "wrap", gap: S.xs }}>
             {candidates.map((p) => (

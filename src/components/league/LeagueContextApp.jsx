@@ -6,7 +6,7 @@ import {
   appendEvent, transition, setOfficialMvp, castFanVote, validateFantasyPicks, LeagueError,
 } from "../../lib/core/league";
 import {
-  buildLeagueDemoSeed, normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY,
+  buildLeagueDemoSeed, normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY, PLAYERS,
 } from "../../lib/leagueDemo";
 import { LG, leagueError } from "../../lib/leagueCopy";
 import LeagueHeader from "./LeagueHeader";
@@ -128,9 +128,16 @@ export default function LeagueContextApp({ contexts, entry = null }) {
     correct: (matchId, event) => apply((s) => ({
       ...s, logs: { ...s.logs, [matchId]: appendEvent(s.logs[matchId] || [], { ...event, matchId, recordedBy: who, recordedAt: now() }) },
     }), t("Correção registada — classificação e estatísticas recalculadas.")),
-    move: (matchId, to, opts = {}, okMsg) => apply((s) => setMatch(s, matchId, (m) => transition(m, to, {
-      role, by: who, at: now(), teamId: acc.teamId, ...opts,
-    })), okMsg),
+    move: (matchId, to, opts = {}, okMsg) => apply((s) => setMatch(s, matchId, (m) => {
+      const next = transition(m, to, { role, by: who, at: now(), teamId: acc.teamId, ...opts });
+      if (to !== "live") return next;
+      // Kick-off with a call-up still missing: the demo fills it with the
+      // inscribed squad minus suspended players, so appearances (and the
+      // MVP candidates) exist. A real league requires the call-up.
+      const auto = (tid) => (next.lineups?.[tid]?.length ? next.lineups[tid]
+        : PLAYERS.filter((p) => p.teamId === tid && !(derived.discipline[p.id]?.pending > 0)).map((p) => p.id));
+      return { ...next, lineups: { ...next.lineups, [m.homeId]: auto(m.homeId), [m.awayId]: auto(m.awayId) } };
+    }), okMsg),
     setMvp: (matchId, playerId) => apply((s) => setMatch(s, matchId, (m) => setOfficialMvp(m, playerId, { role, by: who, at: now() })), t("Craque oficial definido.")),
     closeVote: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, fanVoteClosed: true })), t("Votação da torcida fechada.")),
     vote: (matchId, playerId) => apply((s) => ({
