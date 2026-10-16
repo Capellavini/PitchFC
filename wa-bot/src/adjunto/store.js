@@ -176,6 +176,12 @@ export async function saveUsage(day, playerId, row) {
   return one(db().from("adjunto_usage").upsert({ day, player_id: playerId, ...rest }, { onConflict: "day,player_id" }));
 }
 
+/** This player's spend from `fromDay` (YYYY-MM-DD, inclusive) onwards. */
+export async function monthUsdMicros(playerId, fromDay) {
+  const rows = await one(db().from("adjunto_usage").select("usd_micros").eq("player_id", playerId).gte("day", fromDay));
+  return (rows ?? []).reduce((s, r) => s + Number(r.usd_micros || 0), 0);
+}
+
 export async function globalUsdMicros(day) {
   const rows = await one(db().from("adjunto_usage").select("usd_micros").eq("day", day));
   return (rows ?? []).reduce((s, r) => s + Number(r.usd_micros || 0), 0);

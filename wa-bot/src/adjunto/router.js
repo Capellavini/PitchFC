@@ -182,7 +182,8 @@ export function makeRouter(env) {
     let usage = await env.store.getUsage(day, link.player_id);
     usage = { ...(usage ?? {}), msgs_in: (usage?.msgs_in ?? 0) + 1 };
     await env.store.saveUsage(day, link.player_id, usage);
-    const budget = budgetState({ usage, globalUsdMicros: await env.store.globalUsdMicros(day), limits: env.cfg.adjuntoLimits });
+    const monthUsd = env.store.monthUsdMicros ? await env.store.monthUsdMicros(link.player_id, `${day.slice(0, 7)}-01`) : 0;
+    const budget = budgetState({ usage, globalUsdMicros: await env.store.globalUsdMicros(day), monthUsdMicros: monthUsd, limits: env.cfg.adjuntoLimits });
     if (budget.warnGlobal) env.log("adjunto: global daily budget ≥80%");
     if (budget.mode === "ignore") return env.log(`adjunto: link ${link.id.slice(0, 8)} over the daily message cap, ignoring`);
     if (env.takeover.isActive([link.wa_jid, link.wa_lid, id.chatJid])) return env.log(`adjunto: human takeover active, not replying (${maskJid(id.chatJid)})`);
@@ -298,7 +299,7 @@ export function makeRouter(env) {
       const k = `${link.player_id}|${day}`;
       if (degradedNoticed.has(k)) return env.log(`adjunto: degraded (${budget.reason ?? "no client"}), already noticed today`);
       degradedNoticed.add(k);
-      return sayG(t.degraded(env.cfg.appUrl));
+      return sayG(budget.reason === "monthly_usd" ? t.degradedMonth(env.cfg.appUrl) : t.degraded(env.cfg.appUrl));
     }
     const history = (await env.store.recentMessages(link.id, { limit: env.cfg.adjuntoWindowTurns + 1 })).slice(0, -1);
     let urow = usage;

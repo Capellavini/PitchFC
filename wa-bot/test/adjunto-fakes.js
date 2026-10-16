@@ -119,6 +119,7 @@ export function makeStore(world, { orgRows = null, captainRows = null } = {}) {
     async getUsage(day, playerId) { return db.usage.get(`${day}|${playerId}`) ?? null; },
     async saveUsage(day, playerId, row) { db.usage.set(`${day}|${playerId}`, row); },
     async globalUsdMicros() { return store.globalMicros ?? 0; },
+    async monthUsdMicros() { return store.monthMicros ?? 0; },
     async attendanceLog() { return []; },
     async teamsMd5() { return md5(s.game.teams); },
     async applyTeams({ gameId, teams, expectedMd5, actor, confirm }) {

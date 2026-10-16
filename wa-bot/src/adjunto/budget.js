@@ -18,18 +18,21 @@ export function usdMicros(usage = {}, model) {
   return Math.round(micros); // tokens × $/MTok = micro-dollars
 }
 
-export const DEFAULT_LIMITS = { dailyMsgs: 40, dailyTurns: 25, dailyUsd: 0.5, globalDailyUsd: 10 };
+// monthlyUsd: fair-use ceiling per organizer (pricing 2026-10-16: Club + Adjunto ≈ 200 conversations/month).
+export const DEFAULT_LIMITS = { dailyMsgs: 40, dailyTurns: 25, dailyUsd: 0.5, monthlyUsd: 5, globalDailyUsd: 10 };
 
 /** usage: today's adjunto_usage row for this player (or null).
  *  globalUsdMicros: sum over every player today.
+ *  monthUsdMicros: this player's spend since the 1st of the month (Lisbon).
  *  Returns { mode: "ok" | "degraded" | "ignore", reason, warnGlobal }.
  *  "ignore" = past the inbound-message cap (abuse): no reply at all. */
-export function budgetState({ usage, globalUsdMicros = 0, limits = DEFAULT_LIMITS }) {
+export function budgetState({ usage, globalUsdMicros = 0, monthUsdMicros = 0, limits = DEFAULT_LIMITS }) {
   const u = usage ?? {};
   const g = globalUsdMicros / 1e6;
   const warnGlobal = g >= 0.8 * limits.globalDailyUsd;
   if ((u.msgs_in || 0) > limits.dailyMsgs) return { mode: "ignore", reason: "daily_msgs", warnGlobal };
   if (g >= limits.globalDailyUsd) return { mode: "degraded", reason: "global_usd", warnGlobal };
+  if (limits.monthlyUsd != null && monthUsdMicros / 1e6 >= limits.monthlyUsd) return { mode: "degraded", reason: "monthly_usd", warnGlobal };
   if ((u.usd_micros || 0) / 1e6 >= limits.dailyUsd) return { mode: "degraded", reason: "daily_usd", warnGlobal };
   if ((u.turns || 0) >= limits.dailyTurns) return { mode: "degraded", reason: "daily_turns", warnGlobal };
   return { mode: "ok", reason: null, warnGlobal };

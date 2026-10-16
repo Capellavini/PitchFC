@@ -123,7 +123,7 @@ export const PLANS = {
     subtitle: L("Deixa o Pitch organizar o jogo contigo.", "Let Pitch run the game with you.", "Deixe o Pitch organizar o jogo com você."),
     cta: L("Subscrever o Club + AI", "Get Club + AI", "Assinar Club + AI"),
     inherits: L("Tudo o que está no Pitch Club, mais:", "Everything in Pitch Club, plus:"),
-    copilotName: L("Pitch Copilot", "Pitch Copilot"),
+    copilotName: L("Treinador Adjunto", "Assistant Coach", "Auxiliar Técnico"),
     copilotTag: L("O copiloto do organizador", "The organizer's copilot"),
     features: [
       L("Lembretes inteligentes de confirmação", "Smart confirmation reminders"),
@@ -137,6 +137,7 @@ export const PLANS = {
       L("Resumos pós-jogo", "Post-match summaries"),
       L("Insights do grupo", "Group insights"),
       L("Faz perguntas sobre o grupo", "Ask questions about the group", "Faça perguntas sobre o grupo"),
+      L("Uso justo: cerca de 200 conversas por mês com o Adjunto", "Fair use: about 200 Assistant Coach conversations a month", "Uso justo: cerca de 200 conversas por mês com o Auxiliar Técnico"),
     ],
     demoLabel: L("Exemplo", "Example"),
     demoAsk: L("“Pitch, faltam-nos dois jogadores para domingo.”", "“Pitch, we're missing two players for Sunday.”", "“Pitch, faltam dois jogadores para domingo.”"),

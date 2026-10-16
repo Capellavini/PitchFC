@@ -28,6 +28,7 @@ export const cfg = () => ({
     dailyMsgs: Number(process.env.ADJUNTO_DAILY_MSGS || 40),
     dailyTurns: Number(process.env.ADJUNTO_DAILY_TURNS || 25),
     dailyUsd: Number(process.env.ADJUNTO_DAILY_USD_PER_LINK || 0.5),
+    monthlyUsd: Number(process.env.ADJUNTO_MONTHLY_USD_PER_LINK || 5),
     globalDailyUsd: Number(process.env.ADJUNTO_GLOBAL_DAILY_USD || 10),
   },
 });

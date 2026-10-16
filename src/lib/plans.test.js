@@ -9,8 +9,8 @@ test("Europe prices (EUR)", () => {
   assert.equal(planPrice("free"), 0);
   assert.equal(planPrice("club", "monthly", "standard", "EU"), 7.99);
   assert.equal(planPrice("club", "annual", "standard", "EU"), 79);
-  assert.equal(planPrice("club_ai", "monthly", "standard", "EU"), 10.99);
-  assert.equal(planPrice("club_ai", "annual", "standard", "EU"), 109);
+  assert.equal(planPrice("club_ai", "monthly", "standard", "EU"), 12.99);
+  assert.equal(planPrice("club_ai", "annual", "standard", "EU"), 129);
   assert.equal(planPrice("player_plus", "monthly", "standard", "EU"), 2.99);
   assert.equal(planPrice("player_plus", "annual", "standard", "EU"), 29);
 });
@@ -19,8 +19,8 @@ test("Brazil has its own price list (BRL), not a conversion", () => {
   assert.equal(planPrice("free", "monthly", "standard", "BR"), 0);
   assert.equal(planPrice("club", "monthly", "standard", "BR"), 24.9);
   assert.equal(planPrice("club", "annual", "standard", "BR"), 249);
-  assert.equal(planPrice("club_ai", "monthly", "standard", "BR"), 34.9);
-  assert.equal(planPrice("club_ai", "annual", "standard", "BR"), 349);
+  assert.equal(planPrice("club_ai", "monthly", "standard", "BR"), 39.9);
+  assert.equal(planPrice("club_ai", "annual", "standard", "BR"), 399);
   assert.equal(planPrice("player_plus", "monthly", "standard", "BR"), 9.9);
   assert.equal(planPrice("player_plus", "annual", "standard", "BR"), 99);
   assert.equal(PRICING.BR.currency, "BRL");
@@ -31,9 +31,9 @@ test("Brazil has its own price list (BRL), not a conversion", () => {
 
 test("large groups pay the market's add-on on Club and Club + AI only", () => {
   assert.equal(planPrice("club", "monthly", "large", "EU"), 12.99);
-  assert.equal(planPrice("club_ai", "monthly", "large", "EU"), 15.99);
+  assert.equal(planPrice("club_ai", "monthly", "large", "EU"), 17.99);
   assert.equal(planPrice("club", "monthly", "large", "BR"), 39.9);
-  assert.equal(planPrice("club_ai", "monthly", "large", "BR"), 49.9);
+  assert.equal(planPrice("club_ai", "monthly", "large", "BR"), 54.9);
   assert.equal(planPrice("free", "monthly", "large", "BR"), 0);
   assert.equal(planPrice("player_plus", "monthly", "large", "BR"), 9.9);
   assert.equal(largeGroupAddon("monthly", "EU"), 5);

@@ -15,6 +15,8 @@ test("budgetState: ok → degraded (per player $, turns, global $) → ignore (m
   assert.equal(budgetState({ usage: { turns: 25 } }).reason, "daily_turns");
   assert.equal(budgetState({ usage: {}, globalUsdMicros: 10_000_000 }).reason, "global_usd");
   assert.equal(budgetState({ usage: {}, globalUsdMicros: 8_500_000 }).warnGlobal, true);
+  assert.equal(budgetState({ usage: {}, monthUsdMicros: 5_000_000 }).reason, "monthly_usd");
+  assert.equal(budgetState({ usage: {}, monthUsdMicros: 4_900_000 }).mode, "ok");
   assert.equal(budgetState({ usage: { msgs_in: DEFAULT_LIMITS.dailyMsgs + 1 } }).mode, "ignore");
 });
 

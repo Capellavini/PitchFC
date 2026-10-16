@@ -40,6 +40,7 @@ const PT = {
   failedState: "As coisas mudaram entretanto (jogo, hora ou equipas) — não fiz nada. Diz-me de novo o que queres.",
   dryRun: "(modo de teste: não alterei nada)",
   degraded: (link) => `Hoje já pensei muito 😅 — até amanhã respondo só a comandos: *estado*, *tabela*, *equipas*, *sim/não*. O resto faz-se na app: ${link}`,
+  degradedMonth: (link) => `Este mês já esgotámos as conversas incluídas 😅 — até dia 1 respondo só a comandos: *estado*, *tabela*, *equipas*, *sim/não*. O resto faz-se na app: ${link}`,
   refusal: "Não consigo ajudar com isso.",
   continuePrompt: "Diz-me se queres que continue.",
   error: "Tive um problema a tratar disso. Tenta outra vez daqui a pouco.",
@@ -143,6 +144,7 @@ const PTBR = {
   help: "Comandos rápidos: *estado* · *tabela* · *times* · *formato* · *grupo <nome>* · *pausa* / *retoma* · *sim* / *não* para propostas. Para o resto, escreva à vontade.",
   paused: "⏸️ Beleza, paro as mensagens automáticas. Escreva *retoma* quando quiser.",
   degraded: (link) => `Hoje já pensei demais 😅 — até amanhã respondo só comandos: *estado*, *tabela*, *times*, *sim/não*. O resto é no app: ${link}`,
+  degradedMonth: (link) => `Este mês já usamos todas as conversas incluídas 😅 — até o dia 1 respondo só comandos: *estado*, *tabela*, *times*, *sim/não*. O resto é no app: ${link}`,
   ob: {
     ...PT.ob,
     type: "Qual é o formato do jogo de vocês?\n1️⃣ Avulso — jogos soltos, sem tabela\n2️⃣ Campeonato — tabela da noite (recomeça toda semana)\n3️⃣ Personalizado — você define tudo",
@@ -207,6 +209,7 @@ const EN = {
   failedState: "Things changed in the meantime (game, time or teams) — I didn't do anything. Tell me again what you want.",
   dryRun: "(test mode: nothing changed)",
   degraded: (link) => `I've done a lot of thinking today 😅 — until tomorrow I only answer commands: *status*, *table*, *teams*, *yes/no*. Everything else is in the app: ${link}`,
+  degradedMonth: (link) => `We've used this month's included conversations 😅 — until the 1st I only answer commands: *status*, *table*, *teams*, *yes/no*. Everything else is in the app: ${link}`,
   refusal: "I can't help with that.",
   continuePrompt: "Tell me if you want me to continue.",
   error: "Something went wrong handling that. Try again in a bit.",
