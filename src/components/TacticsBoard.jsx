@@ -37,17 +37,29 @@ const rowsFor = (label) => {
   return [...ROWS_META, { key: "gk", label: "Guarda-redes" }].map((r) => ({ ...r, count: counts[r.key] }));
 };
 
-/** One team's personal, device-local tactical lineup — drag players from
- *  the bench onto pitch slots, pick a formation. Purely organizational:
- *  no effect on goals/assists/GK pickers, stats or Fantasy, and not
- *  synced anywhere — each viewer gets their own (localStorage). */
-export default function TacticsBoard({ team, group }) {
+/** One team's tactical lineup — drag players from the bench onto pitch
+ *  slots, pick a formation. Purely organizational: no effect on
+ *  goals/assists/GK pickers, stats or Fantasy.
+ *
+ *  Groups (default): personal and device-local (localStorage), one per
+ *  viewer. Optional props (league context):
+ *  - `value` + `onChange({ formation, slots })` — controlled: the saved
+ *    board lives in the caller's state instead of localStorage.
+ *  - `readOnly` — shows the published board (no dragging, no bench).
+ *  - `outfield` — outfield slots on the pitch (e.g. 6 for Futebol 7);
+ *    defaults to everyone minus the GK. Extra players stay on the bench.
+ *  - `blocked` — [{ id, name, reason }] listed under the bench, never
+ *    placeable (e.g. suspended athletes). */
+export default function TacticsBoard({ team, group, value, onChange, readOnly = false, outfield: outfieldProp, blocked = [] }) {
   const byId = (id) => group.find((p) => p.id === id);
-  const players = (team.players || []).map(byId).filter(Boolean);
-  const outfield = Math.max(1, players.length - 1);
+  const blockedIds = new Set(blocked.map((b) => b.id));
+  const players = (team.players || []).map(byId).filter((p) => p && !blockedIds.has(p.id));
+  const outfield = outfieldProp ?? Math.max(1, players.length - 1);
   const options = formationOptions(outfield).map(labelOf);
+  const controlled = value !== undefined;
   const storageKey = `pitch:tactics:${team.id}`;
   const readSaved = () => {
+    if (controlled) return value;
     try { return JSON.parse(localStorage.getItem(storageKey) || "null"); } catch { return null; }
   };
 
@@ -62,8 +74,16 @@ export default function TacticsBoard({ team, group }) {
   });
   const [slots, setSlots] = useState(() => readSaved()?.slots || {});
 
+  const firstRun = useRef(true);
   useEffect(() => {
+    if (controlled) {
+      // controlled: report edits (not the initial mount) to the caller
+      if (firstRun.current) { firstRun.current = false; return; }
+      if (!readOnly) onChange?.({ formation, slots });
+      return;
+    }
     try { localStorage.setItem(storageKey, JSON.stringify({ formation, slots })); } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey, formation, slots]);
 
   const changeFormation = (label) => {
@@ -81,7 +101,8 @@ export default function TacticsBoard({ team, group }) {
     setFormation(label);
   };
 
-  const placedIds = new Set(Object.values(slots));
+  const validIds = new Set(players.map((p) => p.id));
+  const placedIds = new Set(Object.values(slots).filter((id) => validIds.has(id)));
   const bench = players.filter((p) => !placedIds.has(p.id));
 
   // ── Drag (Pointer Events — mouse + touch uniformly, no library) ────
@@ -137,6 +158,7 @@ export default function TacticsBoard({ team, group }) {
   }, [drag]);
 
   const startDrag = (e, playerId, from) => {
+    if (readOnly) return;
     e.preventDefault();
     setDrag({ playerId, from, x: e.clientX, y: e.clientY });
   };
@@ -162,11 +184,11 @@ export default function TacticsBoard({ team, group }) {
   return (
     <div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-        {options.map((label) => {
+        {options.filter((label) => !readOnly || label === formation).map((label) => {
           const active = label === formation;
           return (
-            <button key={label} onClick={() => changeFormation(label)}
-              style={{ background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: active ? 800 : 600, cursor: "pointer" }}>
+            <button key={label} onClick={() => { if (!readOnly) changeFormation(label); }} aria-pressed={active} disabled={readOnly && !active}
+              style={{ minHeight: 44, background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 22, padding: "0 16px", fontSize: 12, fontWeight: active ? 800 : 600, cursor: readOnly ? "default" : "pointer" }}>
               {label}
             </button>
           );
@@ -182,7 +204,7 @@ export default function TacticsBoard({ team, group }) {
               {Array.from({ length: row.count }).map((_, i) => {
                 const key = `${row.key}-${i}`;
                 const playerId = slots[key];
-                const p = playerId != null ? byId(playerId) : null;
+                const p = playerId != null && validIds.has(playerId) ? byId(playerId) : null;
                 const hovering = hoverKey === key;
                 return (
                   <div key={key}
@@ -219,6 +241,11 @@ export default function TacticsBoard({ team, group }) {
           </div>
         ) : (
           <div style={{ fontSize: 11, color: C.text3 }}>{t("Todos colocados no campo.")}</div>
+        )}
+        {blocked.length > 0 && (
+          <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.red, lineHeight: 1.5 }}>
+            {blocked.map((b) => <div key={b.id}>{b.name} · {b.reason}</div>)}
+          </div>
         )}
       </div>
 

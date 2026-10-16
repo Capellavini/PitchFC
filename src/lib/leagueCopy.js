@@ -15,6 +15,8 @@ const L = (pt, en, ptBr) => {
 
 export const fmt = (s, vars = {}) => String(s).replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
 export const tf = (key, vars) => fmt(t(key), vars);
+/** "1 golo" / "3 golos" — PT-PT source strings for both forms, then t(). */
+export const plural = (n, one, many) => `${n} ${t(n === 1 ? one : many)}`;
 
 export const LG = {
   demoMode: L("Modo demonstração", "Demo mode", "Modo demonstração"),
@@ -102,6 +104,10 @@ export const LEAGUE_ERROR = {
   forbidden_mvp: L("Só o gestor escolhe o craque oficial.", "Only the manager picks the official player of the match.", "Só o gestor escolhe o craque oficial."),
   match_not_ended: L("O jogo ainda não terminou.", "The match hasn't ended yet.", "O jogo ainda não terminou."),
   card_needs_player: L("Um cartão precisa de atleta.", "A card needs a player.", "Um cartão precisa de atleta."),
+  forbidden_tactics: L("Só o capitão da equipa (ou o gestor) pode mexer na formação, antes ou durante o jogo.", "Only the team's captain (or the manager) can edit the formation, before or during the match.", "Só o capitão do time (ou o gestor) pode mexer na formação, antes ou durante o jogo."),
+  tactics_suspended: L("Há um atleta suspenso na formação.", "A suspended player is in the formation.", "Há um atleta suspenso na formação."),
+  tactics_not_called: L("Só atletas convocados podem entrar na formação.", "Only called-up players can be in the formation.", "Só atletas convocados podem entrar na formação."),
+  tactics_duplicate: L("O mesmo atleta está em duas posições.", "The same player is in two positions.", "O mesmo atleta está em duas posições."),
   generic: L("Não foi possível guardar. Tenta outra vez.", "Couldn't save. Try again.", "Não foi possível salvar. Tente novamente."),
 };
 export const leagueError = (e) => t(LEAGUE_ERROR[e?.code] || LEAGUE_ERROR.generic);

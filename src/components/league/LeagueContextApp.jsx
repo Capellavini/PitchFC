@@ -3,7 +3,7 @@ import { C, S } from "../../theme";
 import { getLang, t } from "../../lib/i18n";
 import { usePersistentState } from "../../lib/storage";
 import {
-  appendEvent, transition, setOfficialMvp, castFanVote, validateFantasyPicks, LeagueError,
+  appendEvent, transition, setOfficialMvp, castFanVote, validateFantasyPicks, LeagueError, setTactics,
 } from "../../lib/core/league";
 import {
   buildLeagueDemoSeed, normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY, PLAYERS,
@@ -21,6 +21,8 @@ import LeagueMatchPage from "./LeagueMatchPage";
 import LeagueTeamPage from "./LeagueTeamPage";
 import LeaguePlayerPage from "./LeaguePlayerPage";
 import LeagueManage from "./LeagueManage";
+import LeaguePlayersDirectory from "./LeaguePlayersDirectory";
+import LeagueCompare from "./LeagueCompare";
 import LeagueToast from "./LeagueToast";
 
 const SHELL_W = 430; // same column as the app shell
@@ -144,6 +146,10 @@ export default function LeagueContextApp({ contexts, entry = null }) {
       ...s, fanVotes: castFanVote(s.fanVotes, s.matches.find((m) => m.id === matchId), acc.accountId, playerId),
     }), t("Voto registado. Podes mudá-lo até a votação fechar.")),
     setLineup: (matchId, teamId, ids) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, lineups: { ...m.lineups, [teamId]: ids } })), t("Convocatória guardada.")),
+    setTactics: (matchId, teamId, board) => apply((s) => setMatch(s, matchId, (m) => setTactics(m, teamId, board, {
+      role, myTeamId: acc.teamId, by: `${state.viewer?.role === "manager" ? t("Gestor (demo)") : `${PLAYERS.find((p) => p.id === acc.playerId)?.name || "—"} (${t(acc.label)})`}`,
+      at: now(), suspendedIds: Object.values(derived.discipline).filter((d) => d.pending > 0).map((d) => d.playerId),
+    })), t("Formação publicada.")),
     toggleVar: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, var: { enabled: !m.var?.enabled } }))),
     setPicks: (ids, players) => {
       const errors = validateFantasyPicks(ids, players);
@@ -166,6 +172,8 @@ export default function LeagueContextApp({ contexts, entry = null }) {
   else if (view?.kind === "match") body = <LeagueMatchPage key={view.id} ctx={ctx} matchId={view.id} />;
   else if (view?.kind === "team") body = <LeagueTeamPage key={view.id} ctx={ctx} teamId={view.id} />;
   else if (view?.kind === "player") body = <LeaguePlayerPage key={view.id} ctx={ctx} playerId={view.id} />;
+  else if (view?.kind === "players") body = <LeaguePlayersDirectory ctx={ctx} />;
+  else if (view?.kind === "compare") body = <LeagueCompare ctx={ctx} />;
   else if (tab === "jogos") body = <LeagueMatches ctx={ctx} />;
   else if (tab === "classificacao") body = <LeagueTable ctx={ctx} />;
   else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;

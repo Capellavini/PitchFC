@@ -3,7 +3,7 @@ import { ChevronRight, Users, BookOpen, Gavel, SlidersHorizontal, FlaskConical, 
 import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG } from "../../lib/leagueCopy";
-import { TEAMS, playerById, teamById } from "../../lib/leagueDemo";
+import { TEAMS, playerById, teamById, PHASE2_DECISIONS } from "../../lib/leagueDemo";
 import BackHeader from "../BackHeader";
 import BtnGhost from "../BtnGhost";
 import RivalsCrest from "../RivalsCrest";
@@ -76,11 +76,17 @@ export default function LeagueMore({ ctx }) {
       {row(BookOpen, t("Regulamento"), () => setSub("regulamento"), t("Demonstração · só leitura"))}
       {row(Gavel, t("Disciplina"), () => setSub("disciplina"), t("Cartões e suspensões (regras demo)"))}
       {row(SlidersHorizontal, t("Preferências"), () => setSub("prefs"), t("Equipa do coração e avisos"))}
-      {row(Users, t("Atletas"), () => ctx.goTab("classificacao"), t("Rankings em Classificação"))}
+      {row(Users, t("Atletas"), () => open({ kind: "players" }), t("Cartões, OVR e comparação"))}
 
       <div style={{ ...cardStyle, marginTop: S.xl, borderStyle: "dashed", borderColor: `${C.orange}88` }}>
         <div style={{ display: "flex", alignItems: "center", gap: S.sm, fontWeight: 800, marginBottom: S.xs }}><FlaskConical size={16} color={C.orange} aria-hidden /> {t(LG.demoMode)}</div>
         <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, marginBottom: S.md }}>{t(LG.demoData)} {t("Nada é enviado para servidores.")}</div>
+        <details style={{ marginBottom: S.md }}>
+          <summary style={{ minHeight: TOUCH.min, display: "flex", alignItems: "center", cursor: "pointer", fontSize: T.body, fontWeight: 700 }}>{t("Decisões já tomadas para a Fase 2")}</summary>
+          <ul style={{ margin: 0, paddingLeft: S.lg, fontSize: T.meta, color: C.text2, lineHeight: 1.7 }}>
+            {PHASE2_DECISIONS.map((d) => <li key={d}>{t(d)}</li>)}
+          </ul>
+        </details>
         <BtnGhost block onClick={act.reset}>{t(LG.reset)}</BtnGhost>
       </div>
     </div>

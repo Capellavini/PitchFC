@@ -189,6 +189,31 @@ export const canRecordLive = (match, role) => role === "manager" && match.state 
  *  matches must be reopened (→ in_review) first. */
 export const canCorrect = (match, role) => role === "manager" && ["live", "ended_provisional", "in_review"].includes(match.state);
 
+// ── Tactical board (formation per team per match) ────────────────────
+
+const TACTICS_OPEN = new Set(["scheduled", "postponed", "live"]);
+
+/** Captain: own team, before/while the match. Manager: any team, same
+ *  window. Everyone else: read-only. */
+export const canEditTactics = (match, role, teamId, myTeamId = null) =>
+  TACTICS_OPEN.has(match.state) && (teamId === match.homeId || teamId === match.awayId)
+  && (role === "manager" || (role === "captain" && myTeamId === teamId));
+
+/** Publish a team's board for a match. `board` = { formation, slots:
+ *  { slotKey: playerId } }. Rejects suspended players, players outside
+ *  the call-up (when one is published) and a player in two slots. */
+export function setTactics(match, teamId, board, { role, myTeamId = null, by = null, at = null, suspendedIds = [] } = {}) {
+  if (!canEditTactics(match, role, teamId, myTeamId)) throw new LeagueError("forbidden_tactics");
+  const placed = Object.values(board?.slots || {}).filter(Boolean);
+  if (new Set(placed).size !== placed.length) throw new LeagueError("tactics_duplicate");
+  const banned = new Set(suspendedIds);
+  if (placed.some((id) => banned.has(id))) throw new LeagueError("tactics_suspended");
+  const lineup = match.lineups?.[teamId];
+  if (lineup?.length && placed.some((id) => !lineup.includes(id))) throw new LeagueError("tactics_not_called");
+  const clean = { formation: board.formation, slots: { ...board.slots }, by, at };
+  return { ...match, tactics: { ...(match.tactics || {}), [teamId]: clean } };
+}
+
 // ── Projections ─────────────────────────────────────────────────────
 
 /** Which matches count: official only by default; `includeProvisional`

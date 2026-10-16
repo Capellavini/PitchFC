@@ -1,6 +1,6 @@
 import { C, S, T, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
-import { tf } from "../../lib/leagueCopy";
+import { plural } from "../../lib/leagueCopy";
 import { teamById } from "../../lib/leagueDemo";
 import { corrections } from "../../lib/core/league";
 import BtnPrimary from "../BtnPrimary";
@@ -28,7 +28,7 @@ export default function LeagueManageReports({ ctx, openMatch }) {
               <LeagueStateChip state={m.state} />
             </div>
             <div style={{ fontSize: T.meta, color: C.text2, margin: `${S.xs}px 0 ${S.sm}px` }}>
-              {tf(t("{n} lances no registo · {c} correções"), { n: (state.logs[m.id] || []).length, c: fixes })}
+              {plural((state.logs[m.id] || []).length, "lance no registo", "lances no registo")} · {plural(fixes, "correção", "correções")}
               {m.contest && m.state === "in_review" ? ` · ${t("Contestação")}: “${m.contest.reason}”` : ""}
             </div>
             <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>

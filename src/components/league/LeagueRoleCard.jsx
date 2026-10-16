@@ -1,7 +1,7 @@
 import { ClipboardCheck, Vote } from "lucide-react";
 import { C, S, T, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
-import { LG, tf } from "../../lib/leagueCopy";
+import { LG, tf, plural } from "../../lib/leagueCopy";
 import { teamById, playerById } from "../../lib/leagueDemo";
 import { fanVoteOpen } from "../../lib/core/league";
 import BtnPrimary from "../BtnPrimary";
@@ -39,7 +39,7 @@ export default function LeagueRoleCard({ ctx }) {
         <div style={{ fontSize: T.meta, color: C.text2, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t(role === "captain" ? "Capitão" : "Atleta")} · {teamById[acc.teamId].name}</div>
         <div style={{ fontSize: T.cardTitle, fontWeight: 800, margin: `${S.xs}px 0 ${S.sm}px` }}>{me.name}</div>
         <div style={{ fontSize: T.body, color: C.text2, marginBottom: S.md }}>
-          {tf(t("{g} golos · {a} assistências · {j} jogos (homologados)"), { g: s.goals || 0, a: s.assists || 0, j: s.games || 0 })}
+          {plural(s.goals || 0, "golo", "golos")} · {plural(s.assists || 0, "assistência", "assistências")} · {plural(s.games || 0, "jogo", "jogos")} ({t("homologados")})
         </div>
         <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>
           {role === "captain" && nextMine && (

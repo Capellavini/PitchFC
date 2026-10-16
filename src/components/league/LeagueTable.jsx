@@ -9,6 +9,7 @@ import SectionLabel from "../SectionLabel";
 import SegmentedControl from "../SegmentedControl";
 import LeagueStandingsTable from "./LeagueStandingsTable";
 import LeagueRankingList from "./LeagueRankingList";
+import BtnGhost from "../BtnGhost";
 
 const TB_LABEL = { pts: "pontos", gd: "diferença de golos", gf: "golos marcados", h2h: "confronto direto", wins: "vitórias", ga_fewest: "menos golos sofridos", lots: "sorteio" };
 
@@ -57,6 +58,7 @@ export default function LeagueTable({ ctx }) {
           : <LeagueRankingList rows={ranking(stats, PLAYERS, rank, 10)} onPlayer={(id) => open({ kind: "player", id })} />}
       </div>
       <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, marginTop: S.sm }}>
+        <BtnGhost block onClick={() => open({ kind: "players" })} style={{ margin: `${S.sm}px 0` }}>{t("Ver todos os atletas (cartões e OVR)")}</BtnGhost>
         {t("Golos não incluem autogolos nem penáltis de desempate. Assistências só contam quando registadas na súmula. Golos de autor por identificar contam no resultado, não no ranking.")}
       </div>
     </div>

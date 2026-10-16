@@ -8,8 +8,9 @@ import {
   DEMO_RULES,
 } from "./core/league.js";
 import { roundRobinFixtures } from "./core/standings.js";
+import { computeOverall } from "./core/overall.js";
 
-export const LEAGUE_DEMO_VERSION = 2;
+export const LEAGUE_DEMO_VERSION = 3;
 export const LEAGUE_DEMO_KEY = "leagueDemo"; // usePersistentState prefix → pitch.v2.leagueDemo
 
 export const LEAGUE = Object.freeze({
@@ -45,14 +46,75 @@ const SLOTS = [
   { position: "AVA", number: 9, base: 8 }, { position: "AVA", number: 11, base: 7 },
 ];
 
+// PITCH identity per athlete (same shape the group app's FUT card uses):
+// full position name, foot, nationality, age, 6 attributes, optional photo.
+export const POSITION_FULL = Object.freeze({ GR: "Guarda-redes", DEF: "Defesa", MED: "Médio", AVA: "Avançado" });
+const FEET = ["Direito", "Direito", "Esquerdo", "Direito", "Ambos", "Direito", "Esquerdo"];
+const NATIONS = ["🇵🇹 Portugal", "🇵🇹 Portugal", "🇵🇹 Portugal", "🇧🇷 Brasil", "🇵🇹 Portugal", "🇨🇻 Cabo Verde", "🇵🇹 Portugal", "🇦🇴 Angola", "🇪🇸 Espanha"];
+const OUT_KEYS = ["rit", "rem", "pas", "dri", "def", "fis"];
+const GK_KEYS = ["div", "man", "kic", "ref", "spd", "pos"];
+// Per-position emphasis (added to the target OVR) so cards look like their role.
+const EMPHASIS = {
+  GR: { div: 2, man: 1, kic: -3, ref: 3, spd: -4, pos: 1 },
+  DEF: { rit: -1, rem: -8, pas: -2, dri: -5, def: 5, fis: 4 },
+  MED: { rit: 0, rem: -2, pas: 4, dri: 2, def: -3, fis: -1 },
+  AVA: { rit: 3, rem: 5, pas: -2, dri: 2, def: -12, fis: -2 },
+};
+/** Photos only for a couple of athletes; everyone else = initials (and
+ *  youth athletes would ALWAYS be initials-only — owner, Fase 2). */
+const PHOTOS = { t1p8: "/brand/demo-player.jpg", t4p7: "/brand/demo-player.jpg" };
+
+function attrsFor(position, target, seed) {
+  const keys = position === "GR" ? GK_KEYS : OUT_KEYS;
+  return Object.fromEntries(keys.map((k, ki) => {
+    const wobble = ((seed * 7 + ki * 5) % 7) - 3;
+    return [k, Math.max(40, Math.min(97, target + (EMPHASIS[position][k] || 0) + wobble))];
+  }));
+}
+
 export const PLAYERS = Object.freeze(TEAMS.flatMap((team, ti) => SLOTS.map((slot, si) => {
   const i = ti * SLOTS.length + si;
+  const first = FIRST[(i * 5 + ti) % FIRST.length];
+  const last = LAST[(i * 7 + 3) % LAST.length];
+  // target OVR 63..88, deterministic; strikers/10s of a few teams reach LENDA
+  const target = 63 + ((i * 11 + si * 3) % 24) + (slot.number === 10 || slot.number === 9 ? 2 : 0);
   return {
     id: `${team.id}p${si + 1}`, teamId: team.id,
-    name: `${FIRST[(i * 5 + ti) % FIRST.length]} ${LAST[(i * 7 + 3) % LAST.length]}`,
+    name: `${first} ${last}`,
+    nick: si % 3 === 0 ? `${first} ${last[0]}.` : last,
     position: slot.position, number: slot.number, price: slot.base + ((ti + si) % 2),
+    foot: FEET[i % FEET.length], nationality: NATIONS[(i * 3) % NATIONS.length], age: 19 + ((i * 7) % 20),
+    attrs: attrsFor(slot.position, target, i), photo: PHOTOS[`${team.id}p${si + 1}`] || null,
   };
 })));
+
+/** Player in the shape FutCard / ComparePlayers expect (full position
+ *  name, club = league team). */
+export const futPlayer = (p) => ({ ...p, position: POSITION_FULL[p.position] || p.position, club: TEAMS.find((t) => t.id === p.teamId)?.name || "" });
+export const ovrOfPlayer = (p) => computeOverall(POSITION_FULL[p.position], p.attrs);
+export const tierOf = (ovr) => (ovr >= 86 ? "LENDA" : ovr >= 80 ? "OURO" : ovr >= 70 ? "PRATA" : "BRONZE");
+
+/** Other contexts where a demo athlete also plays — shown SEPARATELY on
+ *  the athlete page, never summed with this competition (brief §10). */
+export const OTHER_CONTEXTS = Object.freeze({
+  t1p8: [
+    { kind: "group", label: "Grupo semanal · FC Amigos", season: "2026/27", games: 9, goals: 7, assists: 3 },
+    { kind: "friendly", label: "Amigáveis da equipa · Marés FC", season: "2026/27", games: 2, goals: 1, assists: 0 },
+  ],
+  t1p5: [{ kind: "group", label: "Grupo semanal · Futebol de quinta", season: "2026/27", games: 6, goals: 2, assists: 4 }],
+  t1p7: [{ kind: "group", label: "Grupo semanal · FC Amigos", season: "2026/27", games: 8, goals: 9, assists: 1 }],
+});
+
+/** Owner answers for Fase 2 (2026-10-16) — recorded here so the demo copy
+ *  and the next phase stay aligned. No behaviour depends on them yet. */
+export const PHASE2_DECISIONS = Object.freeze([
+  "Cada liga terá a sua página em /league/<slug>.",
+  "Na página da equipa, amigáveis e competições aparecem em separado.",
+  "Homologação: pelo dono da liga e pelo gestor.",
+  "Atletas menores: só iniciais (sem foto); consentimento recolhido pela liga junto dos pais.",
+  "Suspensões: o PITCH sugere a partir dos cartões, o gestor confirma.",
+  "Uma liga por pedido de piloto aprovado.",
+]);
 
 /** Squad captain = slot 5 (nº 8). */
 export const captainOf = (teamId) => `${teamId}p5`;
@@ -129,6 +191,11 @@ export function buildLeagueDemoSeed() {
   });
   play("m1", "homologated");
   set("m1", (m) => ({ ...setOfficialMvp(m, "t1p7", { ...manager, at: "2026-10-04T10:15:00.000Z" }), fanVoteClosed: true }));
+  // Marés published its Futebol 7 board for m1 (captain); nº 11 on the bench
+  set("m1", (m) => ({ ...m, tactics: { t1: {
+    formation: "2-3-1", by: "Marco Ramos (Capitão)", at: "2026-10-03T16:30:00.000Z",
+    slots: { "gk-0": "t1p1", "def-0": "t1p2", "def-1": "t1p3", "mid-0": "t1p4", "mid-1": "t1p5", "mid-2": "t1p6", "fwd-0": "t1p7" },
+  } } }));
 
   ev("m2", "goal", "t2", "t2p7", "t2p5", 8);
   ev("m2", "goal", "t5", null, null, 21); // scorer unknown — recorded without inventing one

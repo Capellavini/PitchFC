@@ -1,6 +1,6 @@
 import { C, S, T, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
-import { tf } from "../../lib/leagueCopy";
+import { tf, plural } from "../../lib/leagueCopy";
 import { playerById, teamById } from "../../lib/leagueDemo";
 import { DEMO_RULES } from "../../lib/core/league";
 
@@ -22,7 +22,7 @@ export default function LeagueDiscipline({ discipline, onPlayer }) {
               <span style={{ display: "block", fontSize: T.body, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{playerById[d.playerId]?.name}</span>
               <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>{teamById[d.teamId]?.name} · 🟨 {d.yellows} · 🟥 {d.reds}{d.served ? ` · ${tf(t("cumpriu {n}"), { n: d.served })}` : ""}</span>
             </span>
-            <span style={{ fontSize: T.meta, fontWeight: 800, color: d.pending ? C.red : C.green, flexShrink: 0 }}>{d.pending ? tf(t("Suspenso · {n} jogo"), { n: d.pending }) : t("Elegível")}</span>
+            <span style={{ fontSize: T.meta, fontWeight: 800, color: d.pending ? C.red : C.green, flexShrink: 0 }}>{d.pending ? `${t("Suspenso")} · ${plural(d.pending, "jogo", "jogos")}` : t("Elegível")}</span>
           </button>
         ))}
       </div>

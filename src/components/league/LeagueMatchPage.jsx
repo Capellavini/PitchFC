@@ -51,11 +51,10 @@ export default function LeagueMatchPage({ ctx, matchId }) {
   const log = state.logs[match.id] || [];
   const started = STARTED.has(match.state);
   const captainHere = role === "captain" && (match.homeId === acc.teamId || match.awayId === acc.teamId);
-  const hasLineups = Object.values(match.lineups || {}).some((l) => l?.length);
 
   const sections = [
     { id: "resumo", label: LG.secSummary },
-    (hasLineups || captainHere) && { id: "escalacoes", label: LG.secLineups },
+    { id: "escalacoes", label: LG.secLineups }, // always: call-up or inscribed squad (scouting) + boards
     started && { id: "lances", label: LG.secTimeline },
     ENDED.has(match.state) && { id: "destaques", label: LG.secHighlights },
     match.var?.enabled && { id: "videos", label: LG.secVideos },
@@ -132,7 +131,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
           {started && <><div style={{ fontSize: T.meta, color: C.text2, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: S.sm }}>{t("Últimos lances")}</div><LeagueTimeline match={match} log={log} /></>}
         </>
       )}
-      {current === "escalacoes" && <LeagueLineups match={match} onPlayer={(id) => open({ kind: "player", id })} />}
+      {current === "escalacoes" && <LeagueLineups ctx={ctx} match={match} />}
       {current === "lances" && (
         <>
           {canCorrect(match, role) && <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.sm }}>{t("Gestor: “Corrigir” cria um novo lance que substitui o anterior, com motivo. Nada é apagado.")}</div>}

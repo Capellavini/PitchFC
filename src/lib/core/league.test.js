@@ -5,6 +5,7 @@ import {
   appendEvent, activeEvents, corrections, matchScore, standings, playerStats, discipline,
   transition, canTransition, setOfficialMvp, castFanVote, tallyFanVotes, fanVoteOpen,
   fantasyPlayerPoints, validateFantasyPicks, LeagueError, DEMO_RULES, FANTASY_DEMO_RULES,
+  canEditTactics, setTactics,
 } from "./league.js";
 
 const TEAMS = [{ id: "A", name: "A" }, { id: "B", name: "B" }, { id: "C", name: "C" }, { id: "D", name: "D" }];
@@ -194,6 +195,22 @@ test("discipline: yellow accumulation and red suspension (demo rules), served ne
   assert.equal(d.a1.yellows, 3); assert.equal(d.a1.triggered, 1); assert.equal(d.a1.served, 1); assert.equal(d.a1.pending, 0);
   const d3 = discipline(ms.slice(0, 3), logs, PLAYERS);
   assert.equal(d3.a1.pending, 1); // banned for the next match
+});
+
+test("tactical board: captain own team only, manager any, suspended / not-called rejected", () => {
+  const m = { ...match("m1", "A", "B", "scheduled"), lineups: { A: ["a1", "a2"] } };
+  const board = { formation: "2-3-1", slots: { "gk-0": "a1", "fwd-0": "a2" } };
+  assert.equal(canEditTactics(m, "captain", "A", "A"), true);
+  assert.equal(canEditTactics(m, "captain", "B", "A"), false);
+  assert.equal(canEditTactics(m, "fan", "A"), false);
+  assert.equal(canEditTactics({ ...m, state: "homologated" }, "manager", "A"), false);
+  assert.throws(() => setTactics(m, "B", board, { role: "captain", myTeamId: "A" }), (e) => e.code === "forbidden_tactics");
+  assert.throws(() => setTactics(m, "A", board, { role: "captain", myTeamId: "A", suspendedIds: ["a2"] }), (e) => e.code === "tactics_suspended");
+  assert.throws(() => setTactics(m, "A", { slots: { "gk-0": "a1", "def-0": "a1" } }, { role: "manager" }), (e) => e.code === "tactics_duplicate");
+  assert.throws(() => setTactics(m, "A", { slots: { "gk-0": "b9" } }, { role: "manager" }), (e) => e.code === "tactics_not_called");
+  const saved = setTactics(m, "A", board, { role: "captain", myTeamId: "A", by: "cap" });
+  assert.deepEqual(saved.tactics.A.slots, board.slots);
+  assert.equal(saved.tactics.A.by, "cap");
 });
 
 test("fantasy preview scores from events with the demo rules", () => {

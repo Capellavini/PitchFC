@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Award, Users } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
-import { LG, tf } from "../../lib/leagueCopy";
+import { LG, tf, plural } from "../../lib/leagueCopy";
 import { playerById, teamById, fmtDateTime } from "../../lib/leagueDemo";
 import { fanVoteOpen, tallyFanVotes } from "../../lib/core/league";
 import BtnPrimary from "../BtnPrimary";
@@ -70,7 +70,7 @@ export default function LeagueAwards({ ctx, match }) {
             </div>
           );
         })}
-        <div style={{ fontSize: T.meta, color: C.text2, marginBottom: open ? S.md : 0 }}>{tally.total === 1 ? t("1 voto") : tf(t("{n} votos"), { n: tally.total })}{open ? ` · ${t("resultado parcial — não é final")}` : ""}</div>
+        <div style={{ fontSize: T.meta, color: C.text2, marginBottom: open ? S.md : 0 }}>{plural(tally.total, "voto", "votos")}{open ? ` · ${t("resultado parcial — não é final")}` : ""}</div>
         {open && candidates.length > 0 && (
           <div role="radiogroup" aria-label={t(LG.fansMvp)} style={{ display: "flex", flexWrap: "wrap", gap: S.xs }}>
             {candidates.map((p) => (

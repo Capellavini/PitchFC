@@ -1,17 +1,18 @@
 import { Heart, Star } from "lucide-react";
-import { C, S, T, TOUCH, AVATAR_PALETTE, cardStyle, displayFont } from "../../theme";
+import { C, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
-import { tf, POSITION_LABEL } from "../../lib/leagueCopy";
-import { teamById, PLAYERS, matchesOfTeam, COMPETITION } from "../../lib/leagueDemo";
+import { tf } from "../../lib/leagueCopy";
+import { teamById, PLAYERS, matchesOfTeam, COMPETITION, captainOf, ovrOfPlayer } from "../../lib/leagueDemo";
 import BackHeader from "../BackHeader";
 import SectionLabel from "../SectionLabel";
 import BtnGhost from "../BtnGhost";
 import BtnPrimary from "../BtnPrimary";
-import Avatar from "../Avatar";
 import FormPills from "../FormPills";
 import RivalsCrest from "../RivalsCrest";
 import StatTile from "../StatTile";
 import LeagueMatchRow from "./LeagueMatchRow";
+import LeagueSquadGrid from "./LeagueSquadGrid";
+import TeamTopPlayers from "../TeamTopPlayers";
 
 /** Team page inside the competition: identity, table position, record
  *  (official only), form, public squad (name/number/position — never
@@ -28,6 +29,9 @@ export default function LeagueTeamPage({ ctx, teamId }) {
     const s = derived.scores[m.id]; const mine = m.homeId === teamId ? s.home : s.away; const their = m.homeId === teamId ? s.away : s.home;
     return mine > their ? "W" : mine < their ? "L" : "D";
   });
+  const avgOvr = Math.round(squad.reduce((n, p) => n + ovrOfPlayer(p), 0) / squad.length);
+  const suspended = new Set(squad.filter((p) => (derived.discipline[p.id]?.pending || 0) > 0).map((p) => p.id));
+  const top = (k) => squad.map((p) => ({ nick: p.nick, n: derived.stats[p.id]?.[k] || 0 })).filter((r) => r.n > 0).sort((a, b) => b.n - a.n).slice(0, 3);
   const follows = (state.prefs.followTeamIds || []).includes(teamId);
   const supports = state.prefs.supportTeamId === teamId;
   const toggleFollow = () => act.setPrefs({ followTeamIds: follows ? state.prefs.followTeamIds.filter((x) => x !== teamId) : [...(state.prefs.followTeamIds || []), teamId] });
@@ -65,23 +69,10 @@ export default function LeagueTeamPage({ ctx, teamId }) {
       <SectionLabel>{t("Jogos")}</SectionLabel>
       {games.map((m) => <LeagueMatchRow key={m.id} match={m} score={derived.scores[m.id]} lang={lang} onOpen={(id) => open({ kind: "match", id })} />)}
 
-      <SectionLabel style={{ marginTop: S.xl }}>{tf(t("Plantel inscrito ({n})"), { n: squad.length })}</SectionLabel>
-      <div style={{ ...cardStyle, padding: `0 ${S.md}px` }}>
-        {squad.map((p, i) => {
-          const s = derived.stats[p.id] || {};
-          return (
-            <button key={p.id} type="button" onClick={() => open({ kind: "player", id: p.id })}
-              style={{ width: "100%", minHeight: TOUCH.button, display: "flex", alignItems: "center", gap: S.md, background: "none", border: "none", borderBottom: i < squad.length - 1 ? `1px solid ${C.border}` : "none", color: C.text1, cursor: "pointer", textAlign: "left", padding: `${S.xs}px 0` }}>
-              <Avatar name={p.name} color={AVATAR_PALETTE[i % AVATAR_PALETTE.length]} size={32} />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: T.body, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.number} · {p.name}{p.id === `${teamId}p5` ? ` (C)` : ""}</span>
-                <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>{t(POSITION_LABEL[p.position])}</span>
-              </span>
-              <span style={{ fontSize: T.meta, color: C.text2, flexShrink: 0 }}>⚽ {s.goals || 0} · 🅰 {s.assists || 0}</span>
-            </button>
-          );
-        })}
-      </div>
+      <SectionLabel style={{ marginTop: S.xl }} right={<span style={{ fontSize: T.meta, color: C.text2, fontWeight: 700 }}>{tf(t("OVR médio {n}"), { n: avgOvr })}</span>}>{tf(t("Plantel inscrito ({n})"), { n: squad.length })}</SectionLabel>
+      <TeamTopPlayers scorers={top("goals")} assisters={top("assists")} />
+      <LeagueSquadGrid players={squad} suspended={suspended} captainId={captainOf(teamId)} meId={ctx.acc.playerId} onPlayer={(id) => open({ kind: "player", id })} />
+      <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, lineHeight: 1.5 }}>{t("Só jogos oficiais desta competição. Amigáveis e outras competições da equipa aparecem em separado (Fase 2).")}</div>
       <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.sm, lineHeight: 1.5 }}>{t("A equipa mantém a mesma identidade entre épocas; cada época tem o seu plantel inscrito. Páginas públicas não mostram contactos.")}</div>
     </div>
   );
