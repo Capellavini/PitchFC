@@ -71,6 +71,12 @@ export const C = {
   // Fixed across both themes on purpose: a green pitch and gold/silver/
   // bronze card tiers should look the same regardless of app chrome.
   whatsapp:     "#25D366",
+  // WhatsApp's own dark chat chrome — only for illustrative chat mockups
+  // (landing), so they read as WhatsApp in either app theme.
+  waChat:       "#0B141A",
+  waBubble:     "#202C33",
+  waText:       "#E9EDEF",
+  waInk:        "#04140D",
   grass:        "#0E5C36",
   grassDim:     "rgba(14,160,90,0.08)",
   grassLine:    "rgba(255,255,255,0.07)",

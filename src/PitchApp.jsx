@@ -1331,6 +1331,9 @@ export default function PitchApp() {
 
   // Default profile from the signed-up account's metadata.
   const meta = cloud.user?.user_metadata || {};
+  // Who a group-less player is, for the "avisa-me quando houver jogos
+  // perto de mim" waitlist in NoGroupState (cloud only; null in demo).
+  const waitlistContact = cloud.user ? { name: me?.name || meta.name || "", email: cloud.user.email || "" } : null;
   const profileDefaults = {
     name: meta.name || "", nick: (meta.name || "").split(" ")[0] || "",
     phone: meta.phone || "", age: 25, nationality: "🇵🇹 Portugal", club: "FC Porto",
@@ -2105,7 +2108,7 @@ export default function PitchApp() {
             headerRight={groupSwitcher}
             groupEntryN={grupoEntry.n}
             renderJogos={({ openDetail }) => noGroup ? (
-              <NoGroupState onJoinGroup={openJoinGroup} onOpenTeams={rivals.myTeams.length ? () => openTeamsTab() : undefined} />
+              <NoGroupState onJoinGroup={openJoinGroup} onOpenTeams={rivals.myTeams.length ? () => openTeamsTab() : undefined} contact={waitlistContact} />
             ) : (
               <JogoTab
                 group={displayGroup} game={game}
@@ -2141,7 +2144,7 @@ export default function PitchApp() {
               />
             )}
             renderGroups={({ openGroup }) => noGroup ? (
-              <NoGroupState onJoinGroup={openJoinGroup} onOpenTeams={rivals.myTeams.length ? () => openTeamsTab() : undefined} />
+              <NoGroupState onJoinGroup={openJoinGroup} onOpenTeams={rivals.myTeams.length ? () => openTeamsTab() : undefined} contact={waitlistContact} />
             ) : (
               <GroupsList
                 groups={cloudMode && cloud.myGroups?.filter((m) => !m.banned).length
@@ -2204,7 +2207,7 @@ export default function PitchApp() {
           <TeamMatchdayTab teams={rivals} nextMatch={teamNextMatch} onOpenMatch={openMatch} onFindRivals={() => openRivalsView("discover")} />
         )}
         {tab === "matchday" && !teamMode && (noGroup ? (
-          <NoGroupState onJoinGroup={openJoinGroup} onOpenTeams={rivals.myTeams.length ? () => openTeamsTab() : undefined} />
+          <NoGroupState onJoinGroup={openJoinGroup} onOpenTeams={rivals.myTeams.length ? () => openTeamsTab() : undefined} contact={waitlistContact} />
         ) : (
           <MatchdayTab
             group={displayGroup} game={game}
