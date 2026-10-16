@@ -1258,14 +1258,18 @@ export default function PitchApp() {
   const path = window.location.pathname.replace(/\/+$/, "");
   // Leagues are a service for EXISTING amateur leagues (PITCH runs none).
   // /league is the public page for league organizers (pilot form via
-  // submit_lead) with two public entries into the demo: "Ver demonstração"
-  // and "Sou adepto". /league/demo is the league as an in-app context —
-  // public and labelled as demo (local demo seed only, never writes
-  // anywhere). The in-app Competir card stays behind the `leagues` flag.
-  if (path === "/league") {
-    return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }}
-      onDemo={() => { window.location.href = "/league/demo"; }}
-      onFan={() => { window.location.href = "/league/demo?entrada=adepto"; }} />;
+  // submit_lead). /league/demo is the league as an in-app context (local
+  // demo seed only, never writes anywhere). Owner 2026-10-16: the demo is
+  // NOT public — only local demo mode and the `leagues` flag (admins) see
+  // it and the "Ver demonstração" / "Sou adepto" entries; everyone else
+  // gets the plain /league page, even on /league/demo.
+  const leagueDemoOn = localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin });
+  const leagueDemoProps = leagueDemoOn ? {
+    onDemo: () => { window.location.href = "/league/demo"; },
+    onFan: () => { window.location.href = "/league/demo?entrada=adepto"; },
+  } : {};
+  if (path === "/league" || (path === "/league/demo" && !leagueDemoOn)) {
+    return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }} {...leagueDemoProps} />;
   }
   if (path === "/league/demo") {
     const leagueEntry = new URLSearchParams(window.location.search).get("entrada") === "adepto" ? "fan" : null;
@@ -1562,7 +1566,7 @@ export default function PitchApp() {
       }
       if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} lang={lang} onLang={changeLang} />;
       return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} isDemo
-        onFan={() => { window.location.href = "/league/demo?entrada=adepto"; }} />);
+        onFan={leagueDemoProps.onFan} />);
     }
     if (!session.onboarded) {
       return shell(

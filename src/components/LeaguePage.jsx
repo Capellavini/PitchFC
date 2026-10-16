@@ -61,7 +61,7 @@ export default function LeaguePage({ onEnterApp, onDemo, onFan, lang, onLang }) 
                 <option value="en">🇬🇧 EN</option>
               </select>
             )}
-            <span className="lgp-hide-sm"><BtnGhost compact onClick={onDemo} style={{ minHeight: TOUCH.min, padding: "0 12px", fontSize: 13 }}>{t(LP.ctaDemo)}</BtnGhost></span>
+            {onDemo && <span className="lgp-hide-sm"><BtnGhost compact onClick={onDemo} style={{ minHeight: TOUCH.min, padding: "0 12px", fontSize: 13 }}>{t(LP.ctaDemo)}</BtnGhost></span>}
             <span className="lgp-hide-sm"><BtnPrimary compact onClick={goPilot} style={{ minHeight: TOUCH.min, padding: "0 14px", fontSize: 13 }}>{t(LP.navPilot)}</BtnPrimary></span>
           </div>
         </div>
@@ -81,9 +81,9 @@ export default function LeaguePage({ onEnterApp, onDemo, onFan, lang, onLang }) 
             <p style={{ fontSize: "clamp(15px, 2vw, 18px)", color: C.text2, lineHeight: 1.6, maxWidth: 560, margin: `0 0 ${S.xl}px` }}>{t(LP.sub)}</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: S.sm, marginBottom: S.md }}>
               <BtnPrimary onClick={goPilot} style={{ flex: "1 1 240px", minHeight: 52, fontSize: T.body + 1 }}>{t(LP.ctaPilot)}</BtnPrimary>
-              <BtnGhost onClick={onDemo} style={{ flex: "1 1 180px", minHeight: 52, fontSize: T.body + 1 }}><PlayCircle size={18} aria-hidden /> {t(LP.ctaDemo)}</BtnGhost>
+              {onDemo && <BtnGhost onClick={onDemo} style={{ flex: "1 1 180px", minHeight: 52, fontSize: T.body + 1 }}><PlayCircle size={18} aria-hidden /> {t(LP.ctaDemo)}</BtnGhost>}
             </div>
-            <div style={{ fontSize: T.meta, color: C.text2 }}>{t(LP.demoNote)}</div>
+            {onDemo && <div style={{ fontSize: T.meta, color: C.text2 }}>{t(LP.demoNote)}</div>}
           </div>
 
           {/* real projection of the demo seed — labelled as demo */}
@@ -148,13 +148,13 @@ export default function LeaguePage({ onEnterApp, onDemo, onFan, lang, onLang }) 
         <p style={{ textAlign: "center", fontSize: T.body, color: C.text2, margin: `${S.xl}px 0 0` }}>{t(LP.howNote)}</p>
       </LandingSection>
 
-      {/* FAN BAND */}
-      <div style={{ ...fieldBackdrop(0.8, 0.95), borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+      {/* FAN BAND — only while the demo is reachable (real fan sign-up comes with Fase 2) */}
+      {onFan && <div style={{ ...fieldBackdrop(0.8, 0.95), borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
         <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 20px", display: "flex", flexWrap: "wrap", gap: S.lg, alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ ...displayFont, fontSize: "clamp(22px, 3.4vw, 30px)", lineHeight: 1.15, flex: "1 1 320px", minWidth: 0 }}>{t(LP.fanTitle)}</div>
           <BtnGhost tone="accent" onClick={onFan} style={{ flex: "0 1 220px", minHeight: 52 }}><Heart size={18} aria-hidden /> {t(LP.fanCta)}</BtnGhost>
         </div>
-      </div>
+      </div>}
 
       {/* PILOT FORM */}
       <LandingSection id="piloto" title={t(LP.formTitle)} sub={t(LP.formSub)} style={{ maxWidth: 820 }}>
