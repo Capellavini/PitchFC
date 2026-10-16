@@ -52,7 +52,7 @@ Arquitetura de produto de referência: `docs/PRODUCT-ARCHITECTURE-BRIEF.md` (bri
 - **Tagline "The home of amateur football" fica interna por agora** — não entra em canais de marketing até o redesign estar no ar.
 - **Matchday é contextual** — ganha destaque quando há jogo hoje/ao vivo **ou** quando há jogo aberto e o jogador ainda não confirmou/recusou. **O organizador tem sempre acesso** ao Matchday.
 - **Redesign visual** segue a linha do mockup do brief (navy + lime como cor de ação/estado ativo, menos cards dentro de cards, hierarquia vertical clara, touch targets ≥44px, um CTA primário por card). Copy continua PT-PT.
-- **Landing page fica como está** — a mensagem de aquisição continua a ser a dor do organizador ("chega de caos no WhatsApp"); "The home of amateur football" é a visão/tagline. Só o visual da landing pode acompanhar o redesign mais tarde.
+- **Landing page (atualizado 2026-10-16):** a mensagem de aquisição continua a ser a dor do organizador (hero "O teu jogo da semana, sem o caos do grupo."); "The home of amateur football" é a visão/tagline interna. A landing passou a ter **três frentes** (Organizador → app, Equipa → `/rivals`, Liga → `/league` com selo **Piloto**) + faixa "Só queres jogar?" para o jogador sozinho (convite ou PITCH ID + lista de espera `player_waitlist`). Copy escrita à parte em PT-PT, PT-BR e EN. **Nenhum valor em euros na landing** — preços só em `/pricing`.
 - **Pagamento real (MB Way) e WhatsApp (bot como interface do Match)** estão no roadmap core, não nas fases finais.
 - **Teams + Challenges** são programados já e deixados prontos para lançar (feature flag).
 - **Prazo:** fundação + novo formato ainda em setembro/esta semana.
