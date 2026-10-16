@@ -27,8 +27,8 @@ const ROUTES = {
     canonicalPath: "/rivals",
   },
   "/league": {
-    title: "PITCH League — competições de futebol amador | PITCH",
-    description: "PITCH League: competições de futebol amador organizadas no PITCH. Inscreve a tua equipa na primeira liga.",
+    title: "PITCH para Ligas — a tua liga de futebol amador, organizada | PITCH",
+    description: "Inscrições, calendário, súmulas validadas e classificação automática para ligas de futebol amador que já existem. E os adeptos a acompanhar tudo no telemóvel. Piloto gratuito.",
   },
   "/pricing": {
     title: "Planos e preços | PITCH",

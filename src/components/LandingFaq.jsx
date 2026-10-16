@@ -12,13 +12,14 @@ const ITEMS = [
   { q: "As Ligas já estão disponíveis?", a: "Estamos em piloto com as primeiras ligas. Deixa o teu contacto e falamos contigo." },
 ];
 
-/** Landing FAQ accordion (one open at a time). */
-export default function LandingFaq() {
+/** Landing FAQ accordion (one open at a time). `items` = [{ q, a }] PT-PT
+ *  source strings (t() applied here); defaults to the home landing FAQ. */
+export default function LandingFaq({ items = ITEMS, title } = {}) {
   const [open, setOpen] = useState(null);
   return (
-    <LandingSection title={t("Perguntas frequentes")} style={{ maxWidth: 760 }}>
+    <LandingSection id="faq" title={title || t("Perguntas frequentes")} style={{ maxWidth: 760 }}>
       <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
-        {ITEMS.map((it, i) => {
+        {items.map((it, i) => {
           const isOpen = open === i;
           return (
             <div key={it.q} style={{ borderTop: i ? `1px solid ${C.border}` : "none" }}>

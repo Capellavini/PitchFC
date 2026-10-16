@@ -1254,28 +1254,20 @@ export default function PitchApp() {
     return shell(<ResetPassword onSubmit={cloud.updatePassword} onCancel={cloud.clearRecovery} />);
   }
 
-  // ── PITCH League MVP marketing page (path /league) — full width, no shell ───
+  // ── PITCH para Ligas (path /league) — full width, no shell ───
   const path = window.location.pathname.replace(/\/+$/, "");
-  // Leagues are a service for EXISTING amateur leagues. /league stays the
-  // public entry (lead form) and also opens the demo; the league itself
-  // lives in-app as a context at /league/demo (Fase 1: local demo seed).
-  const leaguesOn = localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin });
+  // Leagues are a service for EXISTING amateur leagues (PITCH runs none).
+  // /league is the public page for league organizers (pilot form via
+  // submit_lead) with two public entries into the demo: "Ver demonstração"
+  // and "Sou adepto". /league/demo is the league as an in-app context —
+  // public and labelled as demo (local demo seed only, never writes
+  // anywhere). The in-app Competir card stays behind the `leagues` flag.
   if (path === "/league") {
-    return <LeaguePage onEnterApp={() => { window.location.href = "/"; }}
-      onDemo={leaguesOn ? () => { window.location.href = "/league/demo"; } : null}
-      onFan={leaguesOn ? () => { window.location.href = "/league/demo?entrada=adepto"; } : null} />;
+    return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }}
+      onDemo={() => { window.location.href = "/league/demo"; }}
+      onFan={() => { window.location.href = "/league/demo?entrada=adepto"; }} />;
   }
   if (path === "/league/demo") {
-    if (!leaguesOn) {
-      if (cloud.status === "loading") return shell(<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><KeepyUppyLoader /></div>);
-      return shell(
-        <div style={{ minHeight: "100vh", padding: "32px 20px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>{t("Ligas ainda não disponíveis")}</div>
-          <div style={{ fontSize: 14, color: C.text2, lineHeight: 1.6 }}>{t("A demonstração de ligas está desativada para esta conta. Sabe mais em /league.")}</div>
-          <BtnPrimary onClick={() => { window.location.href = "/league"; }}>{t("Ir para /league")}</BtnPrimary>
-        </div>
-      );
-    }
     const leagueEntry = new URLSearchParams(window.location.search).get("entrada") === "adepto" ? "fan" : null;
     const leagueTeams = (rivals.myTeams || []).map((tm) => ({ id: tm.id, name: tm.name }));
     const leagueContexts = localMode

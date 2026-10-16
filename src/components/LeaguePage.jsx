@@ -1,490 +1,173 @@
-import { useEffect, useRef, useState } from "react";
-import { C, displayFont, BRAND, fieldBackdrop } from "../theme";
-import { supabase, supabaseEnabled } from "../lib/supabase";
+import { useMemo } from "react";
+import { ClipboardList, FileCheck2, ListOrdered, IdCard, Heart, X, PlayCircle } from "lucide-react";
+import { C, R, S, T, TOUCH, BRAND, cardStyle, displayFont, fieldBackdrop } from "../theme";
 import { t } from "../lib/i18n";
-import { LG } from "../lib/leagueCopy";
-
-/**
- * PITCH League — MVP marketing/lead-capture page (route: /league).
- * League-first, commercial, dark sport-tech. Captures demand into the
- * `leads` table via the submit_lead() RPC. Separate from the app shell.
- */
-
-const MAXW = 1120;
-const wrap = { maxWidth: MAXW, margin: "0 auto", padding: "0 20px" };
-const eyebrow = { fontSize: 12, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: C.accent };
-const h2 = { ...displayFont, fontSize: "clamp(26px, 4.5vw, 42px)", lineHeight: 1.05, margin: "10px 0 14px" };
-const lead = { fontSize: "clamp(15px, 2vw, 18px)", color: C.text2, lineHeight: 1.6, maxWidth: 720 };
+import { LP } from "../lib/leaguePageCopy";
+import { STATE_LABEL } from "../lib/leagueCopy";
+import { buildLeagueDemoSeed, deriveLeague, LEAGUE } from "../lib/leagueDemo";
+import BtnPrimary from "./BtnPrimary";
+import BtnGhost from "./BtnGhost";
+import Chip from "./Chip";
+import RivalsCrest from "./RivalsCrest";
+import LandingSection from "./LandingSection";
+import LandingFaq from "./LandingFaq";
+import LandingFooter from "./LandingFooter";
+import LeagueLeadForm from "./LeagueLeadForm";
 
 const CSS = `
-.lg-root *{box-sizing:border-box}
-.lg-root{scroll-behavior:smooth}
-.lg-btn{transition:transform .15s ease, filter .15s ease; cursor:pointer; border:none; font-weight:800;}
-.lg-btn:hover{transform:translateY(-2px); filter:brightness(1.05)}
-.lg-card{transition:transform .18s ease, border-color .18s ease}
-.lg-card:hover{transform:translateY(-3px); border-color:rgba(200,255,0,0.35)}
-.lg-link{color:${C.text2};text-decoration:none;transition:color .15s}
-.lg-link:hover{color:${C.text1}}
-.lg-sec{padding:clamp(52px,8vw,100px) 0}
-@keyframes lgpulse{0%,100%{opacity:1}50%{opacity:.35}}
-.lg-live{animation:lgpulse 1.6s ease-in-out infinite}
-@media(max-width:760px){.lg-hide-sm{display:none!important}}
+.lgp-root *{box-sizing:border-box}
+.lgp-root{scroll-behavior:smooth}
+@media(max-width:640px){.lgp-hide-sm{display:none!important}}
 `;
 
-const Section = ({ id, children, style }) => (
-  <section id={id} className="lg-sec" style={style}><div style={wrap}>{children}</div></section>
-);
-
-function Btn({ children, onClick, variant = "primary", style, className = "" }) {
-  const v = {
-    primary: { background: C.accent, color: C.bg },
-    gold: { background: C.gold, color: C.bg },
-    ghost: { background: "transparent", color: C.text1, border: `1px solid ${C.border}` },
-  }[variant];
-  return (
-    <button className={`lg-btn ${className}`} onClick={onClick} style={{ borderRadius: 12, padding: "13px 22px", fontSize: 15, ...v, ...style }}>
-      {children}
-    </button>
-  );
-}
-
-const STATS = [
-  ["1ª época", "Inscrições abertas"],
-  ["Porto & Matosinhos", "Campos parceiros"],
-  ["F5 · F7 · Futsal", "Vários formatos"],
-  ["App incluído", "Tudo no PITCH OS"],
+const BENEFITS = [
+  [ClipboardList, LP.b1t, LP.b1], [FileCheck2, LP.b2t, LP.b2], [ListOrdered, LP.b3t, LP.b3],
+  [IdCard, LP.b4t, LP.b4], [Heart, LP.b5t, LP.b5],
 ];
+const FAQ = [{ q: LP.q1, a: LP.a1 }, { q: LP.q2, a: LP.a2 }, { q: LP.q3, a: LP.a3 }, { q: LP.q4, a: LP.a4 }];
 
-const STEPS = [
-  ["Inscreve a tua equipa", "Em 2 minutos. Sem plantel completo? Entras na lista e ajudamos a fechar a equipa."],
-  ["Entras numa divisão", "Distribuímos por nível para os jogos serem equilibrados e competitivos."],
-  ["Jogas rodadas semanais", "Calendário fixo, campo marcado, tudo organizado no app."],
-  ["Sobes até à final", "Classificação, artilharia e MVP ao vivo — e final com premiação."],
-];
-
-const FORMATS = [
-  ["Futebol 5", "Rápido e técnico. 5+suplentes."],
-  ["Futebol 7", "O clássico do amador. 7 contra 7."],
-  ["Futsal", "Indoor, ritmo alto, muito golo."],
-  ["Masters +35", "Para quem joga há anos e não larga a bola."],
-  ["Liga Social", "Competir pelo convívio e pelos golos."],
-  ["Liga Competitiva", "Para equipas que querem ganhar a sério."],
-];
-
-const INCLUDED = [
-  "Tabela e classificação", "Rodadas semanais", "Divisões por nível",
-  "Ranking e artilharia", "MVP por jogo", "Perfis de jogador e equipa",
-  "App para gerir tudo", "Fotos e vídeos", "Final com premiação",
-];
-
-const STANDINGS = [
-  ["1", "Leões da Foz", "15"], ["2", "Os Galácticos", "13"],
-  ["3", "FC Amigos", "11"], ["4", "Várzea United", "9"],
-];
-
-const FOUNDER = [
-  { tag: "Light", color: C.text2, name: "Founder Light", desc: "Interesse / lista de espera.", perks: ["Prioridade de inscrição", "Acesso antecipado ao app", "Nome no mural fundador"] },
-  { tag: "Pro", color: C.accent, name: "Founder Pro", desc: "Inscrição antecipada com desconto.", perks: ["Vaga garantida na 1ª época", "Desconto de fundador", "Perfil de equipa", "Convite para o lançamento"] },
-  { tag: "Elite", color: C.gold, name: "Founder Elite", desc: "Premium para equipas e empresas.", perks: ["Tudo do Pro", "Conteúdo (fotos/vídeos)", "Horário prioritário futuro", "Naming / ativação de marca"] },
-];
-
-const FAQS = [
-  ["Onde se joga?", "Em campos parceiros no Porto e Matosinhos. A liga é organizada pela PITCH e acompanhada pelo app."],
-  ["Preciso de equipa completa?", "Não. Inscreves a equipa, entras como jogador avulso para completar plantéis, ou ficas na lista de espera."],
-  ["Quando começa?", "A primeira época arranca com as equipas fundadoras. Inscreve já para garantires vaga e condições de fundador."],
-  ["Quanto custa?", "A inscrição por equipa é definida por época. As equipas fundadoras têm desconto — entra na lista e enviamos os valores."],
-];
-
-const ROLES = ["Capitão / organizador", "Jogador", "Empresa", "Patrocinador", "Dono de campo / parceiro"];
-const MODALITIES = ["Futebol 5", "Futebol 7", "Futsal", "Masters +35", "Corporate"];
-const INTERESTS = ["Inscrever equipa", "Entrar como jogador", "Ser Founder Team", "Liga corporativa", "Patrocinar", "Parceria com campo"];
-
-function LeadForm({ prefill }) {
-  const empty = { name: "", whatsapp: "", email: "", city: "", role: "", has_team: "", team_name: "", players_count: "", modality: "", best_day: "", best_time: "", message: "" };
-  const [f, setF] = useState(empty);
-  const [interest, setInterest] = useState([]);
-  const [status, setStatus] = useState(null);
-  const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
-
-  useEffect(() => {
-    if (!prefill) return;
-    if (prefill.role) setF((s) => ({ ...s, role: prefill.role }));
-    if (prefill.interest) setInterest((cur) => Array.from(new Set([...cur, prefill.interest])));
-  }, [prefill]);
-
-  const toggleInterest = (i) => setInterest((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]));
-
-  const submit = async () => {
-    if (!f.name.trim() || !(f.whatsapp.trim() || f.email.trim())) { setStatus("error"); return; }
-    setStatus("busy");
-    const has_team = f.has_team === "Sim" ? "true" : f.has_team === "Não" ? "false" : "";
-    const payload = { ...f, has_team, interest, source: "league" };
-    if (!supabaseEnabled) { setStatus("ok"); return; }
-    const { error } = await supabase.rpc("submit_lead", { payload });
-    setStatus(error ? "error" : "ok");
-    if (!error) { setF(empty); setInterest([]); }
-  };
-
-  const inp = (label, k, type = "text", extra = {}) => (
-    <label style={{ display: "block" }}>
-      <span style={{ fontSize: 12, color: C.text2 }}>{label}</span>
-      <input type={type} value={f[k]} onChange={(e) => set(k, e.target.value)} {...extra}
-        style={{ width: "100%", marginTop: 5, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", fontSize: 14, color: C.text1, outline: "none" }} />
-    </label>
-  );
-  const sel = (label, k, opts) => (
-    <label style={{ display: "block" }}>
-      <span style={{ fontSize: 12, color: C.text2 }}>{label}</span>
-      <select value={f[k]} onChange={(e) => set(k, e.target.value)}
-        style={{ width: "100%", marginTop: 5, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 10px", fontSize: 14, color: f[k] ? C.text1 : C.text2, outline: "none" }}>
-        <option value="">—</option>
-        {opts.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </label>
-  );
-
-  if (status === "ok") {
-    return (
-      <div style={{ background: C.card, border: `1px solid ${C.greenBorder}`, borderRadius: 18, padding: 40, textAlign: "center" }}>
-        <div style={{ ...displayFont, fontSize: 26, color: C.green, marginBottom: 8 }}>Inscrição recebida! ⚽</div>
-        <div style={{ color: C.text2, fontSize: 15 }}>Entramos em contacto em breve com os próximos passos da PITCH League.</div>
-      </div>
-    );
-  }
+/**
+ * /league — "PITCH para Ligas": the public page for organizers of
+ * EXISTING amateur leagues (PITCH does not run a league). Pilot request
+ * form (submit_lead, source "league"), the public demo (/league/demo —
+ * fictional league, labelled as demo, local data only) and the fan entry
+ * ("Sou adepto" → /league/demo?entrada=adepto). Full width, no app shell.
+ * The hero's mini table is a real projection of the demo seed (same core
+ * as the app), not a drawing.
+ */
+export default function LeaguePage({ onEnterApp, onDemo, onFan, lang, onLang }) {
+  const table = useMemo(() => deriveLeague(buildLeagueDemoSeed()).table.slice(0, 4), []);
+  const goPilot = () => document.getElementById("piloto")?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: "clamp(20px,4vw,34px)" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
-        {inp("Nome*", "name")}
-        {inp("WhatsApp", "whatsapp", "tel", { placeholder: "+351 9…" })}
-        {inp("Email", "email", "email")}
-        {inp("Cidade / região", "city")}
-        {sel("Eu sou", "role", ROLES)}
-        {sel("Tenho equipa?", "has_team", ["Sim", "Não"])}
-        {inp("Nome da equipa", "team_name")}
-        {inp("Quantos jogadores?", "players_count", "number", { min: 0 })}
-        {sel("Modalidade preferida", "modality", MODALITIES)}
-        {inp("Melhor dia", "best_day")}
-        {inp("Melhor horário", "best_time", "time", { style: { colorScheme: "dark" } })}
-      </div>
-
-      <div style={{ marginTop: 18 }}>
-        <div style={{ fontSize: 12, color: C.text2, marginBottom: 8 }}>Interesse (escolhe um ou mais)</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {INTERESTS.map((i) => {
-            const on = interest.includes(i);
-            return (
-              <button key={i} type="button" className="lg-btn" onClick={() => toggleInterest(i)}
-                style={{ borderRadius: 20, padding: "8px 14px", fontSize: 13, fontWeight: 700, background: on ? C.accentDim : C.surface, color: on ? C.accent : C.text2, border: `1px solid ${on ? C.accentBorder : C.border}` }}>
-                {i}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <label style={{ display: "block", marginTop: 16 }}>
-        <span style={{ fontSize: 12, color: C.text2 }}>Mensagem (opcional)</span>
-        <textarea value={f.message} onChange={(e) => set("message", e.target.value)} rows={3}
-          style={{ width: "100%", marginTop: 5, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", fontSize: 14, color: C.text1, outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-      </label>
-
-      {status === "error" && <div style={{ color: C.red, fontSize: 13, marginTop: 12 }}>Preenche o nome e pelo menos WhatsApp ou email.</div>}
-
-      <Btn onClick={submit} style={{ width: "100%", marginTop: 18, padding: 16, fontSize: 16, opacity: status === "busy" ? 0.6 : 1 }}>
-        {status === "busy" ? "A enviar…" : "Inscrever / entrar na lista"}
-      </Btn>
-      <div style={{ textAlign: "center", fontSize: 11, color: C.text3, marginTop: 10 }}>Vagas limitadas na primeira época · sem spam.</div>
-    </div>
-  );
-}
-
-export default function LeaguePage({ onEnterApp, onDemo = null, onFan = null }) {
-  const [prefill, setPrefill] = useState(null);
-  const formRef = useRef(null);
-
-  const goForm = (role, interest) => {
-    setPrefill({ role, interest, _t: Date.now() });
-    formRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const card = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 };
-
-  return (
-    <div className="lg-root" style={{ background: C.bg, color: C.text1, fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif", minHeight: "100vh" }}>
+    <div className="lgp-root" style={{ background: C.bg, color: C.text1, minHeight: "100vh", overflowX: "hidden", fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif" }}>
       <style>{CSS}</style>
 
       {/* NAV */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 20, background: "rgba(10,15,24,0.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ ...wrap, display: "flex", alignItems: "center", gap: 16, height: 64 }}>
-          <img src={BRAND.logo} alt="PITCH" style={{ height: 22 }} />
-          <div className="lg-hide-sm" style={{ display: "flex", gap: 22, marginLeft: 18 }}>
-            <a className="lg-link" href="#como" style={{ fontSize: 14 }}>Como funciona</a>
-            <a className="lg-link" href="#formatos" style={{ fontSize: 14 }}>Formatos</a>
-            <a className="lg-link" href="#founder" style={{ fontSize: 14 }}>Founder Teams</a>
-            <a className="lg-link" href="#empresas" style={{ fontSize: 14 }}>Empresas</a>
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-            {onDemo
-              ? <Btn variant="ghost" onClick={onDemo} style={{ padding: "9px 14px", fontSize: 13 }}>{t(LG.seeDemo)}</Btn>
-              : <Btn variant="ghost" onClick={onEnterApp} className="lg-hide-sm" style={{ padding: "9px 14px", fontSize: 13 }}>Entrar no app</Btn>}
-            <Btn onClick={() => goForm("Capitão / organizador", "Inscrever equipa")} style={{ padding: "9px 16px", fontSize: 13 }}>Inscrever equipa</Btn>
-          </div>
-        </div>
-      </nav>
-
-      {/* HERO — league first */}
-      <header style={{ ...fieldBackdrop(0.55, 0.97), borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ ...wrap, padding: "clamp(48px,9vw,104px) 20px", display: "flex", flexWrap: "wrap", gap: 48, alignItems: "center" }}>
-          <div style={{ flex: "1 1 380px", minWidth: 300 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.accentDim, border: `1px solid ${C.accentBorder}`, borderRadius: 30, padding: "6px 12px", marginBottom: 16 }}>
-              <span className="lg-live" style={{ width: 8, height: 8, borderRadius: 4, background: C.accent }} />
-              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.06em", color: C.accent }}>INSCRIÇÕES ABERTAS · 1ª ÉPOCA</span>
-            </div>
-            <h1 style={{ ...displayFont, fontSize: "clamp(36px, 6.6vw, 66px)", lineHeight: 1.0, margin: "0 0 16px" }}>
-              A liga de futebol<br />amador do Porto.
-            </h1>
-            <p style={{ ...lead, marginBottom: 26 }}>
-              Tabela, rodadas semanais, ranking, artilharia, MVP e final com prémios — em campos do Porto e Matosinhos.
-              <b style={{ color: C.text1 }}> Inscreve a tua equipa</b> na primeira PITCH League.
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
-              <Btn onClick={() => goForm("Capitão / organizador", "Inscrever equipa")} style={{ padding: "15px 26px", fontSize: 16 }}>Inscrever a minha equipa</Btn>
-              <Btn variant="ghost" onClick={() => goForm("Jogador", "Entrar como jogador")}>Sou jogador — quero entrar</Btn>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {["Futebol 5", "Futebol 7", "Futsal", "Masters +35", "Corporate"].map((m) => (
-                <span key={m} style={{ fontSize: 12.5, fontWeight: 700, color: C.text2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "6px 12px" }}>{m}</span>
-              ))}
-            </div>
-          </div>
-
-          {/* Standings mock — league feel */}
-          <div style={{ flex: "1 1 320px", minWidth: 280, display: "grid", gap: 12 }}>
-            <div className="lg-card" style={{ ...card }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 11, color: C.text2, letterSpacing: "0.1em", fontWeight: 800 }}>CLASSIFICAÇÃO</span>
-                <span style={{ fontSize: 11, color: C.accent, fontWeight: 700 }}>Divisão 1</span>
-              </div>
-              {STANDINGS.map(([pos, name, pts], i) => (
-                <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i ? `1px solid ${C.border}` : "none" }}>
-                  <span style={{ ...displayFont, fontSize: 15, width: 20, color: i === 0 ? C.gold : C.text2 }}>{pos}</span>
-                  <span style={{ flex: 1, fontSize: 14, fontWeight: i === 0 ? 800 : 500 }}>{name}</span>
-                  <span style={{ ...displayFont, fontSize: 16, color: C.accent }}>{pts}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div className="lg-card" style={{ ...card }}>
-                <div style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>ARTILHEIRO</div>
-                <div style={{ ...displayFont, fontSize: 28, color: C.accent }}>21</div>
-                <div style={{ fontSize: 12, color: C.text2 }}>Joãozão</div>
-              </div>
-              <div className="lg-card" style={{ ...card }}>
-                <div style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>MVP</div>
-                <div style={{ ...displayFont, fontSize: 28, color: C.gold }}>★</div>
-                <div style={{ fontSize: 12, color: C.text2 }}>Carlão</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* stat band */}
-        <div style={{ borderTop: `1px solid ${C.border}`, background: "rgba(10,15,24,0.5)" }}>
-          <div style={{ ...wrap, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1, padding: 0 }}>
-            {STATS.map(([big, small]) => (
-              <div key={big} style={{ padding: "18px 16px", textAlign: "center" }}>
-                <div style={{ ...displayFont, fontSize: 18, color: C.text1 }}>{big}</div>
-                <div style={{ fontSize: 12, color: C.text2, marginTop: 2 }}>{small}</div>
-              </div>
+      <header style={{ position: "sticky", top: 0, zIndex: 10, background: `${C.bg}E6`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: S.sm, padding: "10px 16px" }}>
+          <a href="/" aria-label="PITCH" style={{ display: "inline-flex", alignItems: "center", minHeight: TOUCH.min, flexShrink: 0 }}><img src={BRAND.logo} alt="PITCH" style={{ height: 22 }} /></a>
+          <nav className="lgp-hide-sm" aria-label={t(LP.eyebrow)} style={{ display: "flex", gap: S.lg }}>
+            {[["#ganhas", LP.navBenefits], ["#como", LP.navHow], ["#faq", LP.navFaq]].map(([href, label]) => (
+              <a key={href} href={href} style={{ color: C.text2, textDecoration: "none", fontSize: 13, fontWeight: 600, minHeight: TOUCH.min, display: "inline-flex", alignItems: "center" }}>{t(label)}</a>
             ))}
+          </nav>
+          <div style={{ display: "flex", gap: S.sm, alignItems: "center" }}>
+            {onLang && (
+              <select value={lang} onChange={(e) => onLang(e.target.value)} aria-label="Language"
+                style={{ minHeight: TOUCH.min, background: C.surface, color: C.text1, border: `1px solid ${C.border}`, borderRadius: R.control, padding: "0 6px", fontSize: 12, fontWeight: 700, outline: "none", cursor: "pointer", colorScheme: "dark" }}>
+                <option value="pt">🇵🇹 PT</option>
+                <option value="pt-br">🇧🇷 BR</option>
+                <option value="en">🇬🇧 EN</option>
+              </select>
+            )}
+            <span className="lgp-hide-sm"><BtnGhost compact onClick={onDemo} style={{ minHeight: TOUCH.min, padding: "0 12px", fontSize: 13 }}>{t(LP.ctaDemo)}</BtnGhost></span>
+            <span className="lgp-hide-sm"><BtnPrimary compact onClick={goPilot} style={{ minHeight: TOUCH.min, padding: "0 14px", fontSize: 13 }}>{t(LP.navPilot)}</BtnPrimary></span>
           </div>
         </div>
       </header>
 
-      {/* DEMO — the league as an in-app context (Fase 1, local demo data) */}
-      {(onDemo || onFan) && (
-        <Section id="demo">
-          <div style={{ ...card, padding: "clamp(20px,4vw,30px)", display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center", borderColor: C.accentBorder }}>
-            <div style={{ flex: "1 1 320px", minWidth: 260 }}>
-              <div style={eyebrow}>Para ligas que já existem</div>
-              <h2 style={{ ...h2, fontSize: "clamp(22px,3.5vw,30px)" }}>Vê como fica a tua liga no PITCH.</h2>
-              <p style={{ ...lead, fontSize: 15 }}>Jogos, súmula com correções registadas, classificação calculada, craque oficial e da torcida, Fantasy — numa liga fictícia, com dados de demonstração só no teu navegador.</p>
+      {/* HERO */}
+      <section style={{ ...fieldBackdrop(0.55, 0.97), borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "clamp(40px,8vw,96px) 20px", display: "flex", flexWrap: "wrap", gap: 40, alignItems: "center" }}>
+          <div style={{ flex: "1 1 360px", minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: S.sm, flexWrap: "wrap", marginBottom: S.md }}>
+              <Chip variant="lime">{t(LP.badge)}</Chip>
+              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.16em", color: C.accent }}>{t(LP.eyebrow)}</span>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {onDemo && <Btn onClick={onDemo}>{t(LG.seeDemo)}</Btn>}
-              {onFan && <Btn variant="ghost" onClick={onFan}>{t(LG.fanEntry)}</Btn>}
+            <h1 style={{ ...displayFont, fontSize: "clamp(34px, 6.4vw, 62px)", lineHeight: 1.02, margin: `0 0 ${S.lg}px` }}>
+              {t(LP.h1)}<br /><span style={{ color: C.accent }}>{t(LP.h1Accent)}</span>
+            </h1>
+            <p style={{ fontSize: "clamp(15px, 2vw, 18px)", color: C.text2, lineHeight: 1.6, maxWidth: 560, margin: `0 0 ${S.xl}px` }}>{t(LP.sub)}</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: S.sm, marginBottom: S.md }}>
+              <BtnPrimary onClick={goPilot} style={{ flex: "1 1 240px", minHeight: 52, fontSize: T.body + 1 }}>{t(LP.ctaPilot)}</BtnPrimary>
+              <BtnGhost onClick={onDemo} style={{ flex: "1 1 180px", minHeight: 52, fontSize: T.body + 1 }}><PlayCircle size={18} aria-hidden /> {t(LP.ctaDemo)}</BtnGhost>
+            </div>
+            <div style={{ fontSize: T.meta, color: C.text2 }}>{t(LP.demoNote)}</div>
+          </div>
+
+          {/* real projection of the demo seed — labelled as demo */}
+          <div style={{ flex: "1 1 300px", minWidth: 0, maxWidth: 440 }}>
+            <div style={{ ...cardStyle, background: `${C.card}F2` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: S.sm, flexWrap: "wrap", marginBottom: S.md }}>
+                <span style={{ fontSize: T.min, color: C.text2, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" }}>{t(LP.tableLabel)}</span>
+                <Chip variant="green">{t(STATE_LABEL.homologated)}</Chip>
+              </div>
+              {table.map((r, i) => (
+                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: S.sm, padding: `${S.sm}px 0`, borderTop: i ? `1px solid ${C.border}` : "none" }}>
+                  <span style={{ width: 16, fontSize: T.meta, fontWeight: 800, color: C.text2 }}>{i + 1}</span>
+                  <RivalsCrest initials={r.short.slice(0, 2)} color={r.color} size={22} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                  <span style={{ fontSize: T.meta, color: C.text2 }}>{r.j} {t(LP.played)}</span>
+                  <span style={{ ...displayFont, fontSize: T.cardTitle, width: 28, textAlign: "right" }}>{r.pts}</span>
+                </div>
+              ))}
+              <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm }}>{LEAGUE.name} · {t(LP.fictional)}</div>
             </div>
           </div>
-        </Section>
-      )}
+        </div>
+      </section>
 
-      {/* COMO FUNCIONA */}
-      <Section id="como">
-        <div style={eyebrow}>Como funciona</div>
-        <h2 style={h2}>Da inscrição à final, em 4 passos.</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 14, marginTop: 26 }}>
-          {STEPS.map(([t, d], i) => (
-            <div key={t} className="lg-card" style={card}>
-              <div style={{ ...displayFont, fontSize: 30, color: C.accent, marginBottom: 8 }}>{String(i + 1).padStart(2, "0")}</div>
-              <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 6 }}>{t}</div>
-              <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.5 }}>{d}</div>
+      {/* PAIN */}
+      <LandingSection title={t(LP.painTitle)}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: S.sm }}>
+          {[LP.pain1, LP.pain2, LP.pain3].map((p) => (
+            <div key={p} style={{ ...cardStyle, display: "flex", gap: S.md, alignItems: "flex-start" }}>
+              <span aria-hidden style={{ width: 28, height: 28, borderRadius: 14, background: C.redDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><X size={16} color={C.red} /></span>
+              <span style={{ fontSize: T.body + 1, lineHeight: 1.45 }}>{t(p)}</span>
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 24 }}>
-          <Btn onClick={() => goForm("Capitão / organizador", "Inscrever equipa")}>Inscrever a minha equipa</Btn>
-        </div>
-      </Section>
+      </LandingSection>
 
-      {/* FORMATOS */}
-      <Section id="formatos" style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
-        <div style={eyebrow}>Competições</div>
-        <h2 style={h2}>Escolhe o teu formato.</h2>
-        <p style={lead}>Divisões por nível para jogos equilibrados — do convívio à competição a sério.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, marginTop: 26 }}>
-          {FORMATS.map(([t, d]) => (
-            <div key={t} className="lg-card" style={card}>
-              <div style={{ ...displayFont, fontSize: 19, marginBottom: 6 }}>{t}</div>
-              <div style={{ fontSize: 13.5, color: C.text2, lineHeight: 1.5 }}>{d}</div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* INCLUÍDO NA LIGA */}
-      <Section>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 40, alignItems: "flex-start" }}>
-          <div style={{ flex: "1 1 320px", minWidth: 280 }}>
-            <div style={eyebrow}>O que está incluído</div>
-            <h2 style={h2}>Uma liga a sério — não um grupo de WhatsApp.</h2>
-            <p style={lead}>Cada equipa tem tabela, ranking e estatísticas. Cada jogador tem perfil, golos e história. Tudo organizado e registado.</p>
-            <div style={{ marginTop: 22 }}>
-              <Btn variant="gold" onClick={() => goForm("Capitão / organizador", "Inscrever equipa")}>Inscrever equipa</Btn>
-            </div>
-          </div>
-          <div style={{ flex: "1 1 320px", minWidth: 280, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 10 }}>
-            {INCLUDED.map((x) => (
-              <div key={x} style={{ ...card, padding: 14, display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ color: C.green, fontWeight: 800 }}>✓</span>
-                <span style={{ fontSize: 13.5 }}>{x}</span>
+      {/* BENEFITS */}
+      <div style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <LandingSection id="ganhas" title={t(LP.benefitsTitle)}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: S.md }}>
+            {BENEFITS.map(([Icon, title, text]) => (
+              <div key={title} style={{ ...cardStyle, padding: S.xl }}>
+                <span aria-hidden style={{ width: 44, height: 44, borderRadius: R.control, background: C.accentDim, border: `1px solid ${C.accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: S.md }}><Icon size={20} color={C.accent} /></span>
+                <h3 style={{ fontSize: T.cardTitle + 1, fontWeight: 800, margin: `0 0 ${S.xs}px` }}>{t(title)}</h3>
+                <p style={{ fontSize: T.body, color: C.text2, lineHeight: 1.55, margin: 0 }}>{t(text)}</p>
               </div>
             ))}
           </div>
-        </div>
-      </Section>
+        </LandingSection>
+      </div>
 
-      {/* FOUNDER TEAMS */}
-      <Section id="founder" style={{ ...fieldBackdrop(0.86, 0.97), borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
-        <div style={eyebrow}>Founder Teams · vagas limitadas</div>
-        <h2 style={h2}>Sê uma equipa fundadora.</h2>
-        <p style={lead}>As primeiras equipas têm vaga garantida, desconto de fundador e prioridade no app e nos benefícios futuros do clube.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginTop: 26 }}>
-          {FOUNDER.map((p) => (
-            <div key={p.name} className="lg-card" style={{ ...card, borderColor: p.color === C.text2 ? C.border : `${p.color}55` }}>
-              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: p.color }}>{p.tag.toUpperCase()}</div>
-              <div style={{ ...displayFont, fontSize: 20, margin: "6px 0 6px" }}>{p.name}</div>
-              <div style={{ fontSize: 13, color: C.text2, marginBottom: 14 }}>{p.desc}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {p.perks.map((x) => (
-                  <div key={x} style={{ fontSize: 13.5, color: C.text1, display: "flex", gap: 8 }}><span style={{ color: C.green }}>✓</span>{x}</div>
-                ))}
-              </div>
-            </div>
+      {/* HOW THE PILOT WORKS */}
+      <LandingSection id="como" title={t(LP.howTitle)}>
+        <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: S.md }}>
+          {[LP.how1, LP.how2, LP.how3].map((s, i) => (
+            <li key={s} style={{ ...cardStyle, display: "flex", gap: S.md, alignItems: "flex-start" }}>
+              <span style={{ ...displayFont, fontSize: 30, color: C.accent, lineHeight: 1, minWidth: 28 }}>{i + 1}</span>
+              <span style={{ fontSize: T.body + 1, lineHeight: 1.5 }}>{t(s)}</span>
+            </li>
           ))}
-        </div>
-        <div style={{ marginTop: 24 }}>
-          <Btn onClick={() => goForm("Capitão / organizador", "Ser Founder Team")}>Quero ser Founder Team</Btn>
-        </div>
-      </Section>
+        </ol>
+        <p style={{ textAlign: "center", fontSize: T.body, color: C.text2, margin: `${S.xl}px 0 0` }}>{t(LP.howNote)}</p>
+      </LandingSection>
 
-      {/* APP — supporting band */}
-      <Section>
-        <div style={{ ...card, padding: "clamp(22px,4vw,34px)", display: "flex", flexWrap: "wrap", gap: 28, alignItems: "center" }}>
-          <div style={{ flex: "1 1 320px", minWidth: 280 }}>
-            <div style={eyebrow}>PITCH OS · incluído</div>
-            <h2 style={{ ...h2, fontSize: "clamp(22px,3.5vw,32px)" }}>E o app trata da operação.</h2>
-            <p style={{ ...lead, fontSize: 15 }}>Presença, pagamentos, sorteio de equipas, resultados, golos, MVP e ranking — para o capitão deixar de cobrar toda a gente no WhatsApp.</p>
-            <div style={{ marginTop: 18 }}><Btn variant="ghost" onClick={onEnterApp}>Ver o app →</Btn></div>
-          </div>
-          <div style={{ flex: "1 1 280px", minWidth: 260, display: "grid", gap: 10 }}>
-            <div style={{ background: C.surface, borderRadius: 12, padding: 14, border: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>PRÓXIMO JOGO</div>
-              <div style={{ ...displayFont, fontSize: 18, margin: "2px 0 8px" }}>Quinta, 20:00</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11, color: C.green, background: C.greenDim, border: `1px solid ${C.greenBorder}`, borderRadius: 20, padding: "3px 9px", fontWeight: 700 }}>8/10 confirmados</span>
-                <span style={{ fontSize: 11, color: C.orange, background: C.orangeDim, border: `1px solid ${C.border}`, borderRadius: 20, padding: "3px 9px", fontWeight: 700 }}>3 por pagar</span>
-              </div>
-            </div>
-          </div>
+      {/* FAN BAND */}
+      <div style={{ ...fieldBackdrop(0.8, 0.95), borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 20px", display: "flex", flexWrap: "wrap", gap: S.lg, alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ ...displayFont, fontSize: "clamp(22px, 3.4vw, 30px)", lineHeight: 1.15, flex: "1 1 320px", minWidth: 0 }}>{t(LP.fanTitle)}</div>
+          <BtnGhost tone="accent" onClick={onFan} style={{ flex: "0 1 220px", minHeight: 52 }}><Heart size={18} aria-hidden /> {t(LP.fanCta)}</BtnGhost>
         </div>
-      </Section>
+      </div>
 
-      {/* CORPORATE */}
-      <Section id="empresas" style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
-        <div style={eyebrow}>Corporate League</div>
-        <h2 style={h2}>Futebol para empresas, sem trabalho para o RH.</h2>
-        <p style={lead}>Ligas e torneios corporativos com tabela, ranking, final, premiação e experiência social — chave-na-mão.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12, margin: "24px 0" }}>
-          {["Torneios internos", "Liga entre empresas", "Team building", "Fotos e vídeos", "Happy hour", "Ranking por empresa", "Premiação", "Naming / patrocínio"].map((x) => (
-            <div key={x} style={{ ...card, padding: 14, fontSize: 14 }}>{x}</div>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Btn variant="gold" onClick={() => goForm("Empresa", "Liga corporativa")}>Quero uma liga corporativa</Btn>
-          <Btn variant="ghost" onClick={() => goForm("Patrocinador", "Patrocinar")}>Quero patrocinar</Btn>
-        </div>
-      </Section>
+      {/* PILOT FORM */}
+      <LandingSection id="piloto" title={t(LP.formTitle)} sub={t(LP.formSub)} style={{ maxWidth: 820 }}>
+        <LeagueLeadForm />
+      </LandingSection>
 
-      {/* LEAD FORM */}
-      <Section id="lead">
-        <div ref={formRef} />
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={eyebrow}>Inscrições abertas</div>
-          <h2 style={{ ...h2, margin: "10px auto 0" }}>Garante o lugar da tua equipa.</h2>
-          <p style={{ ...lead, margin: "12px auto 0", marginLeft: "auto", marginRight: "auto" }}>Equipas, jogadores, empresas e parceiros — diz-nos quem és e entramos em contacto.</p>
-        </div>
-        <LeadForm prefill={prefill} />
-      </Section>
+      <LandingFaq items={FAQ} title={t(LP.faqTitle)} />
 
-      {/* FAQ */}
-      <Section style={{ background: C.surface, borderTop: `1px solid ${C.border}` }}>
-        <div style={eyebrow}>FAQ</div>
-        <h2 style={h2}>Perguntas frequentes</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14, marginTop: 22 }}>
-          {FAQS.map(([q, a]) => (
-            <div key={q} style={card}>
-              <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{q}</div>
-              <div style={{ fontSize: 14, color: C.text2, lineHeight: 1.55 }}>{a}</div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* FOOTER */}
-      <footer style={{ borderTop: `1px solid ${C.border}`, padding: "44px 0" }}>
-        <div style={{ ...wrap, display: "flex", flexWrap: "wrap", gap: 24, justifyContent: "space-between" }}>
-          <div style={{ maxWidth: 320 }}>
-            <img src={BRAND.logo} alt="PITCH" style={{ height: 22, marginBottom: 10 }} />
-            <div style={{ fontSize: 13, color: C.text2, lineHeight: 1.6 }}>A liga de futebol amador do Porto. Porto / Matosinhos.</div>
-          </div>
-          <div style={{ display: "flex", gap: 48, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 12, color: C.text3, fontWeight: 700, letterSpacing: "0.1em" }}>LIGA</div>
-              <a className="lg-link" href="#como" style={{ fontSize: 14 }}>Como funciona</a>
-              <a className="lg-link" href="#formatos" style={{ fontSize: 14 }}>Formatos</a>
-              <a className="lg-link" href="#founder" style={{ fontSize: 14 }}>Founder Teams</a>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 12, color: C.text3, fontWeight: 700, letterSpacing: "0.1em" }}>CONTACTO</div>
-              <a className="lg-link" href="https://instagram.com" target="_blank" rel="noreferrer" style={{ fontSize: 14 }}>Instagram</a>
-              <a className="lg-link" href="https://wa.me/" target="_blank" rel="noreferrer" style={{ fontSize: 14 }}>WhatsApp</a>
-              <a className="lg-link" href="mailto:capella.vinicius@gmail.com" style={{ fontSize: 14 }}>Email</a>
-            </div>
-          </div>
-        </div>
-        <div style={{ ...wrap, marginTop: 28, fontSize: 12, color: C.text3 }}>© {new Date().getFullYear()} PITCH · A liga de futebol amador do Porto.</div>
-      </footer>
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 20px 24px", textAlign: "center" }}>
+        <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.sm }}>{t(LP.footerLine)}</div>
+        {onEnterApp && <BtnGhost compact onClick={onEnterApp} style={{ minHeight: TOUCH.min }}>{t(LP.enterApp)}</BtnGhost>}
+      </div>
+      <LandingFooter />
     </div>
   );
 }
