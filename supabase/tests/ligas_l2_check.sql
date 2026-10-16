@@ -185,6 +185,17 @@ select pg_temp.as_user('14'); select pg_temp.setkv('rD', public.register_team(pg
 select public.submit_squad(pg_temp.k('rD'), jsonb_build_array(jsonb_build_object('player_id', pg_temp.pl('14'))));
 select pg_temp.expect_err('a team leader cannot homologate their own squad',
   format($$select public.decide_squad(%L, 1, 'approve')$$, pg_temp.kv('rD')), 'league:not_found');
+select pg_temp.as_user('01');
+select pg_temp.ok('manager review list: 4 submitted registrations with display names, no PII',
+  jsonb_array_length(public.competition_registrations(pg_temp.k('C1'))->'items') = 4
+  and public.competition_registrations(pg_temp.k('C1'))->'items' @> format('[{"registration_id":"%s","status":"submitted","versions":[{"version":1,"players":[{"name":"Ana","shirt_number":10}]}]}]', pg_temp.kv('rA'))::jsonb
+  and position('secret-' in public.competition_registrations(pg_temp.k('C1'))::text) = 0);
+select pg_temp.as_user('11');
+select pg_temp.ok('a captain sees only their own registration', jsonb_array_length(public.competition_registrations(pg_temp.k('C1'))->'items') = 1
+  and not (public.competition_registrations(pg_temp.k('C1'))->>'is_manager')::boolean);
+select pg_temp.as_user('06');
+select pg_temp.ok('outsider sees no registrations', jsonb_array_length(public.competition_registrations(pg_temp.k('C1'))->'items') = 0);
+select pg_temp.expect_err('outsider: draft competition registrations → not_found', format($$select public.competition_registrations(%L)$$, pg_temp.kv('Cdraft')), 'league:not_found');
 select pg_temp.as_anon();
 select pg_temp.ok('anon: no team listed before homologation', jsonb_array_length(public.competition_teams_page(pg_temp.k('C1'))->'items') = 0);
 select pg_temp.as_user('01');

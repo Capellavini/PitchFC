@@ -423,6 +423,44 @@ begin
   execute 'grant execute on function public.competition_squad(uuid) to service_role';
 end $$;
 
+-- ── 7. Registration review (integration addition) ───────
+-- competition_registrations(competition) → {items:[{registration_id,
+-- team_id, team_name, status, homologated_squad_version, versions:[{version,
+-- status, players:[{player_id, name, shirt_number, squad_role}]}]}], is_manager}
+-- Competition managers see every registration (to review squads); a team
+-- leader sees only their own team's. Names through league_person_name
+-- (display name only — never email/phone/age), because players rows of
+-- other teams are not readable through RLS.
+create or replace function public.competition_registrations(p_competition_id uuid)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare v_c public.competitions%rowtype; v_mgr boolean;
+begin
+  if public.my_player_id() is null then raise exception 'league:not_authenticated' using errcode = '42501'; end if;
+  select * into v_c from public.competitions where id = p_competition_id;
+  if not found then raise exception 'league:not_found'; end if;
+  v_mgr := public.is_league_manager(v_c.league_id, v_c.id);
+  if not v_mgr and not public.can_see_competition(v_c.id) then raise exception 'league:not_found'; end if;
+  return jsonb_build_object('is_manager', v_mgr, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'registration_id', ct.id, 'team_id', ct.team_id, 'team_name', coalesce(ct.registered_name, t.name),
+             'status', ct.status, 'homologated_squad_version', ct.homologated_squad_version, 'decision_note', ct.decision_note,
+             'versions', (select coalesce(jsonb_agg(jsonb_build_object(
+                             'version', v.version, 'status', v.status, 'submitted_at', v.submitted_at, 'decision_note', v.decision_note,
+                             'players', (select coalesce(jsonb_agg(jsonb_build_object(
+                                            'player_id', sp.player_id, 'name', public.league_person_name(sp.player_id),
+                                            'shirt_number', sp.shirt_number, 'squad_role', sp.squad_role)
+                                          order by sp.shirt_number nulls last), '[]'::jsonb)
+                                           from public.competition_squad_players sp
+                                          where sp.registration_id = v.registration_id and sp.version = v.version))
+                           order by v.version desc), '[]'::jsonb)
+                            from public.competition_squad_versions v where v.registration_id = ct.id))
+           order by coalesce(ct.registered_name, t.name))
+      from public.competition_teams ct join public.teams t on t.id = ct.team_id
+     where ct.competition_id = v_c.id and (v_mgr or public.is_team_leader(ct.team_id))), '[]'::jsonb));
+end $$;
+revoke execute on function public.competition_registrations(uuid) from public, anon;
+grant execute on function public.competition_registrations(uuid) to authenticated, service_role;
+
 -- ── Comments ─────────────────────────────────────────────
 comment on table public.competition_registration_links is 'PITCH Ligas: token links a manager sends to team captains to register in a competition.';
 comment on table public.competition_teams is 'PITCH Ligas: an existing Rivals team registered in a competition (draft→submitted→homologated|rejected|withdrawn). Name/logo frozen at first homologation.';

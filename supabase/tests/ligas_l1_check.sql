@@ -117,6 +117,11 @@ select pg_temp.ok('admin approves the request', public.review_league_access(pg_t
 select pg_temp.ok('review is idempotent (already_reviewed)',
   (public.review_league_access(pg_temp.kv('req')::uuid, 'reject')->>'already_reviewed')::boolean);
 
+select pg_temp.ok('admin review list carries the requester contact',
+  public.list_league_access_requests(null)->'items' @> format('[{"id":"%s","requester_name":"Olga Teste","requester_email":"secret-01@mail.test"}]', pg_temp.kv('req'))::jsonb);
+select pg_temp.as_user('04');
+select pg_temp.expect_err('non-admin cannot list access requests', $$select public.list_league_access_requests()$$, 'league:admin_only');
+
 -- ── 3. create_league ─────────────────────────────────────
 select pg_temp.as_user('01');
 select pg_temp.setkv('L', public.create_league('Liga Teste', '{"city":"Porto"}', 'ref-1')->>'league_id');
@@ -145,6 +150,9 @@ select pg_temp.expect_err('direct UPDATE of league_members is denied',
 -- League B for isolation (admin bypasses the pilot gate).
 select pg_temp.as_user('09');
 select pg_temp.setkv('B', public.create_league('Liga Bea')->>'league_id');
+select pg_temp.ok('reserved route words are never a league slug (/league/demo stays the demo)',
+  public.create_league('Demo')->>'league_id' is not null
+  and not exists (select 1 from public.leagues where slug in ('demo','minhas')));
 reset role;
 update public.league_members set player_id = pg_temp.pl('05') where league_id = pg_temp.kv('B')::uuid and role = 'owner';
 set local role authenticated;

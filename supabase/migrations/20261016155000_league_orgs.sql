@@ -195,7 +195,10 @@ create or replace function public.league_unique_slug(p_name text)
 returns text language plpgsql volatile security definer set search_path = public as $$
 declare v_base text := public.team_slugify(p_name); v_cand text := v_base; n int := 1;
 begin
-  while exists (select 1 from public.leagues where slug = v_cand) loop
+  -- Integration addition: /league/<slug> shares the path with app routes
+  -- (/league/demo, /league/minhas …), so those words are never a slug.
+  while exists (select 1 from public.leagues where slug = v_cand)
+        or v_cand in ('demo','minhas','me','admin','new','nova','convite','inscricao','pilot','piloto') loop
     n := n + 1;
     v_cand := trim(both '-' from left(v_base, 35)) || '-' || n;
   end loop;
@@ -587,6 +590,28 @@ begin
     execute format('grant execute on function %s to service_role', f);
   end loop;
 end $$;
+
+-- ── 7. Admin review list (integration addition) ─────────
+-- list_league_access_requests(status) → {items:[…]}   (app admin only)
+-- The admin needs WHO asked (name + contact) to follow up on a pilot
+-- request; players rows of strangers are not readable through RLS, so this
+-- is an admin-only RPC (same trust level as the existing admin dashboard).
+create or replace function public.list_league_access_requests(p_status text default 'pending')
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'league:admin_only' using errcode = '42501'; end if;
+  return jsonb_build_object('items', coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'id', r.id, 'org_name', r.org_name, 'city', r.city, 'country', r.country, 'modality', r.modality,
+             'expected_teams', r.expected_teams, 'context', r.context, 'status', r.status, 'created_at', r.created_at,
+             'used_by_league_id', r.used_by_league_id, 'requester_player_id', r.requester_player_id,
+             'requester_name', p.name, 'requester_email', p.email, 'requester_phone', p.phone)
+           order by r.created_at)
+      from public.league_access_requests r left join public.players p on p.id = r.requester_player_id
+     where p_status is null or r.status = p_status), '[]'::jsonb));
+end $$;
+revoke execute on function public.list_league_access_requests(text) from public, anon;
+grant execute on function public.list_league_access_requests(text) to authenticated, service_role;
 
 -- ── Comments ─────────────────────────────────────────────
 comment on table public.league_access_requests is 'PITCH Ligas: pilot access requests (brief §5). A request is never an approval: an app admin reviews it via review_league_access(); create_league() consumes one approved, unused request.';
