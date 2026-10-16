@@ -1,10 +1,11 @@
-import { User, Megaphone, ChevronRight, ShieldCheck } from "lucide-react";
+import { User, Megaphone, ChevronRight, ShieldCheck, Heart } from "lucide-react";
 import { C, cardStyle, BRAND, fieldBackdrop } from "../theme";
 import { t } from "../lib/i18n";
+import { LG } from "../lib/leagueCopy";
 
 /** Entry screen — choose role. In cloud mode the account already exists;
  *  `isDemo` (local demo mode only) shows the "data stays on this device" note. */
-export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin, isDemo }) {
+export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin, isDemo, onFan }) {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center",
@@ -39,6 +40,18 @@ export default function AuthLanding({ onPick, onBack, isAdmin, onOpenAdmin, isDe
           </div>
           <ChevronRight size={18} color={C.text3} />
         </button>
+        {onFan && (
+          <button onClick={onFan} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14, padding: 18, cursor: "pointer", textAlign: "left", width: "100%", color: C.text1 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Heart size={22} color={C.text2} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>{t(LG.fanEntry)}</div>
+              <div style={{ fontSize: 12, color: C.text2 }}>{t(LG.fanEntrySub)}</div>
+            </div>
+            <ChevronRight size={18} color={C.text3} />
+          </button>
+        )}
       </div>
 
       {isAdmin && (

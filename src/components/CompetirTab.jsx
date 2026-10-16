@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Users, ChevronRight, Star } from "lucide-react";
+import { Users, ChevronRight, Star, Trophy } from "lucide-react";
 import { C, R, S, T, cardStyle } from "../theme";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import { t } from "../lib/i18n";
 import { RC, RIVALS_BRAND } from "../lib/rivalsCopy";
+import { LG } from "../lib/leagueCopy";
 
 import PageHeader from "./PageHeader";
 import SegmentedControl from "./SegmentedControl";
@@ -34,7 +35,7 @@ import GoalOfTheWeek from "./GoalOfTheWeek";
  *  Data: `group` (season totals per player), `history` (one row per
  *  matchday), `matchdaySummaries` (newest-first day summaries — Forma,
  *  team-day records, compare), `lastMatchday` (summary.lines) and `mvp`. */
-export default function CompetirTab({ isAdmin, group = [], history = [], matchdaySummaries = [], lastMatchday, mvp, social, postDates, groupName, groupPicker, openBallot = false, rivalsOn = false, rivalsHub = null, challengesInbox = null, challengesBadge = 0, groupless = false, view: viewProp, onViewChange }) {
+export default function CompetirTab({ isAdmin, group = [], history = [], matchdaySummaries = [], lastMatchday, mvp, social, postDates, groupName, groupPicker, openBallot = false, rivalsOn = false, rivalsHub = null, challengesInbox = null, challengesBadge = 0, groupless = false, view: viewProp, onViewChange, leaguesDemo = false }) {
   const [subLocal, setSubLocal] = useState("rankings");
   const sub = viewProp ?? subLocal;
   const setSub = onViewChange ?? setSubLocal;
@@ -111,6 +112,16 @@ export default function CompetirTab({ isAdmin, group = [], history = [], matchda
           <Leaderboard group={group} seasonDays={seasonDays} matchdaySummaries={matchdaySummaries} />
           <WeeklyPodium lastMatchday={lastMatchday} mvp={mvp} group={group} />
           <GoalOfTheWeek social={social} group={group} postDates={postDates} />
+          {leaguesDemo && (
+            <a href="/league/demo" style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: 52, marginTop: S.xl, padding: `0 ${S.md}px 0 ${S.lg}px`, background: "transparent", border: `1px dashed ${C.border}`, borderRadius: R.card, color: C.text1, textDecoration: "none" }}>
+              <Trophy size={18} color={C.text2} aria-hidden style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: T.body, fontWeight: 800 }}>{t(LG.leaguesCard)}</span>
+                <span style={{ display: "block", fontSize: T.meta, color: C.text2, marginTop: 2 }}>{t(LG.leaguesCardSub)}</span>
+              </span>
+              <ChevronRight size={18} color={C.text2} aria-hidden />
+            </a>
+          )}
         </>
       )}
       {view === "equipa" && rivalsHub}

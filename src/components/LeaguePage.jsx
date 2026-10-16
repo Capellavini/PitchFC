@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { C, displayFont, BRAND, fieldBackdrop } from "../theme";
 import { supabase, supabaseEnabled } from "../lib/supabase";
+import { t } from "../lib/i18n";
+import { LG } from "../lib/leagueCopy";
 
 /**
  * PITCH League — MVP marketing/lead-capture page (route: /league).
@@ -197,7 +199,7 @@ function LeadForm({ prefill }) {
   );
 }
 
-export default function LeaguePage({ onEnterApp }) {
+export default function LeaguePage({ onEnterApp, onDemo = null, onFan = null }) {
   const [prefill, setPrefill] = useState(null);
   const formRef = useRef(null);
 
@@ -223,7 +225,9 @@ export default function LeaguePage({ onEnterApp }) {
             <a className="lg-link" href="#empresas" style={{ fontSize: 14 }}>Empresas</a>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-            <Btn variant="ghost" onClick={onEnterApp} className="lg-hide-sm" style={{ padding: "9px 14px", fontSize: 13 }}>Entrar no app</Btn>
+            {onDemo
+              ? <Btn variant="ghost" onClick={onDemo} style={{ padding: "9px 14px", fontSize: 13 }}>{t(LG.seeDemo)}</Btn>
+              : <Btn variant="ghost" onClick={onEnterApp} className="lg-hide-sm" style={{ padding: "9px 14px", fontSize: 13 }}>Entrar no app</Btn>}
             <Btn onClick={() => goForm("Capitão / organizador", "Inscrever equipa")} style={{ padding: "9px 16px", fontSize: 13 }}>Inscrever equipa</Btn>
           </div>
         </div>
@@ -297,6 +301,23 @@ export default function LeaguePage({ onEnterApp }) {
           </div>
         </div>
       </header>
+
+      {/* DEMO — the league as an in-app context (Fase 1, local demo data) */}
+      {(onDemo || onFan) && (
+        <Section id="demo">
+          <div style={{ ...card, padding: "clamp(20px,4vw,30px)", display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center", borderColor: C.accentBorder }}>
+            <div style={{ flex: "1 1 320px", minWidth: 260 }}>
+              <div style={eyebrow}>Para ligas que já existem</div>
+              <h2 style={{ ...h2, fontSize: "clamp(22px,3.5vw,30px)" }}>Vê como fica a tua liga no PITCH.</h2>
+              <p style={{ ...lead, fontSize: 15 }}>Jogos, súmula com correções registadas, classificação calculada, craque oficial e da torcida, Fantasy — numa liga fictícia, com dados de demonstração só no teu navegador.</p>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {onDemo && <Btn onClick={onDemo}>{t(LG.seeDemo)}</Btn>}
+              {onFan && <Btn variant="ghost" onClick={onFan}>{t(LG.fanEntry)}</Btn>}
+            </div>
+          </div>
+        </Section>
+      )}
 
       {/* COMO FUNCIONA */}
       <Section id="como">

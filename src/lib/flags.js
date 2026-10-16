@@ -13,6 +13,7 @@ export const FLAGS = {
   openGames: false,  // Jogar → "Encontrar jogo"
   teams: false,      // Competir → Equipas
   challenges: false, // Competir → Desafios
+  leagues: false,    // PITCH Ligas (Fase 1 demo): /league/demo + Competir "Ligas · demonstração" card. Local demo mode always sees it.
 };
 
 const envOn = new Set(

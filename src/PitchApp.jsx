@@ -56,7 +56,7 @@ import RivalsPage from "./components/RivalsPage";
 import AdminDashboardPage from "./components/admin/AdminDashboardPage";
 import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
-import PitchProPage from "./components/PitchProPage";
+import LeagueContextApp from "./components/league/LeagueContextApp";
 import LegalPage from "./components/LegalPage";
 import PricingPage from "./components/PricingPage";
 import AuthLanding from "./components/AuthLanding";
@@ -1256,8 +1256,32 @@ export default function PitchApp() {
 
   // ── PITCH League MVP marketing page (path /league) — full width, no shell ───
   const path = window.location.pathname.replace(/\/+$/, "");
+  // Leagues are a service for EXISTING amateur leagues. /league stays the
+  // public entry (lead form) and also opens the demo; the league itself
+  // lives in-app as a context at /league/demo (Fase 1: local demo seed).
+  const leaguesOn = localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin });
   if (path === "/league") {
-    return <LeaguePage onEnterApp={() => { window.location.href = "/"; }} />;
+    return <LeaguePage onEnterApp={() => { window.location.href = "/"; }}
+      onDemo={leaguesOn ? () => { window.location.href = "/league/demo"; } : null}
+      onFan={leaguesOn ? () => { window.location.href = "/league/demo?entrada=adepto"; } : null} />;
+  }
+  if (path === "/league/demo") {
+    if (!leaguesOn) {
+      if (cloud.status === "loading") return shell(<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><KeepyUppyLoader /></div>);
+      return shell(
+        <div style={{ minHeight: "100vh", padding: "32px 20px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{t("Ligas ainda não disponíveis")}</div>
+          <div style={{ fontSize: 14, color: C.text2, lineHeight: 1.6 }}>{t("A demonstração de ligas está desativada para esta conta. Sabe mais em /league.")}</div>
+          <BtnPrimary onClick={() => { window.location.href = "/league"; }}>{t("Ir para /league")}</BtnPrimary>
+        </div>
+      );
+    }
+    const leagueEntry = new URLSearchParams(window.location.search).get("entrada") === "adepto" ? "fan" : null;
+    const leagueTeams = (rivals.myTeams || []).map((tm) => ({ id: tm.id, name: tm.name }));
+    const leagueContexts = localMode
+      ? { groups: session.onboarded && !session.teamOnly && groupSettings.groupName ? [{ id: "local", name: groupSettings.groupName }] : [], teams: leagueTeams }
+      : { groups: (cloud.myGroups || []).filter((m) => !m.banned).map((m) => ({ id: m.group_id, name: m.groups?.name || "—" })), teams: leagueTeams };
+    return shell(<LeagueContextApp contexts={leagueContexts} entry={leagueEntry} />);
   }
 
   // ── PITCH Rivals (Teams & Challenges) early-access landing (path /rivals,
@@ -1305,8 +1329,11 @@ export default function PitchApp() {
   // (standalone, seed data only — no real backend/tenancy yet). Public,
   // same call as /league and /pitch-deck: needs to open with just a link
   // for a meeting, no login friction. ─────────────────────────────────
+  // /pro is retired (2026-10-16): leagues live under /league now.
+  // PitchProPage.jsx stays in the repo for reference, just not routed.
   if (path === "/pro") {
-    return <PitchProPage />;
+    window.location.replace("/league");
+    return null;
   }
 
   // ── Pricing (path /pricing) — full width, no shell, public. Knows who is
@@ -1542,7 +1569,8 @@ export default function PitchApp() {
         return shell(<TeamPublicPage standalone teams={rivals} slug={teamSlug} onBack={clearTeamSlug} onEnter={() => setAuthOpen(true)} />);
       }
       if (!authOpen) return <LandingPage onEnter={() => setAuthOpen(true)} lang={lang} onLang={changeLang} />;
-      return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} isDemo />);
+      return shell(<AuthLanding onPick={handlePickRole} onBack={() => setAuthOpen(false)} isDemo
+        onFan={() => { window.location.href = "/league/demo?entrada=adepto"; }} />);
     }
     if (!session.onboarded) {
       return shell(
@@ -2256,6 +2284,7 @@ export default function PitchApp() {
               <ChallengesInbox teams={rivals} focus={challengeFocus} onGoToTeam={() => setCompetirView("equipa")} />
             ) : null}
             challengesBadge={rivals.pendingActions}
+            leaguesDemo={localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin })}
           />
         )}
         {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (
