@@ -35,7 +35,7 @@ const FAQ = [{ q: LP.q1, a: LP.a1 }, { q: LP.q2, a: LP.a2 }, { q: LP.q3, a: LP.a
  * The hero's mini table is a real projection of the demo seed (same core
  * as the app), not a drawing.
  */
-export default function LeaguePage({ onEnterApp, onDemo, onFan, lang, onLang }) {
+export default function LeaguePage({ onEnterApp, onDemo, onFan, onMyLeagues, lang, onLang }) {
   const table = useMemo(() => deriveLeague(buildLeagueDemoSeed()).table.slice(0, 4), []);
   const goPilot = () => document.getElementById("piloto")?.scrollIntoView({ behavior: "smooth" });
 
@@ -84,6 +84,7 @@ export default function LeaguePage({ onEnterApp, onDemo, onFan, lang, onLang }) 
               {onDemo && <BtnGhost onClick={onDemo} style={{ flex: "1 1 180px", minHeight: 52, fontSize: T.body + 1 }}><PlayCircle size={18} aria-hidden /> {t(LP.ctaDemo)}</BtnGhost>}
             </div>
             {onDemo && <div style={{ fontSize: T.meta, color: C.text2 }}>{t(LP.demoNote)}</div>}
+            {onMyLeagues && <BtnGhost tone="accent" onClick={onMyLeagues} style={{ marginTop: S.md, minHeight: TOUCH.min }}>{t("As minhas ligas")} · {t("Pré-visualização · só admins")}</BtnGhost>}
           </div>
 
           {/* real projection of the demo seed — labelled as demo */}

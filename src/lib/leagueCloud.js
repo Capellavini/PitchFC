@@ -90,7 +90,8 @@ export const normMyLeague = (r) => r && ({
 export const normRequest = (r) => r && ({
   id: r.id, orgName: r.org_name, city: r.city ?? null, country: r.country ?? "PT", expectedTeams: r.expected_teams ?? null,
   context: r.context ?? null, status: r.status, usedByLeagueId: r.used_by_league_id ?? null,
-  requesterId: r.requester_player_id ?? null, requesterName: r.requester_name ?? null, createdAt: r.created_at ?? null,
+  requesterId: r.requester_player_id ?? null, requesterName: r.requester_name ?? null,
+  requesterEmail: r.requester_email ?? null, requesterPhone: r.requester_phone ?? null, createdAt: r.created_at ?? null,
 });
 export function normLeaguePage(d) {
   if (!d) return null;

@@ -1,0 +1,165 @@
+// PITCH Ligas Fase 2 (real accounts) — copy. Same convention as
+// leagueCopy.js: the PT-PT string IS the key; L(pt, en, ptBr?) registers
+// the EN (and PT-BR when it differs) translation. Render with t(LC.x).
+import { registerStrings, t } from "./i18n.js";
+
+const EN = {};
+const BR = {};
+const L = (pt, en, ptBr) => {
+  EN[pt] = en;
+  if (ptBr !== undefined) BR[pt] = ptBr;
+  return pt;
+};
+
+export const LC = {
+  preview: L("Pré-visualização · só admins", "Preview · admins only", "Pré-visualização · só admins"),
+  back: L("Voltar", "Back", "Voltar"),
+  hubTitle: L("As minhas ligas", "My leagues", "Minhas ligas"),
+  signInFirst: L("Entra na tua conta PITCH para gerir ou acompanhar ligas.", "Sign in to your PITCH account to manage or follow leagues.", "Entra na sua conta PITCH para gerenciar ou acompanhar ligas."),
+  signIn: L("Entrar", "Sign in", "Entrar"),
+  myLeagues: L("Gestão", "Managing", "Gestão"),
+  noLeagues: L("Ainda não geres nenhuma liga.", "You don't manage any league yet.", "Você ainda não gerencia nenhuma liga."),
+  following: L("Acompanhando", "Following", "Acompanhando"),
+  noFollowing: L("Ainda não segues nenhuma liga, competição ou equipa.", "You don't follow any league, competition or team yet.", "Você ainda não segue nenhuma liga, competição ou time."),
+  supporting: L("Apoias", "You support", "Você torce por"),
+  // pilot
+  pilotTitle: L("Trazer a tua liga para o PITCH", "Bring your league to PITCH", "Trazer sua liga para o PITCH"),
+  pilotBody: L("Estamos em piloto com as primeiras ligas. Faz o pedido; respondemos depois de falar contigo.", "We're piloting with the first leagues. Send a request; we answer after talking to you.", "Estamos em piloto com as primeiras ligas. Faça o pedido; respondemos depois de falar com você."),
+  orgName: L("Nome da liga ou organização", "League or organization name", "Nome da liga ou organização"),
+  city: L("Cidade", "City", "Cidade"),
+  expectedTeams: L("Quantas equipas (aprox.)", "How many teams (approx.)", "Quantos times (aprox.)"),
+  context: L("Conta-nos como funciona hoje (opcional)", "Tell us how it works today (optional)", "Conte como funciona hoje (opcional)"),
+  sendRequest: L("Pedir acesso ao piloto", "Request pilot access", "Pedir acesso ao piloto"),
+  requestPending: L("Pedido recebido. Vamos falar contigo antes de abrir a liga.", "Request received. We'll talk to you before opening the league.", "Pedido recebido. Vamos falar com você antes de abrir a liga."),
+  requestRejected: L("O pedido não foi aprovado desta vez.", "The request wasn't approved this time.", "O pedido não foi aprovado desta vez."),
+  requestApproved: L("Pedido aprovado. Cria a tua liga:", "Request approved. Create your league:", "Pedido aprovado. Crie sua liga:"),
+  adminCreate: L("Admin PITCH: podes criar uma liga diretamente (sem pedido).", "PITCH admin: you can create a league directly (no request).", "Admin PITCH: você pode criar uma liga diretamente (sem pedido)."),
+  leagueName: L("Nome da liga", "League name", "Nome da liga"),
+  createLeague: L("Criar liga", "Create league", "Criar liga"),
+  // admin
+  adminTitle: L("Pedidos de piloto (admin)", "Pilot requests (admin)", "Pedidos de piloto (admin)"),
+  adminEmpty: L("Sem pedidos pendentes.", "No pending requests.", "Sem pedidos pendentes."),
+  approve: L("Aprovar", "Approve", "Aprovar"),
+  reject: L("Recusar", "Reject", "Recusar"),
+  // invites
+  inviteTitle: L("Convite para colaborar", "Invitation to collaborate", "Convite para colaborar"),
+  inviteAs: L("Foste convidado para {league} como {role}.", "You were invited to {league} as {role}.", "Você foi convidado para {league} como {role}."),
+  accept: L("Aceitar", "Accept", "Aceitar"),
+  inviteInvalid: L("Este convite já não é válido.", "This invitation is no longer valid.", "Este convite não é mais válido."),
+  // roles
+  role_owner: L("Dono", "Owner", "Dono"),
+  role_manager: L("Gestor", "Manager", "Gestor"),
+  role_scorer: L("Mesa", "Scorer", "Mesário"),
+  role_referee: L("Árbitro", "Referee", "Árbitro"),
+  // league page
+  notFound: L("Liga não encontrada ou privada.", "League not found or private.", "Liga não encontrada ou privada."),
+  responsaveis: L("Responsáveis", "Organizers", "Responsáveis"),
+  competitions: L("Competições", "Competitions", "Competições"),
+  noCompetitions: L("Ainda sem competições publicadas.", "No published competitions yet.", "Ainda sem competições publicadas."),
+  follow: L("Seguir", "Follow", "Seguir"),
+  unfollow: L("A seguir", "Following", "Seguindo"),
+  manage: L("Gerir liga", "Manage league", "Gerenciar liga"),
+  draftLeague: L("Rascunho · só a organização vê", "Draft · only the organization sees it", "Rascunho · só a organização vê"),
+  privateLeague: L("Privada · só com link", "Private · link only", "Privada · só com link"),
+  makePublic: L("Tornar pública", "Make public", "Tornar pública"),
+  makePrivate: L("Tornar privada", "Make private", "Tornar privada"),
+  inviteCollab: L("Convidar colaborador", "Invite a collaborator", "Convidar colaborador"),
+  createInvite: L("Gerar convite", "Create invitation", "Gerar convite"),
+  newCompetition: L("Nova competição", "New competition", "Nova competição"),
+  compName: L("Nome da competição", "Competition name", "Nome da competição"),
+  season: L("Época", "Season", "Temporada"),
+  category: L("Escalão", "Category", "Categoria"),
+  youth: L("Escalão jovem (só iniciais, sem foto)", "Youth category (initials only, no photo)", "Categoria de base (só iniciais, sem foto)"),
+  format: L("Formato", "Format", "Formato"),
+  squadMax: L("Máx. no plantel", "Max squad size", "Máx. no elenco"),
+  create: L("Criar", "Create", "Criar"),
+  // competition
+  status_draft: L("Rascunho", "Draft", "Rascunho"),
+  status_registration_open: L("Inscrições abertas", "Registrations open", "Inscrições abertas"),
+  status_registration_closed: L("Inscrições fechadas", "Registrations closed", "Inscrições fechadas"),
+  status_in_progress: L("A decorrer", "In progress", "Em andamento"),
+  status_finished: L("Terminada", "Finished", "Encerrada"),
+  status_archived: L("Arquivada", "Archived", "Arquivada"),
+  regulation: L("Regulamento", "Regulation", "Regulamento"),
+  regulationDraft: L("Regulamento v{v} em rascunho.", "Regulation v{v} is a draft.", "Regulamento v{v} em rascunho."),
+  regulationSummary: L("v{v} · Vitória {w} · Empate {d} · Derrota {l} · Plantel {min}–{max}", "v{v} · Win {w} · Draw {d} · Loss {l} · Squad {min}–{max}", "v{v} · Vitória {w} · Empate {d} · Derrota {l} · Elenco {min}–{max}"),
+  publish: L("Publicar regulamento", "Publish regulation", "Publicar regulamento"),
+  openRegs: L("Abrir inscrições", "Open registrations", "Abrir inscrições"),
+  closeRegs: L("Fechar inscrições", "Close registrations", "Fechar inscrições"),
+  regLink: L("Link de inscrição para capitães", "Registration link for captains", "Link de inscrição para capitães"),
+  createLink: L("Gerar link", "Create link", "Gerar link"),
+  teams: L("Equipas inscritas", "Registered teams", "Times inscritos"),
+  noTeams: L("Ainda nenhuma equipa homologada.", "No homologated team yet.", "Ainda nenhum time homologado."),
+  support: L("Apoiar", "Support", "Torcer"),
+  supported: L("A tua equipa", "Your team", "Seu time"),
+  registrations: L("Inscrições", "Registrations", "Inscrições"),
+  noRegistrations: L("Sem inscrições.", "No registrations.", "Sem inscrições."),
+  squadV: L("Plantel v{v}", "Squad v{v}", "Elenco v{v}"),
+  reg_draft: L("Sem plantel", "No squad", "Sem elenco"),
+  reg_submitted: L("Por validar", "To review", "A validar"),
+  reg_homologated: L("Homologada", "Homologated", "Homologada"),
+  reg_rejected: L("Recusada", "Rejected", "Recusada"),
+  reg_withdrawn: L("Retirada", "Withdrawn", "Retirada"),
+  ver_submitted: L("enviado", "submitted", "enviado"),
+  ver_homologated: L("homologado", "homologated", "homologado"),
+  ver_rejected: L("recusado", "rejected", "recusado"),
+  ver_superseded: L("substituído", "superseded", "substituído"),
+  rejectNote: L("Motivo (opcional)", "Reason (optional)", "Motivo (opcional)"),
+  // registration flow
+  registerTitle: L("Inscrever equipa", "Register a team", "Inscrever time"),
+  registerIn: L("Inscrição em {comp} · {league}", "Registration in {comp} · {league}", "Inscrição em {comp} · {league}"),
+  pickTeam: L("Escolhe a tua equipa (és capitão ou vice)", "Pick your team (you're captain or vice)", "Escolha seu time (você é capitão ou vice)"),
+  noLeaderTeam: L("Precisas de ser capitão ou vice de uma equipa PITCH. Cria a equipa em Competir → Equipas.", "You need to be captain or vice of a PITCH team. Create it in Compete → Teams.", "Você precisa ser capitão ou vice de um time PITCH. Crie o time em Competir → Times."),
+  register: L("Inscrever", "Register", "Inscrever"),
+  squadPick: L("Escolhe o plantel inscrito ({min}–{max})", "Pick the registered squad ({min}–{max})", "Escolha o elenco inscrito ({min}–{max})"),
+  shirt: L("Nº", "No.", "Nº"),
+  submitSquad: L("Enviar plantel para validação", "Submit squad for review", "Enviar elenco para validação"),
+  squadSent: L("Plantel enviado. A organização valida antes de a equipa contar.", "Squad submitted. The organization reviews it before the team counts.", "Elenco enviado. A organização valida antes de o time contar."),
+  linkInvalid: L("Este link de inscrição não está ativo.", "This registration link isn't active.", "Este link de inscrição não está ativo."),
+  copy: L("Copiar", "Copy", "Copiar"),
+  copied: L("Copiado", "Copied", "Copiado"),
+  share: L("Enviar por WhatsApp", "Send via WhatsApp", "Enviar por WhatsApp"),
+  saved: L("Guardado.", "Saved.", "Salvo."),
+  seamNote: L("Calendário, súmula ao vivo, homologação de resultados e classificação oficial chegam nas próximas fases.", "Calendar, live scoresheet, result homologation and official standings come in the next phases.", "Calendário, súmula ao vivo, homologação de resultados e classificação oficial chegam nas próximas fases."),
+};
+
+const ERR = {
+  not_authenticated: L("Entra na tua conta primeiro.", "Sign in first.", "Entre na sua conta primeiro."),
+  access_not_approved: L("Precisas de um pedido de piloto aprovado.", "You need an approved pilot request.", "Você precisa de um pedido de piloto aprovado."),
+  admin_only: L("Só a equipa PITCH pode fazer isto.", "Only the PITCH team can do this.", "Só a equipe PITCH pode fazer isso."),
+  owner_only: L("Só o dono da liga pode fazer isto.", "Only the league owner can do this.", "Só o dono da liga pode fazer isso."),
+  not_found: L("Não encontrado (ou sem permissão).", "Not found (or no permission).", "Não encontrado (ou sem permissão)."),
+  invalid_request: L("Revê o nome da organização.", "Check the organization name.", "Revise o nome da organização."),
+  invalid_field: L("Revê os campos.", "Check the fields.", "Revise os campos."),
+  invite_used: L("Este convite já foi usado.", "This invitation was already used.", "Este convite já foi usado."),
+  invite_expired: L("Este convite expirou.", "This invitation expired.", "Este convite expirou."),
+  invalid_role: L("Papel inválido.", "Invalid role.", "Papel inválido."),
+  unsupported_rule: L("Regra não suportada.", "Unsupported rule.", "Regra não suportada."),
+  unsupported_tiebreaker: L("Critério de desempate não suportado.", "Unsupported tiebreaker.", "Critério de desempate não suportado."),
+  invalid_rule: L("Valores do regulamento fora do permitido.", "Regulation values out of range.", "Valores do regulamento fora do permitido."),
+  structure_not_available: L("Só pontos corridos nesta fase.", "Only round-robin in this phase.", "Só pontos corridos nesta fase."),
+  regulation_not_published: L("Publica o regulamento antes de abrir inscrições.", "Publish the regulation before opening registrations.", "Publique o regulamento antes de abrir inscrições."),
+  invalid_transition: L("Mudança de estado não permitida.", "Status change not allowed.", "Mudança de status não permitida."),
+  reason_required: L("Indica o motivo.", "Give a reason.", "Informe o motivo."),
+  not_team_leader: L("Só o capitão ou vice pode inscrever a equipa.", "Only the captain or vice can register the team.", "Só o capitão ou vice pode inscrever o time."),
+  not_team_member: L("Só membros ativos da equipa podem entrar no plantel.", "Only active team members can be in the squad.", "Só membros ativos do time podem entrar no elenco."),
+  squad_size: L("O plantel tem de respeitar o mínimo e o máximo do regulamento.", "The squad must respect the regulation's min and max.", "O elenco precisa respeitar o mínimo e o máximo do regulamento."),
+  registration_closed: L("As inscrições estão fechadas.", "Registrations are closed.", "As inscrições estão fechadas."),
+  link_expired: L("Este link expirou.", "This link expired.", "Este link expirou."),
+  link_not_found: L("Link de inscrição inválido.", "Invalid registration link.", "Link de inscrição inválido."),
+  link_for_other_team: L("Este link é para outra equipa.", "This link is for another team.", "Este link é para outro time."),
+  player_in_other_squad: L("Há atletas já homologados noutra equipa desta competição.", "Some players are already homologated with another team in this competition.", "Há atletas já homologados em outro time desta competição."),
+  stale_version: L("Este plantel já foi decidido ou substituído. Atualiza.", "This squad was already decided or replaced. Refresh.", "Este elenco já foi decidido ou substituído. Atualize."),
+  team_not_registered: L("Essa equipa não está homologada nesta competição.", "That team isn't homologated in this competition.", "Esse time não está homologado nesta competição."),
+  invalid_visibility: L("Visibilidade inválida.", "Invalid visibility.", "Visibilidade inválida."),
+  not_deployed: L("As ligas ainda não estão ativas neste servidor.", "Leagues aren't active on this server yet.", "As ligas ainda não estão ativas neste servidor."),
+  network: L("Sem ligação. Tenta outra vez.", "No connection. Try again.", "Sem conexão. Tente de novo."),
+  unknown: L("Algo correu mal. Tenta outra vez.", "Something went wrong. Try again.", "Algo deu errado. Tente de novo."),
+};
+
+registerStrings("en", EN);
+registerStrings("pt-br", BR);
+
+export const leagueCloudError = (code) => t(ERR[code] || ERR.unknown);
+export const roleLabel = (role) => t(LC[`role_${role}`] || role);
+export const statusLabel = (status) => t(LC[`status_${status}`] || status);

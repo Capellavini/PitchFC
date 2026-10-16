@@ -57,6 +57,11 @@ import AdminDashboardPage from "./components/admin/AdminDashboardPage";
 import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
 import LeagueContextApp from "./components/league/LeagueContextApp";
+import LeagueHub from "./components/league/LeagueHub";
+import LeagueCloudPage from "./components/league/LeagueCloudPage";
+import LeagueCompetitionCloud from "./components/league/LeagueCompetitionCloud";
+import { useLeagues } from "./hooks/useLeagues";
+import { parseLeaguePath } from "./lib/leagueCloud";
 import LegalPage from "./components/LegalPage";
 import PricingPage from "./components/PricingPage";
 import AuthLanding from "./components/AuthLanding";
@@ -209,6 +214,23 @@ export default function PitchApp() {
   const rivals = useTeams({
     cloudStatus: cloud.status, myPlayer: cloud.myPlayer, uploadMedia, watch: rivalsOptIn || Boolean(cloud.isAdmin),
     demoMe: localMe ? { id: `demo-me-${localMe.id}`, nick: localMe.nick, name: localMe.name, photo: localMe.photo, position: localMe.position } : null,
+  });
+  // ── PITCH Ligas Fase 2 (real league accounts) ───────────
+  // Only "active" on /league/minhas · /league/<slug>[/<comp>] with the
+  // `leagues` flag (admins) or in local demo mode — production users never
+  // trigger a single league query. /league/demo stays the separate,
+  // local-only showcase (LeagueContextApp) and never goes through this hook.
+  const [leagueRoute] = useState(() => parseLeaguePath(window.location.pathname));
+  const leaguesFlagOn = localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin });
+  const leaguesCloudActive = leaguesFlagOn && ["hub", "league", "competition"].includes(leagueRoute?.kind);
+  const leagues = useLeagues({
+    active: leaguesCloudActive, cloudStatus: cloud.status, myPlayer: cloud.myPlayer, isAdmin: Boolean(cloud.isAdmin),
+    demoMe: localMe ? { id: `demo-me-${localMe.id}`, nick: localMe.nick, name: localMe.name } : null,
+    resolveTeam: async (teamId) => {
+      const tm = (rivals.myTeams || []).find((x) => x.id === teamId);
+      const r = await rivals.fetchTeam(teamId);
+      return tm ? { id: tm.id, name: tm.name, role: tm.role, memberIds: (r.data?.members || []).map((m) => m.playerId) } : null;
+    },
   });
   const [teamSlug, setTeamSlug] = useState(rivalsParams.team);
   // { teamId? , slug?, n } — asks RivalsHub to show a team (bump n).
@@ -1267,6 +1289,7 @@ export default function PitchApp() {
   const leagueDemoProps = leagueDemoOn ? {
     onDemo: () => { window.location.href = "/league/demo"; },
     onFan: () => { window.location.href = "/league/demo?entrada=adepto"; },
+    onMyLeagues: () => { window.location.href = "/league/minhas"; },
   } : {};
   if (path === "/league" || (path === "/league/demo" && !leagueDemoOn)) {
     return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }} {...leagueDemoProps} />;
@@ -1278,6 +1301,21 @@ export default function PitchApp() {
       ? { groups: session.onboarded && !session.teamOnly && groupSettings.groupName ? [{ id: "local", name: groupSettings.groupName }] : [], teams: leagueTeams }
       : { groups: (cloud.myGroups || []).filter((m) => !m.banned).map((m) => ({ id: m.group_id, name: m.groups?.name || "—" })), teams: leagueTeams };
     return shell(<LeagueContextApp contexts={leagueContexts} entry={leagueEntry} />);
+  }
+  // Real leagues (Fase 2): /league/minhas, /league/<slug>, /league/<slug>/<comp>.
+  // Same gate as the demo: flag off → the public /league page, nothing else.
+  if (leagueRoute && ["hub", "league", "competition"].includes(leagueRoute.kind)) {
+    // Don't flash the public page while the session (and so isAdmin) is still resolving.
+    if (cloud.status === "loading") return <div style={{ minHeight: "100vh", background: C.bg }} />;
+    if (!leaguesCloudActive) {
+      return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }} {...leagueDemoProps} />;
+    }
+    const viewKey = new URLSearchParams(window.location.search).get("k");
+    if (leagueRoute.kind === "hub") {
+      return shell(<LeagueHub leagues={leagues} rivals={rivals} onSignIn={() => { window.location.href = "/"; }} />);
+    }
+    if (leagueRoute.kind === "league") return shell(<LeagueCloudPage leagues={leagues} slug={leagueRoute.slug} viewKey={viewKey} />);
+    return shell(<LeagueCompetitionCloud leagues={leagues} slug={leagueRoute.slug} competitionSlug={leagueRoute.competitionSlug} viewKey={viewKey} />);
   }
 
   // ── PITCH Rivals (Teams & Challenges) early-access landing (path /rivals,
