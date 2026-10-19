@@ -18,6 +18,7 @@ Pontuação e fecho de ronda controlados pela base de dados; cópia da escalaç�
 - Regressão SQL do Rivals: 136 de equipas, 127 de desafios e 269 de resultados, todos aprovados.
 - Fixture com ligas antigas: 6 verificações de histórico, campeões (incluindo empate), troféus, escalações, saldo, cancelamento de propostas e temporadas aprovadas.
 - Reaplicação local: contagem de temporadas, troféus e linhas históricas não muda; os 6 checks da fixture continuam aprovados.
+- Interface móvel verificada com dados de demonstração: criação no modo Clássico, Draft indisponível, escalação, pontuação detalhada, temporadas e histórico, recálculo e pesquisa no mercado. Sem erros de página; mercado sem deslocamento horizontal a 375 e 320 px.
 - O agendamento real de cron e a infraestrutura Supabase são verificados em produção por leitura após o CI; o adaptador local não executa o relógio do serviço.
 
 ## Ordem das migrações
