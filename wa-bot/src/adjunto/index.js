@@ -13,7 +13,8 @@ import { cfg } from "../config.js";
 /**
  * deps (from index.js):
  *   log, getSock, sendDm(target, text, meta), postGroup(group, gameId, ev, ctx),
- *   claim, markSent, unclaim, logMessage, suppressAutoReminder(group, game)
+ *   claim, markSent, unclaim, logMessage, suppressAutoReminder(group, game),
+ *   plans ({ hasAdjunto(groupId) } — absent = every group allowed)
  */
 export function createAdjunto(deps) {
   const c = cfg();
@@ -23,6 +24,7 @@ export function createAdjunto(deps) {
     store, loadGroupCtx, cfg: c, log: deps.log, now: () => new Date(), rng: Math.random,
     sendDm: deps.sendDm, postGroup: deps.postGroup, claim: deps.claim, markSent: deps.markSent, unclaim: deps.unclaim,
     logMessage: deps.logMessage, suppressAutoReminder: deps.suppressAutoReminder,
+    plans: deps.plans, // group plans (../plans.js): the Adjunto needs Club + AI
     takeover, anthropic, lidMapping: () => deps.getSock()?.signalRepository?.lidMapping ?? null,
   };
   const router = makeRouter(env);

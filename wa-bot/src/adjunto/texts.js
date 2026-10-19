@@ -47,6 +47,8 @@ const PT = {
   noGame: "Não há nenhum jogo marcado agora.",
   guardFallback: "Prefiro não arriscar números que não confirmei. Isto é o que os dados dizem:",
   notManager: "Já não és organizador deste grupo, por isso não posso fazer isso.",
+  // Group without Club + AI (plans, 2026-10-19). Sent at most once a day.
+  planLocked: ({ group, url }) => `🧢 O ${NAME.pt} faz parte do *Club + AI*, e o *${group}* não o tem neste momento. O jogo semanal continua igual na app e no grupo. Vê os planos: ${url}`,
   // format onboarding
   ob: {
     type: "Como é o formato do vosso jogo?\n1️⃣ Avulso — jogos soltos, sem tabela\n2️⃣ Campeonato — tabela da noite (recomeça todas as semanas)\n3️⃣ Personalizado — defines tudo",
@@ -145,6 +147,7 @@ const PTBR = {
   paused: "⏸️ Beleza, paro as mensagens automáticas. Escreva *retoma* quando quiser.",
   degraded: (link) => `Hoje já pensei demais 😅 — até amanhã respondo só comandos: *estado*, *tabela*, *times*, *sim/não*. O resto é no app: ${link}`,
   degradedMonth: (link) => `Este mês já usamos todas as conversas incluídas 😅 — até o dia 1 respondo só comandos: *estado*, *tabela*, *times*, *sim/não*. O resto é no app: ${link}`,
+  planLocked: ({ group, url }) => `🧢 O ${NAME.ptbr} faz parte do *Club + AI*, e o *${group}* não tem esse plano agora. O jogo semanal continua igual no app e no grupo. Veja os planos: ${url}`,
   ob: {
     ...PT.ob,
     type: "Qual é o formato do jogo de vocês?\n1️⃣ Avulso — jogos soltos, sem tabela\n2️⃣ Campeonato — tabela da noite (recomeça toda semana)\n3️⃣ Personalizado — você define tudo",
@@ -216,6 +219,7 @@ const EN = {
   noGame: "There's no game scheduled right now.",
   guardFallback: "I'd rather not risk numbers I haven't checked. Here's what the data says:",
   notManager: "You're no longer an organiser of this group, so I can't do that.",
+  planLocked: ({ group, url }) => `🧢 The ${NAME.en} is part of *Club + AI*, and *${group}* doesn't have it right now. The weekly game carries on as usual in the app and the group. See the plans: ${url}`,
   ob: {
     type: "What's your game format?\n1️⃣ Casual — standalone games, no table\n2️⃣ League night — night table (resets every week)\n3️⃣ Custom — you set everything",
     teams: "How many teams per night? (2 to 6 · usually 2)",

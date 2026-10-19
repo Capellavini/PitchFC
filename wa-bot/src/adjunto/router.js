@@ -113,7 +113,19 @@ export function makeRouter(env) {
     return env.sendDm(link, T(lang).chooseGroup(candidates.map((c) => c.name)));
   }
 
+  // ── plan gate: the Adjunto is Club + AI (plans, 2026-10-19) ──
+  // Without it: no welcome, no agent, no commands — one polite DM a day
+  // pointing to /pricing, then silence. env.plans absent = every group allowed.
+  const hasAdjunto = async (groupId) => !env.plans || await env.plans.hasAdjunto(groupId);
+  async function planLocked(link, chatJid, group) {
+    env.log(`adjunto: ${group.name} has no Club + AI — not answering (${maskJid(chatJid)})`);
+    if (await throttled(chatJid, "plan_locked", 24, 1)) return;
+    const lang = dmLang(link.lang, group.wa_bot_lang ?? group.lang);
+    return env.sendDm(link, T(lang).planLocked({ group: group.name, url: `${env.cfg.appUrl}/pricing` }), { groupId: group.id });
+  }
+
   async function welcome(link, group) {
+    if (!(await hasAdjunto(group.id))) return planLocked(link, link.wa_jid, group);
     const player = await env.store.playerRow(link.player_id);
     const others = (await env.store.managedGroups(link.player_id)).filter((g) => g.id !== group.id).map((g) => g.name);
     const lang = dmLang(link.lang, group.wa_bot_lang);
@@ -228,6 +240,7 @@ export function makeRouter(env) {
       link.active_group_id = active.id;
     }
     if (isActivationPhrase(text)) return welcome(link, await env.store.groupRow(active.id));
+    if (!(await hasAdjunto(active.id))) return planLocked(link, id.chatJid, active);
 
     const lang = dmLang(link.lang, active.lang);
     const t = T(lang);

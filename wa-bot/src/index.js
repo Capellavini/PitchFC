@@ -19,6 +19,7 @@ import { parseIntent, parseCommand, phonesMatch, splitWaitlist, actionReplies } 
 import * as polls from "./polls.js";
 import { isDmJid, maskJid } from "./adjunto/identity.js";
 import { groupCtx, GROUP_SAFE_KINDS } from "./adjunto/groupsafe.js";
+import { makePlans, fetchGroupPlanRow } from "./plans.js";
 
 const LIST_GROUPS = process.argv.includes("--list-groups");
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -32,6 +33,10 @@ const candidate = new Map();   // gameId -> {n}: debounce, a changed count must 
 const dryLogged = new Set();
 const lastAsk = new Map();     // sender -> ts, 1 answer / 20s each
 const windowWarned = new Set(); // poll|voter already told "confirmations not open yet"
+
+// Group plans: Free groups only get the "game_open" post; the Adjunto
+// needs Club + AI. Cached 5 min per group, fails open (see plans.js).
+const plans = makePlans({ fetchRow: fetchGroupPlanRow, log });
 
 const linkFor = (g) => `${cfg().appUrl}/?join=${g.invite_token}`;
 // Generous (<=1h early) start of today in Lisbon, for the daily cap.
@@ -75,6 +80,10 @@ async function dispatch(group, gameId, ev, ctx) {
   // only gets "game_open". Checked first so a disallowed kind never holds
   // up the loop as "blocked".
   if (!kindAllowed(group, ev.kind)) return "skipped";
+  // Plan: on Free, everything except "game_open" is Club automation.
+  // "skipped" (not "blocked") so state advances and nothing is replayed
+  // later if the group upgrades.
+  if (!(await plans.allowsKind(group.id, ev.kind))) return "skipped";
 
   const now = new Date();
   const quiet = isQuietHour(cfg().quietStart, cfg().quietEnd, now);
@@ -186,7 +195,7 @@ async function loop() {
 // bot behaves exactly as before (DMs ignored, no extra module loaded).
 let adjuntoP = null;
 const adjunto = () => (adjuntoP ??= import("./adjunto/index.js").then(({ createAdjunto }) => createAdjunto({
-  log, getSock: () => sock, sendDm: sendAdjuntoDm, postGroup: postAdjuntoGroup, claim, markSent, unclaim, logMessage,
+  log, getSock: () => sock, sendDm: sendAdjuntoDm, postGroup: postAdjuntoGroup, claim, markSent, unclaim, logMessage, plans,
   suppressAutoReminder: async (group, game) => {
     const id = await claim(group.id, game.id, "reminder", reminderKey(game)).catch(() => null);
     if (id) await markSent(id);

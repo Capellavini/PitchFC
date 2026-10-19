@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Users2, UsersRound, Target, Trophy, Map, LogOut, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Users2, UsersRound, Target, Trophy, Map, LogOut, RefreshCw, Crown } from "lucide-react";
 import { C, BRAND, displayFont } from "../../theme";
 import AdminOverviewTab from "./AdminOverviewTab";
 import AdminGroupsTab from "./AdminGroupsTab";
+import AdminPlansTab from "./AdminPlansTab";
 import AdminUsersTab from "./AdminUsersTab";
 import AdminMvpTab from "./AdminMvpTab";
 import AdminFantasyTab from "./AdminFantasyTab";
@@ -13,6 +14,7 @@ const NAV = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "mvp", label: "MVP", icon: Target },
   { id: "groups", label: "Grupos", icon: Users2 },
+  { id: "plans", label: "Planos", icon: Crown },
   { id: "users", label: "Utilizadores", icon: UsersRound },
   { id: "fantasy", label: "Pitch Manager", icon: Trophy },
   { id: "roadmap", label: "Roadmap", icon: Map },
@@ -174,6 +176,7 @@ export default function AdminDashboardPage({ cloud, localMode }) {
         {tab === "overview" && <AdminOverviewTab {...tabProps} />}
         {tab === "mvp" && <AdminMvpTab {...tabProps} />}
         {tab === "groups" && <AdminGroupsTab {...tabProps} />}
+        {tab === "plans" && <AdminPlansTab {...tabProps} />}
         {tab === "users" && <AdminUsersTab {...tabProps} />}
         {tab === "fantasy" && <AdminFantasyTab {...tabProps} />}
         {tab === "roadmap" && <AdminRoadmapTab {...tabProps} />}

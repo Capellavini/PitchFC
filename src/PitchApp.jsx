@@ -21,7 +21,7 @@ import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGH
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import {stampVarGoal} from "./lib/varProtocol.js";
 import VarControls from "./components/VarControls";
-import { ADMIN_EMAILS } from "./lib/supabase";
+import { ADMIN_EMAILS, supabase } from "./lib/supabase";
 import { nextGameDateLabel, nextGameDate, fmtEUR, decodePayload, averageAttrs, fmtDayMonth, fmtFullDay, isoDay, toIsoDay, fromIso, dateTimeFromIso, playerColor, relativeTime, splitWaitlist, confirmationWindow, WEEKDAYS_PT, fileToDataUrl, defaultAttrsFor, lisbonTimeLabel } from "./lib/helpers";
 import { t, setLang, detectLang } from "./lib/i18n";
 import { trackEvent } from "./lib/analytics";
@@ -29,6 +29,14 @@ import { getThemeMode, setThemeMode } from "./lib/themeMode";
 import { playoffState } from "./lib/matchdayLive";
 import { roundRobinFixtures, buildKnockoutRound1, nextKnockoutRound, matchWinner, computeStandings } from "./lib/tournament";
 import { useCloud } from "./hooks/useCloud";
+import { useEntitlements } from "./hooks/useEntitlements";
+import { useGate } from "./hooks/useGate";
+import { overSoftCap, trialEndingSoon, trialBannerText, capBannerText, trialBannerKey, upgradeInterestPayload } from "./lib/entitlements";
+import { GATE, PLAN_STATUS } from "./lib/pricingCopy";
+import { marketFromLang } from "./lib/plans";
+import UpgradeModal from "./components/UpgradeModal";
+import PlanCard from "./components/PlanCard";
+import PlanBanner from "./components/PlanBanner";
 import { useTeams } from "./hooks/useTeams";
 import { readRivalsParams, rivalsVisible, marketForLang, isNoGroup, openingTab as pickOpeningTab, teamFeedItems, isTeamMode, resolveTab, nextTeamMatch } from "./lib/rivals";
 import { matchFeedItems } from "./lib/rivalsResults";
@@ -197,6 +205,12 @@ export default function PitchApp() {
   const cloud = useCloud();
   const localMode = cloud.status === "off" || cloud.status === "failed";
   const cloudMode = cloud.status === "ready";
+  // ── Plans (entitlements + soft paywall, no billing) ────
+  // The active group's effective plan; gate(feature, fn) runs fn or opens
+  // the contextual upgrade prompt. Fails open while unknown.
+  const plans = useEntitlements({ mode: cloudMode ? "cloud" : localMode ? "local" : "loading", groupId: cloud.groupRow?.id });
+  const paywall = useGate(plans.ent);
+  const [trialBannerSeen, setTrialBannerSeen] = usePersistentState("trialBannerSeen", {});
   // Media upload: Supabase Storage when logged in (incl. during onboarding),
   // base64 fallback in local-demo. Used for social posts and profile photos.
   const uploadMedia = cloud.user
@@ -1992,7 +2006,7 @@ export default function PitchApp() {
       title: `${fmtEUR(game.priceEach)} · ${game.groupName}`,
       subtitle: `${game.date} · ${game.time}`,
       primaryLabel: `${t("Pagar")} · MB Way`,
-      onPrimary: payMine,
+      onPrimary: () => payMineGated(), // defined below with the plan gates (called on tap, after render)
       owes: fmtEUR(game.priceEach),
     } : null,
     canVoteMvp ? {
@@ -2074,6 +2088,50 @@ export default function PitchApp() {
     };
   }
 
+  // ── Plans: soft paywall wiring (src/hooks/useGate.js) ──
+  // Organizers/assistants see the price and "Continuar" (→ "avisa-me",
+  // billing is off); a plain member only gets the explanation. Players
+  // are never gated from playing: joining, confirming, waitlist, Matchday,
+  // MVP and stats never go through gate().
+  const { gate } = paywall;
+  const canChangePlan = canManageTeams;
+  const seePlans = () => window.location.assign("/pricing");
+  const activeGroupId = cloudMode ? cloud.groupRow?.id : "local";
+  const recordUpgradeInterest = async ({ planId }) => {
+    const feature = paywall.prompt?.feature ?? null;
+    trackEvent("upgrade_interest", { plan: planId, feature: feature ?? "none" });
+    if (!cloudMode || !supabase) return; // local demo never touches a backend
+    await supabase.rpc("submit_lead", { payload: upgradeInterestPayload({
+      feature, planId, groupId: activeGroupId, groupName: game.groupName, name: me?.name, email: cloud.user?.email,
+    }) });
+  };
+  const upgradePrompt = paywall.prompt ? (
+    <UpgradeModal planId={paywall.prompt.planId} market={marketFromLang(lang)}
+      groups={[{ id: activeGroupId, name: game.groupName }]}
+      feature={GATE[paywall.prompt.feature]?.title} featureBody={GATE[paywall.prompt.feature]?.body}
+      canUpgrade={canChangePlan} onInterest={recordUpgradeInterest}
+      onSeePlans={seePlans} onClose={paywall.close} />
+  ) : null;
+  const memberCount = baseGroup.filter((p) => !p.isGuest).length;
+  const capBanner = canChangePlan && overSoftCap(memberCount, plans.ent) ? (
+    <PlanBanner text={capBannerText(memberCount, PLAN_STATUS, t)} actionLabel={t(PLAN_STATUS.seeClub)} onAction={() => paywall.open("large_group")} />
+  ) : null;
+  const trialKey = trialBannerKey(activeGroupId, plans.ent);
+  const trialBanner = canChangePlan && trialEndingSoon(plans.ent) && !trialBannerSeen[trialKey] ? (
+    <PlanBanner text={trialBannerText(plans.ent, PLAN_STATUS, t)} actionLabel={t(PLAN_STATUS.seePlans)} onAction={seePlans}
+      onDismiss={() => setTrialBannerSeen((s) => ({ ...s, [trialKey]: true }))} />
+  ) : null;
+  // Free → co-organizer: making someone auxiliar is Club; removing never is.
+  const toggleAssistantGated = (playerId, makeAssistant) => (makeAssistant
+    ? gate("co_organizers", () => cloud.toggleAssistant(playerId, makeAssistant))()
+    : cloud.toggleAssistant(playerId, makeAssistant));
+  // Fantasy: creating a league is Club; an existing league keeps working for everyone.
+  const createFantasyGated = async (...args) => {
+    if (!paywall.allowed("fantasy")) { paywall.open("fantasy"); return {}; }
+    return cloud.createFantasyLeague(...args);
+  };
+  const payMineGated = gate("mbway_button", payMine);
+
   // Matchday: organizers (and assistants) ALWAYS get the full controls;
   // a regular player gets them when it's hot or the lineup is out,
   // otherwise the cold countdown + last recap.
@@ -2104,6 +2162,7 @@ export default function PitchApp() {
   // ── Main app ───────────────────────────────────────────
   return shell(
     <>
+      {upgradePrompt}
       {!tourSeen && <FirstRunTour onDone={() => { setTourSeen(true); setWhatsNewSeen(true); }} />}
       {tourSeen && (!whatsNewSeen || whatsNewOpen) && <WhatsNewSheet onDone={() => { setWhatsNewSeen(true); setWhatsNewOpen(false); }} />}
       {/* App header — logo left; bell (Novidades, red dot while unseen) + my avatar (→ Perfil) right. */}
@@ -2116,6 +2175,7 @@ export default function PitchApp() {
           </button>
         ) : null} />
       <div style={{ paddingBottom: 96 }}>
+        {tab === "home" && trialBanner && <div style={{ padding: "16px 16px 0" }}>{trialBanner}</div>}
         {tab === "home" && (
           // Home (redesign v1): one next action + last-result recap + single
           // activity feed built from matchdays + social posts (SocialTab no
@@ -2174,7 +2234,7 @@ export default function PitchApp() {
             ) : (
               <JogoTab
                 group={displayGroup} game={game}
-                toggleMyStatus={toggleMyStatus} payMine={payMine}
+                toggleMyStatus={toggleMyStatus} payMine={payMineGated}
                 inviteUrl={inviteUrl} canManageGame={isOrganizer} onSetSpots={setSpots}
                 onReschedule={rescheduleGame}
                 onScheduleGame={cloudMode ? (dateIso, time) => cloud.scheduleNextGame(dateIso, time) : undefined}
@@ -2199,7 +2259,7 @@ export default function PitchApp() {
             renderDetail={({ onBack }) => (
               <GameDetail
                 group={displayGroup} game={game} gameId={gameId} onBack={onBack}
-                togglePaid={togglePaid} payMine={payMine}
+                togglePaid={togglePaid} payMine={payMineGated} gatePaymentReminder={(fn) => gate("payment_reminders", fn)}
                 canManageTeams={canManageTeams} canManageGame={isOrganizer} onSetPlayerStatus={setPlayerStatus}
                 inviteUrl={inviteUrl}
                 material={material} onToggleMaterial={toggleMaterial} onAssignMaterial={assignMaterial} onAddMaterial={addMaterial}
@@ -2232,11 +2292,12 @@ export default function PitchApp() {
                 groupName={game.groupName}
                 subtitle={`${displayGroup.length} ${t("jogadores")}${game.venue ? ` · ${game.venue}` : ""}`}
                 isOrganizer={isOrganizer}
-                plantel={
+                plantel={<>
+                  {capBanner}
                   <GrupoTab
                     group={displayGroup} game={game} openProfile={openProfile} cloudMode={cloudMode}
                     inviteUrl={inviteUrl} isOrganizer={isOrganizer}
-                    onToggleAssistant={cloud.toggleAssistant}
+                    onToggleAssistant={toggleAssistantGated}
                     onSetPlayerType={(playerId, type) => cloud.updatePlayer(playerId, { player_type: type })}
                     onSetAttendanceLock={(playerId, locked) => cloud.setAttendanceLock(locked, playerId, gameId)}
                     onAddManualPlayer={addManualPlayer} onSetPlayerStatus={setPlayerStatus}
@@ -2244,13 +2305,13 @@ export default function PitchApp() {
                     canManageTeams={canManageTeams}
                     totalGames={totalGamesPlayed}
                   />
-                }
+                </>}
                 stats={<GroupRecords records={recordsView} canDelete={isOrganizer && cloudMode} onDeleteMatchday={deleteMatchdayRecord} />}
                 fantasy={cloud.canSeeFantasy ? (
                   <FantasyTab group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
                     fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
                     fantasyTradeOffers={cloud.fantasyTradeOffers} matchdays={cloud.matchdays}
-                    onCreateLeague={cloud.createFantasyLeague} onSaveSquad={cloud.saveFantasySquad}
+                    onCreateLeague={createFantasyGated} onSaveSquad={cloud.saveFantasySquad}
                     onCreateTradeOffer={cloud.createTradeOffer} onCancelTradeOffer={cloud.cancelTradeOffer}
                     onRespondTradeOffer={cloud.respondTradeOffer} onSyncFantasy={cloud.syncFantasyScores} />
                 ) : demoFantasyProps ? (
@@ -2259,7 +2320,11 @@ export default function PitchApp() {
                 settings={
                   <GroupSettings game={game} onEditGroup={() => setEditingGroup(true)}
                     inviteUrl={inviteUrl} inviteUrlAvulso={inviteUrlAvulso}
-                    bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember} />
+                    bannedMembers={cloudMode ? cloud.bannedMembers : []} onUnbanMember={unbanMember}
+                    planCard={canChangePlan ? (
+                      <PlanCard ent={plans.ent} onSeePlans={seePlans} onGate={paywall.open}
+                        demoPlan={plans.demoPlan} onDemoPlan={plans.setDemoPlan} />
+                    ) : null} />
                 }
               />
             )}
@@ -2319,6 +2384,7 @@ export default function PitchApp() {
             ) : null}
             challengesBadge={rivals.pendingActions}
             leaguesDemo={localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin })}
+            gateCompare={(fn) => gate("advanced_stats", fn)}
           />
         )}
         {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (

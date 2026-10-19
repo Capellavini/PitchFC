@@ -920,6 +920,18 @@ export function useCloud() {
     return r.error ? { error: r.error.message, leads: [] } : { leads: r.data ?? [] };
   };
 
+  /** Owner-only: every group's stored + effective plan (migration
+   *  20261019092955, admin_group_plans()). */
+  const fetchGroupPlans = async () => {
+    const r = await supabase.rpc("admin_group_plans");
+    return r.error ? { error: r.error.message, rows: [] } : { rows: r.data ?? [] };
+  };
+  /** Owner-only: set/extend a group's plan (source 'manual'). endsAt null = forever. */
+  const setGroupPlan = async (groupId, plan, endsAt = null, note = null) => {
+    const r = await supabase.rpc("admin_set_group_plan", { p_group_id: groupId, p_plan: plan, p_ends_at: endsAt, p_note: note });
+    return r.error ? { error: r.error.message } : { entitlement: r.data };
+  };
+
   /** Owner-only: snapshot of every group for the admin overview. RLS is
    *  permissive (open read v1), so the anon key can read across groups. */
   const fetchAdminData = async () => {
@@ -1509,7 +1521,7 @@ export function useCloud() {
     createPlayerProfile, createGroupAsOrganizer, becomeOrganizer, joinGroupByToken, resolveInviteToken, joinGroupWithProfile, switchActiveGroup, removeMember, banMember, unbanMember,
     setMyStatus, setPaid, setAttendanceLock, updatePlayer, updateGroupRow, scheduleNextGame, cancelGame, setSpots, updateGameTeams, confirmGameTeams, updateGameLiveMatchday,
     fetchAdminData, adminUpdateGroup, adminDeleteGroup, adminUpdatePlayer, adminDeletePlayer,
-    fetchLeads, adminDeleteLead, fetchCardGenerations, logCardGenerated, fetchRoadmapContent, saveRoadmapContent,
+    fetchLeads, adminDeleteLead, fetchGroupPlans, setGroupPlan, fetchCardGenerations, logCardGenerated, fetchRoadmapContent, saveRoadmapContent,
     fetchFantasyAdminData,
     createEvent, deleteEvent, addBooking, removeBooking,
     commitMatchday, syncFantasyScores, deleteMatchday, castMvpVote, clearMvpVote, closeMvp, submitRating,

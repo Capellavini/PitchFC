@@ -15,8 +15,9 @@ import ListRow from "./ListRow";
  * "Editar grupo" (opens the existing full-screen group editor), the two
  * invite links (mensalista gets confirmation priority, avulso starts on
  * the waitlist — see joinGroupByToken) and the banned-players list.
+ * `planCard` (PlanCard) sits on top: the group's plan for organizers.
  */
-export default function GroupSettings({ game, onEditGroup, inviteUrl, inviteUrlAvulso, bannedMembers = [], onUnbanMember }) {
+export default function GroupSettings({ game, onEditGroup, inviteUrl, inviteUrlAvulso, bannedMembers = [], onUnbanMember, planCard = null }) {
   const [copied, setCopied] = useState(null); // 'mensalista' | 'avulso'
   const copy = async (url, which) => {
     try { await navigator.clipboard.writeText(url); setCopied(which); setTimeout(() => setCopied(null), 2000); } catch { /* ignore */ }
@@ -31,6 +32,8 @@ export default function GroupSettings({ game, onEditGroup, inviteUrl, inviteUrlA
 
   return (
     <div>
+      {/* Group plan (PlanCard) — organizers only, passed by PitchApp */}
+      {planCard}
       <SectionLabel>{tCtx("group", "Grupo")}</SectionLabel>
       <div style={{ ...cardStyle, padding: "0 16px 16px" }}>
         <div style={{ marginBottom: S.sm }}>

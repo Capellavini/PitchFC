@@ -34,6 +34,9 @@ const iconAction = (tone) => ({
 export default function GameDetail({
   group, game, gameId, onBack, togglePaid, payMine, canManageTeams, canManageGame, onSetPlayerStatus, inviteUrl,
   material = [], onToggleMaterial, onAssignMaterial, onAddMaterial,
+  // Soft paywall (Club): wraps the "Cobrar pelo WhatsApp" handler. Marking
+  // "Pago ✓" by hand is Free and never wrapped.
+  gatePaymentReminder = (fn) => fn,
 }) {
   const confirmed = group.filter((p) => p.status === "confirmed");
   const pending   = group.filter((p) => p.status !== "confirmed" && p.status !== "declined");
@@ -135,7 +138,7 @@ export default function GameDetail({
                     <BtnGhost compact tone="accent" onClick={() => togglePaid(p.id)}>{t("Pago ✓")}</BtnGhost>
                   </>} />
               ))}
-              <button onClick={() => openWhatsApp(chargeMessage(debtors, price, game, me?.phone))}
+              <button onClick={gatePaymentReminder(() => openWhatsApp(chargeMessage(debtors, price, game, me?.phone)))}
                 style={{ width: "100%", minHeight: TOUCH.button, marginTop: S.md, background: C.whatsapp, color: C.bg, border: "none", borderRadius: R.control, fontSize: T.body, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: S.sm }}>
                 <MessageCircle size={16} /> {t("Cobrar pelo WhatsApp")}
               </button>

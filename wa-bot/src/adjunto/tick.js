@@ -194,7 +194,10 @@ export function makeTicker(env) {
     for (const link of links) {
       try {
         if (env.takeover?.isActive([link.wa_jid, link.wa_lid])) continue;
-        for (const g of await env.store.managedGroups(link.player_id)) await tickPair(link, g, ctxCache);
+        for (const g of await env.store.managedGroups(link.player_id)) {
+          if (env.plans && !(await env.plans.hasAdjunto(g.id))) continue; // no Club + AI → no proactive DMs
+          await tickPair(link, g, ctxCache);
+        }
       } catch (e) { env.log(`adjunto tick error (link ${link.id.slice(0, 8)}):`, e.message); }
     }
   };

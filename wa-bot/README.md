@@ -88,6 +88,24 @@ warning. Use a **dedicated chip**, never a personal number. Keep the
 - `src/index.js` Baileys transport, poll loop, guards, @mention
 - `src/ask.js` Haiku answer over a fixed data block
 - `src/db.js` Supabase reads and the claim/dedupe log
+- `src/plans.js` group plan per group (`group_plans`, 5-min cache, fails open)
+
+## Plans (2026-10-19)
+
+The bot reads each group's plan (`group_plans`, migration
+`20261019092955_plan_entitlements.sql`; rules in `src/core/entitlements.js`,
+shared with the app):
+
+- **Free**: only `game_open` ("Partida aberta") is posted. Every other
+  automated kind (reminder, matchday, milestone, spot_opened, promoted,
+  postgame, match_awards, cancelled) is skipped — state still advances,
+  so nothing is replayed after an upgrade.
+- **Club**: everything, as before.
+- **Treinador Adjunto**: only for groups with **Club + AI**. Otherwise the
+  organizer gets one polite DM a day pointing to `/pricing`, then silence;
+  no proactive DMs for that group.
+- If the plan can't be read (migration not applied yet, network) the group
+  is treated as Club + AI — exactly the pre-plans behaviour.
 
 ## Not built yet
 

@@ -137,7 +137,7 @@ export function makeStore(world, { orgRows = null, captainRows = null } = {}) {
   return store;
 }
 
-export function makeEnv(world, store, { autosend = true, anthropic = null, lid = {}, cfg = {} } = {}) {
+export function makeEnv(world, store, { autosend = true, anthropic = null, lid = {}, cfg = {}, plans = undefined } = {}) {
   const sent = [], posts = [], logs = [];
   const env = {
     store, loadGroupCtx: async () => world.ctx(),
@@ -148,7 +148,7 @@ export function makeEnv(world, store, { autosend = true, anthropic = null, lid =
     postGroup: async (group, gameId, ev, ctx) => { posts.push({ group: group.id, gameId, ev, ctx }); return "sent"; },
     claim: async () => "claim-id", markSent: async () => {}, unclaim: async () => {}, suppressAutoReminder: async () => { posts.push({ ev: { kind: "suppress_reminder" } }); },
     takeover: new Takeover({ now: () => NOW.getTime() }), anthropic,
-    lidMapping: () => ({ getPNForLID: async (l) => lid[l] ?? null }), logMessage: async () => {},
+    lidMapping: () => ({ getPNForLID: async (l) => lid[l] ?? null }), logMessage: async () => {}, plans,
   };
   return { env, sent, posts, logs };
 }

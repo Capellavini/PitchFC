@@ -6,6 +6,8 @@ import { trackEvent } from "../lib/analytics";
 import { isGroupPlan, marketFromLang, manageSubscription, MARKET_IDS, PRICING } from "../lib/plans";
 import { cachedMarket, detectMarket } from "../lib/market";
 import { PAGE, FINAL, UPGRADE } from "../lib/pricingCopy";
+import { upgradeInterestPayload } from "../lib/entitlements";
+import { supabase } from "../lib/supabase";
 import BtnPrimary from "./BtnPrimary";
 import PricingGroupPlans from "./PricingGroupPlans";
 import PricingPlayerPlans from "./PricingPlayerPlans";
@@ -154,6 +156,15 @@ export default function PricingPage({ user = null, managedGroups = [], currentPl
 
   const onManage = async () => { await manageSubscription(); setNotice(true); };
 
+  // "Avisa-me" after Continue (billing is off): a lead, source upgrade_interest.
+  const onInterest = loggedIn && supabase ? async ({ planId, groupId }) => {
+    trackEvent("upgrade_interest", { plan: planId, market, source });
+    await supabase.rpc("submit_lead", { payload: upgradeInterestPayload({
+      planId, groupId, groupName: managedGroups.find((g) => g.id === groupId)?.name,
+      name: user.user_metadata?.name, email: user.email,
+    }) });
+  } : undefined;
+
   const upgradeLabel = loggedIn && isOrganizer;
   const annual = billing === "annual";
 
@@ -232,7 +243,7 @@ export default function PricingPage({ user = null, managedGroups = [], currentPl
           : <PricingPlayerPlans billing={billing} market={market} current={current.player_plus} onPlan={onPlan} onManage={onManage} />}
 
         {marketReady && audience === "groups" && (
-          <p style={{ textAlign: "center", fontSize: T.meta, color: C.text2, margin: `${S.lg}px auto 0`, maxWidth: 560, lineHeight: 1.5 }}>{t(PAGE.groupLimitNote)}</p>
+          <p style={{ textAlign: "center", fontSize: T.body, fontWeight: 800, color: C.accent, margin: `${S.lg}px auto 0`, maxWidth: 560, lineHeight: 1.5 }}>{t(PAGE.trialNote)}</p>
         )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 64, marginTop: 72 }}>
@@ -259,7 +270,7 @@ export default function PricingPage({ user = null, managedGroups = [], currentPl
       )}
 
       {modal && (
-        <UpgradeModal planId={modal.planId} billing={billing} size={size} market={market} groups={managedGroups} onClose={() => setModal(null)} />
+        <UpgradeModal planId={modal.planId} billing={billing} size={size} market={market} groups={managedGroups} onInterest={onInterest} onClose={() => setModal(null)} />
       )}
     </div>
   );
