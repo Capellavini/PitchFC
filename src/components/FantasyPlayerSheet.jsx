@@ -1,25 +1,23 @@
-import { Crown, ArmchairIcon, X } from "lucide-react";
+import { Crown, ArmchairIcon, X, ArrowUp, Shield } from "lucide-react";
 import { C, R, S, T, TOUCH, displayFont } from "../theme";
 import { playerColor, computeOverall } from "../lib/helpers";
 import { t } from "../lib/i18n";
+import "../lib/fantasyCopy";
 import Avatar from "./Avatar";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 
 /**
  * FantasyPlayerSheet — bottom sheet opened by tapping a player on the
- * Pitch Manager pitch or bench. Replaces the two 28px crown/bench icon
- * buttons that used to sit under every player: one primary action
- * (captain, or "Tornar titular" for a benched player) + one ghost action.
+ * Pitch Manager pitch or bench: captain / vice-captain for starters,
+ * "Tornar titular" / "Subir no banco" for bench players.
  *
  * Props:
  *  - p, group, pts   the player, roster, last round points (or null).
- *  - captain, bench  current state of this player in my squad.
- *  - onCaptain()     make captain (starters only).
- *  - onToggleBench() bench ↔ starter.
- *  - onClose().
+ *  - captain, vice, bench, benchIndex   current state in my squad.
+ *  - onCaptain(), onVice(), onToggleBench(), onMoveUp(), onClose().
  */
-export default function FantasyPlayerSheet({ p, group, pts = null, captain, bench, onCaptain, onToggleBench, onClose }) {
+export default function FantasyPlayerSheet({ p, group, pts = null, captain, vice, bench, benchIndex = -1, onCaptain, onVice, onToggleBench, onMoveUp, onClose }) {
   const run = (fn) => { fn(); onClose(); };
   return (
     <div role="dialog" aria-modal="true" aria-label={p.nick} onClick={onClose}
@@ -33,10 +31,10 @@ export default function FantasyPlayerSheet({ p, group, pts = null, captain, benc
             <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</div>
             <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>
               {t(p.position)} · OVR {computeOverall(p.position, p.attrs)}
-              {captain ? ` · ${t("Capitão")}` : bench ? ` · ${t("Suplente")}` : ""}
+              {captain ? ` · ${t("Capitão")}` : vice ? ` · ${t("Vice-capitão")}` : bench ? ` · ${t("Suplente")} ${benchIndex + 1}` : ""}
             </div>
           </div>
-          {pts !== null && !bench && (
+          {pts !== null && (
             <div style={{ textAlign: "right" }}>
               <div style={{ ...displayFont, fontSize: T.h, color: C.text1 }}>{pts > 0 ? "+" : ""}{Math.round(pts)}</div>
               <div style={{ fontSize: T.min, fontWeight: 800, color: C.text2 }}>PTS</div>
@@ -50,23 +48,33 @@ export default function FantasyPlayerSheet({ p, group, pts = null, captain, benc
 
         <div style={{ display: "flex", flexDirection: "column", gap: S.sm }}>
           {bench ? (
-            <BtnPrimary block onClick={() => run(onToggleBench)}>
-              <ArmchairIcon size={16} /> {t("Tornar titular")}
-            </BtnPrimary>
+            <>
+              <BtnPrimary block onClick={() => run(onToggleBench)}>
+                <ArmchairIcon size={16} /> {t("Tornar titular")}
+              </BtnPrimary>
+              {benchIndex > 0 && (
+                <BtnGhost block onClick={() => run(onMoveUp)}>
+                  <ArrowUp size={16} /> {t("Subir no banco")}
+                </BtnGhost>
+              )}
+            </>
           ) : (
             <>
               <BtnPrimary block disabled={captain} onClick={() => run(onCaptain)}>
                 <Crown size={16} /> {captain ? t("Já é o capitão") : t("Tornar capitão")}
               </BtnPrimary>
+              <BtnGhost block disabled={vice || captain} onClick={() => run(onVice)}>
+                <Shield size={16} /> {vice ? t("Já é o vice-capitão") : t("Tornar vice-capitão")}
+              </BtnGhost>
               <BtnGhost block onClick={() => run(onToggleBench)}>
                 <ArmchairIcon size={16} /> {t("Enviar para o banco")}
               </BtnGhost>
             </>
           )}
         </div>
-        {!bench && (
-          <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginTop: S.md }}>{t("O capitão pontua a dobrar.")}</div>
-        )}
+        <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginTop: S.md, lineHeight: 1.4 }}>
+          {bench ? t("Entra se um titular não jogar — o 1.º do banco tem prioridade.") : t("O capitão pontua a dobrar. Se ele não jogar, o vice-capitão herda o ×2.")}
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 -- ─────────────────────────────────────────────────────────
 -- PITCH Fantasy v2 (Phase A "Fundação") — check for
--- 20261019141514_fantasy_v2_foundation.sql.
+-- 20261019150053_fantasy_v2_foundation.sql.
 -- Same contract as the other supabase/tests/*_check.sql: transaction +
 -- ROLLBACK, one row per check, every row ok = true.
 --

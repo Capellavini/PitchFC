@@ -1,40 +1,32 @@
 import { C, S, cardStyle } from "../theme";
-import { computeRoundPoints } from "../lib/fantasy";
 import FantasyToken from "./FantasyToken";
 
 const ROW_ORDER = ["Avançado", "Médio", "Defesa", "Guarda-redes"]; // top → bottom, like FPL
 
-/** The squad laid out on a drawn pitch (green + white lines, no photo —
- *  closer to fantasy.premierleague.com than a real field photo), rows
- *  grouped by each player's actual position. Reserves sit apart in
- *  FantasyBench below and never score. Tapping a player calls
- *  onSelect(player) — FantasyTab opens FantasyPlayerSheet (captain /
- *  bench). readOnly (another participant's squad, or a locked round)
- *  renders no tap actions. lastRoundLines, if given, overlays each
- *  player's points from that round. */
-export default function FantasyPitch({ group, playerIds, captainId, reserveIds, weights, lastRoundLines, readOnly, onSelect }) {
+/** The starting XI laid out on a drawn pitch, rows grouped by each
+ *  player's position. The bench sits apart in FantasyBench below.
+ *  Tapping a player calls onSelect(player) — FantasyTab opens
+ *  FantasyPlayerSheet (captain / vice / bench). readOnly renders no tap
+ *  actions. pointsById, if given, overlays each player's raw points from
+ *  the last scored round (fantasy_round_players). */
+export default function FantasyPitch({ group, playerIds, captainId, viceId, reserveIds, pointsById, readOnly, onSelect }) {
   const byId = (uuid) => group.find((p) => p.uuid === uuid);
   const reserveSet = new Set(reserveIds || []);
-  const starters = playerIds.filter((id) => !reserveSet.has(id));
+  const starters = (playerIds || []).filter((id) => !reserveSet.has(id));
 
   const rows = ROW_ORDER.map((pos) => ({
     pos,
     players: starters.map(byId).filter((p) => p && p.position === pos),
   })).filter((r) => r.players.length > 0);
-  // Anyone whose position isn't one of the 4 known ones (shouldn't
-  // happen, but keeps the layout from silently dropping a pick).
   const unmatched = starters.map(byId).filter((p) => p && !ROW_ORDER.includes(p.position));
   if (unmatched.length) rows.push({ pos: null, players: unmatched });
 
-  const pointsFor = (uuid) => (lastRoundLines ? computeRoundPoints([uuid], captainId, lastRoundLines, weights, reserveIds) : null);
   const mark = `1px solid ${C.pitchMark}`;
-
   return (
     <div style={{
       ...cardStyle, position: "relative", padding: 0, overflow: "hidden", marginBottom: S.md,
       background: `linear-gradient(180deg, ${C.pitchTop} 0%, ${C.pitchBottom} 100%)`,
     }}>
-      {/* pitch line markings */}
       <div style={{ position: "absolute", inset: 0, backgroundImage: `repeating-linear-gradient(0deg, ${C.pitchStripe} 0px, ${C.pitchStripe} 36px, transparent 36px, transparent 72px)` }} />
       <div style={{ position: "absolute", top: "50%", left: 10, right: 10, height: 1, background: C.pitchMark }} />
       <div style={{ position: "absolute", top: "50%", left: "50%", width: 76, height: 76, marginTop: -38, marginLeft: -38, border: mark, borderRadius: "50%" }} />
@@ -43,12 +35,12 @@ export default function FantasyPitch({ group, playerIds, captainId, reserveIds, 
 
       <div style={{ position: "relative", padding: `${S.xl}px ${S.sm}px ${S.md}px` }}>
         {rows.map(({ pos, players }) => (
-          <div key={pos ?? "outros"} style={{ display: "flex", justifyContent: "space-evenly", marginBottom: S.lg }}>
+          <div key={pos ?? "outros"} style={{ display: "flex", justifyContent: "space-evenly", flexWrap: "wrap", rowGap: S.md, marginBottom: S.lg }}>
             {players.map((p) => {
-              const line = lastRoundLines?.find((l) => l.key === p.uuid);
+              const pts = pointsById ? (pointsById[p.uuid] ?? null) : null;
               return (
-                <FantasyToken key={p.uuid} p={p} group={group} captain={p.uuid === captainId}
-                  pts={pointsFor(p.uuid)} highlight={Boolean(line?.goals || line?.assists)}
+                <FantasyToken key={p.uuid} p={p} group={group} captain={p.uuid === captainId} vice={p.uuid === viceId}
+                  pts={pts} highlight={pts != null && pts >= 10}
                   onClick={readOnly || !onSelect ? null : () => onSelect(p)} />
               );
             })}

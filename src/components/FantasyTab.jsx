@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
-import { Pencil, X, Search, Check, ArrowRightLeft, Cross, Plus, Lock, ChevronDown, Users } from "lucide-react";
+import { Pencil, X, Search, Check, ArrowRightLeft, Cross, Plus, Users, ArrowUp, ArrowDown, RefreshCw } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../theme";
-import { playerColor, computeOverall } from "../lib/helpers";
-import { fantasyPrice, computeRoundPoints, DEFAULT_FANTASY_WEIGHTS, OWNERSHIP_CAP, fmtM, squadCostBasis, nextPricesPaid } from "../lib/fantasy";
+import { playerColor, computeOverall, POSITION_ABBR } from "../lib/helpers";
+import { fmtM, squadCostBasis, nextPricesPaid } from "../lib/fantasy";
+import { FANTASY_V2, ownershipCap, transferState, seasonStandings } from "../lib/core/fantasyRules";
 import { t } from "../lib/i18n";
+import "../lib/fantasyCopy";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
@@ -15,6 +17,10 @@ import FantasyPitch from "./FantasyPitch";
 import FantasyBench from "./FantasyBench";
 import FantasyPlayerSheet from "./FantasyPlayerSheet";
 import FantasyStatsCard from "./FantasyStatsCard";
+import FantasyCreateLeague from "./FantasyCreateLeague";
+import FantasyLockBar from "./FantasyLockBar";
+import FantasyRoundBreakdown from "./FantasyRoundBreakdown";
+import FantasyTables from "./FantasyTables";
 import FutCard from "./FutCard";
 
 const inputStyle = {
@@ -23,196 +29,111 @@ const inputStyle = {
 };
 
 const POSITION_ORDER = ["Guarda-redes", "Defesa", "Médio", "Avançado"];
+// RSVP for the next game (attendances), read at render time so the
+// light/dark theme swap of C is picked up.
+const rsvpOf = (p) => (p.status === "confirmed" ? { emoji: "✅", label: "confirmado", color: C.green }
+  : p.status === "declined" ? { emoji: "❌", label: "não vai", color: C.red }
+    : { emoji: "⏳", label: "pendente", color: C.orange });
 
-// A league runs from starts_at for duration_months (min 1) — after that
-// it's read-only (final leaderboard) until the organizer starts the next one.
-const leagueEndsAt = (league) => {
-  const d = new Date(league.starts_at || league.created_at);
-  d.setMonth(d.getMonth() + Math.max(1, league.duration_months || 1));
-  return d;
-};
-
-/** Admin-only beta: Pitch Manager — a Cartola/FPL-style fantasy game on
- *  top of the group's real matchdays. Players are owned exclusively —
- *  at most OWNERSHIP_CAP participants can hold the same real player;
- *  past that, the only way in is proposing a trade to a current owner.
- *  Each league runs for a fixed duration (organizer-set, min 1 month);
- *  squads are editable until 8h before the next kickoff. */
-export default function FantasyTab({ group, me, isOrganizer, kickoffAt, fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, matchdays, onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
-  if (!fantasyLeague) {
-    return <CreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} />;
-  }
-  const ended = Date.now() > leagueEndsAt(fantasyLeague).getTime();
+/** Pitch Manager v2 (Clássico): a Cartola/FPL-style game on the group's
+ *  real matchdays. The DB is the referee — the round locks at kickoff
+ *  (lineup snapshot), the server scores it (fantasy_v2_* rules, mirrored
+ *  in src/lib/core/fantasyRules.js) and squads are only written through
+ *  save_fantasy_squad. Taça do Mês + Campeonato renew by themselves. */
+export default function FantasyTab({
+  group, me, isOrganizer, kickoffAt, fantasyLeague, fantasySquads = [], fantasyScores = [], fantasyTradeOffers = [],
+  fantasyRounds = [], fantasyRoundPlayers = [], fantasySeasons = [], fantasyPrices = {},
+  onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy,
+}) {
+  if (!fantasyLeague) return <FantasyCreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} />;
   return (
-    <>
-      <FantasyLeagueView
-        group={group} me={me} isOrganizer={isOrganizer} league={fantasyLeague} ended={ended} kickoffAt={kickoffAt}
-        squads={fantasySquads} scores={fantasyScores} offers={fantasyTradeOffers} matchdays={matchdays}
-        onSaveSquad={onSaveSquad} onCreateTradeOffer={onCreateTradeOffer}
-        onCancelTradeOffer={onCancelTradeOffer} onRespondTradeOffer={onRespondTradeOffer}
-        onSyncFantasy={onSyncFantasy}
-      />
-      {ended && (
-        <CreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} nextSeason />
-      )}
-    </>
+    <FantasyLeagueView
+      group={group} me={me} isOrganizer={isOrganizer} league={fantasyLeague} kickoffAt={kickoffAt}
+      squads={fantasySquads} scores={fantasyScores} offers={fantasyTradeOffers}
+      rounds={fantasyRounds} roundPlayers={fantasyRoundPlayers} seasons={fantasySeasons} priceMap={fantasyPrices}
+      onSaveSquad={onSaveSquad} onCreateTradeOffer={onCreateTradeOffer}
+      onCancelTradeOffer={onCancelTradeOffer} onRespondTradeOffer={onRespondTradeOffer} onSyncFantasy={onSyncFantasy}
+    />
   );
 }
 
-function CreateLeague({ isOrganizer, onCreateLeague, nextSeason }) {
-  const [form, setForm] = useState({ name: "Pitch Manager", budget: 120, squadSize: 6, durationMonths: 1 });
-  const [creating, setCreating] = useState(false);
-  const startPrice = DEFAULT_FANTASY_WEIGHTS.priceBase;
-  const affordable = Math.floor((Number(form.budget) || 0) / startPrice);
-
-  if (!isOrganizer) {
-    return nextSeason ? null : (
-      <div style={{ padding: 16 }}>
-        <div style={cardStyle}>
-          <div style={{ fontSize: 13, color: C.text2 }}>{t("Ainda não há Pitch Manager neste grupo.")}</div>
-        </div>
-      </div>
-    );
-  }
-
-  const submit = async () => {
-    setCreating(true);
-    await onCreateLeague({
-      name: form.name.trim() || "Pitch Manager",
-      budget: Number(form.budget) || 120,
-      squadSize: Number(form.squadSize) || 5,
-      durationMonths: Math.max(1, Number(form.durationMonths) || 1),
-    });
-    setCreating(false);
-  };
-
-  return (
-    <div style={{ padding: 16 }}>
-      <SectionLabel>{nextSeason ? t("PRÓXIMA TEMPORADA") : "PITCH MANAGER"}</SectionLabel>
-      <div style={cardStyle}>
-        <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{t("Criar Pitch Manager")}</div>
-        <div style={{ fontSize: 12, color: C.text2, marginBottom: 16 }}>
-          {t("Escala os teus colegas a cada jornada e pontua com o desempenho real deles em campo.")}
-        </div>
-        <label style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>{t("Nome da liga")}</label>
-        <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} style={inputStyle} />
-        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>{t("Orçamento")}</label>
-            <input type="number" value={form.budget} onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))} style={inputStyle} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>{t("Jogadores por escalação")}</label>
-            <input type="number" value={form.squadSize} onChange={(e) => setForm((f) => ({ ...f, squadSize: e.target.value }))} style={inputStyle} />
-          </div>
-        </div>
-        <label style={{ fontSize: 11, color: C.text2, fontWeight: 700, marginTop: 10, display: "block" }}>{t("Duração (meses, mín. 1)")}</label>
-        <input type="number" min={1} value={form.durationMonths} onChange={(e) => setForm((f) => ({ ...f, durationMonths: e.target.value }))} style={inputStyle} />
-        <div style={{ fontSize: T.meta, color: C.text2, marginTop: 10 }}>
-          {t("Todos começam a")} {fmtM(startPrice)}. {t("Com este orçamento dá para")} {affordable} {t("jogadores de início.")}
-        </div>
-        <BtnPrimary onClick={submit} disabled={creating} style={{ width: "100%", marginTop: 16, opacity: creating ? 0.6 : 1 }}>
-          {creating ? t("Um momento…") : t("Criar Pitch Manager")}
-        </BtnPrimary>
-      </div>
-    </div>
-  );
-}
-
-function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, squads, scores, offers, matchdays, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
-  const weights = league.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
+function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, scores, offers, rounds, roundPlayers, seasons, priceMap, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
+  const base = Number(league.scoring_weights?.priceBase) || FANTASY_V2.priceBase;
   const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState(null); // number synced, or null before first click
+  const [syncResult, setSyncResult] = useState(null);
   const runSync = async () => {
     setSyncing(true);
     const res = await onSyncFantasy();
     setSyncing(false);
-    setSyncResult(res?.synced ?? 0);
+    setSyncResult(res?.error ? res.error : (res?.synced ?? 0));
     setTimeout(() => setSyncResult(null), 4000);
   };
   const mySquad = squads.find((s) => s.participant_id === me?.uuid);
-  // squad_size is the minimum, not a hard cap — managers can buy extra
-  // depth once the bank allows it; anyone beyond the minimum just needs
-  // to be benched (reserveIds) since only non-reserves score.
   const complete = (mySquad?.player_ids?.length || 0) >= league.squad_size;
   const [selected, setSelected] = useState(mySquad?.player_ids || []);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
-  // Sub-views: A minha equipa (pitch) · Liga (table) · Mercado (squad
-  // editor + trades). An incomplete squad opens straight on Mercado.
   const [view, setView] = useState(complete ? "equipa" : "mercado");
-  const [sheetId, setSheetId] = useState(null); // player whose captain/bench sheet is open
+  const [sheetId, setSheetId] = useState(null);
   const [viewingId, setViewingId] = useState(null);
-  const [tradeTarget, setTradeTarget] = useState(null); // { playerId, ownerSquad }
-  const [sortMode, setSortMode] = useState("pos"); // 'pos' | 'points' — "todos os jogadores por pontuação"
-  const [viewingPlayerId, setViewingPlayerId] = useState(null); // player card modal in the market list
+  const [tradeTarget, setTradeTarget] = useState(null);
+  const [sortMode, setSortMode] = useState("pos");
+  const [viewingPlayerId, setViewingPlayerId] = useState(null);
 
-  const lockAt = kickoffAt ? new Date(new Date(kickoffAt).getTime() - 8 * 3600 * 1000) : null;
-  const locked = ended || (lockAt && Date.now() > lockAt.getTime());
+  const now = Date.now();
+  const priceOf = (id) => Number(priceMap?.[id]?.price ?? base);
+  const trendOf = (id) => {
+    const p = priceMap?.[id];
+    if (!p || p.prev == null) return 0;
+    return Math.sign(Number(p.price) - Number(p.prev));
+  };
+  const scoredRounds = useMemo(
+    () => rounds.filter((r) => r.status === "scored").sort((a, b) => new Date(b.kickoff_at) - new Date(a.kickoff_at)),
+    [rounds]
+  );
+  const lastRound = scoredRounds[0] || null;
+  const inProgress = rounds.some((r) => r.status === "locked" && !r.matchday_id && new Date(r.kickoff_at).getTime() <= now);
+  const pointsById = useMemo(() => {
+    if (!lastRound) return null;
+    return Object.fromEntries(roundPlayers.filter((rp) => rp.round_id === lastRound.id).map((rp) => [rp.player_id, rp.points]));
+  }, [roundPlayers, lastRound]);
 
-  // Prices reset to the base price when a league starts and only move
-  // with performance in rounds played *since* — not lifetime season stats.
-  const roundsSinceStart = useMemo(
-    () => matchdays.filter((md) => new Date(md.created_at) >= new Date(league.starts_at || league.created_at)),
-    [matchdays, league.starts_at, league.created_at]
-  );
-  // The pitch view's live "+N" badges must only reflect a round played
-  // since THIS league started — matchdays[0] alone ignores league.starts_at
-  // and would show points from a game played before the league existed
-  // (e.g. a fresh league right after a matchday, before any round locks).
-  const lastRoundLines = roundsSinceStart[0]?.summary?.lines || null;
-  const prices = useMemo(
-    () => Object.fromEntries(group.map((p) => [p.uuid, fantasyPrice(p.uuid, roundsSinceStart, weights)])),
-    [group, roundsSinceStart, weights]
-  );
-  // Raw fantasy points each real player has produced across rounds played
-  // since the league started (no captain bonus — this is the player's own
-  // output, not any one participant's squad), so anyone can compare who's
-  // worth buying/trading for regardless of who currently owns them.
-  const totalPoints = useMemo(
-    () => Object.fromEntries(group.map((p) => [
-      p.uuid, roundsSinceStart.reduce((sum, md) => sum + computeRoundPoints([p.uuid], null, md.summary?.lines, weights), 0),
-    ])),
-    [group, roundsSinceStart, weights]
-  );
-  // Ownership: how many participants currently hold each real player.
+  const campeonato = seasons.find((s) => s.kind === "season" && s.status === "open");
+  const month = seasons.find((s) => s.kind === "month" && s.status === "open");
+  // Each real player's raw output this Campeonato (no captaincy).
+  const seasonPoints = useMemo(() => {
+    const inSeason = new Set(rounds.filter((r) => campeonato && new Date(r.kickoff_at) >= new Date(campeonato.starts_at)
+      && new Date(r.kickoff_at) < new Date(campeonato.ends_at) && r.status === "scored").map((r) => r.id));
+    const acc = {};
+    roundPlayers.forEach((rp) => { if (inSeason.has(rp.round_id)) acc[rp.player_id] = (acc[rp.player_id] || 0) + Number(rp.points || 0); });
+    return acc;
+  }, [rounds, roundPlayers, campeonato]);
+
   const ownership = useMemo(() => {
     const counts = {};
-    squads.forEach((s) => (s.player_ids || []).forEach((id) => { counts[id] = (counts[id] || 0) + 1; }));
+    squads.forEach((s) => { if (s.participant_id !== me?.uuid) (s.player_ids || []).forEach((id) => { counts[id] = (counts[id] || 0) + 1; }); });
     return counts;
-  }, [squads]);
+  }, [squads, me?.uuid]);
+  const participants = squads.filter((s) => s.participant_id !== me?.uuid && s.player_ids?.length).length + 1;
+  const cap = ownershipCap(participants);
   const ownersOf = (uuid) => squads.filter((s) => s.player_ids?.includes(uuid));
-  // A squad's real spending power isn't just league.budget — completed
-  // trades move cash in/out via budget_adjustment (see useCloud.js
-  // respondTradeOffer). Bank uses each player's actual cost basis
-  // (prices_paid), never their live market price — otherwise a squad
-  // that simply plays well would see its own bank drift negative with
-  // no purchase ever made (see fantasy_bank_fix migration).
-  const squadBank = (squad) => league.budget + (squad?.budget_adjustment || 0) - squadCostBasis(squad?.prices_paid);
-  const effectiveBudget = league.budget + (mySquad?.budget_adjustment || 0);
 
-  // Same rule as the bank itself: players you already own are charged
-  // what you actually paid, not today's live price — only genuinely new
-  // picks in `selected` cost today's price. Mirrors exactly what
-  // useCloud.js's saveFantasySquad will persist, so this preview can't
-  // drift from what happens on save.
-  const total = squadCostBasis(nextPricesPaid(mySquad?.prices_paid, selected, (id) => prices[id] || 0));
+  const squadBank = (squad) => league.budget + Number(squad?.budget_adjustment || 0) - squadCostBasis(squad?.prices_paid);
+  const effectiveBudget = league.budget + Number(mySquad?.budget_adjustment || 0);
+  const total = squadCostBasis(nextPricesPaid(mySquad?.prices_paid, selected, priceOf));
   const overBudget = total > effectiveBudget;
-  const canSave = !locked && selected.length >= league.squad_size && !overBudget;
+  const canSave = selected.length >= league.squad_size && !overBudget;
+  const editingIds = view === "mercado" ? selected : (mySquad?.player_ids || []);
+  const transfers = transferState(mySquad?.locked_player_ids ?? null, editingIds, mySquad?.free_transfers);
 
   const toggle = (id) => {
-    if (locked) return;
     setSaved(false);
     setSelected((sel) => {
       if (sel.includes(id)) return sel.filter((x) => x !== id);
-      // No hard cap on squad size anymore — extra buys beyond
-      // league.squad_size just sit on the bench (reserveIds), bounded
-      // only by budget and the per-player ownership cap.
-      if (group.find((p) => p.uuid === id)?.injured) return sel; // injured — can't be escalated
-      const count = ownership[id] || 0;
-      if (count >= OWNERSHIP_CAP) return sel; // full — trade instead
+      if (group.find((p) => p.uuid === id)?.injured) return sel;
+      if ((ownership[id] || 0) >= cap) return sel;
       return [...sel, id];
     });
   };
@@ -220,92 +141,96 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
   const save = async (extra = {}) => {
     setSaving(true);
     setError(null);
-    const res = await onSaveSquad(league.id, extra.playerIds ?? selected, extra.captainId ?? mySquad?.captain_id ?? null, extra.reserveIds ?? mySquad?.reserve_ids ?? []);
+    const prevIds = mySquad?.player_ids || [];
+    const ids = extra.playerIds ?? [...prevIds.filter((id) => selected.includes(id)), ...selected.filter((id) => !prevIds.includes(id))];
+    const bench = extra.reserveIds ?? (mySquad?.reserve_ids || []).filter((id) => ids.includes(id));
+    const res = await onSaveSquad(league.id, ids, extra.captainId !== undefined ? extra.captainId : (mySquad?.captain_id ?? null),
+      bench, extra.viceId !== undefined ? extra.viceId : (mySquad?.vice_captain_id ?? null));
     setSaving(false);
     if (!res?.error) {
       setSaved(true); setTimeout(() => setSaved(false), 2000);
-      if ((extra.playerIds ?? selected).length >= league.squad_size) setView("equipa");
+      if (ids.length >= league.squad_size && !extra.stay) setView("equipa");
     } else setError(res.error);
     return res;
   };
 
-  const toggleReserve = (id) => {
-    const current = mySquad?.reserve_ids || [];
-    save({ reserveIds: current.includes(id) ? current.filter((x) => x !== id) : [...current, id] });
+  const reserves = mySquad?.reserve_ids || [];
+  const starters = (mySquad?.player_ids || []).filter((id) => !reserves.includes(id));
+  const toBench = (id) => save({ playerIds: mySquad.player_ids, reserveIds: [...reserves, id], stay: true });
+  const toStarter = (id) => {
+    // Swap with the last starter who isn't captain/vice (keeps the XI size).
+    const demote = [...starters].reverse().find((s) => s !== mySquad.captain_id && s !== mySquad.vice_captain_id) || starters[starters.length - 1];
+    const next = starters.length >= league.squad_size && demote ? reserves.map((r) => (r === id ? demote : r)) : reserves.filter((r) => r !== id);
+    return save({ playerIds: mySquad.player_ids, reserveIds: next, stay: true });
+  };
+  const moveUp = (id) => {
+    const i = reserves.indexOf(id);
+    if (i <= 0) return null;
+    const next = reserves.slice();
+    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    return save({ playerIds: mySquad.player_ids, reserveIds: next, stay: true });
   };
 
   const filteredGroup = group.filter((p) => p.nick.toLowerCase().includes(search.trim().toLowerCase()));
   const byPosition = POSITION_ORDER.map((pos) => ({ pos, players: filteredGroup.filter((p) => p.position === pos) }));
-  const byPoints = filteredGroup.slice().sort((a, b) => (totalPoints[b.uuid] || 0) - (totalPoints[a.uuid] || 0));
+  const byPoints = filteredGroup.slice().sort((a, b) => (seasonPoints[b.uuid] || 0) - (seasonPoints[a.uuid] || 0));
 
-  // Leaderboard: sum every locked round's points per participant.
-  const leaderboard = useMemo(() => {
-    const byParticipant = {};
-    scores.forEach((s) => {
-      const row = byParticipant[s.participant_id] || { points: 0, rounds: 0 };
-      row.points += Number(s.points) || 0;
-      row.rounds += 1;
-      byParticipant[s.participant_id] = row;
-    });
-    return Object.entries(byParticipant)
-      .map(([pid, v]) => ({ pid, ...v, player: group.find((p) => p.uuid === pid) }))
-      .sort((a, b) => b.points - a.points);
-  }, [scores, group]);
-
-  const lastMatchdayId = matchdays[0]?.id;
-  const lastRoundScores = scores
-    .filter((s) => s.matchday_id === lastMatchdayId)
-    .sort((a, b) => b.points - a.points);
+  const campeonatoRows = campeonato ? seasonStandings(scores, rounds, campeonato) : [];
+  const myRow = campeonatoRows.find((r) => r.participant_id === me?.uuid) || null;
+  const lastRoundScores = lastRound ? scores.filter((s) => s.round_id === lastRound.id).sort((a, b) => b.points - a.points) : [];
+  const myLastRound = lastRoundScores.find((s) => s.participant_id === me?.uuid) || null;
 
   const myOffers = offers.filter((o) => o.from_participant_id === me?.uuid);
   const incomingOffers = offers.filter((o) => o.to_participant_id === me?.uuid);
-
   const inMarket = view === "mercado";
-  const myRankIdx = leaderboard.findIndex((r) => r.pid === me?.uuid);
-  const myRow = myRankIdx >= 0 ? leaderboard[myRankIdx] : null;
-  const myLastRound = lastRoundScores.find((s) => s.participant_id === me?.uuid);
   const sheetPlayer = sheetId && mySquad ? group.find((p) => p.uuid === sheetId) : null;
-  const sheetBench = sheetPlayer ? (mySquad.reserve_ids || []).includes(sheetPlayer.uuid) : false;
+  const sheetBenchIndex = sheetPlayer ? reserves.indexOf(sheetPlayer.uuid) : -1;
   const viewOptions = [
     { id: "equipa", label: "A minha equipa" },
     { id: "liga", label: "Liga" },
     { id: "mercado", label: "Mercado", badge: incomingOffers.length > 0 },
   ];
-  const lockedNotice = locked && (
-    <div style={{ fontSize: T.meta, color: C.text1, lineHeight: 1.4, padding: `${S.sm}px ${S.md}px`, marginBottom: S.md, borderLeft: `3px solid ${C.orange}`, background: C.orangeDim, borderRadius: R.control }}>
-      {ended ? t("Liga terminada — consulta a classificação final abaixo.") : t("Escalação trancada — falta menos de 8h para o jogo.")}
-    </div>
-  );
   const posLabel = { fontSize: T.meta, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text2, margin: `${S.md}px 0 ${S.xs}px` };
+  const lockBar = <FantasyLockBar kickoffAt={kickoffAt} inProgress={inProgress} transfers={transfers} now={now} />;
 
   const renderMarketRow = (p, i) => {
     const picked = selected.includes(p.uuid);
-    const count = ownership[p.uuid] || 0;
-    const atCap = count >= OWNERSHIP_CAP && !picked;
+    const count = (ownership[p.uuid] || 0) + (picked ? 1 : 0);
+    const atCap = (ownership[p.uuid] || 0) >= cap && !picked;
     const owners = ownersOf(p.uuid).filter((s) => s.participant_id !== me?.uuid);
+    const rsvp = rsvpOf(p);
+    const trend = trendOf(p.uuid);
     return (
       <div key={p.uuid} style={{
-        display: "flex", alignItems: "center", gap: S.md, minHeight: 56, padding: `${S.sm}px ${S.sm}px ${S.sm}px ${picked ? S.sm : 0}px`,
+        display: "flex", alignItems: "center", gap: S.sm, minHeight: 56, padding: `${S.sm}px ${S.xs}px ${S.sm}px ${picked ? S.sm : 0}px`,
         borderTop: i > 0 ? `1px solid ${C.border}` : "none", borderLeft: picked ? `3px solid ${C.green}` : "none",
-        background: picked ? C.surface : "transparent", opacity: locked ? 0.6 : 1,
+        background: picked ? C.surface : "transparent",
       }}>
         <button type="button" onClick={() => setViewingPlayerId(p.uuid)} aria-label={`${p.nick} — ${t("ver cartão")}`}
-          style={{ display: "flex", alignItems: "center", gap: S.md, flex: 1, minWidth: 0, minHeight: 44, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}>
-          <Avatar name={p.name} color={playerColor(group, p)} size={40} isMe={p.isMe} photo={p.photo} injured={p.injured} />
+          style={{ display: "flex", alignItems: "center", gap: S.sm, flex: 1, minWidth: 0, minHeight: 44, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}>
+          <Avatar name={p.name} color={playerColor(group, p)} size={36} isMe={p.isMe} photo={p.photo} injured={p.injured} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: T.body + 1, fontWeight: 700, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</div>
-            <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {sortMode === "points" ? `${t(p.position)} · ` : ""}OVR {computeOverall(p.position, p.attrs)} · {Math.round(totalPoints[p.uuid] || 0)} pts · <span title={t("Managers com este jogador")} style={{ color: atCap ? C.orange : C.text2, whiteSpace: "nowrap" }}><Users size={12} style={{ verticalAlign: -1 }} /> {count}/{OWNERSHIP_CAP}</span>
+            <div style={{ fontSize: T.min, color: C.text2, marginTop: 2, lineHeight: 1.4 }}>
+              <span style={{ whiteSpace: "nowrap" }}>
+                <span role="img" title={`${t("Próximo jogo")}: ${t(rsvp.label)}`} aria-label={`${t("Próximo jogo")}: ${t(rsvp.label)}`}>{rsvp.emoji}</span>
+                {" "}{t(POSITION_ABBR[p.position] || "MED")} · {Math.round(seasonPoints[p.uuid] || 0)} pts
+              </span>{" "}
+              <span title={t("Managers com este jogador")} style={{ color: atCap ? C.orange : C.text2, whiteSpace: "nowrap" }}>· <Users size={11} style={{ verticalAlign: -1 }} /> {count}/{cap}</span>
             </div>
           </div>
         </button>
-        <span style={{ ...displayFont, fontSize: T.body, color: C.text1, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{fmtM(prices[p.uuid])}</span>
-        {locked ? null : (p.injured && !picked) ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }} title={trend > 0 ? t("Preço a subir") : trend < 0 ? t("Preço a descer") : undefined}>
+          <span style={{ ...displayFont, fontSize: T.body - 1, color: C.text1, fontVariantNumeric: "tabular-nums" }}>{fmtM(priceOf(p.uuid))}</span>
+          {trend > 0 && <ArrowUp size={12} color={C.green} aria-label={t("Preço a subir")} />}
+          {trend < 0 && <ArrowDown size={12} color={C.red} aria-label={t("Preço a descer")} />}
+        </span>
+        {(p.injured && !picked) ? (
           <Chip variant="red" Icon={Cross}>{t("Lesionado")}</Chip>
         ) : atCap ? (
           <BtnGhost onClick={() => setTradeTarget({ playerId: p.uuid, owners })} disabled={!owners.length}
-            style={{ minHeight: TOUCH.min, padding: `0 ${S.md}px`, fontSize: T.meta, flexShrink: 0 }}>
-            <ArrowRightLeft size={14} /> {t("Oferta")}
+            aria-label={t("Oferta")} style={{ minHeight: TOUCH.min, minWidth: TOUCH.min, padding: `0 ${S.sm}px`, fontSize: T.meta, flexShrink: 0 }}>
+            <ArrowRightLeft size={14} />
           </BtnGhost>
         ) : (
           <button type="button" onClick={() => toggle(p.uuid)} aria-label={picked ? t("Remover") : t("Adicionar")} aria-pressed={picked}
@@ -317,55 +242,51 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
     );
   };
 
+  const rivalSquad = viewingId ? squads.find((s) => s.participant_id === viewingId) : null;
+  const rival = viewingId ? group.find((p) => p.uuid === viewingId) : null;
+
   return (
     <div style={{ padding: `${S.xs}px ${S.lg}px ${S.xl}px` }}>
-      <SectionLabel right={ended ? <Chip>{t("Terminada")}</Chip> : locked ? <Chip variant="orange" Icon={Lock}>{t("Trancada")}</Chip> : null}>
-        {league.name || "Pitch Manager"}
-      </SectionLabel>
+      <SectionLabel right={<Chip variant="lime">{t("Clássico")}</Chip>}>{league.name || "Pitch Manager"}</SectionLabel>
       <FantasyStatsCard
         count={inMarket ? selected.length : (mySquad?.player_ids?.length || 0)}
         squadSize={league.squad_size}
         bank={effectiveBudget - (inMarket ? total : squadCostBasis(mySquad?.prices_paid))}
         overBudget={inMarket && overBudget}
-        points={myRow ? myRow.points : null} lastRound={myLastRound ? myLastRound.points : null}
-        rank={myRow ? myRankIdx + 1 : null} participants={leaderboard.length} />
+        points={myRow ? myRow.points : null} lastRound={myLastRound ? Number(myLastRound.points) : null}
+        rank={myRow ? myRow.rank : null} participants={campeonatoRows.length} />
       <SegmentedControl options={viewOptions} value={view} onChange={setView} />
 
       {/* ── A minha equipa ── */}
       {view === "equipa" && (complete ? (
         <>
-          {lockedNotice}
-          {!mySquad.captain_id && !locked && (
+          {lockBar}
+          {!mySquad.captain_id && (
             <div style={{ ...cardStyle, borderLeft: `3px solid ${C.accent}`, marginBottom: S.md, padding: `${S.md}px ${S.lg}px`, fontSize: T.body - 1, color: C.text1, lineHeight: 1.4 }}>
               {t("Ainda sem capitão — toca num jogador no campo e escolhe «Tornar capitão».")}
             </div>
           )}
-          <FantasyPitch
-            group={group} playerIds={mySquad.player_ids} captainId={mySquad.captain_id} reserveIds={mySquad.reserve_ids}
-            weights={weights} lastRoundLines={lastRoundLines} readOnly={locked} onSelect={(p) => setSheetId(p.uuid)}
-          />
-          <FantasyBench
-            group={group} reserveIds={mySquad.reserve_ids} captainId={mySquad.captain_id} weights={weights} lastRoundLines={lastRoundLines}
-            readOnly={locked} onSelect={(p) => setSheetId(p.uuid)}
-          />
-          {!locked && (
-            <BtnGhost block onClick={() => setView("mercado")}>
-              <Pencil size={16} /> {t("Editar escalação")}
-            </BtnGhost>
-          )}
+          <FantasyPitch group={group} playerIds={mySquad.player_ids} captainId={mySquad.captain_id} viceId={mySquad.vice_captain_id}
+            reserveIds={reserves} pointsById={pointsById} onSelect={(p) => setSheetId(p.uuid)} />
+          <FantasyBench group={group} reserveIds={reserves} pointsById={pointsById} onSelect={(p) => setSheetId(p.uuid)} />
+          {error && <div style={{ fontSize: T.meta, color: C.red, margin: `-${S.md}px 0 ${S.md}px` }}>{error}</div>}
+          {myLastRound?.breakdown && <FantasyRoundBreakdown score={myLastRound} group={group} />}
+          <BtnGhost block onClick={() => { setSelected(mySquad.player_ids); setView("mercado"); }}>
+            <Pencil size={16} /> {t("Editar escalação")}
+          </BtnGhost>
         </>
       ) : (
         <div style={{ ...cardStyle }}>
-          {lockedNotice}
+          {lockBar}
           <div style={{ fontSize: T.cardTitle, fontWeight: 700, color: C.text1, marginBottom: S.xs }}>{t("Ainda sem equipa")}</div>
-          <div style={{ fontSize: T.body - 1, color: C.text2, lineHeight: 1.4, marginBottom: locked ? 0 : S.lg }}>
-            {t("Escolhe")} {league.squad_size} {t("colegas e define o capitão (pontos em dobro).")}
+          <div style={{ fontSize: T.body - 1, color: C.text2, lineHeight: 1.4, marginBottom: S.lg }}>
+            {t("Escolhe")} {league.squad_size} {t("titulares, capitão e vice-capitão. Extras ficam no banco e entram se alguém faltar.")}
           </div>
-          {!locked && <BtnPrimary block onClick={() => setView("mercado")}>{t("Montar equipa")}</BtnPrimary>}
+          <BtnPrimary block onClick={() => setView("mercado")}>{t("Montar equipa")}</BtnPrimary>
         </div>
       ))}
 
-      {/* ── Mercado (squad editor + trades) ── */}
+      {/* ── Mercado ── */}
       {inMarket && (
         <>
           {(myOffers.length > 0 || incomingOffers.length > 0) && (
@@ -375,9 +296,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
                   <div style={{ marginBottom: myOffers.length ? S.md : 0 }}>
                     <SectionLabel style={{ marginBottom: S.sm }}>{t("RECEBIDAS")}</SectionLabel>
                     <div style={{ display: "flex", flexDirection: "column", gap: S.sm }}>
-                      {incomingOffers.map((o) => (
-                        <OfferRow key={o.id} offer={o} group={group} mine={false} onRespond={onRespondTradeOffer} />
-                      ))}
+                      {incomingOffers.map((o) => <OfferRow key={o.id} offer={o} group={group} mine={false} onRespond={onRespondTradeOffer} />)}
                     </div>
                   </div>
                 )}
@@ -385,9 +304,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
                   <div>
                     <SectionLabel style={{ marginBottom: S.sm }}>{t("ENVIADAS")}</SectionLabel>
                     <div style={{ display: "flex", flexDirection: "column", gap: S.sm }}>
-                      {myOffers.map((o) => (
-                        <OfferRow key={o.id} offer={o} group={group} mine onCancel={onCancelTradeOffer} />
-                      ))}
+                      {myOffers.map((o) => <OfferRow key={o.id} offer={o} group={group} mine onCancel={onCancelTradeOffer} />)}
                     </div>
                   </div>
                 )}
@@ -395,8 +312,8 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
             </div>
           )}
 
-          <div style={{ ...cardStyle, marginBottom: S.xl }}>
-            {lockedNotice}
+          <div style={{ ...cardStyle, marginBottom: S.xl, padding: `${S.md}px ${S.md}px` }}>
+            {lockBar}
             <div style={{ position: "relative", marginBottom: S.sm }}>
               <Search size={16} color={C.text2} style={{ position: "absolute", left: S.md, top: "50%", transform: "translateY(-50%)" }} />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("Pesquisar por nome…")} aria-label={t("Pesquisar por nome…")}
@@ -407,8 +324,10 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
                 <Chip key={id} variant={sortMode === id ? "lime" : "neutral"} onClick={() => setSortMode(id)}>{t(label)}</Chip>
               ))}
             </div>
-
-            {!locked && overBudget && (
+            <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm }}>
+              {t("Próximo jogo")}: ✅ {t("confirmado")} · ⏳ {t("pendente")} · ❌ {t("não vai")}
+            </div>
+            {overBudget && (
               <div style={{ fontSize: T.meta, color: C.red, fontWeight: 700, padding: `${S.sm}px ${S.md}px`, marginTop: S.sm, border: `1px solid ${C.red}55`, background: C.redDim, borderRadius: R.control }}>
                 {t("Falta")} {fmtM(total - effectiveBudget)} — {t("tira alguém ou troca por um mais barato.")}
               </div>
@@ -426,15 +345,16 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
               </div>
             ))}
 
-            <div style={{ display: "flex", gap: S.sm, marginTop: S.lg }}>
+            <div style={{ fontSize: T.min, color: C.text2, marginTop: S.md, lineHeight: 1.4 }}>
+              {league.squad_size} {t("titulares; os restantes ficam no banco, pela ordem em que os escolheste.")}
+            </div>
+            <div style={{ display: "flex", gap: S.sm, marginTop: S.md }}>
               {complete && (
                 <BtnGhost onClick={() => { setSelected(mySquad.player_ids); setView("equipa"); }}>{t("Cancelar")}</BtnGhost>
               )}
-              {!locked && (
-                <BtnPrimary onClick={() => save()} disabled={!canSave || saving} style={{ flex: 1 }}>
-                  {saving ? t("Um momento…") : saved ? t("Escalação guardada ✓") : t("Guardar escalação")}
-                </BtnPrimary>
-              )}
+              <BtnPrimary onClick={() => save()} disabled={!canSave || saving} style={{ flex: 1 }}>
+                {saving ? t("Um momento…") : saved ? t("Escalação guardada ✓") : t("Guardar escalação")}
+              </BtnPrimary>
             </div>
             {error && <div style={{ fontSize: T.meta, color: C.red, marginTop: S.sm }}>{error}</div>}
           </div>
@@ -445,85 +365,56 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
       {view === "liga" && (
         <>
           <SectionLabel right={isOrganizer && onSyncFantasy ? (
-            <BtnGhost onClick={runSync} disabled={syncing} title={t("Recupera jornadas em que as stats gravaram mas a pontuação Fantasy falhou")}
+            <BtnGhost onClick={runSync} disabled={syncing} title={t("Volta a calcular as rondas a partir dos dias de jogo gravados")}
               style={{ minHeight: TOUCH.min, padding: `0 ${S.md}px`, fontSize: T.meta }}>
-              {syncing ? t("A sincronizar…") : syncResult !== null ? (syncResult > 0 ? `✓ ${syncResult} ${t("recuperada(s)")}` : t("Tudo em dia")) : t("Sincronizar")}
+              <RefreshCw size={14} /> {syncing ? t("A recalcular…") : syncResult !== null ? (typeof syncResult === "string" ? syncResult : t("Tudo em dia")) : t("Recalcular")}
             </BtnGhost>
           ) : null}>
             {t("Classificação")}
           </SectionLabel>
-          <div style={{ ...cardStyle, padding: 0, overflow: "hidden", marginBottom: S.lg }}>
-            {leaderboard.length === 0 && <div style={{ padding: S.lg, fontSize: T.body - 1, color: C.text2 }}>{t("Ainda sem jornadas fechadas.")}</div>}
-            {leaderboard.map((row, i) => {
-              const rivalSquad = squads.find((s) => s.participant_id === row.pid && s.player_ids?.length);
-              const isMe = row.player?.isMe;
-              const open = viewingId === row.pid;
-              const rank = i + 1;
-              const top3 = rank <= 3 && row.points > 0;
-              const Tag = rivalSquad ? "button" : "div";
-              return (
-                <Tag key={row.pid} type={rivalSquad ? "button" : undefined} aria-expanded={rivalSquad ? open : undefined}
-                  onClick={rivalSquad ? () => setViewingId((v) => (v === row.pid ? null : row.pid)) : undefined}
-                  style={{
-                    display: "flex", alignItems: "center", gap: S.md, width: "100%", minHeight: 56, boxSizing: "border-box",
-                    padding: `${S.sm}px ${S.lg}px`, border: "none", borderTop: i > 0 ? `1px solid ${C.border}` : "none",
-                    background: isMe || open ? C.surface : "transparent", boxShadow: isMe ? `inset 3px 0 0 ${C.accent}` : "none",
-                    color: "inherit", font: "inherit", textAlign: "left", cursor: rivalSquad ? "pointer" : "default",
-                  }}>
-                  <span style={{ ...displayFont, width: 24, textAlign: "center", fontSize: top3 ? T.h - 2 : T.body, color: top3 ? [C.gold, C.silver, C.bronze][rank - 1] : C.text2 }}>{rank}</span>
-                  <Avatar name={row.player?.name || "?"} color={row.player ? playerColor(group, row.player) : C.text2} size={top3 ? 40 : 34} isMe={isMe} photo={row.player?.photo} injured={row.player?.injured} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: T.body + 1, fontWeight: top3 || isMe ? 800 : 600, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {row.player?.nick || "?"}{isMe && <span style={{ fontSize: T.meta, color: C.text2, fontWeight: 500 }}> {t("· tu")}</span>}
-                    </div>
-                    <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{row.rounds} {t("jornadas")}</div>
-                  </div>
-                  <span style={{ ...displayFont, fontSize: top3 ? T.h + 2 : T.h - 2, color: top3 || isMe ? C.text1 : C.text2, minWidth: 40, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{Math.round(row.points)}</span>
-                  {rivalSquad && <ChevronDown size={18} color={C.text2} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
-                </Tag>
-              );
-            })}
-          </div>
+          <FantasyTables group={group} seasons={seasons} scores={scores} rounds={rounds} squads={squads}
+            selectedId={viewingId} onSelect={(pid) => setViewingId((v) => (v === pid ? null : pid))} />
 
-          {viewingId && (() => {
-            const rivalSquad = squads.find((s) => s.participant_id === viewingId);
-            const rival = group.find((p) => p.uuid === viewingId);
-            if (!rivalSquad) return null;
-            return (
-              <div style={{ marginBottom: S.lg }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: S.xs }}>
-                  <div style={{ fontSize: T.cardTitle, fontWeight: 700, color: C.text1 }}>{t("Escalação de")} {rival?.nick || "?"}</div>
-                  <button type="button" onClick={() => setViewingId(null)} aria-label={t("Fechar")}
-                    style={{ width: TOUCH.min, height: TOUCH.min, background: "none", border: "none", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><X size={18} /></button>
-                </div>
-                <FantasyPitch
-                  group={group} playerIds={rivalSquad.player_ids} captainId={rivalSquad.captain_id} reserveIds={rivalSquad.reserve_ids}
-                  weights={weights} lastRoundLines={lastRoundLines} readOnly
-                />
+          {rivalSquad && (
+            <div style={{ marginBottom: S.lg }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: S.xs }}>
+                <div style={{ fontSize: T.cardTitle, fontWeight: 700, color: C.text1 }}>{t("Escalação de")} {rival?.nick || "?"}</div>
+                <button type="button" onClick={() => setViewingId(null)} aria-label={t("Fechar")}
+                  style={{ width: TOUCH.min, height: TOUCH.min, background: "none", border: "none", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><X size={18} /></button>
               </div>
-            );
-          })()}
+              <FantasyPitch group={group} playerIds={rivalSquad.player_ids} captainId={rivalSquad.captain_id} viceId={rivalSquad.vice_captain_id}
+                reserveIds={rivalSquad.reserve_ids} pointsById={pointsById} readOnly />
+            </div>
+          )}
 
           {lastRoundScores.length > 0 && (
-            <Collapsible title={t("Última jornada")} subtitle={t("Pontos de cada participante")}>
+            <Collapsible title={t("Última ronda")} subtitle={t("Pontos de cada participante")}>
               {lastRoundScores.map((s, i) => {
                 const p = group.find((x) => x.uuid === s.participant_id);
                 return (
                   <div key={s.id ?? s.participant_id} style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: 48, borderTop: i > 0 ? `1px solid ${C.border}` : "none" }}>
                     <Avatar name={p?.name || "?"} color={p ? playerColor(group, p) : C.text2} size={32} isMe={p?.isMe} photo={p?.photo} injured={p?.injured} />
-                    <div style={{ flex: 1, fontSize: T.body, fontWeight: p?.isMe ? 800 : 600, color: C.text1 }}>{p?.nick || "?"}</div>
+                    <div style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: p?.isMe ? 800 : 600, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p?.nick || "?"}</div>
+                    {Number(s.transfer_cost || s.breakdown?.transferCost || 0) > 0 && (
+                      <span style={{ fontSize: T.min, color: C.orange, fontWeight: 700 }}>−{s.transfer_cost || s.breakdown?.transferCost} {t("transf.")}</span>
+                    )}
                     <div style={{ ...displayFont, fontSize: T.cardTitle, color: C.text1 }}>{Math.round(s.points)}</div>
                   </div>
                 );
               })}
             </Collapsible>
           )}
+          {month && (
+            <div style={{ fontSize: T.min, color: C.text2, marginTop: S.md, lineHeight: 1.4 }}>
+              {t("A Taça do Mês fecha no fim de cada mês e o Campeonato a 31 de julho — os campeões ficam no Perfil.")}
+            </div>
+          )}
         </>
       )}
 
       {tradeTarget && (
         <TradeOfferPanel
-          group={group} me={me} mySquad={mySquad} league={league} prices={prices} myBank={squadBank(mySquad)}
+          group={group} mySquad={mySquad} priceOf={priceOf} myBank={squadBank(mySquad)}
           target={tradeTarget} onClose={() => setTradeTarget(null)}
           onSubmit={async (payload) => {
             const res = await onCreateTradeOffer(league.id, payload.toParticipantId, tradeTarget.playerId, payload.givePlayerId, payload.offerType, payload.offerCash);
@@ -535,10 +426,14 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
 
       {sheetPlayer && (
         <FantasyPlayerSheet
-          p={sheetPlayer} group={group} captain={sheetPlayer.uuid === mySquad.captain_id} bench={sheetBench}
-          pts={lastRoundLines ? computeRoundPoints([sheetPlayer.uuid], mySquad.captain_id, lastRoundLines, weights, mySquad.reserve_ids) : null}
-          onCaptain={() => save({ captainId: sheetPlayer.uuid })}
-          onToggleBench={() => toggleReserve(sheetPlayer.uuid)}
+          p={sheetPlayer} group={group} captain={sheetPlayer.uuid === mySquad.captain_id} vice={sheetPlayer.uuid === mySquad.vice_captain_id}
+          bench={sheetBenchIndex >= 0} benchIndex={sheetBenchIndex}
+          pts={pointsById ? (pointsById[sheetPlayer.uuid] ?? null) : null}
+          onCaptain={() => save({ playerIds: mySquad.player_ids, captainId: sheetPlayer.uuid,
+            viceId: mySquad.vice_captain_id === sheetPlayer.uuid ? mySquad.captain_id : undefined, stay: true })}
+          onVice={() => save({ playerIds: mySquad.player_ids, viceId: sheetPlayer.uuid, stay: true })}
+          onToggleBench={() => (sheetBenchIndex >= 0 ? toStarter(sheetPlayer.uuid) : toBench(sheetPlayer.uuid))}
+          onMoveUp={() => moveUp(sheetPlayer.uuid)}
           onClose={() => setSheetId(null)}
         />
       )}
@@ -547,20 +442,17 @@ function FantasyLeagueView({ group, me, isOrganizer, league, ended, kickoffAt, s
         const p = group.find((x) => x.uuid === viewingPlayerId);
         if (!p) return null;
         return (
-          <PlayerCardModal
-            player={p} price={prices[p.uuid]} points={totalPoints[p.uuid]}
-            ownership={ownership[p.uuid] || 0} onClose={() => setViewingPlayerId(null)}
-          />
+          <PlayerCardModal player={p} price={priceOf(p.uuid)} points={seasonPoints[p.uuid]}
+            ownership={ownership[p.uuid] || 0} cap={cap} onClose={() => setViewingPlayerId(null)} />
         );
       })()}
     </div>
   );
 }
 
-/** Tapping a player in the market shows their FUT card (attributes) plus
- *  season totals and this league's fantasy output, so anyone can decide
- *  who's worth buying/trading for without leaving the list. */
-function PlayerCardModal({ player, price, points, ownership, onClose }) {
+/** Tapping a player in the market shows their FUT card plus season totals
+ *  and this Campeonato's fantasy output. */
+function PlayerCardModal({ player, price, points, ownership, cap, onClose }) {
   const stats = [
     ["⚽", t("Golos"), player.goals || 0],
     ["🎯", t("Assistências"), player.assists || 0],
@@ -568,10 +460,7 @@ function PlayerCardModal({ player, price, points, ownership, onClose }) {
     ["🧤", t("Jogos"), player.gamesPlayed || 0],
   ];
   return (
-    <div onClick={onClose} style={{
-      position: "fixed", inset: 0, background: "rgba(10,15,24,0.75)", zIndex: 50,
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-    }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,15,24,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 320, width: "100%" }}>
         <button type="button" onClick={onClose} aria-label={t("Fechar")} style={{ alignSelf: "flex-end", background: C.card, border: `1px solid ${C.border}`, borderRadius: R.control, width: TOUCH.min, height: TOUCH.min, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginBottom: 10 }}>
           <X size={16} color={C.text2} />
@@ -588,18 +477,12 @@ function PlayerCardModal({ player, price, points, ownership, onClose }) {
           </div>
           <div style={{ height: 1, background: C.border, marginBottom: 12 }} />
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ ...displayFont, fontSize: 15, color: C.text1 }}>{fmtM(price)}</div>
-              <div style={{ fontSize: T.min, fontWeight: 700, color: C.text2, marginTop: 2 }}>{t("PREÇO")}</div>
-            </div>
-            <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ ...displayFont, fontSize: 15, color: C.text1 }}>{Math.round(points || 0)}</div>
-              <div style={{ fontSize: T.min, fontWeight: 700, color: C.text2, marginTop: 2 }}>{t("PTS NA LIGA")}</div>
-            </div>
-            <div style={{ textAlign: "center", flex: 1 }}>
-              <div style={{ ...displayFont, fontSize: 15, color: C.text1 }}>{ownership}/{OWNERSHIP_CAP}</div>
-              <div style={{ fontSize: T.min, fontWeight: 700, color: C.text2, marginTop: 2 }}>{t("DONOS")}</div>
-            </div>
+            {[[fmtM(price), t("PREÇO")], [Math.round(points || 0), t("PTS NA ÉPOCA")], [`${ownership}/${cap}`, t("DONOS")]].map(([v, l]) => (
+              <div key={l} style={{ textAlign: "center", flex: 1 }}>
+                <div style={{ ...displayFont, fontSize: 15, color: C.text1 }}>{v}</div>
+                <div style={{ fontSize: T.min, fontWeight: 700, color: C.text2, marginTop: 2 }}>{l}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -607,11 +490,9 @@ function PlayerCardModal({ player, price, points, ownership, onClose }) {
   );
 }
 
-/** Propose a trade for `target.playerId`, currently owned by one or
- *  more other participants (`target.owners`). Always asks which of the
- *  buyer's own picks gets released to make room — for a swap that IS
- *  the offered player; for cash it just returns to the pool. */
-function TradeOfferPanel({ group, me, mySquad, prices, target, myBank, onClose, onSubmit }) {
+/** Propose a trade for `target.playerId`, owned by other participants.
+ *  The server (accept_fantasy_trade) re-derives both squads on accept. */
+function TradeOfferPanel({ group, mySquad, priceOf, target, myBank, onClose, onSubmit }) {
   const [toParticipantId, setToParticipantId] = useState(target.owners[0]?.participant_id || "");
   const [givePlayerId, setGivePlayerId] = useState(mySquad?.player_ids?.[0] || "");
   const [offerType, setOfferType] = useState("swap");
@@ -621,88 +502,76 @@ function TradeOfferPanel({ group, me, mySquad, prices, target, myBank, onClose, 
 
   const targetPlayer = group.find((p) => p.uuid === target.playerId);
   const mine = (mySquad?.player_ids || []).map((id) => group.find((p) => p.uuid === id)).filter(Boolean);
-
-  // What this trade actually costs you: the target's price minus what
-  // you free up by releasing your own player, plus any cash on top —
-  // can't exceed what you actually have left in the bank.
-  const priceDelta = (prices[target.playerId] || 0) - (prices[givePlayerId] || 0);
-  const netCost = priceDelta + (offerType === "cash" ? Number(offerCash) || 0 : 0);
+  const netCost = (priceOf(target.playerId) - priceOf(givePlayerId)) + (offerType === "cash" ? Number(offerCash) || 0 : 0);
   const overBank = netCost > myBank;
 
   const submit = async () => {
     if (overBank) { setError(t("Não tens banco suficiente para esta oferta.")); return; }
     setSending(true);
     setError(null);
-    const res = await onSubmit({ toParticipantId, givePlayerId, offerType, offerCash: Number(offerCash) || 0 });
+    const res = await onSubmit({ toParticipantId, givePlayerId, offerType, offerCash: Math.max(0, Number(offerCash) || 0) });
     setSending(false);
     if (res?.error) setError(res.error);
   };
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,15,24,0.85)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, overflowY: "auto" }}>
-    <div onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: "100%", maxWidth: 380, border: `1px solid ${C.orange}55` }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 800 }}>{t("Oferta por")} {targetPlayer?.nick}</div>
-        <button type="button" onClick={onClose} aria-label={t("Fechar")} style={{ width: TOUCH.min, height: TOUCH.min, background: "none", border: "none", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><X size={18} /></button>
+      <div onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: "100%", maxWidth: 380, border: `1px solid ${C.orange}55` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 800 }}>{t("Oferta por")} {targetPlayer?.nick}</div>
+          <button type="button" onClick={onClose} aria-label={t("Fechar")} style={{ width: TOUCH.min, height: TOUCH.min, background: "none", border: "none", color: C.text2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><X size={18} /></button>
+        </div>
+        <label style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>{t("A quem fazer a oferta")}</label>
+        <select value={toParticipantId} onChange={(e) => setToParticipantId(e.target.value)} style={inputStyle}>
+          {target.owners.map((s) => {
+            const owner = group.find((p) => p.uuid === s.participant_id);
+            return <option key={s.participant_id} value={s.participant_id}>{owner?.nick || "?"}</option>;
+          })}
+        </select>
+        <label style={{ fontSize: 11, color: C.text2, fontWeight: 700, marginTop: 10, display: "block" }}>{t("Jogador teu que libertas para abrir espaço")}</label>
+        <select value={givePlayerId} onChange={(e) => setGivePlayerId(e.target.value)} style={inputStyle}>
+          {mine.map((p) => <option key={p.uuid} value={p.uuid}>{p.nick} ({fmtM(priceOf(p.uuid))})</option>)}
+        </select>
+        <div style={{ display: "flex", gap: 8, marginTop: 12, marginBottom: offerType === "cash" ? 10 : 0 }}>
+          {[["swap", "Troca direta"], ["cash", "Dinheiro"]].map(([id, label]) => {
+            const active = offerType === id;
+            return (
+              <button key={id} type="button" onClick={() => setOfferType(id)}
+                style={{ flex: 1, minHeight: TOUCH.min, background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 10, padding: "8px 6px", fontSize: 12, fontWeight: active ? 800 : 500, cursor: "pointer" }}>
+                {t(label)}
+              </button>
+            );
+          })}
+        </div>
+        {offerType === "cash" && (
+          <>
+            <label style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>{t("Valor da oferta")}</label>
+            <input type="number" min={0} value={offerCash} onChange={(e) => setOfferCash(e.target.value)} style={inputStyle} />
+          </>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.text2, marginTop: 12 }}>
+          <span>{t("O teu banco")}</span><span style={{ fontWeight: 700, color: C.text1 }}>{fmtM(myBank)}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.text2, marginTop: 4 }}>
+          <span>{t("Custo desta troca")}</span><span style={{ fontWeight: 700, color: overBank ? C.red : C.text1 }}>{fmtM(netCost)}</span>
+        </div>
+        <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm, lineHeight: 1.4 }}>{t("Uma troca aceite conta como transferência na próxima ronda.")}</div>
+        <BtnPrimary onClick={submit} disabled={sending || !toParticipantId || !givePlayerId || overBank} style={{ width: "100%", marginTop: 10, opacity: (sending || overBank) ? 0.6 : 1 }}>
+          {sending ? t("Um momento…") : overBank ? t("Banco insuficiente") : t("Enviar oferta")}
+        </BtnPrimary>
+        {error && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{error}</div>}
       </div>
-
-      <label style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>{t("A quem fazer a oferta")}</label>
-      <select value={toParticipantId} onChange={(e) => setToParticipantId(e.target.value)} style={inputStyle}>
-        {target.owners.map((s) => {
-          const owner = group.find((p) => p.uuid === s.participant_id);
-          return <option key={s.participant_id} value={s.participant_id}>{owner?.nick || "?"}</option>;
-        })}
-      </select>
-
-      <label style={{ fontSize: 11, color: C.text2, fontWeight: 700, marginTop: 10, display: "block" }}>{t("Jogador teu que libertas para abrir espaço")}</label>
-      <select value={givePlayerId} onChange={(e) => setGivePlayerId(e.target.value)} style={inputStyle}>
-        {mine.map((p) => <option key={p.uuid} value={p.uuid}>{p.nick} ({fmtM(prices[p.uuid])})</option>)}
-      </select>
-
-      <div style={{ display: "flex", gap: 8, marginTop: 12, marginBottom: offerType === "cash" ? 10 : 0 }}>
-        {[["swap", "Troca direta"], ["cash", "Dinheiro"]].map(([id, label]) => {
-          const active = offerType === id;
-          return (
-            <button key={id} onClick={() => setOfferType(id)}
-              style={{ flex: 1, background: active ? C.accentDim : C.surface, color: active ? C.accent : C.text2, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 10, padding: "8px 6px", fontSize: 12, fontWeight: active ? 800 : 500, cursor: "pointer" }}>
-              {t(label)}
-            </button>
-          );
-        })}
-      </div>
-      {offerType === "cash" && (
-        <>
-          <label style={{ fontSize: 11, color: C.text2, fontWeight: 700 }}>{t("Valor da oferta")}</label>
-          <input type="number" min={0} value={offerCash} onChange={(e) => setOfferCash(e.target.value)} style={inputStyle} />
-        </>
-      )}
-
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.text2, marginTop: 12 }}>
-        <span>{t("O teu banco")}</span>
-        <span style={{ fontWeight: 700, color: C.text1 }}>{fmtM(myBank)}</span>
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.text2, marginTop: 4 }}>
-        <span>{t("Custo desta troca")}</span>
-        <span style={{ fontWeight: 700, color: overBank ? C.red : C.text1 }}>{fmtM(netCost)}</span>
-      </div>
-
-      <BtnPrimary onClick={submit} disabled={sending || !toParticipantId || !givePlayerId || overBank} style={{ width: "100%", marginTop: 10, opacity: (sending || overBank) ? 0.6 : 1 }}>
-        {sending ? t("Um momento…") : overBank ? t("Banco insuficiente") : t("Enviar oferta")}
-      </BtnPrimary>
-      {error && <div style={{ fontSize: 11, color: C.red, marginTop: 8 }}>{error}</div>}
-    </div>
     </div>
   );
 }
 
 function OfferRow({ offer, group, mine, onCancel, onRespond }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
   const counterpart = group.find((p) => p.uuid === (mine ? offer.to_participant_id : offer.from_participant_id));
   const target = group.find((p) => p.uuid === offer.target_player_id);
   const give = group.find((p) => p.uuid === offer.give_player_id);
-
-  const act = async (fn) => { setBusy(true); await fn(); setBusy(false); };
-
+  const act = async (fn) => { setBusy(true); setError(null); const res = await fn(); setBusy(false); if (res?.error) setError(res.error); };
   return (
     <div style={{ background: C.surface, borderRadius: R.control, padding: S.md }}>
       <div style={{ fontSize: T.body - 1, lineHeight: 1.4, marginBottom: S.sm }}>
@@ -714,7 +583,7 @@ function OfferRow({ offer, group, mine, onCancel, onRespond }) {
         ) : (
           <>
             <div><strong>{counterpart?.nick}</strong> {t("quer trocar contigo")}</div>
-            <div style={{ color: C.text2 }}>{t("Recebes:")} <strong>{give?.nick}</strong>{offer.offer_type === "cash" ? ` + ${fmtM(offer.offer_cash)}` : ""} — {t("dás:")} <strong>{target?.nick}</strong></div>
+            <div style={{ color: C.text2 }}>{t("Recebes:")} <strong>{offer.offer_type === "cash" ? fmtM(offer.offer_cash) : give?.nick}</strong> — {t("dás:")} <strong>{target?.nick}</strong></div>
           </>
         )}
       </div>
@@ -726,6 +595,7 @@ function OfferRow({ offer, group, mine, onCancel, onRespond }) {
           <BtnGhost onClick={() => act(() => onRespond(offer, false))} disabled={busy} style={{ flex: 1, minHeight: TOUCH.min }}>{t("Recusar")}</BtnGhost>
         </div>
       )}
+      {error && <div style={{ fontSize: T.min, color: C.red, marginTop: S.xs }}>{error}</div>}
     </div>
   );
 }

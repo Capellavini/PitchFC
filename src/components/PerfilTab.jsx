@@ -25,6 +25,7 @@ import SegmentedControl from "./SegmentedControl";
 import CareerSummary from "./CareerSummary";
 import PeerRatingsCard from "./PeerRatingsCard";
 import AchievementsSection from "./AchievementsSection";
+import FantasyTrophiesLine from "./FantasyTrophiesLine";
 import MatchdayCalendar from "./MatchdayCalendar";
 import ProgressChart from "./ProgressChart";
 import PhoneInput from "./PhoneInput";
@@ -54,7 +55,7 @@ const roleLabel = (role) => (role === "organizer" ? t("Organizador") : role === 
  *  behind the gear (SettingsScreen, rendered by PitchApp via
  *  `onOpenSettings`). Viewing someone else's profile (openProfile) hides
  *  gear/edit and shows the cloud RatingForm instead of the ratings card. */
-export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, isOrganizer, addPeerRating, cloudMode, onSubmitRating, uploadMedia, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember, onOpenSettings, personalRecords, attendanceStreak = 0, groupName, city, myGroups = [], activeGroupId, myTeams = [], onOpenTeam, teamsApi, localMatchday }) {
+export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe, isOrganizer, addPeerRating, cloudMode, onSubmitRating, uploadMedia, onToggleInjured, achievementMatchdays, totalGames, records = [], onBanMember, onOpenSettings, personalRecords, attendanceStreak = 0, groupName, city, myGroups = [], activeGroupId, myTeams = [], onOpenTeam, teamsApi, localMatchday, fantasyTrophies = [] }) {
   const me = group.find((p) => p.isMe);
   const player = group.find((p) => p.id === viewPlayerId) ?? me;
   const isOwn = player.isMe;
@@ -279,6 +280,8 @@ export default function PerfilTab({ group, viewPlayerId, updateProfile, backToMe
         <StatTile value={player.assists ?? 0} label={t("Assist.")} />
         <StatTile value={player.mvps ?? 0} label="MVP" />
       </div>
+
+      {isOwn && <FantasyTrophiesLine trophies={fantasyTrophies} />}
 
       <SegmentedControl options={SEGMENTS} value={section} onChange={setSection} />
 
