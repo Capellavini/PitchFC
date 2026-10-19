@@ -84,7 +84,7 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
         <section style={{ ...cardStyle, padding: S.lg, marginTop: S.lg }}>
           <SectionLabel>{t(LC.manage)}</SectionLabel>
           <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>
-            {c.draftVersion ? <BtnPrimary disabled={busy} onClick={() => run(() => leagues.publishRegulation(c.id, c.draftVersion, c.draftVersion > 1 ? "Revisão" : null))}>{t(LC.publish)}</BtnPrimary> : null}
+            {c.draftVersion ? <BtnPrimary disabled={busy} onClick={() => { const reason = c.draftVersion > 1 ? (window.prompt(t("Motivo da nova versão do regulamento (obrigatório)")) || "").trim() : null; if (c.draftVersion > 1 && !reason) return; run(() => leagues.publishRegulation(c.id, c.draftVersion, reason)); }}>{t(LC.publish)}</BtnPrimary> : null}
             {["draft", "registration_closed"].includes(c.status) && c.regulation.version
               ? <BtnGhost tone="accent" disabled={busy} onClick={() => run(() => leagues.setCompetitionStatus(c.id, "registration_open"))}>{t(LC.openRegs)}</BtnGhost> : null}
             {c.status === "registration_open"
