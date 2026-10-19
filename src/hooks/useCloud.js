@@ -450,11 +450,21 @@ export function useCloud() {
   const createGroupAsOrganizer = (groupForm, profileForm) =>
     singleFlight("own-player", async () => funnel("create_group")(await createGroupAsOrganizerRaw(groupForm, profileForm)));
   const createGroupAsOrganizerRaw = async (groupForm, profileForm) => {
-    const grp = await supabase.from("groups").insert({
+    const core = {
       name: groupForm.groupName, venue: groupForm.venue, city: groupForm.city, weekday: groupForm.weekday,
       game_time: groupForm.time, monthly_price_cents: Math.round(groupForm.monthlyPrice * 100),
       max_players: groupForm.maxPlayers,
-    }).select().single();
+    };
+    // The form's recurring / confirmation-opening choices used to be
+    // dropped here (only a later settings edit saved them, so every new
+    // group silently opened Mondays 17:00). Save them on create; if those
+    // columns are somehow missing (migration 6), fall back to the core row.
+    const withRecurring = groupForm.recurring === undefined ? core : {
+      ...core, recurring: groupForm.recurring !== false,
+      open_weekday: groupForm.openWeekday ?? 1, open_time: groupForm.openTime ?? "17:00",
+    };
+    let grp = await supabase.from("groups").insert(withRecurring).select().single();
+    if (grp.error && withRecurring !== core) grp = await supabase.from("groups").insert(core).select().single();
     if (grp.error) return { error: grp.error.message };
     const groupId = grp.data.id;
 
@@ -1508,9 +1518,40 @@ export function useCloud() {
   };
   const removeFriend = async (id) => { await supabase.from("friendships").delete().eq("id", id); await refetch(); };
 
+  // ── Guided AI onboarding (organizers) ──────────────────
+  /** One field the local parser couldn't read → api/onboarding-ai (server
+   *  holds the Anthropic key). Always resolves: { raw } or { fallback }. */
+  const askOnboardingAi = async (field, text, lang) => {
+    try {
+      const { data: s } = await supabase.auth.getSession();
+      const token = s.session?.access_token;
+      if (!token) return { fallback: true };
+      const r = await fetch("/api/onboarding-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ field, text, lang }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const body = await r.json().catch(() => ({}));
+      return body?.raw && typeof body.raw === "object" ? { raw: body.raw } : { fallback: true };
+    } catch {
+      return { fallback: true };
+    }
+  };
+  /** Server-side, per account: the guided onboarding shows ONCE. Set after
+   *  the first group is created through it, or when the organizer picks the
+   *  classic form — never shown again on re-login / another device. */
+  const markAiOnboardingDone = async (via) => {
+    try {
+      await supabase.auth.updateUser({ data: { pitch_ai_onboarding_done_at: new Date().toISOString(), pitch_ai_onboarding_via: via } });
+    } catch { /* best effort — worst case it shows once more */ }
+  };
+
   return {
     status, ...data,
     isAdmin: isAdminEmail(data.user?.email),
+    aiOnboardingDone: Boolean(data.user?.user_metadata?.pitch_ai_onboarding_done_at),
+    askOnboardingAi, markAiOnboardingDone,
     // Fantasy admin panel: narrower than the general isAdmin group — only
     // Vini's own login, per his explicit request, not the other admin
     // email (vinicius.capella@ziarimoveis.com.br).

@@ -106,6 +106,9 @@ import BtnPrimary from "./components/BtnPrimary";
 import { CalendarCheck, CreditCard, Star, ArrowLeft, Bell } from "lucide-react";
 import Avatar from "./components/Avatar";
 import KeepyUppyLoader from "./components/KeepyUppyLoader";
+import OnboardingAiChat from "./components/OnboardingAiChat";
+import OnboardingAiInvite from "./components/OnboardingAiInvite";
+import { toGroupForm, normalizeProposal, inviteText, perPlayerPrice } from "./lib/onboardingAi";
 import { isEnabled } from "./lib/flags";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
@@ -171,6 +174,14 @@ export default function PitchApp() {
   const [settingsView, setSettingsView] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState(null);
+  // Guided AI onboarding (organizers) — shown ONCE per account: cloud keeps
+  // the flag in the account's user_metadata (cloud.aiOnboardingDone), demo
+  // in localStorage. aiInvite: null | { pending: true } | { link, message }
+  // = the invite step after the group + first game were created through it.
+  // orgForm: the classic form's prefill once the organizer chose it.
+  const [aiInvite, setAiInvite] = useState(null);
+  const [orgForm, setOrgForm] = useState(null);
+  const [aiDoneLocal, setAiDoneLocal] = usePersistentState("aiOnboardingDone", false);
   // Invite-code choice made in the pre-group step of a fresh signup (no
   // player row yet) — a pasted+validated token string, or the sentinel
   // "skip" for "ainda não tenho grupo". Only used when there's no ?join=
@@ -1460,6 +1471,37 @@ export default function PitchApp() {
     );
   }
 
+  // ═══ GUIDED AI ONBOARDING (organizer) ═══════════════════
+  // Shared by both modes: the chat's create → this invite step. It sits
+  // ABOVE the gating because creating the group flips cloud.status to
+  // "ready" (or the demo session to onboarded) mid-flow.
+  const aiProfile = () => ({ ...profileDefaults, name: profileDefaults.name || cloud.user?.email || "", nick: profileDefaults.nick || "Eu" });
+  const aiFormPrefill = (raw) => {
+    const has = raw && Object.keys(raw).length > 0;
+    return has ? { ...DEFAULT_SETTINGS, ...toGroupForm(normalizeProposal(raw, { lang })) } : DEFAULT_SETTINGS;
+  };
+  const aiCreate = async (proposal, createFn) => {
+    const form = toGroupForm(proposal);
+    setAiInvite({ pending: true });
+    const res = await createFn(form);
+    if (res?.error) { setAiInvite(null); return res; }
+    const link = res?.inviteToken ? `${window.location.origin}?join=${res.inviteToken}` : window.location.origin;
+    setAiInvite({ link, message: inviteText({
+      groupName: form.groupName, venue: form.venue, weekday: form.weekday, time: form.time, recurring: form.recurring,
+      currency: proposal.currency, pricePerPlayer: perPlayerPrice(form.monthlyPrice, form.maxPlayers), link, lang,
+    }) });
+    return {};
+  };
+  if (aiInvite && (localMode || cloud.status === "ready" || cloud.status === "needsProfile")) {
+    if (aiInvite.pending) {
+      return shell(
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><KeepyUppyLoader /></div>
+      );
+    }
+    return shell(<OnboardingAiInvite link={aiInvite.link} message={aiInvite.message}
+      onGoToGame={() => { setAiInvite(null); setJogarView("jogos"); setTab("jogar"); }} />);
+  }
+
   // ═══ CLOUD MODE GATING ═════════════════════════════════
   if (!localMode) {
     if (cloud.status === "loading") {
@@ -1569,11 +1611,26 @@ export default function PitchApp() {
           />
         );
       }
+      // First organizer onboarding of this account → the guided chat
+      // (once: cloud.aiOnboardingDone is per account, server-side).
+      if (!orgForm && !cloud.aiOnboardingDone) {
+        return shell(
+          <OnboardingAiChat lang={lang} askAi={cloud.askOnboardingAi}
+            onBack={() => setPendingRole(null)}
+            onUseForm={(raw) => { cloud.markAiOnboardingDone("form"); setOrgForm(aiFormPrefill(raw)); }}
+            onCreate={async (proposal) => {
+              const res = await aiCreate(proposal, (form) => cloud.createGroupAsOrganizer(form, aiProfile()));
+              if (!res?.error) cloud.markAiOnboardingDone("ai");
+              return res;
+            }}
+          />
+        );
+      }
       return shell(
         <OnboardingOrganizer
-          settings={DEFAULT_SETTINGS}
-          onBack={() => setPendingRole(null)}
-          onDone={(form) => cloud.createGroupAsOrganizer(form, { ...profileDefaults, name: profileDefaults.name || cloud.user.email, nick: profileDefaults.nick || "Eu" })}
+          settings={orgForm || DEFAULT_SETTINGS}
+          onBack={() => { setOrgForm(null); setPendingRole(null); }}
+          onDone={(form) => cloud.createGroupAsOrganizer(form, aiProfile())}
         />
       );
     }
@@ -1629,8 +1686,21 @@ export default function PitchApp() {
             me={createIntent?.captain?.name ? { ...me, name: createIntent.captain.name, nick: createIntent.captain.name.split(" ")[0], phone: createIntent.captain.phone || me?.phone } : me}
             onBack={() => { if (createIntent) dropCreateIntent(); backToRolePick(); }}
             onDone={(form) => { updateProfile(form); setSession((s) => ({ ...s, onboarded: true })); }} />
+        ) : !orgForm && !aiDoneLocal ? (
+          // Demo: same guided chat, local parser only (askAi = null → no network).
+          <OnboardingAiChat lang={lang} askAi={null} onBack={backToRolePick}
+            onUseForm={(raw) => { setAiDoneLocal(true); setOrgForm(aiFormPrefill(raw)); }}
+            onCreate={async (proposal) => {
+              const res = await aiCreate(proposal, async (form) => {
+                setSettings((prev) => ({ ...prev, ...form }));
+                setSession((s) => ({ ...s, onboarded: true }));
+                return {};
+              });
+              if (!res?.error) setAiDoneLocal(true);
+              return res;
+            }} />
         ) : (
-          <OnboardingOrganizer settings={settings} onBack={backToRolePick}
+          <OnboardingOrganizer settings={orgForm || settings} onBack={() => { setOrgForm(null); backToRolePick(); }}
             onDone={(form) => { setSettings(form); setSession((s) => ({ ...s, onboarded: true })); }} />
         )
       );
