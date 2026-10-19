@@ -387,8 +387,10 @@ select pg_temp.expect_err('claim without the token refused',
   format($q$select public.respond_challenge(%L, 1, 'accept', %L, null)$q$, pg_temp.kv('cl'), pg_temp.kv('B')), 'rivals:invalid_token');
 select pg_temp.expect_err('decline of an unclaimed link refused',
   format($q$select public.respond_challenge(%L, 1, 'decline', %L, %L)$q$, pg_temp.kv('cl'), pg_temp.kv('B'), pg_temp.kv('tok')), 'rivals:not_your_turn');
+-- Two statements: a read in the same statement as the RPC sees the pre-update snapshot.
+select pg_temp.setkv('cl_match', public.respond_challenge(pg_temp.kv('cl')::uuid, 1, 'accept', pg_temp.kv('B')::uuid, pg_temp.kv('tok'))->>'match_id');
 select pg_temp.ok('claim + accept as B → agreed with a match',
-  (public.respond_challenge(pg_temp.kv('cl')::uuid, 1, 'accept', pg_temp.kv('B')::uuid, pg_temp.kv('tok'))->>'match_id') is not null
+  pg_temp.kv('cl_match') is not null
   and (select challenged_team_id = pg_temp.kv('B')::uuid and status = 'agreed' from public.team_challenges where id = pg_temp.kv('cl')::uuid));
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000f105","role":"authenticated"}';
 select pg_temp.expect_err('claimable can be claimed once (C after B)',

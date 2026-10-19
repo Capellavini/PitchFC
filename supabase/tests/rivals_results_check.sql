@@ -870,8 +870,10 @@ reset role;
 select pg_temp.setkv('res_before', (select count(*)::text || '/' || string_agg(status, ',' order by match_id, revision) from public.team_match_results));
 select pg_temp.setkv('ms_before', (select string_agg(result_status || coalesce(official_home_score::text, '-'), ',' order by id) from public.team_matches));
 update public.team_challenges set expires_at = now() - interval '2 days' where id in (select challenge_id from public.team_matches);
+-- Run the cron in its own statement, so the reads below see its effects.
+select pg_temp.setkv('expired_n2', public.expire_rivals()::text);
 select pg_temp.ok('expire_rivals() leaves results and match result_status untouched',
-  public.expire_rivals() >= 0
+  pg_temp.kv('expired_n2')::int >= 0
   and (select count(*)::text || '/' || string_agg(status, ',' order by match_id, revision) from public.team_match_results) = pg_temp.kv('res_before')
   and (select string_agg(result_status || coalesce(official_home_score::text, '-'), ',' order by id) from public.team_matches) = pg_temp.kv('ms_before'));
 
