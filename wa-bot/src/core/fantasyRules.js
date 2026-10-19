@@ -1,7 +1,7 @@
 // GENERATED from src/lib/core — do not edit; run npm run sync:core
 // ── Pitch Manager (Fantasy) v2 rules — pure, shared ─────────────────
 // The SOURCE OF TRUTH for scoring is plpgsql (supabase/migrations/
-// 20261019150053_fantasy_v2_foundation.sql: fantasy_v2_night,
+// 20261019180559_fantasy_v2_foundation.sql: fantasy_v2_night,
 // fantasy_v2_player_night, fantasy_v2_score_lineup, fantasy_v2_price).
 // This module mirrors it 1:1 for previews, the local demo and Ligas
 // Fase 4. Parity is enforced by shared vectors

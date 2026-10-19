@@ -1,6 +1,6 @@
 // ── Pitch Manager money helpers ─────────────────────────────
 // Scoring, prices by form, ownership cap and transfers moved to the
-// server in v2 (migration 20261019150053_fantasy_v2_foundation) and are
+// server in v2 (migration 20261019180559_fantasy_v2_foundation) and are
 // mirrored for previews/demo in src/lib/core/fantasyRules.js. What's left
 // here is display + cost-basis bookkeeping for the bank previews.
 

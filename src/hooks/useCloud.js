@@ -226,7 +226,7 @@ export function useCloud() {
       // group's one active league (if any), everyone's current squads,
       // the locked per-round score history, and pending trade offers.
       // Tolerate the tables not existing yet (pre-migration).
-      // v2 (migration 20261019150053): rounds (locked at kickoff, scored
+      // v2 (migration 20261019180559): rounds (locked at kickoff, scored
       // by the server), per-player round points (prices by form + pitch
       // overlays), the renewing seasons, server prices and my trophies.
       // All read-only here — scoring and squad writes live in the DB.
@@ -1072,7 +1072,7 @@ export function useCloud() {
     }).select().single();
 
     // Fantasy (v2): scoring is server-side — the matchdays INSERT trigger
-    // (fantasy_on_matchday, migration 20261019150053) attaches this night
+    // (fantasy_on_matchday, migration 20261019180559) attaches this night
     // to the round locked at kickoff and scores it from that snapshot.
     if (md.error) console.error("matchday insert failed", md.error);
     // The matchday is now historical (in the matchdays table) — clear the
