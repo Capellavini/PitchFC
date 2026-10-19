@@ -367,7 +367,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
           <SectionLabel right={isOrganizer && onSyncFantasy ? (
             <BtnGhost onClick={runSync} disabled={syncing} title={t("Volta a calcular as rondas a partir dos dias de jogo gravados")}
               style={{ minHeight: TOUCH.min, padding: `0 ${S.md}px`, fontSize: T.meta }}>
-              <RefreshCw size={14} /> {syncing ? t("A recalcular…") : syncResult !== null ? (typeof syncResult === "string" ? syncResult : t("Tudo em dia")) : t("Recalcular")}
+              <RefreshCw size={14} /> {syncing ? t("A recalcular…") : syncResult !== null ? (typeof syncResult === "string" ? syncResult : syncResult > 0 ? `✓ ${syncResult} ${t("recuperada(s)")}` : t("Tudo em dia")) : t("Recalcular")}
             </BtnGhost>
           ) : null}>
             {t("Classificação")}
