@@ -55,12 +55,13 @@ test("player limits are soft and plan-based", () => {
   assert.ok(!overSoftCap(40, "club"));
 });
 
-test("bot: Free groups only get game_open", () => {
-  for (const k of ["reminder", "matchday", "milestone", "promoted", "spot_opened", "postgame", "match_awards", "cancelled"]) {
+test("bot: Free groups only get game_open + cancelled", () => {
+  for (const k of ["reminder", "matchday", "milestone", "promoted", "spot_opened", "postgame", "match_awards"]) {
     assert.ok(!botKindAllowed(k, "free"), k);
     assert.ok(botKindAllowed(k, "club"), k);
   }
   assert.ok(botKindAllowed("game_open", "free"));
+  assert.ok(botKindAllowed("cancelled", "free"));
 });
 
 test("planBadge + chip text for every launch case", () => {

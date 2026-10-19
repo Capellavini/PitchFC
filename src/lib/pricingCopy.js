@@ -53,9 +53,9 @@ export const PAGE = {
     "Os Jogos Abertos são grátis para todos os jogadores. O Player+ acrescenta melhor descoberta, alertas e personalização — nunca o acesso.",
   ),
   groupLimitNote: L(
-    "O limite de 2 grupos grátis aplica-se a grupos que crias — podes juntar-te a quantos grupos quiseres.",
-    "The 2 free groups limit applies to groups you create — you can join as many as you like.",
-    "O limite de 2 grupos grátis vale para grupos que você cria — você pode entrar em quantos quiser.",
+    "Grupos novos têm 14 dias de Club grátis. Juntar-te a grupos como jogador é sempre grátis.",
+    "New groups get 14 days of Club for free. Joining groups as a player is always free.",
+    "Grupos novos têm 14 dias de Club grátis. Entrar em grupos como jogador é sempre grátis.",
   ),
   activeNote: L(
     "Jogadores ativos = quem participou ou interagiu com o grupo recentemente, não todos os membros de sempre.",
@@ -372,9 +372,9 @@ export const FAQ = {
       id: "free_groups",
       q: L("Quantos grupos posso criar grátis?", "How many groups can I create for free?", "Quantos grupos posso criar de graça?"),
       a: L(
-        "Um organizador Free pode criar até 2 grupos. Entrar em grupos como jogador não conta para esse limite.",
-        "A Free organizer can create up to 2 groups. Joining groups as a player doesn't count towards that limit.",
-        "Um organizador Free pode criar até 2 grupos. Entrar em grupos como jogador não conta para esse limite.",
+        "Os que quiseres. Cada grupo novo começa com 14 dias de Club grátis e depois continua no Free. Entrar em grupos como jogador é sempre grátis.",
+        "As many as you like. Every new group starts with 14 days of Club for free, then carries on with Free. Joining groups as a player is always free.",
+        "Quantos quiser. Cada grupo novo começa com 14 dias de Club grátis e depois continua no Free. Entrar em grupos como jogador é sempre grátis.",
       ),
     },
     {

@@ -35,7 +35,8 @@ export const FEATURE_IDS = Object.freeze(Object.keys(FEATURES));
 export const PLAYER_LIMITS = Object.freeze({ free: 20, club: 30, club_ai: 30, large: 60 });
 
 /** Bot message kinds a Free group still gets. Everything else is Club automation. */
-export const FREE_BOT_KINDS = Object.freeze(["game_open"]);
+// game_open + cancelled: a Free group must always learn the game is on or off.
+export const FREE_BOT_KINDS = Object.freeze(["game_open", "cancelled"]);
 
 const DAY = 864e5;
 

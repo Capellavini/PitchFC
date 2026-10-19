@@ -17,10 +17,11 @@ const rows = {
 };
 const plansFor = (row, extra = {}) => makePlans({ fetchRow: async () => row, now: () => NOW, ...extra });
 
-test("Free group: only game_open is sent; Club gets every kind", async () => {
+test("Free group: only game_open + cancelled are sent; Club gets every kind", async () => {
   const free = plansFor(rows.free);
   assert.ok(await free.allowsKind("g", "game_open"));
-  for (const k of ["reminder", "matchday", "milestone", "promoted", "spot_opened", "postgame", "match_awards", "cancelled"]) {
+  assert.ok(await free.allowsKind("g", "cancelled"));
+  for (const k of ["reminder", "matchday", "milestone", "promoted", "spot_opened", "postgame", "match_awards"]) {
     assert.equal(await free.allowsKind("g", k), false, k);
   }
   const club = plansFor(rows.club);
