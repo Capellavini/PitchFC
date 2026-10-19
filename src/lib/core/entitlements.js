@@ -2,7 +2,7 @@
 // Pure ESM, no i18n, no React: shared verbatim with the wa-bot
 // (scripts/sync-core.mjs copies it to wa-bot/src/core/).
 //
-// Mirrors supabase/migrations/20261019092955_plan_entitlements.sql:
+// Mirrors supabase/migrations/20261019100000_plan_entitlements.sql:
 //   no row / canceled / ends_at in the past ⇒ free; past_due keeps the plan.
 //
 // Approved matrix (Vini, 2026-10-19). Free keeps the whole weekly game:

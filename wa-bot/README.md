@@ -93,7 +93,7 @@ warning. Use a **dedicated chip**, never a personal number. Keep the
 ## Plans (2026-10-19)
 
 The bot reads each group's plan (`group_plans`, migration
-`20261019092955_plan_entitlements.sql`; rules in `src/core/entitlements.js`,
+`20261019100000_plan_entitlements.sql`; rules in `src/core/entitlements.js`,
 shared with the app):
 
 - **Free**: only `game_open` ("Partida aberta") is posted. Every other

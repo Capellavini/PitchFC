@@ -921,7 +921,7 @@ export function useCloud() {
   };
 
   /** Owner-only: every group's stored + effective plan (migration
-   *  20261019092955, admin_group_plans()). */
+   *  20261019100000, admin_group_plans()). */
   const fetchGroupPlans = async () => {
     const r = await supabase.rpc("admin_group_plans");
     return r.error ? { error: r.error.message, rows: [] } : { rows: r.data ?? [] };

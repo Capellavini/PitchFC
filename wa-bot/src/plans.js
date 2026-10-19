@@ -1,4 +1,4 @@
-// Group plans for the bot (migration 20261019092955_plan_entitlements.sql).
+// Group plans for the bot (migration 20261019100000_plan_entitlements.sql).
 // Reads group_plans with the service role, caches per group for a few
 // minutes, and answers the two questions the bot asks:
 //   allowsKind(groupId, kind)  → Free groups only get "game_open"

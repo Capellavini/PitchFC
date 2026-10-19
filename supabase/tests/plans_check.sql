@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────
--- PITCH plans — check for 20261019092955_plan_entitlements.sql
+-- PITCH plans — check for 20261019100000_plan_entitlements.sql
 -- (group_plans / player_plans, group_entitlement, admin_set_group_plan,
 -- admin_group_plans, 14-day trial trigger, launch backfill).
 -- Same contract as the other supabase/tests/*_check.sql: transaction +

@@ -19,7 +19,7 @@ function readDemoPlan() {
 
 /**
  * The active group's plan.
- *  - Cloud: group_entitlement(group_id) RPC (migration 20261019092955),
+ *  - Cloud: group_entitlement(group_id) RPC (migration 20261019100000),
  *    refetched when the group changes. Until it answers — or if it fails
  *    (e.g. the migration isn't live yet) — `ent` is null and `ready` false,
  *    and gates fail OPEN: the paywall informs, it never traps.
