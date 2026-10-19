@@ -220,6 +220,8 @@ select pg_temp.ok('outsider can read the team', (select count(*) from public.tea
 select pg_temp.ok('outsider can NOT read the invite token', (select count(*) from public.team_invites where team_id = pg_temp.kv('t1')::uuid) = 0);
 select pg_temp.expect_err('outsider cannot create an invite', format('select public.create_team_invite(%L)', pg_temp.kv('t1')), 'rivals:not_team_leader');
 select pg_temp.expect_err('outsider cannot edit the team', format($q$select public.update_team(%L, '{"city":"Lisboa"}')$q$, pg_temp.kv('t1')), 'rivals:not_team_leader');
+select pg_temp.expect_err('outsider cannot remove a member', format($q$select public.remove_team_member(%L, '00000000-0000-0000-0000-00000000e101')$q$, pg_temp.kv('t1')), 'rivals:not_team_leader');
+select pg_temp.expect_err('outsider cannot rename the team', format($q$select public.update_team(%L, '{"name":"Hackeada"}')$q$, pg_temp.kv('t1')), 'rivals:not_team_leader');
 reset role;
 
 set local role anon;

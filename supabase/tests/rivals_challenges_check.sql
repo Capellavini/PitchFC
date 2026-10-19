@@ -438,7 +438,10 @@ select pg_temp.ok('create persists the expiry of the stale pair row, then opens 
   and (select status from public.team_challenges where id = pg_temp.kv('c_ac4')::uuid) = 'pending');
 reset role;
 update public.team_challenges set expires_at = now() - interval '1 second' where id = pg_temp.kv('c_ac4')::uuid;
-select pg_temp.ok('cron expire_rivals() expires overdue pending rows', public.expire_rivals() >= 1
+-- Run the cron in its OWN statement: a check in the same statement would read
+-- the pre-update snapshot (the function's writes aren't visible to sibling subqueries).
+select pg_temp.setkv('expired_n', public.expire_rivals()::text);
+select pg_temp.ok('cron expire_rivals() expires overdue pending rows', pg_temp.kv('expired_n')::int >= 1
   and (select status from public.team_challenges where id = pg_temp.kv('c_ac4')::uuid) = 'expired'
   and (select outcome from public.team_challenge_versions where challenge_id = pg_temp.kv('c_ac4')::uuid and version = 1) = 'expired'
   and not exists (select 1 from public.team_matches where challenge_id = pg_temp.kv('c_ac4')::uuid));
