@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "pitch-leo": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["scripts/ai-team-mcp.mjs", "--agent", "leo"]
+    },
+    "pitch-cris": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["scripts/ai-team-mcp.mjs", "--agent", "cris"]
+    }
+  }
+}

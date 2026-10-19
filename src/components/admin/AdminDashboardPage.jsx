@@ -9,6 +9,8 @@ import AdminMvpTab from "./AdminMvpTab";
 import AdminFantasyTab from "./AdminFantasyTab";
 import AdminRoadmapTab from "./AdminRoadmapTab";
 
+import AdminAiTeamTab from './AdminAiTeamTab';
+
 const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 const NAV = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
@@ -17,6 +19,7 @@ const NAV = [
   { id: "plans", label: "Planos", icon: Crown },
   { id: "users", label: "Utilizadores", icon: UsersRound },
   { id: "fantasy", label: "Pitch Manager", icon: Trophy },
+  { id: "ai-team", label: "Equipe IA", icon: UsersRound },
   { id: "roadmap", label: "Roadmap", icon: Map },
 ];
 
@@ -173,6 +176,7 @@ export default function AdminDashboardPage({ cloud, localMode }) {
           </button>
         </div>
 
+        {tab === "ai-team" && <AdminAiTeamTab />}
         {tab === "overview" && <AdminOverviewTab {...tabProps} />}
         {tab === "mvp" && <AdminMvpTab {...tabProps} />}
         {tab === "groups" && <AdminGroupsTab {...tabProps} />}
