@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, supabaseEnabled, isAdminEmail } from "../lib/supabase";
-import { computeRoundPoints, mvpBonus, fantasyPrice, DEFAULT_FANTASY_WEIGHTS, nextPricesPaid, squadCostBasis } from "../lib/fantasy";
+import { squadCostBasis } from "../lib/fantasy";
+import { fantasyErrorText } from "../lib/fantasyCopy";
 import { nextGameDate, dateTimeFromIso } from "../lib/helpers";
 import { getLang } from "../lib/i18n";
 import { trackEvent } from "../lib/analytics";
@@ -55,6 +56,7 @@ const EMPTY = {
   matchdays: [], mvpVotes: [], ratings: [],
   posts: [], friendships: [], allPlayers: [], myGroups: [], bannedMembers: [],
   fantasyLeague: null, fantasySquads: [], fantasyScores: [], fantasyTradeOffers: [],
+  fantasyRounds: [], fantasyRoundPlayers: [], fantasySeasons: [], fantasyPrices: {}, myFantasyTrophies: [],
   crossGroupGames: [], crossGroupMatchdays: [], matchdayKudos: [],
 };
 // Teams (PITCH Rivals) live in src/hooks/useTeams.js — RPC-only writes.
@@ -224,22 +226,42 @@ export function useCloud() {
       // group's one active league (if any), everyone's current squads,
       // the locked per-round score history, and pending trade offers.
       // Tolerate the tables not existing yet (pre-migration).
+      // v2 (migration 20261019180559): rounds (locked at kickoff, scored
+      // by the server), per-player round points (prices by form + pitch
+      // overlays), the renewing seasons, server prices and my trophies.
+      // All read-only here — scoring and squad writes live in the DB.
       let fantasyLeague = null, fantasySquads = [], fantasyScores = [], fantasyTradeOffers = [];
+      let fantasyRounds = [], fantasyRoundPlayers = [], fantasySeasons = [], fantasyPrices = {}, myFantasyTrophies = [];
       const flq = await supabase.from("fantasy_leagues").select("*").eq("group_id", gid)
         .order("created_at", { ascending: false }).limit(1);
       if (!flq.error && flq.data?.[0]) {
         fantasyLeague = flq.data[0];
-        const [fsq, fscq, ftoq] = await Promise.all([
+        const [fsq, fscq, ftoq, frq, fseq, fpq] = await Promise.all([
           supabase.from("fantasy_squads").select("*").eq("league_id", fantasyLeague.id),
-          supabase.from("fantasy_scores").select("*").eq("league_id", fantasyLeague.id),
+          supabase.from("fantasy_scores").select("*").eq("league_id", fantasyLeague.id).not("round_id", "is", null),
           supabase.from("fantasy_trade_offers").select("*").eq("league_id", fantasyLeague.id).eq("status", "pending"),
+          supabase.from("fantasy_rounds").select("*").eq("league_id", fantasyLeague.id).order("kickoff_at", { ascending: false }).limit(200),
+          supabase.from("fantasy_seasons").select("*").eq("league_id", fantasyLeague.id),
+          supabase.rpc("fantasy_player_prices", { p_league: fantasyLeague.id }),
         ]);
         fantasySquads = fsq.data ?? [];
         fantasyScores = fscq.data ?? [];
         fantasyTradeOffers = ftoq.data ?? [];
+        fantasyRounds = frq.data ?? [];
+        fantasySeasons = fseq.data ?? [];
+        fantasyPrices = Object.fromEntries((fpq.data ?? []).map((r) => [r.player_id, { price: Number(r.price), prev: r.prev_price == null ? null : Number(r.prev_price) }]));
+        const scoredIds = fantasyRounds.filter((r) => r.status === "scored").map((r) => r.id);
+        if (scoredIds.length) {
+          const frpq = await supabase.from("fantasy_round_players").select("round_id,player_id,points").in("round_id", scoredIds);
+          fantasyRoundPlayers = frpq.data ?? [];
+        }
+      }
+      if (myPlayer?.id) {
+        const ftq = await supabase.from("fantasy_trophies").select("*, season:fantasy_seasons(kind,label,ends_at)").eq("player_id", myPlayer.id);
+        if (!ftq.error) myFantasyTrophies = ftq.data ?? [];
       }
 
-      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, crossGroupGames, crossGroupMatchdays, matchdayKudos });
+      setData({ user, myPlayer, groupRow: g.data, players, game, attendances, events, bookings: bk.data ?? [], matchdays, mvpVotes, ratings, posts, friendships, allPlayers, myGroups: mg.data ?? [], bannedMembers: bm.data ?? [], fantasyLeague, fantasySquads, fantasyScores, fantasyTradeOffers, fantasyRounds, fantasyRoundPlayers, fantasySeasons, fantasyPrices, myFantasyTrophies, crossGroupGames, crossGroupMatchdays, matchdayKudos });
       setStatus("ready");
     } catch (err) {
       console.error("Supabase indisponível — modo local", err);
@@ -287,6 +309,8 @@ export function useCloud() {
       .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_squads" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_scores" }, refetch)
       .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_trade_offers" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_rounds" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "fantasy_seasons" }, refetch)
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [refetch]);
@@ -1047,95 +1071,28 @@ export function useCloud() {
       summary, mvp_open: true,
     }).select().single();
 
-    // Fantasy League: lock every participant's current squad into a
-    // scored round for this matchday. MVP bonus isn't included yet — the
-    // vote hasn't happened; closeMvp adds it once a winner is picked.
-    // Wrapped: this used to run unguarded, so any thrown error here (a
-    // squad row shaped unexpectedly, a network blip) silently killed the
-    // rest of the function with nothing shown to the organizer — season
-    // stats above still saved, but that round never reached fantasy_scores
-    // at all, and endMatchday doesn't await this call, so it failed with
-    // zero visible trace. Surface it as a return value instead; see
-    // syncFantasyScores for recovering a round that was missed this way.
-    let fantasyError = null;
-    if (data.fantasyLeague) {
-      try {
-        if (md.error) throw md.error;
-        const weights = data.fantasyLeague.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
-        const rows = data.fantasySquads
-          .filter((s) => s.player_ids?.length)
-          .map((s) => ({
-            league_id: data.fantasyLeague.id, matchday_id: md.data.id, participant_id: s.participant_id,
-            player_ids: s.player_ids, captain_id: s.captain_id, reserve_ids: s.reserve_ids || [],
-            points: computeRoundPoints(s.player_ids, s.captain_id, summary.lines, weights, s.reserve_ids),
-          }));
-        if (rows.length) {
-          const ins = await supabase.from("fantasy_scores").insert(rows);
-          if (ins.error) throw ins.error;
-          // The bank's only source of "new money" round to round (besides
-          // trades) — a good week buys room to strengthen the squad next.
-          const bankPerPoint = weights.bankPerPoint ?? DEFAULT_FANTASY_WEIGHTS.bankPerPoint;
-          await Promise.all(rows.map((row) => {
-            const squad = data.fantasySquads.find((s) => s.participant_id === row.participant_id);
-            if (!squad || !row.points) return null;
-            return supabase.from("fantasy_squads")
-              .update({ budget_adjustment: (squad.budget_adjustment || 0) + row.points * bankPerPoint })
-              .eq("id", squad.id);
-          }).filter(Boolean));
-        }
-      } catch (e) {
-        fantasyError = e?.message || String(e);
-      }
-    }
+    // Fantasy (v2): scoring is server-side — the matchdays INSERT trigger
+    // (fantasy_on_matchday, migration 20261019180559) attaches this night
+    // to the round locked at kickoff and scores it from that snapshot.
+    if (md.error) console.error("matchday insert failed", md.error);
     // The matchday is now historical (in the matchdays table) — clear the
     // live scoring state off the game row so it doesn't linger for the
     // next one.
     if (data.game) await supabase.from("games").update({ live_matchday: null }).eq("id", data.game.id);
     await refetch();
     trackEvent("matchday_finished", { n_games: nGames });
-    return fantasyError ? { fantasyError } : {};
+    return {};
   };
 
-  /** Recovery for a round that silently failed to score (see the
-   *  fantasyError note above, or any round scored before a scoring bug
-   *  fix landed): finds matchdays with zero fantasy_scores rows at all
-   *  and backfills them from that matchday's already-saved summary.lines
-   *  — the real per-round stats aren't lost, only the fantasy_scores
-   *  rows were. Uses TODAY's squads (player_ids/captain/reserves) as a
-   *  stand-in for what each squad looked like that day, since a missed
-   *  round never got a snapshot saved — an approximation if squads
-   *  changed since, but the only data available. Returns how many
-   *  rounds were recovered. */
+  /** Organizer/admin "Recalcular": the server re-locks what is due,
+   *  re-attaches any matchday that missed its round and re-scores every
+   *  round of the league (fantasy_recompute). Read-only from here on. */
   const syncFantasyScores = async () => {
     if (!data.fantasyLeague) return { synced: 0 };
-    const scoredMatchdayIds = new Set(data.fantasyScores.map((s) => s.matchday_id));
-    const missed = data.matchdays.filter((md) => !scoredMatchdayIds.has(md.id) && md.summary?.lines);
-    if (!missed.length) return { synced: 0 };
-    const weights = data.fantasyLeague.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
-    const bankPerPoint = weights.bankPerPoint ?? DEFAULT_FANTASY_WEIGHTS.bankPerPoint;
-    let synced = 0;
-    for (const md of missed) {
-      const rows = data.fantasySquads
-        .filter((s) => s.player_ids?.length)
-        .map((s) => ({
-          league_id: data.fantasyLeague.id, matchday_id: md.id, participant_id: s.participant_id,
-          player_ids: s.player_ids, captain_id: s.captain_id, reserve_ids: s.reserve_ids || [],
-          points: computeRoundPoints(s.player_ids, s.captain_id, md.summary.lines, weights, s.reserve_ids),
-        }));
-      if (!rows.length) continue;
-      const ins = await supabase.from("fantasy_scores").insert(rows);
-      if (ins.error) continue; // leave this round for another attempt rather than lose the others
-      await Promise.all(rows.map((row) => {
-        const squad = data.fantasySquads.find((s) => s.participant_id === row.participant_id);
-        if (!squad || !row.points) return null;
-        return supabase.from("fantasy_squads")
-          .update({ budget_adjustment: (squad.budget_adjustment || 0) + row.points * bankPerPoint })
-          .eq("id", squad.id);
-      }).filter(Boolean));
-      synced++;
-    }
+    const r = await supabase.rpc("fantasy_recompute", { p_league: data.fantasyLeague.id });
+    if (r.error) return { error: fantasyErrorText(r.error.message) };
     await refetch();
-    return { synced };
+    return { synced: r.data?.attached ?? 0, rescored: r.data?.rescored ?? 0 };
   };
 
   /** Cast one of the 3 ranked ballot slots (1st/2nd/3rd choice). The same
@@ -1181,25 +1138,8 @@ export function useCloud() {
       await supabase.from("matchdays").update({ mvp_open: false }).eq("id", matchdayId);
     }
 
-    // Fantasy League: the podium wasn't known when the round locked (the
-    // vote takes 24h), so bump the bonus into any locked squad that had
-    // one of the 3 finishers, now that it's decided.
-    if (winnerId && data.fantasyLeague) {
-      const weights = data.fantasyLeague.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
-      const bankPerPoint = weights.bankPerPoint ?? DEFAULT_FANTASY_WEIGHTS.bankPerPoint;
-      const podium = { mvpId: winnerId, runnerUpId, thirdId };
-      const rows = data.fantasyScores.filter((s) => s.matchday_id === matchdayId
-        && s.player_ids?.some((id) => id === winnerId || id === runnerUpId || id === thirdId));
-      await Promise.all(rows.map((s) => {
-        const bonus = mvpBonus(s.player_ids, s.captain_id, podium, weights, s.reserve_ids);
-        if (!bonus) return null;
-        const squad = data.fantasySquads.find((sq) => sq.participant_id === s.participant_id);
-        return Promise.all([
-          supabase.from("fantasy_scores").update({ points: s.points + bonus }).eq("id", s.id),
-          squad && supabase.from("fantasy_squads").update({ budget_adjustment: (squad.budget_adjustment || 0) + bonus * bankPerPoint }).eq("id", squad.id),
-        ]);
-      }).filter(Boolean));
-    }
+    // Fantasy: the podium update above fires the matchdays UPDATE trigger,
+    // which re-scores that round with the MVP bonus server-side.
     await refetch();
   };
 
@@ -1245,102 +1185,60 @@ export function useCloud() {
   // ── Fantasy League (admin-only beta) ───────────────────
   /** Organizer/assistant/admin creates the group's fantasy league (one
    *  active league per group in this v1). */
-  const createFantasyLeague = async ({ name, budget, squadSize, durationMonths }) => {
+  const createFantasyLeague = async ({ name, budget, squadSize, mode = "classic" }) => {
     if (!data.groupRow) return { error: "Sem grupo." };
+    // rules_version / v2_started_at / seasons are set by the DB triggers.
     const r = await supabase.from("fantasy_leagues").insert({
-      group_id: data.groupRow.id, name, budget, squad_size: squadSize,
-      duration_months: Math.max(1, durationMonths || 1), created_by: data.myPlayer?.id,
+      group_id: data.groupRow.id, name, budget, squad_size: squadSize, mode, created_by: data.myPlayer?.id,
     });
-    if (r.error) return { error: r.error.message };
+    if (r.error) return { error: fantasyErrorText(r.error.message) };
     await refetch();
     return {};
   };
 
-  // Shared pricing snapshot for Pitch Manager budget checks (mirrors the
-  // client-side calc in FantasyTab — fantasyPrice over rounds played
-  // since the league started), so squad saves and trades can't be used
-  // to spend past what the budget + past trade cash actually allows.
+  // Server price (fantasy_player_prices: base + form of the last 3 scored
+  // rounds) — used for the client-side bank previews only; the RPCs
+  // re-check everything.
   const fantasyPriceOf = () => {
-    const league = data.fantasyLeague;
-    const weights = league?.scoring_weights || DEFAULT_FANTASY_WEIGHTS;
-    const rounds = data.matchdays.filter((md) => new Date(md.created_at) >= new Date(league?.starts_at || league?.created_at));
-    return (uuid) => fantasyPrice(uuid, rounds, weights);
+    const base = Number(data.fantasyLeague?.scoring_weights?.priceBase) || 20;
+    return (uuid) => Number(data.fantasyPrices?.[uuid]?.price ?? base);
   };
 
-  /** Save/update the current player's fantasy squad — one row per
-   *  participant, freely editable up to 8h before the next kickoff (see
-   *  FantasyTab, which hides the editor once locked — this is a second,
-   *  server-side check against the same game.scheduled_at). */
-  const saveFantasySquad = async (leagueId, playerIds, captainId, reserveIds) => {
-    if (!data.myPlayer) return { error: "Sem sessão." };
-    if (data.game?.scheduled_at) {
-      const lockAt = new Date(data.game.scheduled_at).getTime() - 8 * 3600 * 1000;
-      if (Date.now() > lockAt) return { error: "Escalação trancada — falta menos de 8h para o jogo." };
-    }
-    // Dedupe defensively — closes the same class of bug found in trading
-    // (see accept_fantasy_trade, migration 35): nothing upstream should
-    // ever hand this a list with repeats, but a stale double-click here
-    // shouldn't be able to write one either.
-    playerIds = [...new Set(playerIds)];
-    reserveIds = reserveIds ? [...new Set(reserveIds)] : reserveIds;
-    const existing = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
-    // Kept players are charged what was actually paid for them (cost
-    // basis), never today's live price — otherwise re-saving an
-    // unchanged squad after your own players did well would falsely
-    // read as "over budget" (the exact bug the bank fix already solved
-    // for the display; this is the same computation, used here for the
-    // save validation itself). Only genuinely new picks cost today's
-    // price — a real transaction.
-    const pricesPaid = data.fantasyLeague
-      ? nextPricesPaid(existing?.prices_paid, playerIds, fantasyPriceOf())
-      : undefined;
-    if (data.fantasyLeague) {
-      // Injured players can be *kept* if they were already on the squad
-      // (e.g. hurt after being picked, or you're just re-saving a captain
-      // change) — only block newly adding one that's already flagged.
-      const previousIds = new Set(existing?.player_ids || []);
-      const newlyAdded = playerIds.filter((id) => !previousIds.has(id));
-      const injuredAdd = newlyAdded.find((id) => data.players.find((p) => p.id === id)?.injured);
-      if (injuredAdd) return { error: "Não podes escalar um jogador lesionado." };
-
-      const effectiveBudget = data.fantasyLeague.budget + (existing?.budget_adjustment || 0);
-      if (squadCostBasis(pricesPaid) > effectiveBudget) return { error: "Orçamento insuficiente para esta escalação." };
-    }
-    const r = await supabase.from("fantasy_squads").upsert(
-      { league_id: leagueId, participant_id: data.myPlayer.id, player_ids: playerIds, captain_id: captainId, reserve_ids: reserveIds ?? [],
-        ...(pricesPaid ? { prices_paid: pricesPaid } : {}), updated_at: new Date().toISOString() },
-      { onConflict: "league_id,participant_id" });
-    if (r.error) return { error: r.error.message };
+  /** Save the current player's squad through save_fantasy_squad — the only
+   *  write path (budget, price, ownership cap, injured, captain/vice and
+   *  bench normalisation are enforced there). Editing is always open: a
+   *  passed kickoff is locked first, so a late edit counts for the next
+   *  round. reserveIds = bench in sub order. */
+  const saveFantasySquad = async (leagueId, playerIds, captainId, reserveIds, viceId = null) => {
+    if (!data.myPlayer) return { error: fantasyErrorText("fantasy:auth") };
+    const r = await supabase.rpc("save_fantasy_squad", {
+      p_league: leagueId,
+      p_player_ids: [...new Set(playerIds)],
+      p_bench_ids: [...new Set(reserveIds || [])],
+      p_captain_id: captainId || null,
+      p_vice_id: viceId || null,
+    });
+    if (r.error) return { error: fantasyErrorText(r.error.message) };
     await refetch();
     return {};
   };
 
   // ── Player trading (Pitch Manager) ─────────────────────
-  /** Propose acquiring `targetPlayerId` (owned by someone else) either
-   *  for cash (drops `givePlayerId` from your own squad, no replacement
-   *  — it just returns to the pool; the seller banks the cash via
-   *  budget_adjustment) or as a straight swap (seller receives
-   *  `givePlayerId` in return for `targetPlayerId`). The current owner
-   *  must accept (respondTradeOffer) before anything changes hands. */
+  /** Propose acquiring `targetPlayerId` (owned by someone else) either for
+   *  cash (drops `givePlayerId` from your squad; the seller banks the
+   *  cash) or as a straight swap. The owner must accept; the server then
+   *  re-derives both squads (accept_fantasy_trade). */
   const createTradeOffer = async (leagueId, toParticipantId, targetPlayerId, givePlayerId, offerType, offerCash) => {
-    if (!data.myPlayer) return { error: "Sem sessão." };
+    if (!data.myPlayer) return { error: fantasyErrorText("fantasy:auth") };
     if (data.players.find((p) => p.id === targetPlayerId)?.injured) {
       return { error: "Não podes escalar um jogador lesionado." };
     }
-    // Ownership must be checked against the CURRENT squads, not assumed —
-    // an offer built on a stale/wrong pairing is exactly how the target
-    // player ended up duplicated (see accept_fantasy_trade, migration 35).
     const mySquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
     const theirSquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === toParticipantId);
-    if (!mySquad?.player_ids.includes(givePlayerId)) {
-      return { error: "Não tens esse jogador na tua escalação." };
-    }
-    if (!theirSquad?.player_ids.includes(targetPlayerId)) {
-      return { error: "Esse jogador já não pertence a essa escalação." };
-    }
+    if (!mySquad?.player_ids.includes(givePlayerId)) return { error: "Não tens esse jogador na tua escalação." };
+    if (!theirSquad?.player_ids.includes(targetPlayerId)) return { error: "Esse jogador já não pertence a essa escalação." };
     if (data.fantasyLeague) {
       const priceOf = fantasyPriceOf();
-      const mySquad = data.fantasySquads.find((s) => s.league_id === leagueId && s.participant_id === data.myPlayer.id);
       const myBank = data.fantasyLeague.budget + (mySquad?.budget_adjustment || 0) - squadCostBasis(mySquad?.prices_paid);
       const netCost = (priceOf(targetPlayerId) - priceOf(givePlayerId)) + (offerType === "cash" ? Number(offerCash) || 0 : 0);
       if (netCost > myBank) return { error: "Banco insuficiente para esta oferta." };
@@ -1348,7 +1246,7 @@ export function useCloud() {
     const r = await supabase.from("fantasy_trade_offers").insert({
       league_id: leagueId, from_participant_id: data.myPlayer.id, to_participant_id: toParticipantId,
       target_player_id: targetPlayerId, give_player_id: givePlayerId,
-      offer_type: offerType, offer_cash: offerType === "cash" ? offerCash : null,
+      offer_type: offerType, offer_cash: offerType === "cash" ? Math.max(0, Number(offerCash) || 0) : null,
     });
     if (r.error) return { error: r.error.message };
     await refetch();
@@ -1360,61 +1258,22 @@ export function useCloud() {
     await refetch();
   };
 
-  /** Accept or decline an incoming offer. On accept, applies the roster
-   *  change to both squads (+ the cash ledger for a 'cash' offer) in one
-   *  go — validated so neither side ends up over budget first. */
+  /** Accept or decline an incoming offer. Accepting goes through
+   *  accept_fantasy_trade, which (since v2) derives both squads, prices
+   *  and the cash ledger from the offer itself — the array arguments are
+   *  kept for signature compatibility and ignored. */
   const respondTradeOffer = async (offer, accept) => {
     if (!accept) {
       await supabase.from("fantasy_trade_offers").update({ status: "declined", resolved_at: new Date().toISOString() }).eq("id", offer.id);
       await refetch();
       return {};
     }
-    // Re-check injury status at accept time, not just creation time — a
-    // player can get flagged injured while the offer was sitting pending.
-    if (data.players.find((p) => p.id === offer.target_player_id)?.injured) {
-      return { error: "Esse jogador está lesionado — a troca não pode ser aceite." };
-    }
-    const buyerSquad = data.fantasySquads.find((s) => s.participant_id === offer.from_participant_id);
-    const sellerSquad = data.fantasySquads.find((s) => s.participant_id === offer.to_participant_id);
-    if (!buyerSquad || !sellerSquad) return { error: "Escalação não encontrada." };
-
-    // De-duplicated defensively here too — belt-and-suspenders on top of
-    // the DB-side dedup in accept_fantasy_trade (see migration 35).
-    const buyerNewIds = [...new Set(buyerSquad.player_ids.filter((id) => id !== offer.give_player_id).concat(offer.target_player_id))];
-    const sellerNewIds = [...new Set(offer.offer_type === "swap"
-      ? sellerSquad.player_ids.filter((id) => id !== offer.target_player_id).concat(offer.give_player_id)
-      : sellerSquad.player_ids.filter((id) => id !== offer.target_player_id))];
-
-    const buyerAdjustment = (buyerSquad.budget_adjustment || 0) - (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
-    const sellerAdjustment = (sellerSquad.budget_adjustment || 0) + (offer.offer_type === "cash" ? Number(offer.offer_cash) || 0 : 0);
-
-    const priceOf = fantasyPriceOf();
-    const buyerNewPricesPaid = nextPricesPaid(buyerSquad.prices_paid, buyerNewIds, priceOf);
-    const sellerNewPricesPaid = nextPricesPaid(sellerSquad.prices_paid, sellerNewIds, priceOf);
-
-    if (data.fantasyLeague) {
-      const buyerBankAfter = data.fantasyLeague.budget + buyerAdjustment - squadCostBasis(buyerNewPricesPaid);
-      const sellerBankAfter = data.fantasyLeague.budget + sellerAdjustment - squadCostBasis(sellerNewPricesPaid);
-      if (buyerBankAfter < 0) return { error: "O comprador não tem banco suficiente para esta troca." };
-      if (sellerBankAfter < 0) return { error: "Isto deixaria o teu banco negativo." };
-    }
-
-    // A single security-definer RPC applies both squads' changes + flips
-    // the offer to 'accepted' in one transaction (see migration 35) —
-    // plain client updates can't touch the OTHER participant's squad row
-    // at all (RLS scopes fantasy_squads writes to participant_id =
-    // my_player_id()), which is exactly how this used to half-apply.
     const r = await supabase.rpc("accept_fantasy_trade", {
       p_offer_id: offer.id,
-      p_buyer_player_ids: buyerNewIds,
-      p_buyer_budget_adjustment: buyerAdjustment,
-      p_buyer_prices_paid: buyerNewPricesPaid,
-      p_seller_player_ids: sellerNewIds,
-      p_seller_budget_adjustment: sellerAdjustment,
-      p_seller_prices_paid: sellerNewPricesPaid,
+      p_buyer_player_ids: [], p_buyer_budget_adjustment: 0, p_buyer_prices_paid: {},
+      p_seller_player_ids: [], p_seller_budget_adjustment: 0, p_seller_prices_paid: {},
     });
-    if (r.error) return { error: r.error.message };
-
+    if (r.error) return { error: fantasyErrorText(r.error.message) };
     await refetch();
     return {};
   };

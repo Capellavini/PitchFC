@@ -17,7 +17,8 @@ import {concludeMatch} from "./lib/currentMatch.js";
 import { hashId } from "./lib/core/ids.js";
 import { drawTeams as drawTeamsCore, balanceTeams as balanceTeamsCore } from "./lib/core/teamDraw.js";
 import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
-import { computeRoundPoints, fantasyPrice, nextPricesPaid, DEFAULT_FANTASY_WEIGHTS } from "./lib/fantasy";
+import { buildDemoFantasy, normalizeSquad } from "./lib/fantasyDemo";
+import { fantasyErrorText } from "./lib/fantasyCopy";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import {stampVarGoal} from "./lib/varProtocol.js";
 import VarControls from "./components/VarControls";
@@ -149,7 +150,8 @@ export default function PitchApp() {
   // always gets the new seed.
   const [demoSeedV, setDemoSeedV] = usePersistentState("demoSeed", 0);
   // Pitch Manager in local demo: my own squad is editable and persisted.
-  const [demoFantasySquad, setDemoFantasySquad] = usePersistentState("demoFantasySquad", DEMO_FANTASY.mySquad);
+  // v2 key: the v1 shape (no vice/bench order/transfer state) is dropped.
+  const [demoFantasySquad, setDemoFantasySquad] = usePersistentState("demoFantasySquadV2", DEMO_FANTASY.mySquad);
   const [matchdayLocal, setMatchdayLocal] = usePersistentState("matchday", null);
   const [lastMatchday, setLastMatchday] = usePersistentState("lastMatchday", null);
   const [bookings, setBookings] = usePersistentState("bookings", INITIAL_BOOKINGS);
@@ -1147,10 +1149,8 @@ export default function PitchApp() {
         if (!s && !played) return;
         statsByUuid[p.uuid] = { goals: s?.goals ?? 0, assists: s?.assists ?? 0, cleanSheets: s?.cleanSheets ?? 0, wins: s?.wins ?? 0, epicSaves: s?.epicSaves ?? 0, played };
       });
-      const res = await cloud.commitMatchday({ statsByUuid, summary, totalGoals, mode: matchday.mode, nGames: matchday.matches.length });
-      if (res?.fantasyError) {
-        window.alert(t("As stats da época foram gravadas, mas a pontuação da Fantasy falhou para este dia. Vai a Manager e usa \"Sincronizar\" para recuperar esta ronda.") + `\n\n(${res.fantasyError})`);
-      }
+      // Fantasy is scored server-side (matchdays trigger, fantasy_on_matchday).
+      await cloud.commitMatchday({ statsByUuid, summary, totalGoals, mode: matchday.mode, nGames: matchday.matches.length });
     } else {
       setGroup((g) => g.map((p) => {
         const s = stats[p.id];
@@ -2110,49 +2110,31 @@ export default function PitchApp() {
   const totalGamesPlayed = historyView.reduce((s, h) => s + (h.games || 1), 0);
 
   // ── Pitch Manager (Fantasy) in local demo ──────────────
-  // FantasyTab is keyed by player uuid; demo players get String(id) as
-  // uuid (and the seed lines the same keys) so the real component runs
-  // unchanged on a mock league: me + 5 rivals, rounds = seeded matchdays
-  // since the league started, my squad editable + persisted locally.
-  // Trades need other real managers → unavailable in the demo.
+  // Same v2 rules as the server (src/lib/core/fantasyRules.js via
+  // buildDemoFantasy): me + 5 rivals, rounds = seeded matchdays since the
+  // league started, my squad editable + persisted locally. Trades need
+  // other real managers → unavailable in the demo.
   let demoFantasyProps = null;
+  let demoFantasyTrophies = [];
   if (localMode && me) {
-    const fk = (id) => String(id);
-    const fGroup = displayGroup.map((p) => ({ ...p, uuid: fk(p.id) }));
-    const startsAt = new Date(Date.now() - DEMO_FANTASY.startsWeeksAgo * 7 * 24 * 3600 * 1000 - 3600 * 1000).toISOString();
-    const fMatchdays = localDays.map((d) => ({
-      id: d.id,
-      created_at: d.playedOn ? new Date(`${d.playedOn}T21:00:00`).toISOString() : new Date().toISOString(),
-      summary: { ...d.summary, lines: (d.summary?.lines || []).map((l) => ({ ...l, key: fk(l.key) })) },
-    }));
-    const rounds = fMatchdays.filter((md) => md.created_at >= startsAt);
-    const basePaid = (ids) => Object.fromEntries(ids.map((id) => [id, DEFAULT_FANTASY_WEIGHTS.priceBase]));
-    const myIds = (demoFantasySquad.player_ids || []).map(fk);
-    const squads = [
-      { participant_id: fk(me.id), player_ids: myIds, captain_id: demoFantasySquad.captain_id != null ? fk(demoFantasySquad.captain_id) : null,
-        reserve_ids: (demoFantasySquad.reserve_ids || []).map(fk), prices_paid: demoFantasySquad.prices_paid || basePaid(myIds), budget_adjustment: 30 },
-      ...DEMO_FANTASY.rivals.filter((r) => r.participant !== me.id).map((r) => ({
-        participant_id: fk(r.participant), player_ids: r.player_ids.map(fk), captain_id: fk(r.captain_id),
-        reserve_ids: [], prices_paid: basePaid(r.player_ids.map(fk)), budget_adjustment: 0,
-      })),
-    ];
-    const scores = rounds.flatMap((md) => squads.map((s) => ({
-      participant_id: s.participant_id, matchday_id: md.id,
-      points: computeRoundPoints(s.player_ids, s.captain_id, md.summary.lines, DEFAULT_FANTASY_WEIGHTS, s.reserve_ids),
-    })));
+    const demo = buildDemoFantasy({
+      group: displayGroup, localDays, mySquad: demoFantasySquad, lockedSquad: DEMO_FANTASY.mySquad, rivals: DEMO_FANTASY.rivals,
+      budget: DEMO_FANTASY.budget, squadSize: DEMO_FANTASY.squadSize, startsWeeksAgo: DEMO_FANTASY.startsWeeksAgo,
+    });
+    demoFantasyTrophies = demo.trophies;
     const unavailable = async () => ({ error: t("Indisponível na demonstração.") });
     demoFantasyProps = {
-      group: fGroup, me: fGroup.find((p) => p.isMe),
-      fantasyLeague: { id: "demo-league", name: "Pitch Manager", budget: DEMO_FANTASY.budget, squad_size: DEMO_FANTASY.squadSize, duration_months: 2, starts_at: startsAt, created_at: startsAt },
-      fantasySquads: squads, fantasyScores: scores, fantasyTradeOffers: [], matchdays: fMatchdays,
+      group: demo.group, me: demo.me,
+      fantasyLeague: demo.fantasyLeague, fantasySquads: demo.fantasySquads, fantasyScores: demo.fantasyScores,
+      fantasyTradeOffers: [], fantasyRounds: demo.fantasyRounds, fantasyRoundPlayers: demo.fantasyRoundPlayers,
+      fantasySeasons: demo.fantasySeasons, fantasyPrices: demo.fantasyPrices,
       onCreateLeague: unavailable, onCreateTradeOffer: unavailable, onCancelTradeOffer: unavailable, onRespondTradeOffer: unavailable,
       onSyncFantasy: null,
-      onSaveSquad: async (_leagueId, playerIds, captainId, reserveIds) => {
-        const ids = [...new Set(playerIds)];
-        setDemoFantasySquad((prev) => ({
-          player_ids: ids, captain_id: captainId, reserve_ids: reserveIds || [],
-          prices_paid: nextPricesPaid(prev.prices_paid || basePaid((prev.player_ids || []).map(fk)), ids, (id) => fantasyPrice(id, rounds)),
-        }));
+      onSaveSquad: async (_leagueId, playerIds, captainId, reserveIds, viceId) => {
+        const next = normalizeSquad({ playerIds, reserveIds, captainId, viceId }, DEMO_FANTASY.squadSize);
+        const ok = demo.validate(next);
+        if (typeof ok === "string") return { error: fantasyErrorText(ok) };
+        setDemoFantasySquad((prev) => ({ ...prev, ...next, prices_paid: ok.prices_paid }));
         return {};
       },
     };
@@ -2380,7 +2362,8 @@ export default function PitchApp() {
                 fantasy={cloud.canSeeFantasy ? (
                   <FantasyTab group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
                     fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
-                    fantasyTradeOffers={cloud.fantasyTradeOffers} matchdays={cloud.matchdays}
+                    fantasyTradeOffers={cloud.fantasyTradeOffers} fantasyRounds={cloud.fantasyRounds}
+                    fantasyRoundPlayers={cloud.fantasyRoundPlayers} fantasySeasons={cloud.fantasySeasons} fantasyPrices={cloud.fantasyPrices}
                     onCreateLeague={createFantasyGated} onSaveSquad={cloud.saveFantasySquad}
                     onCreateTradeOffer={cloud.createTradeOffer} onCancelTradeOffer={cloud.cancelTradeOffer}
                     onRespondTradeOffer={cloud.respondTradeOffer} onSyncFantasy={cloud.syncFantasyScores} />
@@ -2518,6 +2501,7 @@ export default function PitchApp() {
             myTeams={rivals.myTeams} teamsApi={rivals}
             onOpenTeam={(teamId) => { focusRivals({ teamId }); selectTab("competir"); }}
             localMatchday={cloudMode ? null : lastMatchdayView}
+            fantasyTrophies={cloudMode ? cloud.myFantasyTrophies : demoFantasyTrophies}
           />
         )}
       </div>

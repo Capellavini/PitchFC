@@ -1,12 +1,13 @@
 import { C, S, cardStyle } from "../theme";
 import { fmtM } from "../lib/fantasy";
 import { t } from "../lib/i18n";
+import "../lib/fantasyCopy";
 import StatTile from "./StatTile";
 
 /**
  * FantasyStatsCard — Pitch Manager header: four StatTiles in ONE card
  * (2×2 so money values like "$30.0M" fit a phone at 28px).
- *  - Selecionados n/min — green when the squad is complete, orange while
+ *  - Titulares n/size (+N no banco) — green when the squad is complete, orange while
  *    incomplete (pending, never red).
  *  - Banco — red only when the draft is over budget (a real error).
  *  - Pontos — my league total; sub = last round.
@@ -21,10 +22,11 @@ export default function FantasyStatsCard({ count, squadSize, bank, overBudget, p
   });
   return (
     <div style={{ ...cardStyle, padding: `${S.xs}px ${S.sm}px`, marginBottom: S.lg, display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-      <StatTile style={cell(0)} value={`${count}/${squadSize}`} label={t("Selecionados")} color={complete ? C.green : C.orange} />
+      <StatTile style={cell(0)} value={`${Math.min(count, squadSize)}/${squadSize}`} label={t("Titulares")} color={complete ? C.green : C.orange}
+        sub={count > squadSize ? `+${count - squadSize} ${t("no banco")}` : null} />
       <StatTile style={cell(1)} value={fmtM(bank)} label={t("Banco")} color={overBudget ? C.red : C.text1} />
       <StatTile style={cell(2)} value={points != null ? Math.round(points) : "—"} label={t("Pontos")}
-        sub={lastRound != null ? `${lastRound > 0 ? "+" : ""}${Math.round(lastRound)} ${t("na última jornada")}` : null} />
+        sub={lastRound != null ? `${lastRound > 0 ? "+" : ""}${Math.round(lastRound)} ${t("na última ronda")}` : null} />
       <StatTile style={cell(3)} value={rank ? `#${rank}` : "—"} label={t("Posição")}
         sub={rank && participants ? `${t("de")} ${participants}` : null} />
     </div>

@@ -1,0 +1,119 @@
+{
+  "positions": {
+    "g1": "Guarda-redes", "d1": "Defesa", "d2": "Defesa", "d3": "Defesa", "d4": "Defesa",
+    "m1": "Médio", "m2": "Médio", "m3": "Médio",
+    "a1": "Avançado", "a2": "Avançado", "a3": "Avançado",
+    "k1": "Avançado", "k2": "Guarda-redes", "k3": "Médio",
+    "p1": "Defesa", "p2": "Guarda-redes"
+  },
+  "summaries": {
+    "nightA": {
+      "teamResults": [
+        { "name": "Coletes", "wins": 1, "players": ["g1", "d1", "m1", "a1", "a3"] },
+        { "name": "Sem coletes", "wins": 1, "players": ["m2", "d2", "a2"] }
+      ],
+      "matches": [
+        { "n": 1, "homeName": "Coletes", "awayName": "Sem coletes", "homeGoals": 3, "awayGoals": 0, "homeGk": "g1", "awayGk": "m2",
+          "events": [
+            { "side": "h", "type": "goal", "by": "a1", "ast": "m1" },
+            { "side": "h", "type": "save", "by": "g1" },
+            { "side": "h", "type": "goal", "by": "a1", "ast": "d1" },
+            { "side": "a", "type": "save", "by": "m2" },
+            { "side": "h", "type": "goal", "by": "a1" }
+          ] },
+        { "n": 2, "homeName": "Coletes", "awayName": "Sem coletes", "homeGoals": 1, "awayGoals": 2, "homeGk": "g1", "awayGk": "m2",
+          "events": [
+            { "side": "a", "type": "og", "by": "d1" },
+            { "side": "a", "type": "goal", "by": "a2", "ast": "d2" },
+            { "side": "h", "type": "goal", "by": "m1" }
+          ] },
+        { "n": 3, "homeName": "Coletes", "awayName": "Sem coletes", "homeGoals": 0, "awayGoals": 0, "homeGk": "g1", "awayGk": "m2",
+          "events": [ { "side": "a", "type": "save", "by": "d2" } ] }
+      ],
+      "lines": [
+        { "key": "a1", "goals": 3, "assists": 0 },
+        { "key": "m1", "goals": 1, "assists": 1 },
+        { "key": "d1", "goals": 0, "assists": 1 },
+        { "key": "a2", "goals": 1, "assists": 0 },
+        { "key": "d2", "goals": 0, "assists": 1, "epicSaves": 1 },
+        { "key": "g1", "goals": 0, "assists": 0, "epicSaves": 1 },
+        { "key": "m2", "goals": 0, "assists": 0, "epicSaves": 1 }
+      ],
+      "candidates": [
+        { "key": "g1" }, { "key": "d1" }, { "key": "m1" }, { "key": "a1" }, { "key": "a3" },
+        { "key": "m2" }, { "key": "d2" }, { "key": "a2" }, { "key": "m3" }
+      ]
+    },
+    "legacy": {
+      "teamResults": [ { "name": "A", "wins": 1 }, { "name": "B", "wins": 0 } ],
+      "matches": [ { "n": 1, "homeName": "A", "awayName": "B", "homeGoals": 2, "awayGoals": 0 } ],
+      "lines": [ { "key": "k1", "goals": 2, "assists": 0 }, { "key": "k2", "goals": 0, "epicSaves": 2 } ],
+      "candidates": [ { "key": "k1" }, { "key": "k2" }, { "key": "k3" } ]
+    },
+    "dupNames": {
+      "teamResults": [ { "name": "X", "players": ["p1"] }, { "name": "X", "players": ["p2"] } ],
+      "matches": [ { "n": 1, "homeName": "X", "awayName": "X", "homeGoals": 1, "awayGoals": 0,
+        "events": [ { "side": "h", "type": "goal", "by": "p1" } ] } ],
+      "lines": [ { "key": "p1", "goals": 1 } ],
+      "candidates": [ { "key": "p1" }, { "key": "p2" } ]
+    }
+  },
+  "nights": [
+    { "name": "night A: every rule, no podium", "summary": "nightA", "podium": {},
+      "expected": { "g1": 14, "d1": 11, "m1": 14, "a1": 18, "a3": 3, "m2": 10, "d2": 12, "a2": 7, "m3": -3, "d3": 0 } },
+    { "name": "night A: MVP podium 10/6/3", "summary": "nightA", "podium": { "mvp": "a1", "second": "g1", "third": "d2" },
+      "expected": { "a1": 28, "g1": 20, "d2": 15, "m1": 14 } },
+    { "name": "legacy summary: no events, no rosters", "summary": "legacy", "podium": {},
+      "expected": { "k1": 10, "k2": 8, "k3": 2 } },
+    { "name": "duplicate team names: no CS/win attributed", "summary": "dupNames", "podium": {},
+      "expected": { "p1": 9, "p2": 2 } }
+  ],
+  "lineups": [
+    { "name": "plain lineup, captain x2, bench scores 0", "summary": "nightA", "podium": {},
+      "lineup": { "starters": ["g1", "d1", "m1", "a1", "a2"], "bench": ["a3"], "captain": "a1", "vice": "m1", "transferCost": 0 },
+      "expected": { "total": 82, "transferCost": 0, "captain": "a1", "subs": {},
+        "players": { "g1": 14, "d1": 11, "m1": 14, "a1": 36, "a2": 7, "a3": 0 } } },
+    { "name": "auto-sub by bench order + vice inherits x2 + transfer cost", "summary": "nightA", "podium": {},
+      "lineup": { "starters": ["g1", "d1", "m3", "a1", "d3"], "bench": ["d4", "a3", "m2"], "captain": "m3", "vice": "a1", "transferCost": 8 },
+      "expected": { "total": 66, "transferCost": 8, "captain": "a1", "subs": { "a3": "m3", "m2": "d3" },
+        "players": { "g1": 14, "d1": 11, "m3": 0, "a1": 36, "d3": 0, "d4": 0, "a3": 3, "m2": 10 } } },
+    { "name": "no bench: no-show -3 stays, captain and vice absent so no x2", "summary": "nightA", "podium": {},
+      "lineup": { "starters": ["m3", "d3", "g1"], "bench": [], "captain": "d3", "vice": "m3", "transferCost": 0 },
+      "expected": { "total": 11, "transferCost": 0, "captain": null, "subs": {},
+        "players": { "m3": -3, "d3": 0, "g1": 14 } } },
+    { "name": "MVP podium, captain doubles the bonus", "summary": "nightA", "podium": { "mvp": "a1", "second": "g1", "third": "d2" },
+      "lineup": { "starters": ["a1", "g1", "d2"], "bench": [], "captain": "a1", "vice": "g1", "transferCost": 0 },
+      "expected": { "total": 91, "transferCost": 0, "captain": "a1", "subs": {},
+        "players": { "a1": 56, "g1": 20, "d2": 15 } } },
+    { "name": "podium player on the bench (not needed) scores 0", "summary": "nightA", "podium": { "mvp": "a1" },
+      "lineup": { "starters": ["a2"], "bench": ["a1"], "captain": "a2", "vice": null, "transferCost": 0 },
+      "expected": { "total": 14, "transferCost": 0, "captain": "a2", "subs": {},
+        "players": { "a2": 14, "a1": 0 } } },
+    { "name": "legacy summary lineup", "summary": "legacy", "podium": {},
+      "lineup": { "starters": ["k1", "k2", "k3"], "bench": [], "captain": "k2", "vice": null, "transferCost": 0 },
+      "expected": { "total": 28, "transferCost": 0, "captain": "k2", "subs": {},
+        "players": { "k1": 10, "k2": 16, "k3": 2 } } },
+    { "name": "duplicate names lineup, no captain", "summary": "dupNames", "podium": {},
+      "lineup": { "starters": ["p1", "p2"], "bench": [], "captain": null, "vice": null, "transferCost": 0 },
+      "expected": { "total": 11, "transferCost": 0, "captain": null, "subs": {},
+        "players": { "p1": 9, "p2": 2 } } }
+  ],
+  "prices": [
+    { "form": [10, 4, 7, 1], "base": 20, "scale": 1.5, "expected": 31 },
+    { "form": [], "base": 20, "scale": 1.5, "expected": 20 },
+    { "form": [-3, -3], "base": 20, "scale": 1.5, "expected": 16 },
+    { "form": [-20, -20, -20], "base": 20, "scale": 1.5, "expected": 5 },
+    { "form": [2], "base": 20, "scale": 1.5, "expected": 23 },
+    { "form": [1, 0, 0], "base": 20, "scale": 1.5, "expected": 21 },
+    { "form": [0, 0, 0, 99], "base": 20, "scale": 1.5, "expected": 20 }
+  ],
+  "ownershipCap": [ [0, 2], [1, 2], [3, 2], [4, 2], [5, 3], [6, 3], [11, 6] ],
+  "transfers": [
+    { "locked": null, "current": ["a", "b"], "free": 1, "expected": { "made": 0, "cost": 0, "nextFree": 1 } },
+    { "locked": ["a", "b", "c"], "current": ["a", "b", "d"], "free": 1, "expected": { "made": 1, "cost": 0, "nextFree": 1 } },
+    { "locked": ["a", "b", "c"], "current": ["d", "e", "c"], "free": 1, "expected": { "made": 2, "cost": 4, "nextFree": 1 } },
+    { "locked": ["a", "b", "c"], "current": ["a", "b", "c"], "free": 1, "expected": { "made": 0, "cost": 0, "nextFree": 2 } },
+    { "locked": ["a", "b", "c"], "current": ["a", "b", "c"], "free": 2, "expected": { "made": 0, "cost": 0, "nextFree": 2 } },
+    { "locked": ["a", "b", "c"], "current": ["d", "e", "f"], "free": 2, "expected": { "made": 3, "cost": 4, "nextFree": 1 } }
+  ]
+}

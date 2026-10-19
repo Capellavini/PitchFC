@@ -221,8 +221,11 @@ export const DEMO_PEER_RATINGS = [
 export const DEMO_FANTASY = {
   startsWeeksAgo: 5,
   budget: 120,
-  squadSize: 6,
-  mySquad: { player_ids: [2, 6, 5, 3, 7, 4], captain_id: 2, reserve_ids: [] },
+  squadSize: 5,
+  // v2: 5 starters + 1 on the bench, captain + vice; locked_player_ids =
+  // the lineup of the last locked round (so the transfers counter starts
+  // at "1 grátis").
+  mySquad: { player_ids: [2, 6, 5, 3, 7, 4], captain_id: 2, vice_captain_id: 6, reserve_ids: [4], locked_player_ids: [2, 6, 5, 3, 7, 4], free_transfers: 1 },
   rivals: [
     { participant: 2, player_ids: [6, 12, 8, 10, 3, 13], captain_id: 6 },
     { participant: 6, player_ids: [2, 9, 1, 11, 7, 4], captain_id: 9 },
