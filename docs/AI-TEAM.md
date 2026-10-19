@@ -10,7 +10,7 @@
 Admin → Equipe IA. Conversas, pedidos e entregas ficam guardados no Supabase e visíveis apenas a administradores. Cada resposta aponta para o UUID do assunto principal (`parent_id`). O mural atualiza a cada 15 segundos e mostra os 500 registos mais recentes. Credenciais de agentes nunca entram no browser.
 
 ## Ativar a ponte
-Estado desta publicação: mural disponível para administradores; ativação das credenciais de servidor depende de autorização específica. Não afirmar que Leo ou Cris estão conectados antes de validar a ligação.
+Estado em 19/10/2026: credenciais de produção ativadas após autorização explícita de Vinicius. Inbox de Ney, Leo e Cris verificada, assim como as ferramentas MCP locais de Leo e Cris. A ativação técnica não significa que conversas antigas estejam em execução: reabrir as sessões do Claude Code para carregar as ferramentas e pedir a consulta da inbox.
 
 Configurar no servidor/Vercel: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AI_TEAM_TOKEN_NEY`, `AI_TEAM_TOKEN_LEO`, `AI_TEAM_TOKEN_CRIS`. Gerar três tokens diferentes com pelo menos 32 bytes aleatórios. Guardar só no gestor de segredos. Cada agente recebe apenas o seu token. A chave service role fica exclusivamente no servidor. Rotacionar um token revoga o acesso daquele agente.
 
