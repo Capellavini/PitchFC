@@ -105,6 +105,15 @@ const ATTR_ABBR_DICTS = { "pt-br": ATTR_ABBR_PT_BR, en: ATTR_ABBR_EN };
 export const attrAbbr = (k) => (current === "pt" ? ATTR_ABBR_PT[k] : (ATTR_ABBR_DICTS[current]?.[k] ?? ATTR_ABBR_PT[k]));
 
 const EN = {
+  "Total de golos": "Total goals",
+  "Do campo": "From the pitch",
+  "Partilhar momento": "Share a moment",
+  "O teu último jogo": "Your latest matchday",
+  "Resumo do jogo": "Matchday recap",
+  "Ver destaques": "View highlights",
+  "Fechar destaques": "Hide highlights",
+  "Destaques": "Highlights",
+  "Resumos dos jogos, destaques e momentos partilhados aparecem aqui.": "Matchday recaps, highlights and shared moments appear here.",
   // ── Home (redesign v1): next action, recap, activity feed ──
   "Jogo completo": "Game full", "vaga livre": "spot left", "vagas livres": "spots left",
   "Ver jogo": "View game", "Último resultado": "Latest result", "Tu": "You",
@@ -901,6 +910,15 @@ const EN = {
 };
 
 const PT_BR = {
+  "Total de golos": "Total de gols",
+  "Do campo": "Do campo",
+  "Partilhar momento": "Compartilhar momento",
+  "O teu último jogo": "Seu último jogo",
+  "Resumo do jogo": "Resumo do jogo",
+  "Ver destaques": "Ver destaques",
+  "Fechar destaques": "Fechar destaques",
+  "Destaques": "Destaques",
+  "Resumos dos jogos, destaques e momentos partilhados aparecem aqui.": "Resumos dos jogos, destaques e momentos compartilhados aparecem aqui.",
   "Gerar card das equipas": "Gerar card dos times", "Card das equipas": "Card dos times", "A gerar o card das equipas…": "Gerando o card dos times…",
   "Equilibrar equipas": "Equilibrar times", "As equipas já estão equilibradas por OVR.": "Os times já estão equilibrados por OVR.",
   "Diferença de OVR entre equipas": "Diferença de OVR entre times", "Troca jogadores da mesma posição, sem mudar nomes nem tamanhos.": "Troca jogadores da mesma posição, sem mudar nomes nem tamanhos.",

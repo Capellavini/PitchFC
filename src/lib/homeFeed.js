@@ -192,81 +192,50 @@ export function legendItems({ players = [], matchdays = [], ratingTs = {} }) {
   return out;
 }
 
-/** Builds the single chronological feed.
- *  Item kinds: "result" | "podium" | "performance" | "achievement" |
- *  "legend" | "milestone" | "post" | "gotw"
- *  ("gotw" = the current Golo da Semana leader: replaces that video's
- *  plain post item, same place in the timeline). `gotwLeaderId` = id of
- *  the leading post (goalOfTheWeekRanking()[0] with ≥1 Golaço) or null.
- *  Identity items (achievement, legend) need `players` (the active
- *  group's roster with season totals) + `activeGroupName` (which
- *  matchdays belong to that roster); `ratingTs` = { playerKey: ms of
- *  latest peer rating } when known (cloud). */
-export function buildFeed({ matchdays = [], posts = [], postTs, myKey, meId, friendIds = [], myGroupIds = [], streak = 0, gotwLeaderId = null, players = [], activeGroupName = null, ratingTs = {} }) {
-  const items = [];
-  const sortedMd = [...matchdays].sort((a, b) => b.ts - a.ts);
-
-  sortedMd.forEach((md) => {
-    items.push({ kind: "result", id: `r-${md.id}`, ts: md.ts, md });
-
-    // Weekly podium of that matchday — same top-3 rule as Competir.
-    const top = podiumTop3(md.summary?.lines);
-    if (top.length >= 2) items.push({ kind: "podium", id: `pod-${md.id}`, ts: md.ts - 0.5, md, top });
-
-    // Standout performances: MVP, hat-tricks, and my own contribution.
-    const standouts = (md.summary?.lines || [])
-      .map((line) => {
-        const isMvp = md.mvpKey != null && md.mvpKey === line.key;
-        const mine = line.key === myKey;
-        const contributed = (line.goals || 0) + (line.assists || 0) > 0 || (line.cleanSheets || 0) > 0;
-        if (!(isMvp || (line.goals || 0) >= 3 || (mine && contributed))) return null;
-        return { line, isMvp, mine };
-      })
-      .filter(Boolean)
-      .sort((a, b) => Number(b.isMvp) - Number(a.isMvp) || (b.line.goals - a.line.goals))
-      .slice(0, 3);
-    standouts.forEach((s, i) => items.push({
-      kind: "performance", id: `p-${md.id}-${s.line.key}`, ts: md.ts - 1 - i, md, ...s,
-    }));
+/** One summary per Matchday. Sporting details stay inside that summary;
+ * manual posts remain optional and the weekly leader replaces its own post.
+ * No time-based association of media: private VAR clips are not social posts. */
+export function buildFeed({ matchdays = [], posts = [], postTs, myKey, meId, friendIds = [], myGroupIds = [], streak = 0, gotwLeaderId = null, players = [], activeGroupName = null, ratingTs = {}, now = Date.now() }) {
+  const seen = new Set();
+  const sortedMd = [...matchdays].sort((a, b) => b.ts - a.ts).filter((md) => {
+    if (seen.has(md.id)) return false;
+    seen.add(md.id);
+    return true;
   });
-
-  // Personal record: my most recent performance beats every older one I
-  // have in the window (needs a few older nights to mean anything).
-  const myPerfs = items.filter((i) => i.kind === "performance" && i.mine);
-  if (myPerfs.length >= 3) {
-    const score = (i) => (i.line.goals || 0) + (i.line.assists || 0);
-    const [latest, ...older] = myPerfs;
-    if (score(latest) > 0 && older.every((o) => score(latest) > score(o))) latest.isRecord = true;
-  }
-
-  // Streak milestone — pinned just under my latest matchday.
-  if (streak >= 3) {
-    const latestMine = sortedMd.find((md) => (md.summary?.lines || []).some((l) => l.key === myKey));
-    if (latestMine) items.push({ kind: "milestone", id: `streak-${streak}`, ts: latestMine.ts - 10, streak, md: latestMine });
-  }
-
-  // Conquistas + LENDA for the active group's roster.
-  if (players.length) {
-    const groupMd = activeGroupName ? matchdays.filter((md) => md.groupName === activeGroupName) : matchdays;
-    // At most 2 conquista cards per matchday (mine first, then the rarest
-    // tier) — identity, not badge spam (CLAUDE.md: no excess badges).
-    const TIER_RANK = { legend: 0, gold: 1, silver: 2, bronze: 3 };
-    const best = (it) => Math.min(...it.achievements.map((a) => TIER_RANK[a.tier] ?? 4));
-    const perMd = new Map();
-    achievementUnlocks({ players, matchdays: groupMd }).forEach((it) => perMd.set(it.md.id, [...(perMd.get(it.md.id) || []), it]));
-    perMd.forEach((list) => items.push(...list.sort((a, b) => Number(b.mine) - Number(a.mine) || best(a) - best(b)).slice(0, 2)));
-    items.push(...legendItems({ players, matchdays: groupMd, ratingTs }));
-  }
-
-  posts
-    .filter((p) => p.mine || p.author?.id === meId || myGroupIds.includes(p.author?.groupId) || friendIds.includes(p.author?.id))
-    .forEach((p) => {
-      const ts = (postTs && Date.parse(postTs[p.id])) || (p.createdAt && Date.parse(p.createdAt)) || (typeof p.id === "number" && p.id > 1e12 ? p.id : 0);
-      if (gotwLeaderId != null && p.id === gotwLeaderId) items.push({ kind: "gotw", id: `gotw-${p.id}`, ts, post: p });
-      else items.push({ kind: "post", id: `post-${p.id}`, ts, post: p });
-    });
-
-  return items.sort((a, b) => b.ts - a.ts).slice(0, 40);
+  const groupMd = activeGroupName ? sortedMd.filter((md) => md.groupName === activeGroupName) : sortedMd;
+  const achievements = achievementUnlocks({ players, matchdays: groupMd });
+  const legends = legendItems({ players, matchdays: groupMd, ratingTs });
+  const myDays = sortedMd.filter((md) => playedIn(md, myKey));
+  const score = (md) => {
+    const l = (md.summary?.lines || []).find((line) => line.key === myKey);
+    return (l?.goals || 0) + (l?.assists || 0);
+  };
+  const isRecord = myDays.length >= 3 && score(myDays[0]) > 0 && myDays.slice(1).every((md) => score(myDays[0]) > score(md));
+  const items = sortedMd.map((md) => {
+    const highlights = (md.summary?.lines || []).map((line) => ({
+      kind: "performance", id: `p-${md.id}-${line.key}`, md, line,
+      mine: line.key === myKey,
+      isMvp: md.mvpKey != null && line.key === md.mvpKey,
+      isRecord: isRecord && md.id === myDays[0]?.id && line.key === myKey,
+    })).filter((it) => it.isMvp || (it.line.goals || 0) >= 3 || (it.mine && ((it.line.goals || 0) + (it.line.assists || 0) + (it.line.cleanSheets || 0) > 0)))
+      .sort((a,b) => Number(b.isMvp) - Number(a.isMvp) || Number(b.mine) - Number(a.mine) || (b.line.goals || 0) - (a.line.goals || 0)).slice(0,3);
+    return {
+      kind: "summary", id: `r-${md.id}`, ts: md.ts, md, myKey,
+      top: podiumTop3(md.summary?.lines), highlights,
+      achievements: achievements.filter((it) => it.md.id === md.id),
+      legends: legends.filter((it) => it.md?.id === md.id),
+      streak: streak >= 3 && md.id === myDays[0]?.id ? streak : 0,
+    };
+  });
+  const visiblePostIds = new Set();
+  posts.filter((p) => p.mine || p.author?.id === meId || myGroupIds.includes(p.author?.groupId) || friendIds.includes(p.author?.id)).forEach((p) => {
+    if (visiblePostIds.has(p.id)) return;
+    visiblePostIds.add(p.id);
+    const ts = (postTs && Date.parse(postTs[p.id])) || (p.createdAt && Date.parse(p.createdAt)) || (typeof p.id === "number" && p.id > 1e12 ? p.id : 0);
+    const weekly = gotwLeaderId != null && p.id === gotwLeaderId && p.type === "video" && p.media && (p.likes?.length || 0) > 0 && (!ts || (ts <= now && now - ts <= WEEK));
+    items.push({ kind: weekly ? "gotw" : "post", id: `post-${p.id}`, ts, post: p });
+  });
+  return items.sort((a,b) => b.ts - a.ts).slice(0,40);
 }
 
 /** name → team colour lookup for a matchday (summary.teamResults). */
