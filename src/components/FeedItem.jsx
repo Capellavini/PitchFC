@@ -6,6 +6,7 @@ import { openWhatsApp, sharePostMessage } from "../lib/whatsapp";
 import { POSITION_ABBR } from "../lib/helpers";
 import { nickIn, teamColorOf } from "../lib/homeFeed";
 import Avatar from "./Avatar";
+import MatchdaySummary from "./MatchdaySummary";
 import Chip from "./Chip";
 import GolacoButton from "./GolacoButton";
 import ScoreLine from "./ScoreLine";
@@ -327,7 +328,7 @@ function PostBody({ post, social }) {
  * Props: item (lib/homeFeed buildFeed), social (post handlers),
  *        kudos { count, mine } + onGolaco (performance items).
  */
-export default function FeedItem({ item, social, kudos = { count: 0, mine: false }, onGolaco, onOpenGotw, onOpenCompetir, nameOf }) {
+export default function FeedItem({ item, social, kudos = { count: 0, mine: false }, onGolaco, onOpenGotw, onOpenCompetir, nameOf, kudosFor, onPlayerGolaco, onShareSummary, featured = false }) {
   const edge = item.kind === "performance" && (item.isMvp || item.isRecord) ? C.gold
     : item.kind === "achievement" ? C.gold
     : item.kind === "legend" ? C.legend
@@ -351,6 +352,7 @@ export default function FeedItem({ item, social, kudos = { count: 0, mine: false
           <PostBody post={item.post} social={social} />
         </>
       )}
+      {item.kind === "summary" && <MatchdaySummary item={item} featured={featured} nameOf={nameOf} kudosFor={kudosFor} onGolaco={onPlayerGolaco} onShare={onShareSummary} />}
       {item.kind === "result" && <ResultBody md={item.md} />}
       {item.kind === "performance" && <PerformanceBody item={item} kudos={kudos} onGolaco={onGolaco} nameOf={nameOf} />}
       {item.kind === "milestone" && <MilestoneBody item={item} />}

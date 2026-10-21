@@ -11,7 +11,7 @@ import { normalizeMatchdays, buildFeed, recentMatchday, goalOfTheWeekRanking } f
 import PageHeader from "./PageHeader";
 import Chip from "./Chip";
 import NextActionCard from "./NextActionCard";
-import LastResultCard from "./LastResultCard";
+import FeedItem from "./FeedItem";
 import ActivityFeed from "./ActivityFeed";
 import PostMatchCardModal from "./PostMatchCard";
 import WorkoutCardModal from "./WorkoutCardModal";
@@ -98,6 +98,9 @@ export default function HomeTab({
     players: group, activeGroupName: groupName, ratingTs,
   }), [matchdays, social, postTs, myKey, myGroupIds, attendanceStreak, gotwLeaderId, group, groupName, ratingTs]);
 
+  const recentSummary = recent ? items.find((item) => item.kind === "summary" && item.md.id === recent.id) : null;
+  const remainingItems = recentSummary ? items.filter((item) => item.id !== recentSummary.id) : items;
+
   // Full name for Avatar initials (2 letters, like everywhere else) —
   // older saved summary lines only carry the nick.
   const nameOf = (line) => line.name || group.find((p) => (p.uuid ?? p.id) === line.key)?.name || line.nick;
@@ -161,14 +164,17 @@ export default function HomeTab({
         </div>
       )}
 
-      {/* 2 — LAST RESULT (last 7 days) */}
-      {recent && (
-        <LastResultCard md={recent} myKey={myKey}
-          onShare={me && (recent.summary?.lines || []).some((l) => l.key === myKey) ? () => setShowCard(true) : undefined} />
+      {/* Latest Matchday appears once: summary above the remaining feed. */}
+      {recentSummary && (
+        <div style={{ marginBottom: S.xl }}>
+          <FeedItem item={recentSummary} featured social={social} nameOf={nameOf}
+            kudosFor={kudosFor} onPlayerGolaco={onGolaco}
+            onShareSummary={me && (recent.summary?.lines || []).some((l) => l.key === myKey) ? () => setShowCard(true) : undefined} />
+        </div>
       )}
 
       {/* 3 — SINGLE ACTIVITY FEED */}
-      <ActivityFeed items={items} social={social} me={me}
+      <ActivityFeed items={remainingItems} social={social} me={me}
         kudosFor={kudosFor} onGolaco={onGolaco}
         friendsEnabled={friendsEnabled}
         onWorkout={me && social ? () => setShowWorkout(true) : undefined}

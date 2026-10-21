@@ -44,7 +44,7 @@ export default function FeedComposer({ me, social, onWorkout, initialOpen = fals
         <Avatar name={me?.name || me?.nick} color={C.accent} size={36} isMe photo={me?.photo} />
         {open ? (
           <textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} placeholder={placeholder || t("Partilha um momento, um golo, uma jogada…")}
-            style={{ flex: 1, boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.control, padding: `${S.sm + 2}px ${S.md}px`, fontSize: T.body, color: C.text1, outline: "none", resize: "none", fontFamily: "inherit" }} />
+            style={{ flex: 1, minWidth: 0, boxSizing: "border-box", background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.control, padding: `${S.sm + 2}px ${S.md}px`, fontSize: T.body, color: C.text1, outline: "none", resize: "none", fontFamily: "inherit" }} />
         ) : (
           <button type="button" onClick={() => setOpen(true)} style={{ flex: 1, minHeight: TOUCH.min, textAlign: "left", background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.pill, padding: `0 ${S.lg}px`, fontSize: T.body, color: C.text2, cursor: "text" }}>
             {t("Partilha um momento…")}
@@ -63,7 +63,7 @@ export default function FeedComposer({ me, social, onWorkout, initialOpen = fals
       {uploading && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.sm }}>{t("A carregar ficheiro…")}</div>}
       {err && <div style={{ fontSize: T.meta, color: C.red, marginTop: S.sm }}>{t("Falha no upload:")} {err}</div>}
 
-      <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginTop: S.sm }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: S.sm, marginTop: S.sm }}>
         <label style={tool}>
           <ImagePlus size={16} /> {t("Foto")}
           <input type="file" accept="image/*" disabled={uploading} onChange={(e) => pick(e, "photo")} style={{ display: "none" }} />

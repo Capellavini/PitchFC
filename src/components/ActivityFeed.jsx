@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserPlus, Activity } from "lucide-react";
+import { UserPlus, Activity, Plus } from "lucide-react";
 import { C, S, T, cardStyle } from "../theme";
 import { t } from "../lib/i18n";
 import SectionLabel from "./SectionLabel";
@@ -29,20 +29,20 @@ const GOLACO_KINDS = ["performance", "achievement", "legend"];
 export default function ActivityFeed({ items = [], social, me, kudosFor, onGolaco, friendsEnabled, onWorkout, onOpenGotw, onOpenCompetir, nameOf }) {
   const requests = social?.requests?.length || 0;
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   return (
     <section style={{ marginBottom: S.xl }}>
-      <SectionLabel right={friendsEnabled ? (
-        <Chip onClick={() => setFriendsOpen((v) => !v)} Icon={UserPlus} variant={requests ? "lime" : "neutral"}>
-          {requests ? `${requests} ${requests === 1 ? t("pedido") : t("pedidos")}` : t("Amigos")}
-        </Chip>
-      ) : null} style={{ marginBottom: friendsEnabled ? S.xs : S.md }}>
-        {t("Atividade")}
-      </SectionLabel>
-
+      <SectionLabel right={(
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: S.sm }}>
+          {social && <Chip Icon={Plus} onClick={() => setComposerOpen((v) => !v)}>{t("Partilhar momento")}</Chip>}
+          {friendsEnabled && <Chip onClick={() => setFriendsOpen((v) => !v)} Icon={UserPlus} variant={requests ? "lime" : "neutral"}>
+            {requests ? `${requests} ${requests === 1 ? t("pedido") : t("pedidos")}` : t("Amigos")}
+          </Chip>}
+        </div>
+      )} style={{ marginBottom: S.md }}>{t("Do campo")}</SectionLabel>
       {friendsEnabled && friendsOpen && <FriendsPanel social={social} adding />}
-
-      {social && <FeedComposer me={me} social={social} onWorkout={onWorkout} />}
+      {social && composerOpen && <FeedComposer me={me} social={social} onWorkout={onWorkout} initialOpen onPublished={() => setComposerOpen(false)} />}
 
       {items.length === 0 ? (
         <div style={{ ...cardStyle, textAlign: "center", padding: `${S.xl}px ${S.lg}px` }}>
@@ -51,7 +51,7 @@ export default function ActivityFeed({ items = [], social, me, kudosFor, onGolac
           </div>
           <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: C.text1, marginBottom: S.xs }}>{t("A atividade começa no primeiro jogo")}</div>
           <div style={{ fontSize: T.body, color: C.text2, lineHeight: 1.5 }}>
-            {t("Resultados, golos, MVPs e recordes do teu grupo e dos teus amigos aparecem aqui automaticamente.")}
+            {t("Resumos dos jogos, destaques e momentos partilhados aparecem aqui.")}
           </div>
         </div>
       ) : (
@@ -60,7 +60,8 @@ export default function ActivityFeed({ items = [], social, me, kudosFor, onGolac
             <FeedItem key={item.id} item={item} social={social}
               kudos={GOLACO_KINDS.includes(item.kind) && kudosFor ? kudosFor(item) : undefined}
               onGolaco={GOLACO_KINDS.includes(item.kind) && onGolaco ? () => onGolaco(item) : undefined}
-              onOpenGotw={onOpenGotw} onOpenCompetir={onOpenCompetir} nameOf={nameOf} />
+              onOpenGotw={onOpenGotw} onOpenCompetir={onOpenCompetir} nameOf={nameOf}
+              kudosFor={kudosFor} onPlayerGolaco={onGolaco} />
           ))}
         </div>
       )}
