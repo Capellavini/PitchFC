@@ -923,7 +923,7 @@ const PT_BR = {
 
   // ── LandingPage (2026-10-16 rebuild) ───────────────────
   "PARA QUEM JOGA À BOLA TODAS AS SEMANAS": "PARA QUEM JOGA BOLA TODA SEMANA",
-  "O teu jogo da semana,": "Sua pelada da semana,",
+  "O teu jogo da semana,": "Seu jogo da semana,",
   "sem o caos do grupo.": "sem o caos do grupo.",
   "Confirmações, dinheiro, equipas e estatísticas num só sítio. Para ninguém voltar a perguntar «então, jogamos ou não?».": "Confirmações, dinheiro, times e estatísticas em um só lugar. Pra ninguém mais perguntar “e aí, vai ter jogo ou não?”.",
   "Criar o meu grupo grátis": "Criar meu grupo grátis",

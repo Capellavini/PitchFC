@@ -297,7 +297,7 @@ export const RC = {
   rsvpSaved: L("Resposta guardada.", "Answer saved.", "Resposta salva."),
   findRivals: L("Encontrar rivais", "Find rivals"),
   noTeamGameBody: L("Quando a equipa tiver um jogo combinado, aparece aqui com a convocatória.", "When your team has a match agreed, it shows up here with the call-up.", "Quando o time tiver um jogo combinado, ele aparece aqui com a convocação."),
-  alsoGroups: L("Também jogas uma pelada semanal? Entra no grupo", "Also play a weekly game? Join the group", "Também joga uma pelada semanal? Entre no grupo"),
+  alsoGroups: L("Também tens um jogo semanal? Entra no grupo", "Also play a weekly game? Join the group", "Também tem um jogo semanal? Entre no grupo"),
   matchdayToday: L("HOJE HÁ JOGO", "MATCH DAY", "HOJE TEM JOGO"),
   tactics: L("Tática — {team}", "Tactics — {team}", "Tática — {team}"),
   tacticsNeedPlayers: L("O quadro tático abre com 7 ou mais jogadores no plantel.", "The tactics board opens with 7 or more players in the squad.", "O quadro tático abre com 7 ou mais jogadores no elenco."),
