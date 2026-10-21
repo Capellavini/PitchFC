@@ -2,6 +2,18 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/apresentacao",
+      "destination": "/apresentacao/index.html"
+    },
+    {
+      "source": "/apresentacao/",
+      "destination": "/apresentacao/index.html"
+    },
+    {
+      "source": "/apresentacao/tela",
+      "destination": "/apresentacao/tela.html"
+    },
+    {
       "source": "/VARMariEder",
       "destination": "/VARMariEder/index.html"
     },
@@ -61,6 +73,24 @@
     },
     {
       "source": "/VARMariEder",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/apresentacao",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/apresentacao/:path*",
       "headers": [
         {
           "key": "X-Robots-Tag",
