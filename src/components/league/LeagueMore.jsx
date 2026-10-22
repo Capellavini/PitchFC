@@ -44,7 +44,7 @@ export default function LeagueMore({ ctx }) {
             {t(label)}
           </label>
         ))}
-        <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, lineHeight: 1.5 }}>{t("Preferências guardadas só neste navegador. Notificações reais chegam na Fase 3.")}</div>
+        <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, lineHeight: 1.5 }}>{t("Preferências guardadas só neste browser. Notificações reais chegam na Fase 3.")}</div>
       </div>
     );
   }

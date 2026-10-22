@@ -2,6 +2,7 @@
 // leagueCopy.js: the PT-PT string IS the key; L(pt, en, ptBr?) registers
 // the EN (and PT-BR when it differs) translation. Render with t(LC.x).
 import { registerStrings, t } from "./i18n.js";
+import { lmError } from "./leagueMatchCopy.js";
 
 const EN = {};
 const BR = {};
@@ -51,6 +52,7 @@ export const LC = {
   role_manager: L("Gestor", "Manager", "Gestor"),
   role_scorer: L("Mesa", "Scorer", "Mesário"),
   role_referee: L("Árbitro", "Referee", "Árbitro"),
+  role_captain: L("Capitão", "Captain", "Capitão"),
   // league page
   notFound: L("Liga não encontrada ou privada.", "League not found or private.", "Liga não encontrada ou privada."),
   responsaveis: L("Responsáveis", "Organizers", "Responsáveis"),
@@ -120,7 +122,7 @@ export const LC = {
   copied: L("Copiado", "Copied", "Copiado"),
   share: L("Enviar por WhatsApp", "Send via WhatsApp", "Enviar por WhatsApp"),
   saved: L("Guardado.", "Saved.", "Salvo."),
-  seamNote: L("Calendário, súmula ao vivo, homologação de resultados e classificação oficial chegam nas próximas fases.", "Calendar, live scoresheet, result homologation and official standings come in the next phases.", "Calendário, súmula ao vivo, homologação de resultados e classificação oficial chegam nas próximas fases."),
+  seamNote: L("Fantasy da liga, VAR e notificações chegam nas próximas fases.", "League fantasy, VAR and notifications come in the next phases.", "Fantasy do campeonato, VAR e notificações chegam nas próximas fases."),
 };
 
 const ERR = {
@@ -137,7 +139,7 @@ const ERR = {
   unsupported_rule: L("Regra não suportada.", "Unsupported rule.", "Regra não suportada."),
   unsupported_tiebreaker: L("Critério de desempate não suportado.", "Unsupported tiebreaker.", "Critério de desempate não suportado."),
   invalid_rule: L("Valores do regulamento fora do permitido.", "Regulation values out of range.", "Valores do regulamento fora do permitido."),
-  structure_not_available: L("Só pontos corridos nesta fase.", "Only round-robin in this phase.", "Só pontos corridos nesta fase."),
+  structure_not_available: L("Só formato campeonato nesta fase.", "Only round-robin in this phase.", "Só pontos corridos nesta fase."),
   regulation_not_published: L("Publica o regulamento antes de abrir inscrições.", "Publish the regulation before opening registrations.", "Publique o regulamento antes de abrir inscrições."),
   invalid_transition: L("Mudança de estado não permitida.", "Status change not allowed.", "Mudança de status não permitida."),
   reason_required: L("Indica o motivo.", "Give a reason.", "Informe o motivo."),
@@ -160,6 +162,6 @@ const ERR = {
 registerStrings("en", EN);
 registerStrings("pt-br", BR);
 
-export const leagueCloudError = (code) => t(ERR[code] || ERR.unknown);
+export const leagueCloudError = (code) => (ERR[code] ? t(ERR[code]) : lmError(code) || t(ERR.unknown));
 export const roleLabel = (role) => t(LC[`role_${role}`] || role);
 export const statusLabel = (status) => t(LC[`status_${status}`] || status);

@@ -16,7 +16,7 @@ export default function LeagueRegulation() {
     t("Classificação oficial só com jogos homologados pela organização. Ao vivo, encerrados e em revisão são provisórios."),
     tf(t("W.O.: {g}–0 para a equipa presente."), { g: DEMO_RULES.walkoverGoals }),
     t("Autogolo conta para a equipa beneficiada e não entra na lista de marcadores. Penáltis de desempate não contam no resultado nem nos marcadores."),
-    t("Assistências só contam quando registadas na súmula (nunca automáticas)."),
+    t("Assistências só contam quando registadas na ficha de jogo (nunca automáticas)."),
     tf(t("Disciplina: {n} amarelos acumulados = 1 jogo de suspensão; vermelho direto ou 2 amarelos no mesmo jogo = {r} jogo. A suspensão cumpre-se no jogo oficial seguinte da equipa."), { n: DEMO_RULES.yellowsForSuspension, r: DEMO_RULES.redSuspensionMatches }),
     t("Contestação: o capitão contesta um resultado provisório com motivo; a organização decide e regista a decisão."),
     tf(t("Fantasy (prévia): orçamento {b}, {n} atletas, máx. {m} por equipa — regras de exemplo."), { b: FANTASY_DEMO_RULES.budget, n: FANTASY_DEMO_RULES.squadSize, m: FANTASY_DEMO_RULES.maxPerTeam }),

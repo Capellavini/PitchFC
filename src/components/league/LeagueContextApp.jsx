@@ -141,7 +141,7 @@ export default function LeagueContextApp({ contexts, entry = null }) {
       return { ...next, lineups: { ...next.lineups, [m.homeId]: auto(m.homeId), [m.awayId]: auto(m.awayId) } };
     }), okMsg),
     setMvp: (matchId, playerId) => apply((s) => setMatch(s, matchId, (m) => setOfficialMvp(m, playerId, { role, by: who, at: now() })), t("Craque oficial definido.")),
-    closeVote: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, fanVoteClosed: true })), t("Votação da torcida fechada.")),
+    closeVote: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, fanVoteClosed: true })), t("Votação dos adeptos fechada.")),
     vote: (matchId, playerId) => apply((s) => ({
       ...s, fanVotes: castFanVote(s.fanVotes, s.matches.find((m) => m.id === matchId), acc.accountId, playerId),
     }), t("Voto registado. Podes mudá-lo até a votação fechar.")),
@@ -154,7 +154,7 @@ export default function LeagueContextApp({ contexts, entry = null }) {
     setPicks: (ids, players) => {
       const errors = validateFantasyPicks(ids, players);
       if (errors.length) return { errors };
-      apply((s) => ({ ...s, fantasy: { ...s.fantasy, [acc.accountId]: ids } }), t("Equipa de Fantasy guardada (só neste navegador)."));
+      apply((s) => ({ ...s, fantasy: { ...s.fantasy, [acc.accountId]: ids } }), t("Equipa de Fantasy guardada (só neste browser)."));
       return { ok: true };
     },
     setPrefs: (patch) => apply((s) => ({ ...s, prefs: { ...s.prefs, ...patch } })),

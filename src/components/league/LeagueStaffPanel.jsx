@@ -7,6 +7,7 @@ import BtnGhost from "../BtnGhost";
 import Chip from "../Chip";
 import SectionLabel from "../SectionLabel";
 import LeagueShareLink from "./LeagueShareLink";
+import { FORMAT_PRESETS } from "../../lib/leagueFormat";
 
 /** "Gerir liga" on /league/<slug> (owner/manager): visibility + activation
  *  (owner only), collaborator invites (owner → manager; managers → scorer /
@@ -15,7 +16,7 @@ export default function LeagueStaffPanel({ leagues, league, onChanged, onCompeti
   const isOwner = league.myRoles.includes("owner");
   const [role, setRole] = useState(isOwner ? "manager" : "scorer");
   const [invite, setInvite] = useState(null);
-  const [c, setC] = useState({ name: "", season: "2026/27", category: "Sénior", youth: false, format: "7v7", squadMax: "15" });
+  const [c, setC] = useState({ name: "", season: "2026/27", category: "Sénior", youth: false, preset: "futsal", squadMax: "14" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -39,7 +40,8 @@ export default function LeagueStaffPanel({ leagues, league, onChanged, onCompeti
   });
   const createComp = () => run(async () => {
     const max = Math.max(1, Math.min(60, Number(c.squadMax) || 25));
-    const r = await leagues.createCompetition(league.id, c, { squad: { min: 1, max } });
+    const p = FORMAT_PRESETS.find((x) => x.id === c.preset) || FORMAT_PRESETS[0];
+    const r = await leagues.createCompetition(league.id, { ...c, format: p.format, modality: p.modality, matchDurationMin: p.durationMin }, { squad: { min: 1, max } });
     if (!r.error) onCompetitionCreated?.(r.data.slug);
     return r;
   });
@@ -73,8 +75,8 @@ export default function LeagueStaffPanel({ leagues, league, onChanged, onCompeti
       </div>
       <div style={{ display: "flex", gap: S.sm, marginTop: S.sm }}>
         <label style={{ flex: 1 }}>{label(LC.format)}
-          <select value={c.format} onChange={(e) => setC({ ...c, format: e.target.value })} style={inputStyle()}>
-            {["5v5", "7v7", "11v11"].map((f) => <option key={f} value={f}>{f}</option>)}
+          <select value={c.preset} onChange={(e) => setC({ ...c, preset: e.target.value })} style={inputStyle()}>
+            {FORMAT_PRESETS.map((p) => <option key={p.id} value={p.id}>{t(p.label)} · {p.durationMin} min</option>)}
           </select></label>
         <label style={{ flex: 1 }}>{label(LC.squadMax)}
           <input value={c.squadMax} inputMode="numeric" onChange={(e) => setC({ ...c, squadMax: e.target.value.replace(/\D/g, "").slice(0, 2) })} style={inputStyle()} /></label>

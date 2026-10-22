@@ -26,7 +26,7 @@ export default function LeagueCaptainTools({ match, teamId, onLineup, onContest 
       )}
       {contest && (
         <>
-          <div style={{ fontSize: T.body, color: C.text1, marginBottom: S.sm }}>{t("Resultado provisório. Se algo está errado na súmula, contesta com motivo — a organização decide.")}</div>
+          <div style={{ fontSize: T.body, color: C.text1, marginBottom: S.sm }}>{t("Resultado provisório. Se algo está errado na ficha de jogo, contesta com motivo — a organização decide.")}</div>
           <BtnGhost block tone="danger" onClick={onContest}><Flag size={16} aria-hidden /> {t("Contestar resultado")}</BtnGhost>
         </>
       )}

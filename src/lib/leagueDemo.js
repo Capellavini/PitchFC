@@ -20,7 +20,7 @@ export const LEAGUE = Object.freeze({
 
 export const COMPETITION = Object.freeze({
   id: "cp-demo-2627", leagueId: LEAGUE.id,
-  name: "Época 2026/27", season: "2026/27", category: "Futebol 7", format: "Pontos corridos",
+  name: "Época 2026/27", season: "2026/27", category: "Futebol 7", format: "Campeonato",
   points: DEMO_RULES.points, tiebreakers: DEMO_RULES.tiebreakers,
   rounds: 5,
 });
@@ -186,7 +186,7 @@ export function buildLeagueDemoSeed() {
   ev("m1", "goal", "t6", "t6p7", "t6p6", 60);
   // correction already in history: the 38' scorer was t1p8, not t1p6
   ev("m1", "goal", "t1", "t1p8", "t1p7", 38, {
-    supersedes: wrong, voidReason: "Autor do golo corrigido após revisão da súmula com os capitães",
+    supersedes: wrong, voidReason: "Autor do golo corrigido após revisão da ficha de jogo com os capitães",
     recordedBy: "Gestor (demo)", recordedAt: "2026-10-04T10:12:00.000Z",
   });
   play("m1", "homologated");
@@ -251,7 +251,7 @@ export function buildLeagueDemoSeed() {
     prefs: { supportTeamId: "t1", followTeamIds: ["t1"], followPlayerIds: [], notifyResults: true, notifyCalendar: true },
     announcements: [
       { id: "a1", at: "2026-10-12T09:00:00.000Z", title: "Jornada 3 confirmada", body: "Todos os jogos da jornada 3 mantêm-se no sábado. Chegada 20 min antes para a verificação de cartões de atleta." },
-      { id: "a2", at: "2026-10-05T09:00:00.000Z", title: "Jornada 1 homologada", body: "Resultados da jornada 1 homologados. Uma correção de autoria de golo registada na súmula Marés FC – Velha Guarda 1990." },
+      { id: "a2", at: "2026-10-05T09:00:00.000Z", title: "Jornada 1 homologada", body: "Resultados da jornada 1 homologados. Uma correção de autoria de golo registada na ficha de jogo Marés FC – Velha Guarda 1990." },
     ],
   };
 }

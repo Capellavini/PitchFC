@@ -1,15 +1,17 @@
 import { C, R, S, T, TOUCH } from "../../theme";
 import { t } from "../../lib/i18n";
 import { EVENT_LABEL } from "../../lib/leagueCopy";
-import { playerById, teamById } from "../../lib/leagueDemo";
+import { playerById as DEMO_PLAYERS, teamById as DEMO_TEAMS } from "../../lib/leagueDemo";
 import { activeEvents } from "../../lib/core/league";
 
-const ICON = { goal: "⚽", own_goal: "⚽", card_yellow: "🟨", card_red: "🟥", sub: "🔁", shootout_goal: "🎯" };
+const ICON = { goal: "⚽", own_goal: "⚽", card_yellow: "🟨", card_second_yellow: "🟨🟥", card_red: "🟥", sub: "🔁", shootout_goal: "🎯" };
 
 /** Lances: the ACTIVE events (corrections applied), home on the left,
  *  away on the right. With `onCorrect` (Gestor, correctable state) each
- *  row offers "Corrigir". */
-export default function LeagueTimeline({ match, log, onCorrect }) {
+ *  row offers "Corrigir". `dir` (cloud): { playerById, teamById }; cloud
+ *  rows also carry playerName/assistName (public display names). */
+export default function LeagueTimeline({ match, log, onCorrect, dir = null }) {
+  const playerById = dir?.playerById || DEMO_PLAYERS, teamById = dir?.teamById || DEMO_TEAMS;
   const evs = activeEvents(log);
   if (!evs.length) return <div style={{ color: C.text2, fontSize: T.body, padding: `${S.md}px 0` }}>{t("Ainda sem lances registados.")}</div>;
   return (
@@ -18,7 +20,7 @@ export default function LeagueTimeline({ match, log, onCorrect }) {
         // own goal: listed on the side of the player who scored it
         const sideTeam = e.type === "own_goal" ? (e.teamId === match.homeId ? match.awayId : match.homeId) : e.teamId;
         const away = sideTeam === match.awayId;
-        const who = e.playerId ? playerById[e.playerId]?.name : t("Autor por identificar");
+        const who = e.playerId ? (e.playerName || playerById[e.playerId]?.name || "—") : t("Autor por identificar");
         return (
           <li key={e.id} style={{ display: "flex", alignItems: "center", gap: S.sm, borderBottom: `1px solid ${C.border}`, padding: `${S.sm}px 0`, flexDirection: away ? "row-reverse" : "row", textAlign: away ? "right" : "left" }}>
             <span style={{ width: 34, flexShrink: 0, fontWeight: 800, fontSize: T.meta, color: C.text2, textAlign: "center" }}>{e.minute != null ? `${e.minute}'` : "—"}</span>
@@ -27,8 +29,9 @@ export default function LeagueTimeline({ match, log, onCorrect }) {
               <span style={{ display: "block", fontSize: T.body, fontWeight: 700, overflowWrap: "anywhere" }}>{who}</span>
               <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>
                 {t(EVENT_LABEL[e.type])}
-                {e.type === "own_goal" && ` · ${t("a favor de")} ${teamById[e.teamId].short}`}
-                {e.assistId && ` · ${t("assist.")} ${playerById[e.assistId]?.name}`}
+                {e.type === "own_goal" && ` · ${t("a favor de")} ${teamById[e.teamId]?.short || "—"}`}
+                {e.assistId && ` · ${t("assist.")} ${e.assistName || playerById[e.assistId]?.name || "—"}`}
+                {e.corrected && ` · ${t("corrigido")}`}
               </span>
             </span>
             {onCorrect && (
