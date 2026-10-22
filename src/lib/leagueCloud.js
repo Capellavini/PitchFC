@@ -114,7 +114,8 @@ export function normCompetitionPage(d) {
   return {
     id: d.id, slug: d.slug, name: d.name, status: d.status, structure: d.structure, modality: d.modality, format: d.format,
     matchDurationMin: d.match_duration_min ?? null, visibility: d.visibility,
-    league: d.league ? { slug: d.league.slug, name: d.league.name, logoUrl: d.league.logo_url ?? null, color: d.league.color ?? null } : null,
+    leagueId: d.league_id ?? d.league?.id ?? null,
+    league: d.league ? { id: d.league.id ?? d.league_id ?? null, slug: d.league.slug, name: d.league.name, logoUrl: d.league.logo_url ?? null, color: d.league.color ?? null } : null,
     season: d.season?.name ?? null, category: d.category?.name ?? null, youth: Boolean(d.category?.youth),
     regulation: { version: d.regulation?.version ?? null, rules: d.regulation?.rules ?? null },
     isStaff: Boolean(d.is_staff), viewKey: d.view_key ?? null,
@@ -318,7 +319,7 @@ export function leagueDemoOp(state, op, args = {}, actor = null, now = Date.now(
       const reg = c.regulations.find((r) => r.version === c.currentVersion);
       return { state: s, data: {
         id: c.id, slug: c.slug, name: c.name, status: c.status, structure: "league", modality: c.modality, format: c.format, visibility: c.visibility || lg.visibility, match_duration_min: c.matchDurationMin ?? 50,
-        league: { slug: lg.slug, name: lg.name, color: lg.color }, season: c.season ? { name: c.season } : null, category: c.category ? { name: c.category, youth: c.youth } : null,
+        league_id: lg.id, league: { id: lg.id, slug: lg.slug, name: lg.name, color: lg.color }, season: c.season ? { name: c.season } : null, category: c.category ? { name: c.category, youth: c.youth } : null,
         regulation: { version: c.currentVersion, rules: reg?.rules ?? null }, is_staff: Boolean(staff),
         draft_version: c.regulations.find((r) => r.status === "draft")?.version ?? null,
       } };

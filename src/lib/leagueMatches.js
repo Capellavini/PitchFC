@@ -155,10 +155,21 @@ export function normMatchPage(d) {
       revision: d.official_mvp.revision, role: d.official_mvp.decided_role } : null,
     fanVote: d.fan_vote ? normFanVote(d.fan_vote) : null,
     formations: { home: normFormation(d.formations?.home), away: normFormation(d.formations?.away) },
+    // Team sheets (ficha): staff + assigned officials see both, a team's members their own,
+    // everyone else null. `lineups` undefined = backend without the key (older match_page).
+    lineups: d.lineups === undefined ? undefined : normSheets(d.lineups, live.match),
     dispute: { windowClosesAt: d.dispute?.window_closes_at ?? null, openCount: d.dispute?.open_count ?? null },
     me: me ? { isStaff: Boolean(me.is_staff), isManager: Boolean(me.is_manager), operatorRole: me.operator_role ?? null,
       canHomologate: Boolean(me.can_homologate), leaderOfTeamId: me.leader_of_team_id ?? null, memberOfTeamId: me.member_of_team_id ?? null } : null,
   };
+}
+
+/** match_page.lineups → { [teamId]: { teamId, count, players:[{ id, name, number, role, position, photo }] } | null }. */
+export function normSheets(l, match) {
+  const one = (x) => (x ? { teamId: x.team_id, count: x.count ?? (x.players || []).length, players: (x.players || []).map((p) => ({
+    id: p.player_id, name: p.name || "—", number: p.shirt_number ?? null, role: p.squad_role ?? null, position: p.position ?? null, photo: p.photo_url ?? null })) } : null);
+  if (!l) return { [match.homeId]: null, [match.awayId]: null };
+  return { [match.homeId]: one(l.home), [match.awayId]: one(l.away) };
 }
 
 export const normEventHistory = (d) => ((d?.items) || []).map((e) => ({

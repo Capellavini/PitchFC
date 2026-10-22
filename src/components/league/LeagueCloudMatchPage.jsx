@@ -57,7 +57,7 @@ export default function LeagueCloudMatchPage({ leagues, competition, dir, profil
     setPage(r.data);
     if (!r.data || !leagues.signedIn) return;
     const [lq, hq, dq, sq] = await Promise.all([
-      leagues.fetchLineups(matchId),
+      r.data.lineups !== undefined ? Promise.resolve({ data: sheetIds(r.data.lineups) }) : leagues.fetchLineups(matchId),
       r.data.me?.isStaff || r.data.me?.memberOfTeamId ? leagues.fetchEventHistory(matchId) : Promise.resolve({ data: [] }),
       r.data.me?.isStaff || r.data.me?.memberOfTeamId ? leagues.fetchDisputes(competition.id, null) : Promise.resolve({ data: { items: [] } }),
       leagues.fetchDiscipline(competition.id, viewKey),
@@ -240,14 +240,14 @@ export default function LeagueCloudMatchPage({ leagues, competition, dir, profil
       )}
 
       {current === "onzes" && [m.homeId, m.awayId].map((tid) => {
-        const sheetIds = lineups[tid] ?? null;
-        const squadIds = (sheetIds?.length ? sheetIds : squadOf(tid).map((p) => p.id));
+        const saved = lineups[tid] ?? null;
+        const squadIds = (saved?.length ? saved : squadOf(tid).map((p) => p.id));
         const formation = tid === m.homeId ? page.formations?.home : page.formations?.away;
         return (
           <section key={tid} style={{ marginBottom: S.xl }}>
             <SectionLabel>{dir.teamById[tid]?.name || "—"}</SectionLabel>
-            {(perms.teamSheet || sheetIds) && (
-              <LeagueCloudTeamSheet team={dir.teamById[tid]} squad={squadOf(tid)} sheet={sheetIds} suspendedIds={suspendedIds} profile={profile}
+            {(perms.teamSheet || saved) && (
+              <LeagueCloudTeamSheet team={dir.teamById[tid]} squad={squadOf(tid)} sheet={saved} suspendedIds={suspendedIds} profile={profile}
                 canEdit={Boolean(perms.teamSheet)} onSave={(ids) => run(async () => {
                   const r = await leagues.setLineup(m.id, tid, ids);
                   if (!r.error) setLineups((x) => ({ ...x, [tid]: ids }));
@@ -347,6 +347,9 @@ export default function LeagueCloudMatchPage({ leagues, competition, dir, profil
     </div>
   );
 }
+
+/** { teamId: sheet|null } → { teamId: [ids] } for the teams whose sheet I may see. */
+const sheetIds = (sheets) => Object.fromEntries(Object.entries(sheets || {}).filter(([, s]) => s).map(([tid, s]) => [tid, s.players.map((p) => p.id)]));
 
 const info = (Icon, children) => (
   <div style={{ display: "flex", gap: S.sm, alignItems: "flex-start", color: C.text1 }}><Icon size={16} color={C.text2} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} /><span style={{ minWidth: 0 }}>{children}</span></div>

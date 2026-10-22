@@ -14,7 +14,7 @@ export default function LeagueCloudOfficialsSheet({ leagues, competition, match,
   const [error, setError] = useState(null);
   useEffect(() => {
     let alive = true;
-    leagues.fetchCollaborators(competition.leagueId || competition.league?.id, competition.id).then((r) => {
+    leagues.fetchCollaborators(competition.leagueId, competition.id).then((r) => {
       if (!alive) return;
       if (r.error) setError(leagueCloudError(r.error)); else setPeople(r.data);
     });

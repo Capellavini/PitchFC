@@ -55,8 +55,8 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
     if (r.error) { setErr(leagueCloudError(r.error)); setC(null); return; }
     if (!r.data) { setC(null); return; }
     const [tq, lq] = await Promise.all([fetchCompetitionTeams(r.data.id, viewKey), fetchLeague(slug, viewKey)]);
-    // competition_page has no league id; league_page does (officials need it).
-    setC({ ...r.data, leagueId: lq.data?.id ?? null });
+    // league_id comes from competition_page; league_page only for my league roles.
+    setC({ ...r.data, leagueId: r.data.leagueId ?? lq.data?.id ?? null });
     setTeams(tq.data || []);
     setLeagueRoles(lq.data?.myRoles || []);
     // Staff get seq + officials; everyone else the public calendar. A staff

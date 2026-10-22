@@ -534,6 +534,19 @@ export function leagueMatchDemoOp(s, op, args = {}, actor = null, now = Date.now
         homologation: hom ? { revision: hom.revision, kind: hom.kind, home_score: hom.home, away_score: hom.away, decided_role: hom.role, created_at: hom.at, regulation_version: c.currentVersion, reason: hom.reason } : null,
         official_mvp: a ? { player_id: a.playerId, name: nameOf(a.playerId), team_id: a.teamId, revision: a.revision, decided_role: a.role } : null,
         fan_vote: vote, formations: { home: form(m.homeId), away: form(m.awayId) },
+        lineups: (() => {
+          const staff = isMgr(c.id) || lm.officials.some((o) => o.matchId === m.id && o.playerId === me);
+          const sheet = (tid) => {
+            if (!staff && !leaderOf(tid)) return null;
+            const ids = lm.lineups.filter((l) => l.matchId === m.id && l.teamId === tid).map((l) => l.playerId);
+            const sq = squad(c.id, tid);
+            return { team_id: tid, count: ids.length, players: ids.map((pid) => { const p = sq.find((x) => x.playerId === pid) || {};
+              return { player_id: pid, name: c.youth ? `${String(p.name || "?")[0]}.` : p.name || "—", photo_url: null, shirt_number: p.shirtNumber ?? null,
+                squad_role: p.captain ? "captain" : "player", position: null }; }) };
+          };
+          const out = { home: sheet(m.homeId), away: sheet(m.awayId) };
+          return out.home || out.away ? out : null;
+        })(),
         dispute: { window_closes_at: hom ? new Date(Date.parse(hom.at) + hours * 3600e3).toISOString() : null,
           open_count: lm.disputes.filter((d) => d.matchId === m.id && d.status === "open").length },
         me: { is_staff: Boolean(live.my_role && live.my_role !== "team_leader"), is_manager: isMgr(c.id), operator_role: live.my_role, can_homologate: live.can_homologate,

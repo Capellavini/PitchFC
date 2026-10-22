@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { leagueDemoOp, emptyLeagueOrgState } from "./leagueCloud.js";
+import { leagueDemoOp, emptyLeagueOrgState, normCompetitionPage } from "./leagueCloud.js";
 import {
   uiMatchState, normMatches, normMatchPage, eventToCloud, newCloudEventId, provisionalStandings, roundRobinRounds, matchPermissions,
   buildDirectory, rankingRows, cardRows, disciplineRows, normStandings, pendingWork, timelineEventToDemo,
@@ -233,6 +233,31 @@ test("mirror: fixtures → live súmula → homologation → standings, rankings
   assert.equal(official.rows.find((r) => r.id === "A").pts, 6);
   assert.equal(official.rows.find((r) => r.id === "C").pts, -1);
   assert.equal(official.adjustments.length, 1);
+});
+
+test("mirror: team sheets in match_page by role, competition_page league id, adjustment ids", () => {
+  let { s, lid, cid } = setup();
+  const comp = normCompetitionPage(run(s, "competition_page", { leagueSlug: s.leagues[0].slug, competitionSlug: s.competitions[0].slug }).data);
+  assert.equal(comp.leagueId, lid);
+  const ph = run(s, "create_phase", { competitionId: cid }); s = ph.state;
+  s = run(s, "create_fixtures", { phaseId: ph.data.phase_id, fixtures: roundRobinRounds(["A", "B", "C"]) }).state;
+  const m = normMatches(run(s, "competition_matches", { competitionId: cid }).data).find((x) => [x.homeId, x.awayId].includes("A") && [x.homeId, x.awayId].includes("B"));
+  s = run(s, "schedule_match", { matchId: m.id, kickoffAt: new Date(Date.now() + 60e3).toISOString() }).state;
+  s = run(s, "set_league_lineup", { matchId: m.id, teamId: "A", playerIds: ["a1", "a2"] }).state;
+  const staff = normMatchPage(run(s, "match_page", { matchId: m.id }).data);
+  assert.deepEqual(staff.lineups.A.players.map((p) => p.id), ["a1", "a2"]);
+  assert.equal(staff.lineups.A.players[0].number, 1);
+  assert.equal(staff.lineups.B.count, 0);
+  const capB = normMatchPage(run(s, "match_page", { matchId: m.id, myTeams: [{ id: "B", role: "captain" }] }, { id: "capB", isAdmin: false }).data);
+  assert.equal(capB.lineups.A, null, "the other team sheet is hidden");
+  assert.ok(capB.lineups.B);
+  const fan = normMatchPage(run(s, "match_page", { matchId: m.id }, { id: "fan", isAdmin: false }).data);
+  assert.deepEqual(fan.lineups, { A: null, B: null });
+  s = run(s, "adjust_points", { competitionId: cid, teamId: "B", points: -2, reason: "Atraso na ficha" }).state;
+  const adj = normStandings(run(s, "competition_standings", { competitionId: cid }).data).adjustments[0];
+  assert.ok(adj.id);
+  s = run(s, "revoke_point_adjustment", { adjustmentId: adj.id, reason: "Engano" }).state;
+  assert.equal(normStandings(run(s, "competition_standings", { competitionId: cid }).data).adjustments.length, 0);
 });
 
 test("buildDirectory + permissions for a fan (read-only)", () => {
