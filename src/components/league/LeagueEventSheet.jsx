@@ -2,11 +2,11 @@ import { useState } from "react";
 import { C, R, S, T, TOUCH, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { EVENT_LABEL } from "../../lib/leagueCopy";
-import { PLAYERS, teamById, playerById, newEventId } from "../../lib/leagueDemo";
+import { PLAYERS as DEMO_PLAYERS, teamById as DEMO_TEAMS, playerById as DEMO_BY_ID, newEventId } from "../../lib/leagueDemo";
 import Sheet from "../Sheet";
 import BtnPrimary from "../BtnPrimary";
 
-const TYPES = ["goal", "own_goal", "card_yellow", "card_red", "shootout_goal"];
+const DEMO_TYPES = ["goal", "own_goal", "card_yellow", "card_red", "shootout_goal"];
 const UNKNOWN = "__unknown__";
 
 /**
@@ -19,8 +19,13 @@ const UNKNOWN = "__unknown__";
  * actually recorded). Own goal: pick the BENEFITING team, then the player
  * of the other team who scored it.
  */
-export default function LeagueEventSheet({ match, mode = "new", original = null, onSubmit, onClose }) {
-  const [id] = useState(() => newEventId(match.id));
+export default function LeagueEventSheet({ match, mode = "new", original = null, onSubmit, onClose, dir = null, types = DEMO_TYPES, makeId = null, needsReason = false }) {
+  // Cloud leagues pass `dir` (homologated squads), the supported `types`
+  // (no shoot-outs), a uuid `makeId` and `needsReason` after submission.
+  const PLAYERS = dir?.players || DEMO_PLAYERS, teamById = dir?.teamById || DEMO_TEAMS, playerById = dir?.playerById || DEMO_BY_ID;
+  const TYPES = types;
+  const [id] = useState(() => (makeId ? makeId() : newEventId(match.id)));
+  const [busy, setBusy] = useState(false);
   const [type, setType] = useState(original?.type || "goal");
   const [teamId, setTeamId] = useState(original?.teamId || match.homeId);
   const [playerId, setPlayerId] = useState(original ? (original.playerId || UNKNOWN) : UNKNOWN);
@@ -37,13 +42,14 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
   };
   const playerTeam = type === "own_goal" ? other : teamId;
   const options = squadOf(playerTeam);
-  const isCard = type === "card_yellow" || type === "card_red";
+  const isCard = type === "card_yellow" || type === "card_red" || type === "card_second_yellow";
   const canUnknown = !isCard;
   const correcting = mode === "correct";
+  const askReason = correcting || needsReason;
 
-  const submit = () => {
+  const submit = async () => {
     setError(null);
-    if (correcting && !reason.trim()) { setError(t("Indica um motivo — é obrigatório.")); return; }
+    if (askReason && !reason.trim()) { setError(t("Indica um motivo — é obrigatório.")); return; }
     if (!voidOnly && isCard && (playerId === UNKNOWN || !playerId)) { setError(t("Um cartão precisa de atleta.")); return; }
     const min = minute === "" ? null : Math.max(0, Math.min(130, Number(minute)));
     const event = voidOnly
@@ -53,10 +59,13 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
         playerId: playerId === UNKNOWN ? null : playerId,
         assistId: type === "goal" && assistId ? assistId : null,
         minute: Number.isFinite(min) ? min : null,
-        ...(correcting ? { supersedes: original.id, voidReason: reason.trim() } : {}),
+        ...(correcting ? { supersedes: original.id, voidReason: reason.trim() } : askReason ? { voidReason: reason.trim() } : {}),
       };
-    const r = onSubmit(event);
+    setBusy(true);
+    const r = await onSubmit(event); // sync (demo) or the cloud RPC
+    setBusy(false);
     if (r?.ok || r?.same) onClose();
+    else if (r?.message) setError(r.message);
   };
 
   const label = { display: "block", fontSize: T.meta, color: C.text2, fontWeight: 700, margin: `${S.md}px 0 ${S.xs}px` };
@@ -67,9 +76,9 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
 
   return (
     <Sheet title={correcting ? t("Corrigir lance") : t("Registar lance")} onClose={onClose}
-      footer={<BtnPrimary block onClick={submit}>{correcting ? (voidOnly ? t("Anular lance") : t("Guardar correção")) : t("Guardar lance")}</BtnPrimary>}>
+      footer={<BtnPrimary block disabled={busy} onClick={submit}>{correcting ? (voidOnly ? t("Anular lance") : t("Guardar correção")) : t("Guardar lance")}</BtnPrimary>}>
       <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.sm }}>
-        {teamById[match.homeId].name} – {teamById[match.awayId].name} · {t("id do lance")}: <code style={{ fontSize: T.min }}>{id}</code>
+        {teamById[match.homeId]?.name} – {teamById[match.awayId]?.name}{dir ? null : <> · {t("id do lance")}: <code style={{ fontSize: T.min }}>{id}</code></>}
       </div>
 
       {correcting && (
@@ -92,15 +101,15 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
           <span style={label}>{type === "own_goal" ? t("Equipa beneficiada") : isCard ? t("Equipa do atleta") : t("Equipa")}</span>
           <div role="radiogroup" aria-label={t("Equipa")} style={{ display: "flex", gap: S.xs, flexWrap: "wrap" }}>
             {[match.homeId, match.awayId].map((tid) => (
-              <button key={tid} type="button" role="radio" aria-checked={teamId === tid} onClick={() => { setTeamId(tid); setPlayerId(UNKNOWN); setAssistId(""); }} style={{ ...pill(teamId === tid), flex: "1 1 120px" }}>{teamById[tid].name}</button>
+              <button key={tid} type="button" role="radio" aria-checked={teamId === tid} onClick={() => { setTeamId(tid); setPlayerId(UNKNOWN); setAssistId(""); }} style={{ ...pill(teamId === tid), flex: "1 1 120px" }}>{teamById[tid]?.name}</button>
             ))}
           </div>
 
-          <label htmlFor="lg-ev-player" style={label}>{type === "own_goal" ? tf2(t("Autor do autogolo ({team})"), teamById[playerTeam].short) : isCard ? t("Atleta") : t("Autor")}</label>
+          <label htmlFor="lg-ev-player" style={label}>{type === "own_goal" ? tf2(t("Autor do autogolo ({team})"), teamById[playerTeam]?.short || "—") : isCard ? t("Atleta") : t("Autor")}</label>
           <select id="lg-ev-player" value={playerId} onChange={(e) => setPlayerId(e.target.value)} style={inputStyle()}>
             {canUnknown && <option value={UNKNOWN}>{t("Autor por identificar")}</option>}
             {!canUnknown && <option value={UNKNOWN}>{t("Escolhe o atleta")}</option>}
-            {options.map((p) => <option key={p.id} value={p.id}>{p.number} · {p.name}</option>)}
+            {options.map((p) => <option key={p.id} value={p.id}>{p.number != null ? `${p.number} · ` : ""}{p.name}</option>)}
           </select>
 
           {type === "goal" && (
@@ -108,7 +117,7 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
               <label htmlFor="lg-ev-assist" style={label}>{t("Assistência (opcional — só se registada)")}</label>
               <select id="lg-ev-assist" value={assistId} onChange={(e) => setAssistId(e.target.value)} style={inputStyle()}>
                 <option value="">{t("Sem assistência")}</option>
-                {options.filter((p) => p.id !== playerId).map((p) => <option key={p.id} value={p.id}>{p.number} · {p.name}</option>)}
+                {options.filter((p) => p.id !== playerId).map((p) => <option key={p.id} value={p.id}>{p.number != null ? `${p.number} · ` : ""}{p.name}</option>)}
               </select>
             </>
           )}
@@ -118,12 +127,12 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
         </>
       )}
 
-      {correcting && (
+      {askReason && (
         <>
           <label htmlFor="lg-ev-reason" style={label}>{t("Motivo da correção (obrigatório)")}</label>
           <textarea id="lg-ev-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={280} required
             style={{ ...inputStyle(), minHeight: 88, resize: "vertical" }} />
-          <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{t("O lance original fica no histórico da súmula — a correção não o apaga.")}</div>
+          <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{t("O lance original fica no histórico da ficha de jogo — a correção não o apaga.")}</div>
         </>
       )}
       {error && <div role="alert" style={{ color: C.red, fontSize: T.meta, marginTop: S.sm }}>{error}</div>}

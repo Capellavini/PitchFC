@@ -258,6 +258,7 @@ export default function PitchApp() {
       const r = await rivals.fetchTeam(teamId);
       return tm ? { id: tm.id, name: tm.name, role: tm.role, memberIds: (r.data?.members || []).map((m) => m.playerId) } : null;
     },
+    myTeams: (rivals.myTeams || []).map((tm) => ({ id: tm.id, role: tm.role })),
   });
   const [teamSlug, setTeamSlug] = useState(rivalsParams.team);
   // { teamId? , slug?, n } — asks RivalsHub to show a team (bump n).

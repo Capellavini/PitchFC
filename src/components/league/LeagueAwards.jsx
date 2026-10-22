@@ -10,7 +10,7 @@ import BtnGhost from "../BtnGhost";
 import Chip from "../Chip";
 
 /** Destaques: official MVP ("Craque oficial", chosen by the manager, with
- *  author) and the fans' vote ("Craque da torcida") — two separate
+ *  author) and the fans' vote ("Craque dos adeptos") — two separate
  *  structures, shown as two separate blocks. The partial tally never
  *  looks like a final result. */
 export default function LeagueAwards({ ctx, match }) {
@@ -82,7 +82,7 @@ export default function LeagueAwards({ ctx, match }) {
           </div>
         )}
         {open && role === "manager" && (
-          <BtnPrimary block onClick={() => act.closeVote(match.id)} style={{ marginTop: S.md }}>{t("Fechar votação da torcida")}</BtnPrimary>
+          <BtnPrimary block onClick={() => act.closeVote(match.id)} style={{ marginTop: S.md }}>{t("Fechar votação dos adeptos")}</BtnPrimary>
         )}
       </section>
     </div>

@@ -17,7 +17,7 @@ export default function LeagueLiveControls({ match, act, onAddEvent, onReason })
       <div style={{ fontSize: T.meta, fontWeight: 800, color: C.accent, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("Operação do jogo · Gestor")}</div>
       {s === "scheduled" && (
         <>
-          <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{t("Ao iniciar, os lances passam a ser registados nesta súmula. O relógio não é partilhado nesta demo.")}</div>
+          <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{t("Ao iniciar, os lances passam a ser registados nesta ficha de jogo. O relógio não é partilhado nesta demo.")}</div>
           <div style={row}>
             <BtnPrimary onClick={() => act.move(match.id, "live", {}, t("Jogo iniciado."))} style={grow}><Play size={16} aria-hidden /> {t("Iniciar jogo")}</BtnPrimary>
             <BtnGhost onClick={() => onReason("postponed")} style={grow}><CalendarClock size={16} aria-hidden /> {t("Adiar")}</BtnGhost>

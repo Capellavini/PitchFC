@@ -24,14 +24,14 @@ const STARTED = new Set(["live", "ended_provisional", "in_review", "homologated"
 const ENDED = new Set(["ended_provisional", "in_review", "homologated"]);
 
 const REASON_COPY = {
-  postponed: { title: "Adiar jogo", text: "O jogo sai do calendário da jornada até ser reagendado. Fica registado na súmula.", label: "Adiar" },
+  postponed: { title: "Adiar jogo", text: "O jogo sai do calendário da jornada até ser reagendado. Fica registado na ficha de jogo.", label: "Adiar" },
   in_review: { title: "Enviar para revisão", text: "O resultado continua fora da classificação oficial até ser homologado.", label: "Enviar para revisão" },
   contest: { title: "Contestar resultado", text: "A organização da liga recebe a contestação e decide. O resultado fica em revisão.", label: "Contestar" },
 };
 
 /** One league match (the Matchday of the league): score + state, then
- *  ONLY the relevant sections — Resumo · Escalações · Lances · Destaques ·
- *  Vídeos · Súmula. Actions depend on the demo role. */
+ *  ONLY the relevant sections — Resumo · Onzes · Lances · Destaques ·
+ *  Vídeos · Ficha de jogo. Actions depend on the demo role. */
 export default function LeagueMatchPage({ ctx, matchId }) {
   const { state, derived, role, acc, act, lang, back, open } = ctx;
   const match = state.matches.find((m) => m.id === matchId);
@@ -144,7 +144,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
         <div style={cardStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: S.sm, fontWeight: 800, marginBottom: S.sm }}><Video size={16} color={C.blue} aria-hidden /> {t(LG.varOn)}</div>
           <div style={{ fontSize: T.body, color: C.text2, lineHeight: 1.6 }}>
-            {t("Nenhuma gravação nesta partida. Nesta demonstração não há captura nem envio de vídeo — só o estado do VAR. Um replay para assistir não é evidência de arbitragem e nunca altera uma decisão automaticamente.")}
+            {t("Nenhuma gravação neste jogo. Nesta demonstração não há captura nem envio de vídeo — só o estado do VAR. Um replay para assistir não é evidência de arbitragem e nunca altera uma decisão automaticamente.")}
           </div>
           <Chip style={{ marginTop: S.md }}>{t("Sem gravações")}</Chip>
         </div>

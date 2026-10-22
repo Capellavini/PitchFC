@@ -9,6 +9,7 @@
 //
 // No React, no Vite globals: imported by node --test (leagueCloud.test.js).
 // ─────────────────────────────────────────────────────────
+import { leagueMatchDemoOp } from "./leagueMatchMirror.js";
 
 /** Path words that are app routes, never league slugs (mirrors league_unique_slug). */
 export const RESERVED_LEAGUE_SLUGS = Object.freeze(["demo", "minhas", "me", "admin", "new", "nova", "convite", "inscricao", "pilot", "piloto"]);
@@ -113,7 +114,8 @@ export function normCompetitionPage(d) {
   return {
     id: d.id, slug: d.slug, name: d.name, status: d.status, structure: d.structure, modality: d.modality, format: d.format,
     matchDurationMin: d.match_duration_min ?? null, visibility: d.visibility,
-    league: d.league ? { slug: d.league.slug, name: d.league.name, logoUrl: d.league.logo_url ?? null, color: d.league.color ?? null } : null,
+    leagueId: d.league_id ?? d.league?.id ?? null,
+    league: d.league ? { id: d.league.id ?? d.league_id ?? null, slug: d.league.slug, name: d.league.name, logoUrl: d.league.logo_url ?? null, color: d.league.color ?? null } : null,
     season: d.season?.name ?? null, category: d.category?.name ?? null, youth: Boolean(d.category?.youth),
     regulation: { version: d.regulation?.version ?? null, rules: d.regulation?.rules ?? null },
     isStaff: Boolean(d.is_staff), viewKey: d.view_key ?? null,
@@ -281,6 +283,7 @@ export function leagueDemoOp(state, op, args = {}, actor = null, now = Date.now(
       while (s.competitions.some((c) => c.leagueId === lg.id && c.slug === slug)) { n += 1; slug = `${base.slice(0, 35)}-${n}`; }
       const c = { id: uid("cp"), leagueId: lg.id, slug, name, status: "draft", format: f.format || "7v7", modality: f.modality || "futebol",
         season: f.season || null, category: f.category || null, visibility: null, youth: Boolean(f.youth),
+        matchDurationMin: Number(f.matchDurationMin) || 50,
         regulations: [{ version: 1, rules: v.data, status: "draft" }], currentVersion: null };
       return next({ competitions: [...s.competitions, c] }, { competitionId: c.id, slug, created: true, regulationVersion: 1 });
     }
@@ -315,8 +318,8 @@ export function leagueDemoOp(state, op, args = {}, actor = null, now = Date.now(
       const staff = actor?.isAdmin || roleIn(s, lg.id, me, ["owner", "manager", "scorer", "referee"]);
       const reg = c.regulations.find((r) => r.version === c.currentVersion);
       return { state: s, data: {
-        id: c.id, slug: c.slug, name: c.name, status: c.status, structure: "league", modality: c.modality, format: c.format, visibility: c.visibility || lg.visibility,
-        league: { slug: lg.slug, name: lg.name, color: lg.color }, season: c.season ? { name: c.season } : null, category: c.category ? { name: c.category, youth: c.youth } : null,
+        id: c.id, slug: c.slug, name: c.name, status: c.status, structure: "league", modality: c.modality, format: c.format, visibility: c.visibility || lg.visibility, match_duration_min: c.matchDurationMin ?? 50,
+        league_id: lg.id, league: { id: lg.id, slug: lg.slug, name: lg.name, color: lg.color }, season: c.season ? { name: c.season } : null, category: c.category ? { name: c.category, youth: c.youth } : null,
         regulation: { version: c.currentVersion, rules: reg?.rules ?? null }, is_staff: Boolean(staff),
         draft_version: c.regulations.find((r) => r.status === "draft")?.version ?? null,
       } };
@@ -429,7 +432,8 @@ export function leagueDemoOp(state, op, args = {}, actor = null, now = Date.now(
       } };
     }
     default:
-      return { error: "unknown" };
+      // L4–L8 (fixtures, súmula, homologation, standings, discipline, awards).
+      return leagueMatchDemoOp(s, op, args, actor, now, { roleIn, visibleComp, uid }) || { error: "unknown" };
   }
 }
 
