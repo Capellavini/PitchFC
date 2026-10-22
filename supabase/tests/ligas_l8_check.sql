@@ -138,7 +138,9 @@ from (values
   ('public.fan_vote_results(uuid)', 'authenticated', true),
   ('public.match_page(uuid,text)', 'anon', true),
   ('public.league_public_name(uuid,boolean)', 'authenticated', false),
-  ('public.league_fan_vote_block(uuid,boolean)', 'authenticated', false)
+  ('public.league_fan_vote_block(uuid,boolean)', 'authenticated', false),
+  ('public.league_sheet(public.team_matches,uuid,boolean)', 'authenticated', false),
+  ('public.competition_page(text,text,text)', 'anon', true)
 ) v(f, r, e);
 set local role authenticated;
 
@@ -214,12 +216,29 @@ select pg_temp.ok('anon match_page: no capabilities, no dispute count, no PII',
   and public.match_page(pg_temp.k('m1'))->'dispute'->'open_count' = 'null'::jsonb
   and position('secret-' in public.match_page(pg_temp.k('m1'))::text) = 0 and position('+35191' in public.match_page(pg_temp.k('m1'))::text) = 0);
 select pg_temp.ok('match_page of an unknown id is null', public.match_page(gen_random_uuid()) is null);
+select pg_temp.ok('anon match_page: no team sheets', public.match_page(pg_temp.k('m1'))->'lineups' = 'null'::jsonb);
+select pg_temp.as_user('04');
+select pg_temp.ok('fan (no role) match_page: no team sheets', public.match_page(pg_temp.k('m1'))->'lineups' = 'null'::jsonb);
+select pg_temp.as_user('13');
+select pg_temp.ok('another team''s captain: no team sheets', public.match_page(pg_temp.k('m1'))->'lineups' = 'null'::jsonb);
 select pg_temp.as_user('11');
 select pg_temp.ok('captain match_page: leader_of_team_id + dispute window + open_count 0',
   public.match_page(pg_temp.k('m1')) @> format('{"me":{"leader_of_team_id":"%s","member_of_team_id":"%s"},"dispute":{"open_count":0}}', pg_temp.kv('A'), pg_temp.kv('A'))::jsonb
   and public.match_page(pg_temp.k('m1'))->'dispute'->>'window_closes_at' is not null);
 select pg_temp.as_user('05');
 select pg_temp.ok('referee match_page: is_staff, operator_role referee', public.match_page(pg_temp.k('m1')) @> '{"me":{"is_staff":true,"operator_role":"referee"}}');
+select pg_temp.ok('assigned referee reads both team sheets (ids, names, position)',
+  (public.match_page(pg_temp.k('m1'))->'lineups'->'home'->>'count')::int = 3 and (public.match_page(pg_temp.k('m1'))->'lineups'->'away'->>'count')::int = 2
+  and public.match_page(pg_temp.k('m1'))->'lineups'->'home'->'players' @> format('[{"player_id":"%s","name":"Ana","position":"Médio"}]', pg_temp.pl('11'))::jsonb);
+select pg_temp.as_user('03');
+select pg_temp.ok('assigned scorer (mesa) reads both team sheets', (public.match_page(pg_temp.k('m1'))->'lineups'->'away'->>'count')::int = 2);
+select pg_temp.as_user('01');
+select pg_temp.ok('manager reads both team sheets', public.match_page(pg_temp.k('m1'))->'lineups'->'home'->>'team_id' = pg_temp.kv('A'));
+select pg_temp.as_user('16');
+select pg_temp.ok('team member reads only their own team''s sheet', (public.match_page(pg_temp.k('m1'))->'lineups'->'away'->>'count')::int = 2
+  and public.match_page(pg_temp.k('m1'))->'lineups'->'home' = 'null'::jsonb);
+select pg_temp.ok('team sheets carry no PII', position('secret-' in (public.match_page(pg_temp.k('m1'))->'lineups')::text) = 0
+  and position('+35191' in (public.match_page(pg_temp.k('m1'))->'lineups')::text) = 0);
 
 -- ── 5. Youth rule on awards / votes ──────────────────────
 reset role;
@@ -230,6 +249,12 @@ select pg_temp.as_anon();
 select pg_temp.ok('youth category: official MVP + fan vote names are initials',
   public.match_page(pg_temp.k('m1'))->'official_mvp'->>'name' = 'A.'
   and not exists (select 1 from jsonb_array_elements(public.match_page(pg_temp.k('m1'))->'fan_vote'->'items') i where length(i->>'name') > 2));
+select pg_temp.as_user('04');
+select pg_temp.as_user('05');
+select pg_temp.ok('youth category: team sheet names are initials, no photo',
+  jsonb_array_length(public.match_page(pg_temp.k('m1'))->'lineups'->'home'->'players') = 3
+  and not exists (select 1 from jsonb_array_elements(public.match_page(pg_temp.k('m1'))->'lineups'->'home'->'players') i
+                   where length(i->>'name') > 2 or i->>'photo_url' is not null));
 select pg_temp.as_user('04');
 select pg_temp.ok('youth category: fan_vote_results names are initials',
   not exists (select 1 from jsonb_array_elements(public.fan_vote_results(pg_temp.k('m1'))->'items') i where length(i->>'name') > 2));

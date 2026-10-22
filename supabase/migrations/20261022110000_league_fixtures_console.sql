@@ -10,7 +10,9 @@
 --   • competition_matches_staff(competition) — the fixtures list WITH the
 --     values staff actions need: seq (expected_seq for lifecycle RPCs),
 --     assigned officials, status_reason.
--- Read-only, additive, no table created, no shipped object changed.
+--   • competition_page() (shipped in 155100) redefined with the same body
+--     plus league_id / league.id (additive keys only).
+-- Read-only, additive, no table created.
 -- Check: supabase/tests/ligas_l4_check.sql.
 -- ─────────────────────────────────────────────────────────
 
@@ -83,3 +85,46 @@ end $$;
 
 comment on function public.league_collaborators(uuid, uuid) is 'PITCH Ligas: active collaborators (names + roles) for the Gestão UI; league/competition managers only.';
 comment on function public.competition_matches_staff(uuid, int) is 'PITCH Ligas: staff fixtures console (seq, officials, status_reason). Competition staff only.';
+
+-- ── competition_page gains the league id ─────────────────
+
+-- Redefines 155100's competition_page (identical body) adding league_id at
+
+-- the top level and league.id, so the Gestão officials picker can call
+
+-- league_collaborators(league_id, competition_id) directly. Additive keys
+
+-- only; signature, visibility rule and grants unchanged (create or replace
+
+-- keeps the existing EXECUTE grants; re-stated below for clarity).
+create or replace function public.competition_page(p_league_slug text, p_competition_slug text, p_key text default null)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare v_g public.leagues%rowtype; v_c public.competitions%rowtype; v_vis text; v_staff boolean;
+begin
+  select * into v_g from public.leagues where slug = lower(btrim(coalesce(p_league_slug, '')));
+  if not found then return null; end if;
+  select * into v_c from public.competitions where league_id = v_g.id and slug = lower(btrim(coalesce(p_competition_slug, '')));
+  if not found then return null; end if;
+  v_staff := public.my_player_id() is not null and public.is_competition_staff(v_c.id);
+  v_vis := coalesce(v_c.visibility, v_g.visibility);
+  if not v_staff and not public.can_see_competition(v_c.id) then
+    if v_c.status = 'draft' or v_g.status = 'draft' then return null; end if;
+    if v_vis = 'private' and (p_key is null or (p_key <> v_c.view_key and p_key <> v_g.view_key)) then return null; end if;
+  end if;
+  return jsonb_build_object(
+    'id', v_c.id, 'league_id', v_g.id, 'slug', v_c.slug, 'name', v_c.name, 'status', v_c.status, 'structure', v_c.structure,
+    'modality', v_c.modality, 'format', v_c.format, 'match_duration_min', v_c.match_duration_min,
+    'timezone', coalesce(v_c.timezone, v_g.timezone), 'visibility', v_vis,
+    'league', jsonb_build_object('id', v_g.id, 'slug', v_g.slug, 'name', v_g.name, 'logo_url', v_g.logo_url, 'color', v_g.color),
+    'season', (select jsonb_build_object('name', s.name, 'starts_on', s.starts_on, 'ends_on', s.ends_on) from public.league_seasons s where s.id = v_c.season_id),
+    'category', (select jsonb_build_object('name', k.name, 'youth', k.youth) from public.league_categories k where k.id = v_c.category_id),
+    'regulation', jsonb_build_object('version', v_c.current_regulation_version, 'rules', public.competition_rules(v_c.id)),
+    'var_enabled', v_c.var_enabled, 'fantasy_enabled', v_c.fantasy_enabled,
+    'is_staff', v_staff,
+    'view_key', case when public.my_player_id() is not null and public.is_league_manager(v_g.id, v_c.id) then v_c.view_key end);
+  -- teams[] (L3), rounds/matches (L4), standings (L6) are separate RPCs.
+end $$;
+do $$ begin
+  execute 'revoke execute on function public.competition_page(text, text, text) from public';
+  execute 'grant execute on function public.competition_page(text, text, text) to anon, authenticated, service_role';
+end $$;

@@ -194,6 +194,24 @@ begin
   return public.league_fan_vote_block(p_match_id, coalesce(v_youth, false));
 end $$;
 
+-- Internal: a team's saved sheet for match m (no visibility check — callers check).
+-- {team_id, count, players:[{player_id, name, photo_url, shirt_number, squad_role, position}]}
+-- Number / role from the homologated squad; youth → initials, no photo.
+create or replace function public.league_sheet(m public.team_matches, p_team uuid, p_youth boolean)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('team_id', p_team, 'count', count(l.player_id),
+    'players', coalesce(jsonb_agg(jsonb_build_object(
+        'player_id', l.player_id, 'name', public.league_public_name(l.player_id, p_youth),
+        'photo_url', case when p_youth then null else p.photo_url end,
+        'shirt_number', sp.shirt_number, 'squad_role', sp.squad_role, 'position', p.position)
+      order by sp.shirt_number nulls last, public.league_public_name(l.player_id, p_youth)) filter (where l.player_id is not null), '[]'::jsonb))
+    from public.team_match_lineup l
+    join public.players p on p.id = l.player_id
+    left join public.competition_teams ct on ct.competition_id = m.competition_id and ct.team_id = p_team
+    left join public.competition_squad_players sp on sp.registration_id = ct.id and sp.version = ct.homologated_squad_version and sp.player_id = l.player_id
+   where l.match_id = m.id and l.team_id = p_team;
+$$;
+
 -- ── 5. Match page payload ────────────────────────────────
 -- match_page(match, key) → null | match_live(match, key) ∪ {
 --   competition{id, name, slug, league_id, league_slug, league_name, modality, format, match_duration_min, youth},
@@ -202,6 +220,7 @@ end $$;
 --   official_mvp{player_id, name, team_id, revision, decided_role} | null,
 --   fan_vote{…fan_vote_results…},
 --   formations{home: match_formation | null, away: … }   (published ones; your own team's also when 'team'),
+--   lineups{home: sheet | null, away: …} | null   (team sheets: staff + assigned officials both; team members own; anon/fans null),
 --   dispute{window_closes_at, open_count (staff/teams only, else null)},
 --   me{is_staff, is_manager, operator_role, can_homologate, leader_of_team_id, member_of_team_id} }
 create or replace function public.match_page(p_match_id uuid, p_key text default null)
@@ -209,6 +228,7 @@ returns jsonb language plpgsql stable security definer set search_path = public 
 declare v_live jsonb; m public.team_matches%rowtype; v_c public.competitions%rowtype; v_g public.leagues%rowtype;
         v_youth boolean; h public.team_match_homologations%rowtype; v_pid uuid := public.my_player_id();
         v_staff boolean := false; v_member boolean := false; v_form jsonb := '{}'::jsonb; t record; f jsonb;
+        v_lineups jsonb := null; v_official boolean := false;
 begin
   v_live := public.match_live(p_match_id, p_key);
   if v_live is null then return null; end if;
@@ -220,6 +240,16 @@ begin
   if v_pid is not null or public.is_admin() then
     v_staff := public.is_competition_staff(v_c.id);
     v_member := public.is_team_member(m.home_team_id) or public.is_team_member(m.away_team_id);
+  end if;
+  -- Team sheets (plan §5: not public). Staff of the competition and the
+  -- match's assigned officials see both; a team's members see their own.
+  if v_pid is not null then
+    v_official := public.is_match_official(m.id);
+    if v_staff or v_official or v_member then
+      v_lineups := jsonb_build_object(
+        'home', case when v_staff or v_official or public.is_team_member(m.home_team_id) then public.league_sheet(m, m.home_team_id, v_youth) end,
+        'away', case when v_staff or v_official or public.is_team_member(m.away_team_id) then public.league_sheet(m, m.away_team_id, v_youth) end);
+    end if;
   end if;
   for t in select x.side, x.team_id from (values ('home', m.home_team_id), ('away', m.away_team_id)) x(side, team_id) loop
     f := null;
@@ -255,6 +285,7 @@ begin
                        from public.team_match_awards a where a.match_id = m.id and a.award = 'official_mvp' and a.status = 'current'),
     'fan_vote', public.league_fan_vote_block(m.id, v_youth),
     'formations', v_form,
+    'lineups', v_lineups,
     'dispute', jsonb_build_object(
        'window_closes_at', case when h.id is not null then h.created_at + make_interval(hours => coalesce((public.competition_rules(v_c.id)->>'dispute_window_hours')::int, 0)) end,
        'open_count', case when v_staff or v_member then (select count(*) from public.team_match_disputes d where d.match_id = m.id and d.status = 'open') end),
@@ -282,7 +313,7 @@ begin
   end loop;
   execute 'revoke execute on function public.match_page(uuid, text) from public';
   execute 'grant execute on function public.match_page(uuid, text) to anon, authenticated, service_role';
-  foreach f in array array['public.league_public_name(uuid, boolean)', 'public.league_fan_vote_block(uuid, boolean)'] loop
+  foreach f in array array['public.league_public_name(uuid, boolean)', 'public.league_fan_vote_block(uuid, boolean)', 'public.league_sheet(public.team_matches, uuid, boolean)'] loop
     execute format('revoke execute on function %s from public, anon, authenticated', f);
     execute format('grant execute on function %s to service_role', f);
   end loop;

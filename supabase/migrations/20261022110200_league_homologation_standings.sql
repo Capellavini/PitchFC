@@ -526,7 +526,7 @@ begin
     'rows', v_rows, 'regulation_version', v_c.current_regulation_version, 'tiebreakers', r->'tiebreakers', 'points', r->'points',
     'pending', (select count(*) from public.team_matches m where m.competition_id = v_c.id
                   and m.result_status in ('provisional','submitted')),
-    'adjustments', coalesce((select jsonb_agg(jsonb_build_object('team_id', a.team_id, 'points', a.points, 'reason', a.reason, 'created_at', a.created_at))
+    'adjustments', coalesce((select jsonb_agg(jsonb_build_object('id', a.id, 'team_id', a.team_id, 'points', a.points, 'reason', a.reason, 'created_at', a.created_at))
                                from public.competition_point_adjustments a where a.competition_id = v_c.id and a.revoked_at is null), '[]'::jsonb));
 end $$;
 

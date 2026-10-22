@@ -267,6 +267,8 @@ select pg_temp.setkv('adj', public.adjust_points(pg_temp.k('C1'), pg_temp.k('A')
 select pg_temp.ok('adjustment applied and listed with its reason',
   (public.competition_standings(pg_temp.k('C1'))->'rows'->0) @> '{"pts":5,"adjustments":-1}'
   and public.competition_standings(pg_temp.k('C1'))->'adjustments'->0->>'reason' = 'Inscrição fora de prazo');
+select pg_temp.ok('standings adjustments carry the id (for revoke_point_adjustment)',
+  public.competition_standings(pg_temp.k('C1'))->'adjustments'->0->>'id' = pg_temp.kv('adj'));
 select pg_temp.as_user('11');
 select pg_temp.expect_err('a captain cannot adjust points', format($$select public.adjust_points(%L, %L, 3, 'Bónus porque sim')$$, pg_temp.kv('C1'), pg_temp.kv('A')), 'league:not_found');
 select pg_temp.as_user('01');

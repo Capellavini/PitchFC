@@ -191,12 +191,19 @@ select pg_temp.expect_err('team captain cannot read the staff console', format($
 select pg_temp.as_user('06');
 select pg_temp.expect_err('outsider cannot read the staff console', format($$select public.competition_matches_staff(%L)$$, pg_temp.kv('C1')), 'league:not_found');
 
+select pg_temp.as_user('01');
+select pg_temp.setkv('Lslug', (select slug from public.leagues where id = pg_temp.k('L')));
+select pg_temp.setkv('Cslug', (select slug from public.competitions where id = pg_temp.k('C1')));
+select pg_temp.ok('competition_page (manager) returns league_id', public.competition_page(pg_temp.kv('Lslug'), pg_temp.kv('Cslug'))->>'league_id' = pg_temp.kv('L'));
 -- ── 5. Public calendar ───────────────────────────────────
 select pg_temp.as_anon();
 select pg_temp.ok('anon calendar: 6 items, no seq / officials / status_reason leak',
   jsonb_array_length(public.competition_matches(pg_temp.k('C1'))->'items') = 6
   and not exists (select 1 from jsonb_array_elements(public.competition_matches(pg_temp.k('C1'))->'items') i
                    where i ? 'seq' or i ? 'officials' or i ? 'status_reason'));
+select pg_temp.ok('competition_page returns the league id (top level + league.id), no view_key for anon',
+  public.competition_page(pg_temp.kv('Lslug'), pg_temp.kv('Cslug')) @> format('{"league_id":"%s","league":{"id":"%s"}}', pg_temp.kv('L'), pg_temp.kv('L'))::jsonb
+  and public.competition_page(pg_temp.kv('Lslug'), pg_temp.kv('Cslug'))->'view_key' = 'null'::jsonb);
 select pg_temp.ok('anon calendar shows postponed/cancelled states',
   (select count(*) from jsonb_array_elements(public.competition_matches(pg_temp.k('C1'))->'items') i where i->>'match_status' = 'cancelled') = 1);
 
