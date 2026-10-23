@@ -35,9 +35,8 @@ import GoalOfTheWeek from "./GoalOfTheWeek";
  *  Data: `group` (season totals per player), `history` (one row per
  *  matchday), `matchdaySummaries` (newest-first day summaries — Forma,
  *  team-day records, compare), `lastMatchday` (summary.lines) and `mvp`. */
-export default function CompetirTab({ isAdmin, group = [], history = [], matchdaySummaries = [], lastMatchday, mvp, social, postDates, groupName, groupPicker, openBallot = false, rivalsOn = false, rivalsHub = null, challengesInbox = null, challengesBadge = 0, groupless = false, view: viewProp, onViewChange, leaguesDemo = false, gateCompare = (fn) => fn }) {
-  // gateCompare: soft paywall for "Comparar jogadores" (advanced stats = Club).
-  // Rankings, MVP, Golo da Semana and season stats are Free and never gated.
+export default function CompetirTab({ isAdmin, group = [], history = [], matchdaySummaries = [], lastMatchday, mvp, social, postDates, groupName, groupPicker, openBallot = false, rivalsOn = false, rivalsHub = null, challengesInbox = null, challengesBadge = 0, groupless = false, view: viewProp, onViewChange, leaguesDemo = false }) {
+  // Comparison is free and opens only on a click, never during rendering.
   const [subLocal, setSubLocal] = useState("rankings");
   const sub = viewProp ?? subLocal;
   const setSub = onViewChange ?? setSubLocal;
@@ -82,7 +81,7 @@ export default function CompetirTab({ isAdmin, group = [], history = [], matchda
       {view === "rankings" && (
         <>
           {group.length >= 2 && (
-            <button type="button" onClick={gateCompare(() => setComparing(true))}
+            <button type="button" onClick={() => setComparing(true)}
               style={{ width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: S.md, marginBottom: S.xl, padding: `0 ${S.md}px 0 ${S.lg}px`, background: C.card, border: `1px solid ${C.border}`, borderRadius: R.card, color: C.text1, cursor: "pointer", textAlign: "left" }}>
               <span aria-hidden style={{ fontSize: 20 }}>🆚</span>
               <span style={{ flex: 1, minWidth: 0 }}>

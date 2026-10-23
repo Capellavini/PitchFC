@@ -2437,7 +2437,6 @@ export default function PitchApp() {
             ) : null}
             challengesBadge={rivals.pendingActions}
             leaguesDemo={localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin })}
-            gateCompare={(fn) => fn()} /* players are never gated: compare stays free */
           />
         )}
         {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (
