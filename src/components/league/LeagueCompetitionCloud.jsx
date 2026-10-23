@@ -54,7 +54,7 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
   return (
     <LeagueCloudShell contextOptions={contextOptions} title={c.name} backHref={back} error={err}
       subtitle={[c.league?.name, c.season, c.category, c.format].filter(Boolean).join(" · ")}
-      right={leagues.signedIn ? <BtnGhost compact tone={following ? "neutral" : "accent"}
+      right={leagues.signedIn && !c.isStaff ? <BtnGhost compact tone={following ? "neutral" : "accent"}
         onClick={() => run(() => leagues.follow("competition", c.id, !following))}>{t(following ? LC.unfollow : LC.follow)}</BtnGhost> : null}>
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", marginBottom: S.lg }}>
         <Chip variant={c.status === "registration_open" ? "lime" : "neutral"}>{statusLabel(c.status)}</Chip>
@@ -73,7 +73,7 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
         <div key={tm.registrationId} style={{ ...cardStyle, padding: S.md, marginBottom: S.sm }}>
           <div style={{ display: "flex", alignItems: "center", gap: S.sm }}>
             <span style={{ flex: 1, fontSize: T.body, fontWeight: 800 }}>{tm.team.name}</span>
-            {leagues.signedIn ? (supported === tm.team.id
+            {leagues.signedIn && !c.isStaff ? (supported === tm.team.id
               ? <Chip variant="lime" onClick={() => run(() => leagues.setSupportedTeam(c.id, null))}>{t(LC.supported)}</Chip>
               : <Chip onClick={() => run(() => leagues.setSupportedTeam(c.id, tm.team.id))}>{t(LC.support)}</Chip>) : null}
           </div>

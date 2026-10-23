@@ -35,7 +35,7 @@ export default function LeagueCloudPage({ leagues, slug, viewKey, contextOptions
 
   return (
     <LeagueCloudShell contextOptions={contextOptions} title={lg.name} subtitle={[lg.city, lg.country].filter(Boolean).join(" · ")} error={err}
-      right={leagues.signedIn ? <BtnGhost compact tone={following ? "neutral" : "accent"} onClick={toggleFollow}>{t(following ? LC.unfollow : LC.follow)}</BtnGhost> : null}>
+      right={leagues.signedIn && !manager ? <BtnGhost compact tone={following ? "neutral" : "accent"} onClick={toggleFollow}>{t(following ? LC.unfollow : LC.follow)}</BtnGhost> : null}>
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", marginBottom: S.lg }}>
         {lg.status === "draft" ? <Chip variant="orange">{t(LC.draftLeague)}</Chip> : null}
         {lg.visibility === "private" ? <Chip>{t(LC.privateLeague)}</Chip> : null}

@@ -54,11 +54,11 @@ export default function LeagueHub({ leagues, rivals, onSignIn, contextOptions=[]
         <Row key={l.id} href={leagueUrl(l.slug)} title={l.name} meta={l.roles.map(roleLabel).join(" · ")} />
       )) : <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.lg }}>{t(LC.noLeagues)}</div>}
 
-      <SectionLabel style={{ marginTop: S.lg }}>{t(LC.following)}</SectionLabel>
-      {followRows.length ? followRows : <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.lg }}>{t(LC.noFollowing)}</div>}
+      {!leagues.myLeagues.length&&<><SectionLabel style={{ marginTop: S.lg }}>{t(LC.following)}</SectionLabel>
+      {followRows.length ? followRows : <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.lg }}>{t(LC.noFollowing)}</div>}</>}
 
       <div style={{ marginTop: S.xl }}>
-        <LeaguePilotCard leagues={leagues} onCreated={(slug) => go(leagueUrl(slug))} />
+        {(!leagues.myLeagues.length||leagues.isAdmin)&&<LeaguePilotCard leagues={leagues} onCreated={(slug) => go(leagueUrl(slug))} />}
         <LeagueAdminRequests leagues={leagues} />
       </div>
     </LeagueCloudShell>
