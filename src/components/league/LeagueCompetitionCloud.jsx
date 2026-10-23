@@ -11,12 +11,13 @@ import SectionLabel from "../SectionLabel";
 import LeagueCloudShell from "./LeagueCloudShell";
 import LeagueShareLink from "./LeagueShareLink";
 import LeagueRegistrationsReview from "./LeagueRegistrationsReview";
+import LeagueCompetitionSchedule from './LeagueCompetitionSchedule';
 
 /** /league/<slug>/<competition> — the real competition page: regulation,
  *  homologated teams (+ squads), fan "Apoiar" / follow; staff: publish the
  *  regulation, open/close registrations, registration link for captains,
  *  squad review. Fixtures, live súmula and standings are L4+ (seam note). */
-export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug, viewKey }) {
+export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug, viewKey, contextOptions=[] }) {
   const [c, setC] = useState(undefined);
   const [teams, setTeams] = useState([]);
   const [link, setLink] = useState(null);
@@ -51,13 +52,15 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
   const following = leagues.isFollowing("competition", c.id);
 
   return (
-    <LeagueCloudShell title={c.name} backHref={back} error={err}
+    <LeagueCloudShell contextOptions={contextOptions} title={c.name} backHref={back} error={err}
       subtitle={[c.league?.name, c.season, c.category, c.format].filter(Boolean).join(" · ")}
       right={leagues.signedIn ? <BtnGhost compact tone={following ? "neutral" : "accent"}
         onClick={() => run(() => leagues.follow("competition", c.id, !following))}>{t(following ? LC.unfollow : LC.follow)}</BtnGhost> : null}>
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", marginBottom: S.lg }}>
         <Chip variant={c.status === "registration_open" ? "lime" : "neutral"}>{statusLabel(c.status)}</Chip>
       </div>
+
+      <LeagueCompetitionSchedule leagues={leagues} competition={c} teams={teams} viewKey={viewKey}/>
 
       <SectionLabel>{t(LC.regulation)}</SectionLabel>
       <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.lg }}>
@@ -81,7 +84,7 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
       )) : <div style={{ fontSize: T.meta, color: C.text2 }}>{t(LC.noTeams)}</div>}
 
       {c.isStaff ? (
-        <section style={{ ...cardStyle, padding: S.lg, marginTop: S.lg }}>
+        <section id="inscricoes" style={{ ...cardStyle, padding: S.lg, marginTop: S.lg,scrollMarginTop:20 }}>
           <SectionLabel>{t(LC.manage)}</SectionLabel>
           <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>
             {c.draftVersion ? <BtnPrimary disabled={busy} onClick={() => { const reason = c.draftVersion > 1 ? (window.prompt(t("Motivo da nova versão do regulamento (obrigatório)")) || "").trim() : null; if (c.draftVersion > 1 && !reason) return; run(() => leagues.publishRegulation(c.id, c.draftVersion, reason)); }}>{t(LC.publish)}</BtnPrimary> : null}
@@ -101,7 +104,6 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
         </section>
       ) : null}
 
-      <div style={{ fontSize: T.meta, color: C.text3, marginTop: S.xl }}>{t(LC.seamNote)}</div>
     </LeagueCloudShell>
   );
 }
