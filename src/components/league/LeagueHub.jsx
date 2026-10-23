@@ -11,13 +11,14 @@ import LeaguePilotCard from "./LeaguePilotCard";
 import LeagueAdminRequests from "./LeagueAdminRequests";
 import LeagueInviteAccept from "./LeagueInviteAccept";
 import LeagueRegisterTeam from "./LeagueRegisterTeam";
+import LeagueOrganizerHome from './LeagueOrganizerHome';
 
 const go = (href) => { window.location.href = href; };
 
 /** /league/minhas — the signed-in home of PITCH Ligas: invite / registration
  *  links, "Minhas ligas" (organization roles), "Acompanhando" (fan follows),
  *  the pilot request, and the admin review queue. */
-export default function LeagueHub({ leagues, rivals, onSignIn }) {
+export default function LeagueHub({ leagues, rivals, onSignIn, contextOptions=[] }) {
   const q = new URLSearchParams(window.location.search);
   const invite = q.get("convite");
   const inscricao = q.get("inscricao");
@@ -43,20 +44,21 @@ export default function LeagueHub({ leagues, rivals, onSignIn }) {
   }).filter(Boolean);
 
   return (
-    <LeagueCloudShell title={t(LC.hubTitle)} backHref="/league">
+    <LeagueCloudShell contextOptions={contextOptions} title={t(LC.hubTitle)} backHref="/?context=league">
       {invite ? <LeagueInviteAccept leagues={leagues} token={invite} onAccepted={(slug) => slug && go(leagueUrl(slug))} /> : null}
       {inscricao ? <LeagueRegisterTeam leagues={leagues} rivals={rivals} token={inscricao} /> : null}
 
+      {leagues.myLeagues.length>0&&<LeagueOrganizerHome leagues={leagues} compact/>}
       <SectionLabel>{t(LC.myLeagues)}</SectionLabel>
       {leagues.myLeagues.length ? leagues.myLeagues.map((l) => (
         <Row key={l.id} href={leagueUrl(l.slug)} title={l.name} meta={l.roles.map(roleLabel).join(" · ")} />
       )) : <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.lg }}>{t(LC.noLeagues)}</div>}
 
-      <SectionLabel style={{ marginTop: S.lg }}>{t(LC.following)}</SectionLabel>
-      {followRows.length ? followRows : <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.lg }}>{t(LC.noFollowing)}</div>}
+      {!leagues.myLeagues.length&&<><SectionLabel style={{ marginTop: S.lg }}>{t(LC.following)}</SectionLabel>
+      {followRows.length ? followRows : <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.lg }}>{t(LC.noFollowing)}</div>}</>}
 
       <div style={{ marginTop: S.xl }}>
-        <LeaguePilotCard leagues={leagues} onCreated={(slug) => go(leagueUrl(slug))} />
+        {(!leagues.myLeagues.length||leagues.isAdmin)&&<LeaguePilotCard leagues={leagues} onCreated={(slug) => go(leagueUrl(slug))} />}
         <LeagueAdminRequests leagues={leagues} />
       </div>
     </LeagueCloudShell>
