@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - run: node --test src/lib/homeContext.test.js
       # wa-bot/src/core is generated from src/lib/core — fail on drift.
       - run: node scripts/sync-core.mjs --check
 

@@ -36,7 +36,7 @@ const writeParams = (patch) => {
  *  "Apoiar") and — staff only — Gestão (registrations, link, regulation,
  *  pending list). ?jogo=<id> opens a match; ?tab=<id> a tab. Every action
  *  is permission-aware in the UI; the RPCs re-check everything. */
-export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug, viewKey }) {
+export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug, viewKey, contextOptions = [] }) {
   const [c, setC] = useState(undefined);
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
@@ -45,7 +45,7 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [notice, setNotice] = useState(null);
-  const [tab, setTabState] = useState(() => readParam("tab") || "jogos");
+  const [tab, setTabState] = useState(() => readParam("tab") || (typeof window !== "undefined" && window.location.hash === "#inscricoes" ? "gestao" : "jogos"));
   const [matchId, setMatchIdState] = useState(() => readParam("jogo"));
   const [rev, setRev] = useState(0);
   const { fetchCompetition, fetchCompetitionTeams, fetchMatches, fetchMatchesStaff, fetchLeague } = leagues;
@@ -92,7 +92,7 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
 
   if (matchId) {
     return (
-      <LeagueCloudShell title={c.name} backHref={back} error={err} notice={notice} subtitle={[c.league?.name, formatSummary(profile), c.category].filter(Boolean).join(" · ")}>
+      <LeagueCloudShell contextOptions={contextOptions} title={c.name} backHref={back} error={err} notice={notice} subtitle={[c.league?.name, formatSummary(profile), c.category].filter(Boolean).join(" · ")}>
         <LeagueCloudMatchPage key={matchId} leagues={leagues} competition={c} dir={dir} profile={profile} matchId={matchId} viewKey={viewKey}
           isManager={isManager} ui={ui} onBack={closeMatch} onChanged={load} />
       </LeagueCloudShell>
@@ -118,7 +118,7 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
   return (
     <LeagueCloudShell title={c.name} backHref={back} error={err} notice={notice}
       subtitle={[c.league?.name, c.season, c.category, formatSummary(profile)].filter(Boolean).join(" · ")}
-      right={leagues.signedIn ? <BtnGhost compact tone={following ? "neutral" : "accent"}
+      right={leagues.signedIn && !c.isStaff ? <BtnGhost compact tone={following ? "neutral" : "accent"}
         onClick={() => run(() => leagues.follow("competition", c.id, !following))}>{t(following ? LC.unfollow : LC.follow)}</BtnGhost> : null}>
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", marginBottom: S.md }}>
         <Chip variant={c.status === "registration_open" ? "lime" : "neutral"}>{statusLabel(c.status)}</Chip>
@@ -146,7 +146,7 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
             <div key={tm.registrationId} style={{ ...cardStyle, padding: S.md, marginBottom: S.sm }}>
               <div style={{ display: "flex", alignItems: "center", gap: S.sm }}>
                 <span style={{ flex: 1, fontSize: T.body, fontWeight: 800 }}>{tm.team.name}</span>
-                {leagues.signedIn ? (supported === tm.team.id
+                {leagues.signedIn && !c.isStaff ? (supported === tm.team.id
                   ? <Chip variant="lime" onClick={() => run(() => leagues.setSupportedTeam(c.id, null))}>{t(LC.supported)}</Chip>
                   : <Chip onClick={() => run(() => leagues.setSupportedTeam(c.id, tm.team.id))}>{t(LC.support)}</Chip>) : null}
               </div>
@@ -180,13 +180,14 @@ export default function LeagueCompetitionCloud({ leagues, slug, competitionSlug,
                   {link ? <LeagueShareLink url={link.url} message={`${c.league?.name || ""} · ${c.name}`} /> : null}
                 </div>
               ) : null}
-              <LeagueRegistrationsReview leagues={leagues} competitionId={c.id} onDecided={load} />
+              <div id="inscricoes" style={{ scrollMarginTop: 20 }}>
+                <LeagueRegistrationsReview leagues={leagues} competitionId={c.id} onDecided={load} />
+              </div>
             </section>
           ) : null}
         </>
       )}
 
-      <div style={{ fontSize: T.meta, color: C.text3, marginTop: S.xl }}>{t(LC.seamNote)}</div>
     </LeagueCloudShell>
   );
 }

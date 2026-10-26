@@ -58,6 +58,8 @@ export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adm
   const [following, setFollowing] = useState({ supporting: [], follows: [] });
   const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadedPlayer, setLoadedPlayer] = useState(null);
+  const loadGeneration = useRef(0);
   const [revision, setRevision] = useState(0);
 
   // ── Plumbing ───────────────────────────────────────────
@@ -89,6 +91,7 @@ export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adm
 
   // ── Personal lists: Minhas ligas, Acompanhando, my pilot requests ──
   const load = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     if (!active || !signedIn) { setMyLeagues([]); setFollowing({ supporting: [], follows: [] }); setMyRequests([]); return; }
     setLoading(true);
     try {
@@ -98,6 +101,7 @@ export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adm
           supabase.from("league_access_requests").select("id,org_name,city,country,expected_teams,context,status,used_by_league_id,created_at")
             .eq("requester_player_id", meId).order("created_at", { ascending: false }),
         ]);
+        if (generation !== loadGeneration.current) return;
         // Tolerate the migrations not being applied yet (feature flag on a project without them).
         setMyLeagues(ml.error ? [] : (ml.data?.items || []).map(normMyLeague));
         setFollowing(mf.error ? { supporting: [], follows: [] } : normFollowing(mf.data));
@@ -109,8 +113,11 @@ export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adm
         setMyRequests(s.requests.filter((r) => r.requesterId === meId).slice().reverse());
       }
     } finally {
-      setLoading(false);
-      setRevision((n) => n + 1);
+      if (generation === loadGeneration.current) {
+        setLoadedPlayer(meId);
+        setLoading(false);
+        setRevision((n) => n + 1);
+      }
     }
   }, [active, signedIn, cloudCapable, meId, actor]);
   const loadRef = useRef(load);
@@ -422,10 +429,13 @@ export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adm
     : Promise.resolve(demoCall("close_fan_vote_demo", { matchId }))), [cloudCapable, demoCall]);
 
   const resetDemo = useCallback(() => setDemo(null), [setDemo]);
+  const fetchCompetitionMatches = useCallback((competitionId, key = null) => cloudCapable
+    ? rpc('competition_matches', {p_competition_id:competitionId,p_key:key}, d => d?.items || [])
+    : Promise.resolve({data:[]}), [cloudCapable,rpc]);
 
   return {
     mode: cloudCapable ? "cloud" : "demo",
-    signedIn, myPlayerId: meId, isAdmin, loading, revision,
+    signedIn, myPlayerId: meId, isAdmin, loading, loaded: loadedPlayer === meId && Boolean(meId), revision,
     myLeagues, following, followNames, myRequests,
     requestPilot, listAccessRequests, reviewRequest, createLeague, updateLeague, setLeagueStatus,
     inviteCollaborator, previewInvite, acceptInvite, fetchLeague,
@@ -440,6 +450,6 @@ export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adm
     fetchDiscipline, fetchDisciplineCases, decideDisciplineCase, openDisciplineCase,
     awardOfficialMvp, openFanVote, castFanVote, fetchFanVote, closeFanVoteDemo,
     leaderTeams,
-    refresh: load, resetDemo,
+    refresh: load, resetDemo, fetchCompetitionMatches,
   };
 }
