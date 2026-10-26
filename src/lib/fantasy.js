@@ -3,9 +3,14 @@
 // server in v2 (migration 20261019180559_fantasy_v2_foundation) and are
 // mirrored for previews/demo in src/lib/core/fantasyRules.js. What's left
 // here is display + cost-basis bookkeeping for the bank previews.
+import { getLang } from "./i18n.js";
 
-/** Money display — everything in millions, FPL-style ("$120.0M"). */
-export const fmtM = (n) => `$${(Number(n) || 0).toFixed(1)}M`;
+/** Money display — everything in millions. PT-PT/PT-BR: "120,0 M" (no
+ *  currency: it's a game budget, not money); EN keeps FPL-style "$120.0M". */
+export const fmtM = (n, lang = getLang()) => {
+  const v = (Number(n) || 0).toFixed(1);
+  return String(lang || "pt").startsWith("en") ? `$${v}M` : `${v.replace(".", ",")} M`;
+};
 
 /** Next per-player cost basis for a squad moving to `newPlayerIds`: kept
  *  players keep what was actually paid; new picks cost today's price.

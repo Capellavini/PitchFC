@@ -12,7 +12,7 @@ const SECTIONS = [
   { id: "overview", label: "Visão geral" },
   { id: "registrations", label: "Inscrições" },
   { id: "calendar", label: "Calendário" },
-  { id: "reports", label: "Súmulas" },
+  { id: "reports", label: "Fichas de jogo" },
   { id: "discipline", label: "Disciplina" },
   { id: "regulation", label: "Regulamento" },
 ];

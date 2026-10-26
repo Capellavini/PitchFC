@@ -5,6 +5,10 @@ import {
   demoEntityName, emptyLeagueOrgState, leagueDemoOp, leagueErrorCode, leagueInviteUrl, normCompetitionPage, normFollowing,
   normLeaguePage, normMyLeague, normRegistrations, normRequest, normTeamsPage, registrationUrl, validateRules,
 } from "../lib/leagueCloud";
+import {
+  eventToCloud, normDiscipline, normDisciplineCase, normDispute, normEventHistory, normFanVote, normFormation, normMatchLive, normMatchPage,
+  normMatches, normPlayerStats, normStandings, roundRobinRounds,
+} from "../lib/leagueMatches";
 
 /**
  * PITCH Ligas Fase 2 — thin data layer for the REAL league flows (L1–L3 +
@@ -34,7 +38,7 @@ import {
  * MVP, fan votes, fantasy. The seams are the RPCs already deployed by L3
  * (create_fixtures, record_match_event, set_match_phase, match_live).
  */
-export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adminFlag = false, demoMe = null, resolveTeam = null }) {
+export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adminFlag = false, demoMe = null, resolveTeam = null, myTeams = [] }) {
   const cloudCapable = supabaseEnabled && !["off", "failed"].includes(cloudStatus);
   // Local demo has no admin accounts: the lone tester plays the PITCH admin
   // too (approves their own pilot request) so the whole loop is walkable.
@@ -286,6 +290,144 @@ export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adm
   const isFollowing = useCallback((entityType, entityId) => following.follows.some((f) => f.entityType === entityType && f.entityId === entityId), [following]);
   const supportedTeamOf = useCallback((competitionId) => following.supporting.find((s) => s.competitionId === competitionId)?.teamId ?? null, [following]);
 
+  // ── L4: phase, fixtures, calendar, officials ───────────
+  // Team leadership for the local mirror (cloud re-derives it server-side).
+  const teamsKey = JSON.stringify((myTeams || []).map((x) => [x.id, x.role]));
+  const leaderTeams = useMemo(() => JSON.parse(teamsKey).map(([id, role]) => ({ id, role })), [teamsKey]);
+  /** Match-level write (no personal-list reload). Demo args get the caller's teams. */
+  const mAct = useCallback((rpcName, rpcArgs, demoArgs, map) => act(rpcName, rpcArgs, rpcName, { ...demoArgs, myTeams: leaderTeams }, map, { reload: false }), [act, leaderTeams]);
+  const mRead = useCallback((rpcName, rpcArgs, demoArgs, map) => read(rpcName, rpcArgs, rpcName, { ...demoArgs, myTeams: leaderTeams }, map), [read, leaderTeams]);
+
+  /** One call: phase (idempotent) + the complete round robin (server validates). */
+  const generateFixtures = useCallback(async (competitionId, teamIds, doubleLegged = false) => {
+    const ph = await mAct("create_phase", { p_competition_id: competitionId, p_name: "Fase regular", p_double_legged: doubleLegged },
+      { competitionId, name: "Fase regular", doubleLegged }, (d) => ({ phaseId: d.phase_id, created: Boolean(d.created) }));
+    if (ph.error) return ph;
+    const fixtures = roundRobinRounds(teamIds, doubleLegged);
+    return mAct("create_fixtures", { p_phase_id: ph.data.phaseId, p_fixtures: fixtures }, { phaseId: ph.data.phaseId, fixtures },
+      (d) => ({ created: Boolean(d.created), matches: Number(d.matches || 0) }));
+  }, [mAct]);
+
+  /** Public calendar (official scores only once homologated). */
+  const fetchMatches = useCallback((competitionId, key = null, round = null) => mRead("competition_matches",
+    { p_competition_id: competitionId, p_round: round, p_key: key }, { competitionId, round, key }, (d) => (d ? normMatches(d) : [])), [mRead]);
+  /** Staff calendar: + seq, officials, status_reason (competition_matches_staff, L4 console). */
+  const fetchMatchesStaff = useCallback((competitionId, round = null) => mRead("competition_matches_staff",
+    { p_competition_id: competitionId, p_round: round }, { competitionId, round }, (d) => (d ? normMatches(d) : [])), [mRead]);
+
+  const scheduleMatch = useCallback((matchId, kickoffAt, venue = {}, expectedSeq = null) => mAct("schedule_match",
+    { p_match_id: matchId, p_kickoff_at: kickoffAt, p_venue: venue, p_expected_seq: expectedSeq }, { matchId, kickoffAt, venue, expectedSeq },
+    (d) => ({ matchStatus: d.match_status, seq: d.seq })), [mAct]);
+  /** status: 'postponed' | 'cancelled'; reason mandatory. */
+  const setMatchOff = useCallback((matchId, status, reason) => mAct("set_match_off", { p_match_id: matchId, p_status: status, p_reason: reason },
+    { matchId, status, reason }, (d) => ({ matchStatus: d.match_status, seq: d.seq })), [mAct]);
+  const assignOfficial = useCallback((matchId, playerId, role, assign = true) => mAct("assign_official",
+    { p_match_id: matchId, p_player_id: playerId, p_role: role, p_assign: assign }, { matchId, playerId, role, assign }, (d) => ({ assigned: Boolean(d.assigned) })), [mAct]);
+  /** Active collaborators (owner/manager/scorer/referee) to assign as officials. */
+  const fetchCollaborators = useCallback((leagueId, competitionId = null) => mRead("league_collaborators",
+    { p_league_id: leagueId, p_competition_id: competitionId }, { leagueId, competitionId },
+    (d) => ((d?.items) || []).map((m) => ({ memberId: m.member_id ?? null, playerId: m.player_id, name: m.name || "—", role: m.role, competitionId: m.competition_id ?? null }))), [mRead]);
+
+  // ── L5: live súmula, lifecycle, call-up, formations ────
+  /** One-call match page (match_page = match_live ∪ teams, homologation, MVP,
+   *  fans' vote, formations, dispute window, my capabilities). Falls back to
+   *  match_live while 20261022110400 is not deployed. */
+  const fetchMatch = useCallback(async (matchId, key = null) => {
+    const r = await mRead("match_page", { p_match_id: matchId, p_key: key }, { matchId, key }, (d) => (d ? normMatchPage(d) : null));
+    if (r.error !== "not_deployed") return r;
+    return mRead("match_live", { p_match_id: matchId, p_key: key }, { matchId, key }, (d) => (d ? normMatchPage(d) : null));
+  }, [mRead]);
+  const fetchEventHistory = useCallback((matchId) => mRead("match_event_history", { p_match_id: matchId }, { matchId }, normEventHistory), [mRead]);
+  /** event: LeagueEventSheet shape (new / correct / void). post = after submission (authority, reason). */
+  const recordEvent = useCallback((matchId, event, { post = false } = {}) => {
+    const e = eventToCloud(event, { post });
+    if (e.error) return Promise.resolve(e);
+    return mAct("record_match_event", { p_match_id: matchId, p_event: e.data }, { matchId, event: e.data },
+      (d) => ({ eventId: d.event_id, seq: d.seq, duplicate: Boolean(d.duplicate), possibleDuplicate: Boolean(d.possible_duplicate) }));
+  }, [mAct]);
+  /** phase: 'live' | 'finished' | 'submitted' (the súmula goes to review). */
+  const setMatchPhase = useCallback((matchId, phase, expectedSeq, note = null) => mAct("set_match_phase",
+    { p_match_id: matchId, p_phase: phase, p_expected_seq: expectedSeq, p_note: note }, { matchId, phase, expectedSeq, note },
+    (d) => ({ matchStatus: d.match_status, resultStatus: d.result_status, seq: d.seq })), [mAct]);
+  /** Ficha de jogo team sheet (set_league_lineup): starters + bench of one team. Operator
+   *  (scorer/referee/manager); after submission the authority. Feeds appearances at homologation. */
+  const setLineup = useCallback((matchId, teamId, playerIds) => mAct("set_league_lineup",
+    { p_match_id: matchId, p_team_id: teamId, p_player_ids: playerIds }, { matchId, teamId, playerIds },
+    (d) => ({ teamId: d.team_id, count: Number(d.count || 0), seq: d.seq })), [mAct]);
+  /** My teams' call-ups for a match (RLS: own team only) → { [teamId]: [playerId] }. */
+  const fetchLineups = useCallback(async (matchId) => {
+    const group = (rows) => rows.reduce((o, r) => ({ ...o, [r.team_id]: [...(o[r.team_id] || []), r.player_id] }), {});
+    if (!cloudCapable) return { data: group(leagueDemoOp(demoRef.current, "match_lineup", { matchId }, actor).data || []) };
+    try {
+      const q = await supabase.from("team_match_lineup").select("player_id,team_id").eq("match_id", matchId);
+      return q.error ? { data: {} } : { data: group(q.data || []) };
+    } catch { return { data: {} }; }
+  }, [cloudCapable, actor]);
+  const saveFormation = useCallback((matchId, teamId, formation, slots, visibility = "published", baseVersion = null) => mAct("save_match_formation",
+    { p_match_id: matchId, p_team_id: teamId, p_formation: formation, p_slots: slots, p_visibility: visibility, p_base_version: baseVersion },
+    { matchId, teamId, formation, slots, visibility, baseVersion }, (d) => ({ version: d.version, visibility: d.visibility })), [mAct]);
+  const fetchFormation = useCallback((matchId, teamId) => mRead("match_formation", { p_match_id: matchId, p_team_id: teamId }, { matchId, teamId }, normFormation), [mRead]);
+
+  // ── L6: homologation, W.O., abandon, disputes, adjustments, standings ──
+  const homologateMatch = useCallback((matchId, expectedSeq, reason = null) => mAct("homologate_match",
+    { p_match_id: matchId, p_expected_seq: expectedSeq, p_reason: reason }, { matchId, expectedSeq, reason },
+    (d) => ({ revision: d.revision, home: d.home_score, away: d.away_score })), [mAct]);
+  const recordWalkover = useCallback((matchId, absentTeamId, reason, expectedSeq) => mAct("record_walkover",
+    { p_match_id: matchId, p_absent_team_id: absentTeamId, p_reason: reason, p_expected_seq: expectedSeq }, { matchId, absentTeamId, reason, expectedSeq },
+    (d) => ({ revision: d.revision, home: d.home_score, away: d.away_score })), [mAct]);
+  const abandonMatch = useCallback((matchId, reason, expectedSeq) => mAct("abandon_match",
+    { p_match_id: matchId, p_reason: reason, p_expected_seq: expectedSeq }, { matchId, reason, expectedSeq }, (d) => ({ matchStatus: d.match_status })), [mAct]);
+  /** decision: keep_score | award ({home_score, away_score}) | annul | replay. */
+  const decideAbandoned = useCallback((matchId, decision, payload, reason, expectedSeq) => mAct("decide_abandoned_match",
+    { p_match_id: matchId, p_decision: decision, p_payload: payload || {}, p_reason: reason, p_expected_seq: expectedSeq },
+    { matchId, decision, payload, reason, expectedSeq }, (d) => ({ decision: d.decision ?? decision, replayMatchId: d.replay_match_id ?? null })), [mAct]);
+  const openDispute = useCallback((matchId, reason, evidence = []) => mAct("open_dispute",
+    { p_match_id: matchId, p_reason: reason, p_evidence: evidence }, { matchId, reason, evidence }, (d) => ({ disputeId: d.dispute_id, deadlineAt: d.deadline_at ?? null })), [mAct]);
+  /** decision: upheld | rejected (authority, note) | withdrawn (opener). */
+  const decideDispute = useCallback((disputeId, decision, note = null) => mAct("decide_dispute",
+    { p_dispute_id: disputeId, p_decision: decision, p_note: note }, { disputeId, decision, note }, (d) => ({ status: d.status })), [mAct]);
+  /** Disputes of a competition (staff: all; team members: own matches). status null = all. */
+  const fetchDisputes = useCallback((competitionId, status = "open") => mRead("competition_disputes",
+    { p_competition_id: competitionId, p_status: status }, { competitionId, status },
+    (d) => ({ isStaff: Boolean(d?.is_staff), items: ((d?.items) || []).map(normDispute) })), [mRead]);
+  const adjustPoints = useCallback((competitionId, teamId, points, reason) => mAct("adjust_points",
+    { p_competition_id: competitionId, p_team_id: teamId, p_points: points, p_reason: reason }, { competitionId, teamId, points, reason },
+    (d) => ({ adjustmentId: d.adjustment_id })), [mAct]);
+  const revokeAdjustment = useCallback((adjustmentId, reason) => mAct("revoke_point_adjustment",
+    { p_adjustment_id: adjustmentId, p_reason: reason }, { adjustmentId, reason }, (d) => ({ revoked: Boolean(d.revoked) })), [mAct]);
+  const fetchStandings = useCallback((competitionId, key = null) => mRead("competition_standings", { p_competition_id: competitionId, p_key: key },
+    { competitionId, key }, (d) => normStandings(d)), [mRead]);
+  const fetchPlayerStats = useCallback((competitionId, key = null) => mRead("competition_player_stats", { p_competition_id: competitionId, p_key: key },
+    { competitionId, key }, (d) => normPlayerStats(d)), [mRead]);
+
+  // ── L7: discipline ─────────────────────────────────────
+  const fetchDiscipline = useCallback((competitionId, key = null) => mRead("competition_discipline", { p_competition_id: competitionId, p_key: key },
+    { competitionId, key }, (d) => normDiscipline(d)), [mRead]);
+  /** Staff: discipline cases (pending suggestions first). */
+  const fetchDisciplineCases = useCallback((competitionId, status = null) => mRead("list_discipline_cases",
+    { p_competition_id: competitionId, p_status: status }, { competitionId, status },
+    (d) => ({ isManager: Boolean(d?.is_manager), items: ((d?.items) || []).map(normDisciplineCase) })), [mRead]);
+  const decideDisciplineCase = useCallback((caseId, decision, matches, reason) => mAct("decide_discipline_case",
+    { p_case_id: caseId, p_decision: decision, p_matches: matches, p_reason: reason }, { caseId, decision, matches, reason },
+    (d) => ({ status: d.status, decidedMatches: d.decided_matches })), [mAct]);
+  const openDisciplineCase = useCallback((competitionId, playerId, teamId, matches, reason, sourceMatchId = null) => mAct("open_discipline_case",
+    { p_competition_id: competitionId, p_player_id: playerId, p_team_id: teamId, p_matches: matches, p_reason: reason, p_source_match_id: sourceMatchId },
+    { competitionId, playerId, teamId, matches, reason, sourceMatchId }, (d) => ({ caseId: d.case_id })), [mAct]);
+
+  // ── L8: official MVP + fans' vote ──────────────────────
+  const awardOfficialMvp = useCallback((matchId, playerId, reason = null) => mAct("award_official_mvp",
+    { p_match_id: matchId, p_player_id: playerId, p_reason: reason }, { matchId, playerId, reason }, (d) => ({ revision: d.revision })), [mAct]);
+  const openFanVote = useCallback((matchId, hours = 24) => mAct("open_fan_vote", { p_match_id: matchId, p_hours: hours }, { matchId, hours },
+    (d) => ({ opensAt: d.opens_at, closesAt: d.closes_at })), [mAct]);
+  const castFanVote = useCallback((matchId, playerId) => mAct("cast_fan_vote", { p_match_id: matchId, p_player_id: playerId }, { matchId, playerId },
+    (d) => ({ votedPlayerId: d.voted_player_id, closesAt: d.closes_at })), [mAct]);
+  const fetchFanVote = useCallback((matchId) => (signedIn
+    ? mRead("fan_vote_results", { p_match_id: matchId }, { matchId }, normFanVote)
+    : Promise.resolve({ data: normFanVote(null) })), [mRead, signedIn]);
+  /** Local mirror only: close the window now (the walkthrough can't wait 24h). */
+  const closeFanVoteDemo = useCallback((matchId) => (cloudCapable ? Promise.resolve({ error: "not_deployed" })
+    : Promise.resolve(demoCall("close_fan_vote_demo", { matchId }))), [cloudCapable, demoCall]);
+
   const resetDemo = useCallback(() => setDemo(null), [setDemo]);
   const fetchCompetitionMatches = useCallback((competitionId, key = null) => cloudCapable
     ? rpc('competition_matches', {p_competition_id:competitionId,p_key:key}, d => d?.items || [])
@@ -300,6 +442,14 @@ export function useLeagues({ active = false, cloudStatus, myPlayer, isAdmin: adm
     createCompetition, publishRegulation, setCompetitionStatus, fetchCompetition,
     createRegistrationLink, previewRegistrationLink, registerTeam, submitSquad, decideSquad, fetchRegistrations, fetchCompetitionTeams,
     setSupportedTeam, follow, isFollowing, supportedTeamOf,
+    // L4–L8
+    generateFixtures, fetchMatches, fetchMatchesStaff, scheduleMatch, setMatchOff, assignOfficial, fetchCollaborators,
+    fetchMatch, fetchEventHistory, recordEvent, setMatchPhase, setLineup, fetchLineups, saveFormation, fetchFormation,
+    homologateMatch, recordWalkover, abandonMatch, decideAbandoned, openDispute, decideDispute, fetchDisputes,
+    adjustPoints, revokeAdjustment, fetchStandings, fetchPlayerStats,
+    fetchDiscipline, fetchDisciplineCases, decideDisciplineCase, openDisciplineCase,
+    awardOfficialMvp, openFanVote, castFanVote, fetchFanVote, closeFanVoteDemo,
+    leaderTeams,
     refresh: load, resetDemo, fetchCompetitionMatches,
   };
 }

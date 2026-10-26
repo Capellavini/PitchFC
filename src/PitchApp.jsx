@@ -262,6 +262,7 @@ export default function PitchApp() {
       const r = await rivals.fetchTeam(teamId);
       return tm ? { id: tm.id, name: tm.name, role: tm.role, memberIds: (r.data?.members || []).map((m) => m.playerId) } : null;
     },
+    myTeams: (rivals.myTeams || []).map((tm) => ({ id: tm.id, role: tm.role })),
   });
   // Membership discovery is read-only. It enables existing league staff,
   // without enabling the public pilot or granting any backend permission.

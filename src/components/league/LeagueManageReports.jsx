@@ -9,7 +9,7 @@ import LeagueStateChip from "./LeagueStateChip";
 
 const ORDER = { in_review: 0, ended_provisional: 1, live: 2, homologated: 3 };
 
-/** Súmulas & validação: every started match, pending first, with the
+/** Fichas de jogo & validação: every started match, pending first, with the
  *  one-tap homologate for provisional results; everything else (send to
  *  review, correct an event) happens on the match page. */
 export default function LeagueManageReports({ ctx, openMatch }) {
@@ -33,7 +33,7 @@ export default function LeagueManageReports({ ctx, openMatch }) {
             </div>
             <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>
               {pending && <BtnPrimary onClick={() => act.move(m.id, "homologated", {}, t("Resultado homologado — já conta na classificação oficial."))} style={{ flex: "1 1 140px" }}>{t("Homologar")}</BtnPrimary>}
-              <BtnGhost onClick={() => openMatch(m.id)} style={{ flex: "1 1 140px" }}>{t("Abrir súmula")}</BtnGhost>
+              <BtnGhost onClick={() => openMatch(m.id)} style={{ flex: "1 1 140px" }}>{t("Abrir ficha de jogo")}</BtnGhost>
             </div>
           </div>
         );

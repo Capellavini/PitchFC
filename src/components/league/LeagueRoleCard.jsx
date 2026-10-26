@@ -18,7 +18,7 @@ export default function LeagueRoleCard({ ctx }) {
         <div style={{ display: "flex", gap: S.md, alignItems: "flex-start", marginBottom: S.md }}>
           <ClipboardCheck size={20} color={C.accent} aria-hidden style={{ flexShrink: 0 }} />
           <div>
-            <div style={{ fontSize: T.cardTitle, fontWeight: 800 }}>{pend ? tf(t("{n} súmulas à espera de validação"), { n: pend }) : t("Sem súmulas pendentes")}</div>
+            <div style={{ fontSize: T.cardTitle, fontWeight: 800 }}>{pend ? tf(t("{n} fichas de jogo à espera de validação"), { n: pend }) : t("Sem fichas de jogo pendentes")}</div>
             <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{t("A gestão fica em “Gerir liga”, fora da navegação dos atletas.")}</div>
           </div>
         </div>
@@ -47,7 +47,7 @@ export default function LeagueRoleCard({ ctx }) {
           )}
           {contestable && <BtnGhost tone="accent" onClick={() => open({ kind: "match", id: contestable.id })} style={{ flex: "1 1 180px" }}>{t("Rever resultado provisório")}</BtnGhost>}
           {role === "athlete" && <BtnPrimary onClick={() => open({ kind: "player", id: acc.playerId })} style={{ flex: "1 1 180px" }}>{t("As minhas estatísticas")}</BtnPrimary>}
-          {voteMatch && <BtnGhost onClick={() => open({ kind: "match", id: voteMatch.id })} style={{ flex: "1 1 180px" }}><Vote size={16} aria-hidden /> {myVote ? t("Mudar voto") : t("Votar craque da torcida")}</BtnGhost>}
+          {voteMatch && <BtnGhost onClick={() => open({ kind: "match", id: voteMatch.id })} style={{ flex: "1 1 180px" }}><Vote size={16} aria-hidden /> {myVote ? t("Mudar voto") : t("Votar craque dos adeptos")}</BtnGhost>}
         </div>
       </div>
     );
@@ -58,7 +58,7 @@ export default function LeagueRoleCard({ ctx }) {
       <div style={{ fontSize: T.cardTitle, fontWeight: 800, marginBottom: S.xs }}>{tf(t("Segues {team}"), { team: teamById[state.prefs.supportTeamId]?.name || "—" })}</div>
       <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.md }}>{t("Acompanhar não exige criar organização nem equipa. Muda a equipa seguida em Mais → Preferências.")}</div>
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>
-        {voteMatch && <BtnPrimary onClick={() => open({ kind: "match", id: voteMatch.id })} style={{ flex: "1 1 180px" }}>{myVote ? t("Mudar voto") : t("Votar craque da torcida")}</BtnPrimary>}
+        {voteMatch && <BtnPrimary onClick={() => open({ kind: "match", id: voteMatch.id })} style={{ flex: "1 1 180px" }}>{myVote ? t("Mudar voto") : t("Votar craque dos adeptos")}</BtnPrimary>}
         <BtnGhost onClick={() => ctx.goTab("fantasy")} style={{ flex: "1 1 180px" }}>{t("Montar Fantasy")}</BtnGhost>
       </div>
     </div>

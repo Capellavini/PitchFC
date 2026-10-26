@@ -59,7 +59,7 @@ export default function LeagueTable({ ctx }) {
       </div>
       <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, marginTop: S.sm }}>
         <BtnGhost block onClick={() => open({ kind: "players" })} style={{ margin: `${S.sm}px 0` }}>{t("Ver todos os atletas (cartões e OVR)")}</BtnGhost>
-        {t("Golos não incluem autogolos nem penáltis de desempate. Assistências só contam quando registadas na súmula. Golos de autor por identificar contam no resultado, não no ranking.")}
+        {t("Golos não incluem autogolos nem penáltis de desempate. Assistências só contam quando registadas na ficha de jogo. Golos de autor por identificar contam no resultado, não no ranking.")}
       </div>
     </div>
   );

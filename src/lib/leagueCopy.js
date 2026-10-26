@@ -20,7 +20,7 @@ export const plural = (n, one, many) => `${n} ${t(n === 1 ? one : many)}`;
 
 export const LG = {
   demoMode: L("Modo demonstração", "Demo mode", "Modo demonstração"),
-  demoData: L("Dados de demonstração — liga, equipas e atletas fictícios, guardados só neste navegador.", "Demo data — fictional league, teams and athletes, stored only in this browser.", "Dados de demonstração — liga, times e atletas fictícios, salvos só neste navegador."),
+  demoData: L("Dados de demonstração — liga, equipas e atletas fictícios, guardados só neste browser.", "Demo data — fictional league, teams and athletes, stored only in this browser.", "Dados de demonstração — liga, times e atletas fictícios, salvos só neste navegador."),
   viewAs: L("Ver como", "View as", "Ver como"),
   roleNote: L("Trocar de papel só muda a vista. Não concede permissões reais.", "Switching role only changes the view. It grants no real permissions.", "Trocar de papel só muda a visão. Não concede permissões reais."),
   manage: L("Gerir liga", "Manage league", "Gerenciar liga"),
@@ -40,18 +40,18 @@ export const LG = {
   roleManager: L("Gestor", "Manager", "Gestor"),
   // match sections
   secSummary: L("Resumo", "Summary", "Resumo"),
-  secLineups: L("Escalações", "Line-ups", "Escalações"),
+  secLineups: L("Onzes", "Line-ups", "Escalações"),
   secTimeline: L("Lances", "Timeline", "Lances"),
   secHighlights: L("Destaques", "Highlights", "Destaques"),
   secVideos: L("Vídeos", "Videos", "Vídeos"),
-  secReport: L("Súmula", "Match report", "Súmula"),
+  secReport: L("Ficha de jogo", "Match report", "Súmula"),
   officialMvp: L("Craque oficial", "Official player of the match", "Craque oficial"),
-  fansMvp: L("Craque da torcida", "Fans' player of the match", "Craque da torcida"),
+  fansMvp: L("Craque dos adeptos", "Fans' player of the match", "Craque da torcida"),
   provisional: L("Provisória", "Provisional", "Provisória"),
   fantasyRules: L("Regras de exemplo — não é regulamento", "Example rules — not a regulation", "Regras de exemplo — não é regulamento"),
   round: L("Jornada {n}", "Round {n}", "Rodada {n}"),
-  varOn: L("VAR ativo nesta partida", "VAR on for this match", "VAR ativo nesta partida"),
-  varOff: L("VAR desligado nesta partida", "VAR off for this match", "VAR desligado nesta partida"),
+  varOn: L("VAR ativo neste jogo", "VAR on for this match", "VAR ativo nesta partida"),
+  varOff: L("VAR desligado neste jogo", "VAR off for this match", "VAR desligado nesta partida"),
   team: L("Equipa", "Team", "Time"),
   teams: L("Equipas", "Teams", "Times"),
   // entries from outside the league context (role pick, Competir, /league)
@@ -73,11 +73,14 @@ export const STATE_LABEL = {
   postponed: L("Adiado", "Postponed", "Adiado"),
   cancelled: L("Cancelado", "Cancelled", "Cancelado"),
   walkover: L("W.O.", "Walkover", "W.O."),
+  unscheduled: L("Por agendar", "Not scheduled", "A agendar"),
+  abandoned: L("Interrompido", "Abandoned", "Interrompido"),
 };
 /** Chip variant per state — semantic colours (CLAUDE.md). */
 export const STATE_VARIANT = {
   scheduled: "neutral", live: "lime", ended_provisional: "orange", in_review: "orange",
   homologated: "green", postponed: "neutral", cancelled: "red", walkover: "neutral",
+  unscheduled: "neutral", abandoned: "orange",
 };
 
 export const EVENT_LABEL = {
@@ -85,6 +88,7 @@ export const EVENT_LABEL = {
   own_goal: L("Autogolo", "Own goal", "Gol contra"),
   card_yellow: L("Amarelo", "Yellow card", "Amarelo"),
   card_red: L("Vermelho", "Red card", "Vermelho"),
+  card_second_yellow: L("2.º amarelo", "Second yellow", "2º amarelo"),
   sub: L("Substituição", "Substitution", "Substituição"),
   shootout_goal: L("Penálti (desempate)", "Shoot-out penalty", "Pênalti (disputa)"),
   void: L("Anulado", "Voided", "Anulado"),
@@ -97,7 +101,7 @@ export const POSITION_LABEL = {
 /** LeagueError codes → user message. */
 export const LEAGUE_ERROR = {
   reason_required: L("Indica um motivo — é obrigatório.", "Give a reason — it's required.", "Informe um motivo — é obrigatório."),
-  already_superseded: L("Este lance já foi corrigido por outra pessoa. Atualiza e revê a súmula.", "Someone already corrected this event. Refresh and review the report.", "Este lance já foi corrigido por outra pessoa. Atualize e revise a súmula."),
+  already_superseded: L("Este lance já foi corrigido por outra pessoa. Atualiza e revê a ficha de jogo.", "Someone already corrected this event. Refresh and review the report.", "Este lance já foi corrigido por outra pessoa. Atualize e revise a súmula."),
   forbidden_transition: L("Não tens permissão para esta mudança de estado.", "You can't make this state change.", "Você não tem permissão para esta mudança de estado."),
   not_your_match: L("Só podes contestar jogos da tua equipa.", "You can only contest your own team's matches.", "Você só pode contestar jogos do seu time."),
   vote_closed: L("A votação está fechada.", "Voting is closed.", "A votação está fechada."),

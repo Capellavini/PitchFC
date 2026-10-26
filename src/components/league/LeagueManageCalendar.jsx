@@ -12,7 +12,7 @@ export default function LeagueManageCalendar({ ctx, openMatch }) {
   return (
     <div>
       <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, marginBottom: S.md }}>
-        {t("Calendário gerado por pontos corridos (uma volta). Abre um jogo para iniciar, adiar ou ligar o VAR. Grupos e mata-mata não são oferecidos nesta fase.")}
+        {t("Calendário gerado em formato campeonato (uma volta). Abre um jogo para iniciar, adiar ou ligar o VAR. Grupos e mata-mata não são oferecidos nesta fase.")}
       </div>
       {rounds.map((r) => (
         <section key={r} style={{ marginBottom: S.lg }}>

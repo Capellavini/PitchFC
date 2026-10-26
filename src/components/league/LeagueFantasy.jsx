@@ -46,7 +46,7 @@ export default function LeagueFantasy({ ctx }) {
         <FlaskConical size={18} color={C.orange} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
         <div style={{ fontSize: T.meta, lineHeight: 1.55, color: C.text1 }}>
           <b>{t("Prévia do Fantasy")} · {t(LG.fantasyRules)}.</b>{" "}
-          {tf("Orçamento {b} · {n} atletas · máx. {m} por equipa. Jogou +{ap}, golo GR/DEF +{gd} · MED +{gm} · AVA +{ga}, assistência +{as}, baliza a zero GR/DEF +{cs}, amarelo {y}, vermelho {r}, autogolo {og}, craque oficial +{mvp}. O voto da torcida não pontua. Sem dinheiro nem prémios. Prazos, bloqueio da escalação e ligas privadas ficam para a Fase 4.", {
+          {tf("Orçamento {b} · {n} atletas · máx. {m} por equipa. Jogou +{ap}, golo GR/DEF +{gd} · MED +{gm} · AVA +{ga}, assistência +{as}, baliza a zero GR/DEF +{cs}, amarelo {y}, vermelho {r}, autogolo {og}, craque oficial +{mvp}. O voto dos adeptos não pontua. Sem dinheiro nem prémios. Prazos, bloqueio do onze e ligas privadas ficam para a Fase 4.", {
             b: F.budget, n: F.squadSize, m: F.maxPerTeam, ap: F.points.appearance, gd: F.points.goal.DEF, gm: F.points.goal.MED, ga: F.points.goal.AVA,
             as: F.points.assist, cs: F.points.cleanSheet.DEF, y: F.points.yellow, r: F.points.red, og: F.points.ownGoal, mvp: F.points.officialMvp,
           })}
@@ -118,7 +118,7 @@ export default function LeagueFantasy({ ctx }) {
         {dirty && <BtnGhost onClick={() => { setPicks(saved); setErrors([]); }} style={{ flex: "1 1 120px" }}>{t("Desfazer")}</BtnGhost>}
       </div>
       <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, lineHeight: 1.5 }}>
-        {t("Atletas podem escolher-se a si próprios. Pontos recalculam-se sempre que a súmula é corrigida.")}
+        {t("Atletas podem escolher-se a si próprios. Pontos recalculam-se sempre que a ficha de jogo é corrigida.")}
       </div>
     </div>
   );
