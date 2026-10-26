@@ -303,5 +303,36 @@ select pg_temp.ok('standings: A 9 pts in 3 (win, W.O., awarded), C and D only th
 select pg_temp.as_user('01');
 select pg_temp.ok('Rivals record still untouched (A: 0 played)', (public.team_record(pg_temp.k('A'))->>'played')::int = 0);
 
+-- ── Private competition: a missing key must show NOTHING to anon ──────────
+-- Regression for 20261026090000_league_private_key_guard.sql: the guard
+-- "not (A or (… or p_key in (view_key, …)))" is NULL (not true) when p_key is
+-- NULL, so the RPCs used to return the data instead of null.
+reset role;
+update public.competitions set visibility = 'private' where id = pg_temp.k('C1');
+select pg_temp.setkv('vk', (select view_key from public.competitions where id = pg_temp.k('C1')));
+set local role authenticated;
+select pg_temp.as_anon();
+select pg_temp.ok('private: anon WITHOUT key sees nothing (standings, player_stats, discipline, matches, teams_page, match_live)',
+  public.competition_standings(pg_temp.k('C1')) is null
+  and public.competition_player_stats(pg_temp.k('C1')) is null
+  and public.competition_discipline(pg_temp.k('C1')) is null
+  and public.competition_matches(pg_temp.k('C1')) is null
+  and public.competition_teams_page(pg_temp.k('C1')) is null
+  and public.match_live(pg_temp.k('m1')) is null);
+select pg_temp.ok('private: anon with a WRONG key sees nothing',
+  public.competition_standings(pg_temp.k('C1'), 'nope') is null
+  and public.competition_player_stats(pg_temp.k('C1'), 'nope') is null
+  and public.competition_discipline(pg_temp.k('C1'), 'nope') is null
+  and public.competition_matches(pg_temp.k('C1'), null, 'nope') is null
+  and public.competition_teams_page(pg_temp.k('C1'), 'nope') is null
+  and public.match_live(pg_temp.k('m1'), 'nope') is null);
+select pg_temp.ok('private: anon with the view_key still sees it',
+  public.competition_standings(pg_temp.k('C1'), pg_temp.kv('vk')) is not null
+  and public.competition_player_stats(pg_temp.k('C1'), pg_temp.kv('vk')) is not null
+  and public.competition_matches(pg_temp.k('C1'), null, pg_temp.kv('vk')) is not null
+  and public.match_live(pg_temp.k('m1'), pg_temp.kv('vk')) is not null);
+select pg_temp.as_user('01');
+select pg_temp.ok('private: the owner still sees it without a key', public.competition_standings(pg_temp.k('C1')) is not null);
+
 select n, check_name, ok, detail from _f order by n;
 rollback;

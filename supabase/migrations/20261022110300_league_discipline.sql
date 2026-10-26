@@ -206,7 +206,7 @@ begin
   v_vis := coalesce(v_c.visibility, v_g.visibility);
   if not ((public.my_player_id() is not null and public.can_see_competition(v_c.id))
           or (v_c.status <> 'draft' and v_g.status <> 'draft'
-              and (v_vis in ('public','unlisted') or p_key in (v_c.view_key, v_g.view_key)))) then
+              and (v_vis in ('public','unlisted') or coalesce(p_key in (v_c.view_key, v_g.view_key), false)))) then
     return null;
   end if;
   v_youth := coalesce((select youth from public.league_categories where id = v_c.category_id), false);
