@@ -18,7 +18,7 @@ import TeamCrest from "../TeamCrest";
  *  initials) plus stats for THIS competition only, recent form, and the
  *  athlete's other contexts listed SEPARATELY (never summed — brief §10).
  *  Every number traces back to a match event. */
-export default function LeaguePlayerPage({ ctx, playerId }) {
+export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
   const { state, derived, acc, back, open, act } = ctx;
   const p = playerById[playerId];
   if (!p) return <div><BackHeader title={t("Atleta não encontrado")} onBack={back} /></div>;
@@ -41,7 +41,7 @@ export default function LeaguePlayerPage({ ctx, playerId }) {
 
   return (
     <div>
-      <BackHeader title={p.nick} subtitle={`${team.name} · ${COMPETITION.name}`} onBack={back} />
+      {!embedded && <BackHeader title={p.nick} subtitle={`${team.name} · ${COMPETITION.name}`} onBack={back} />}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: S.md }}>
         <FutCard player={futPlayer(p)} width={236} />
       </div>

@@ -14,6 +14,7 @@ import LeagueStateChip from "./LeagueStateChip";
 import LeagueRoleCard from "./LeagueRoleCard";
 import LeagueHighlight from "./LeagueHighlight";
 import LeagueToday from "./LeagueToday";
+import LeagueTeamHome from "./LeagueTeamHome";
 
 const PLAYED = new Set(["ended_provisional", "in_review", "homologated", "walkover"]);
 
@@ -35,6 +36,8 @@ export default function LeagueHome({ ctx }) {
 
   // The Gestor opens on the work queue, not on the follower feed.
   if (role === "manager") return <LeagueToday ctx={ctx} />;
+  // Captain and athlete open on their team: what needs them, the next game.
+  if (role === "captain" || role === "athlete") return <LeagueTeamHome ctx={ctx} />;
 
   return (
     <div>

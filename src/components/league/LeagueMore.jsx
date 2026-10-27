@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, Users, BookOpen, Gavel, SlidersHorizontal, FlaskConical, Star } from "lucide-react";
+import { ChevronRight, Users, BookOpen, Gavel, SlidersHorizontal, FlaskConical, Star, Gamepad2 } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG } from "../../lib/leagueCopy";
@@ -77,6 +77,7 @@ export default function LeagueMore({ ctx }) {
       {row(Gavel, t("Disciplina"), () => setSub("disciplina"), t("Cartões e suspensões (regras demo)"))}
       {row(SlidersHorizontal, t("Preferências"), () => setSub("prefs"), t("Equipa do coração e avisos"))}
       {row(Users, t("Atletas"), () => open({ kind: "players" }), t("Cartões, OVR e comparação"))}
+      {(ctx.role === "captain" || ctx.role === "athlete") && row(Gamepad2, t("Fantasy"), () => ctx.goTab("fantasy"), t("Monta a tua equipa de adepto"))}
 
       <div style={{ ...cardStyle, marginTop: S.xl, borderStyle: "dashed", borderColor: `${C.orange}88` }}>
         <div style={{ display: "flex", alignItems: "center", gap: S.sm, fontWeight: 800, marginBottom: S.xs }}><FlaskConical size={16} color={C.orange} aria-hidden /> {t(LG.demoMode)}</div>

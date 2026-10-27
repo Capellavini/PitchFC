@@ -12,6 +12,7 @@ import { LG, leagueError } from "../../lib/leagueCopy";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { leagueToday } from "../../lib/leagueToday";
 import { useWide } from "../../lib/useWide";
+import { teamHome } from "../../lib/leagueTeamHome";
 import { competitionById, CUP, LEAGUE } from "../../lib/leagueDemo";
 import LeagueHeader from "./LeagueHeader";
 import LeagueBottomNav from "./LeagueBottomNav";
@@ -82,7 +83,8 @@ export default function LeagueContextApp({ entry = null }) {
   // "Gerir" is a tab of the Gestor only — a persisted tab can't reopen it
   // under another role (direct-route guard). Stacks saved by the old
   // "manage" push view are ignored.
-  const tab = ["gerir", "adjunto"].includes(storedTab) && role !== "manager" ? "inicio" : storedTab;
+  const inTeam = role === "captain" || role === "athlete";
+  const tab = (["gerir", "adjunto"].includes(storedTab) && role !== "manager") || (storedTab === "eu" && !inTeam) ? "inicio" : storedTab;
   const scopeNow = scope === "all" || competitionById[scope] ? scope : "all";
   const visible = (stack || []).filter((v) => v && v.kind !== "manage");
   const view = visible[visible.length - 1] || null;
@@ -183,6 +185,8 @@ export default function LeagueContextApp({ entry = null }) {
   // Only the Gestor looks across competitions; followers see the primary one.
   const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog };
   const pushed = !entering && Boolean(view);
+  // What is waiting on a captain / athlete shows as a count on their Equipa tab.
+  const badges = inTeam ? { inicio: teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role }).queue.length } : {};
 
   let body;
   if (entering) body = <LeagueEntry key={entryMode || "choose"} startAt={entryMode === "fan" ? "fan" : "choose"} onEnter={act.enter} />;
@@ -195,6 +199,7 @@ export default function LeagueContextApp({ entry = null }) {
   else if (tab === "adjunto") body = <LeagueAdjunto ctx={ctx} />;
   else if (tab === "jogos") body = <LeagueMatches ctx={ctx} />;
   else if (tab === "classificacao") body = ctx.scope === CUP.id ? <LeagueCupPhase ctx={ctx} /> : <LeagueTable ctx={ctx} />;
+  else if (tab === "eu") body = <LeaguePlayerPage ctx={ctx} playerId={acc.playerId} embedded />;
   else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;
   else if (tab === "mais") body = <LeagueMore ctx={ctx} />;
   else body = <LeagueHome ctx={ctx} />;
@@ -223,7 +228,7 @@ export default function LeagueContextApp({ entry = null }) {
         <LeagueHeader role={role} onRole={changeRole} compact={entering} slim={pushed} scope={ctx.scope} onScope={setScope} onMore={() => goTab("mais")} />
         {body}
       </div>
-      {!entering && <LeagueBottomNav tab={tab} role={role} onSelect={goTab} maxWidth={SHELL_W} />}
+      {!entering && <LeagueBottomNav tab={tab} role={role} onSelect={goTab} maxWidth={SHELL_W} badges={badges} />}
       <LeagueToast toast={toast} onDone={() => setToast(null)} />
     </div>
   );

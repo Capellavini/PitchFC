@@ -1,4 +1,4 @@
-import { Home, CalendarDays, ListOrdered, Gamepad2, Menu, ClipboardCheck, Settings2, Sparkles } from "lucide-react";
+import { Home, CalendarDays, ListOrdered, Gamepad2, Menu, ClipboardCheck, Settings2, Sparkles, Shield, User } from "lucide-react";
 import { LG } from "./leagueCopy";
 
 // Followers (fan · athlete · captain): exactly 5 destinations (brief §6).
@@ -9,6 +9,20 @@ export const FOLLOW_NAV = [
   { id: "fantasy", Icon: Gamepad2, label: LG.navFantasy },
   { id: "mais", Icon: Menu, label: LG.navMore },
 ];
+
+// Captain and athlete live in their team: Equipa (what needs them) · Jogos ·
+// Classificação · Eu (own card) · Mais. Fantasy is a follower module and sits
+// in Mais for them, so the bar stays about the team.
+export const TEAM_NAV = [
+  { id: "inicio", Icon: Shield, label: "Equipa" },
+  { id: "jogos", Icon: CalendarDays, label: LG.navMatches },
+  { id: "classificacao", Icon: ListOrdered, label: LG.navTable },
+  { id: "eu", Icon: User, label: "Eu" },
+  { id: "mais", Icon: Menu, label: LG.navMore },
+];
+
+/** Phone-bar destinations for a demo role. */
+export const navFor = (role) => (role === "manager" ? MANAGER_NAV.filter((n) => n.phone !== false) : role === "captain" || role === "athlete" ? TEAM_NAV : FOLLOW_NAV);
 
 // The Gestor works the league. Fantasy is a follower module (switched on per
 // competition) and stays out of the way. The phone bar keeps 5 slots, so
