@@ -44,7 +44,7 @@ export default function LeagueHub({ leagues, rivals, onSignIn, contextOptions=[]
   }).filter(Boolean);
 
   return (
-    <LeagueCloudShell contextOptions={contextOptions} title={t(LC.hubTitle)} backHref="/?context=league">
+    <LeagueCloudShell contextOptions={contextOptions} title={t(LC.hubTitle)} backHref={contextOptions.length === 1 && contextOptions[0] === "league" ? "/league" : "/?context=league"}>
       {invite ? <LeagueInviteAccept leagues={leagues} token={invite} onAccepted={(slug) => slug && go(leagueUrl(slug))} /> : null}
       {inscricao ? <LeagueRegisterTeam leagues={leagues} rivals={rivals} token={inscricao} /> : null}
 

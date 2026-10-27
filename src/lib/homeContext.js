@@ -1,6 +1,9 @@
 import { computeTable } from './core/standings.js';
 
-export function homeContexts({ leagues = [], teams = [], mode } = {}) {
+export function homeContexts({ leagues = [], teams = [], mode, product } = {}) {
+  // An account created on the league entry (pitch_product "league") only ever
+  // has the league context, with or without a membership yet.
+  if (product === 'league') return ['league'];
   const member = leagues.some(l => (l.roles || []).some(r => ['owner', 'manager', 'scorer', 'referee'].includes(r)));
   // A display preference can hide contexts; it never confers a league role.
   if (member && mode === 'league_only') return ['league'];

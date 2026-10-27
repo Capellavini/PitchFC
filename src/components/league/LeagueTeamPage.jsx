@@ -8,7 +8,7 @@ import SectionLabel from "../SectionLabel";
 import BtnGhost from "../BtnGhost";
 import BtnPrimary from "../BtnPrimary";
 import FormPills from "../FormPills";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 import StatTile from "../StatTile";
 import LeagueMatchRow from "./LeagueMatchRow";
 import LeagueSquadGrid from "./LeagueSquadGrid";
@@ -40,7 +40,7 @@ export default function LeagueTeamPage({ ctx, teamId }) {
     <div>
       <BackHeader title={team.name} subtitle={`${COMPETITION.name} · ${t(COMPETITION.category)}`} onBack={back} />
       <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: S.lg, marginBottom: S.md }}>
-        <RivalsCrest initials={team.short.slice(0, 2)} color={team.color} size={64} />
+        <TeamCrest initials={team.short.slice(0, 2)} color={team.color} size={64} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ ...displayFont, fontSize: T.h + 2 }}>{team.name}</div>
           <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{tf(t("Fundada em {y} · {venue}"), { y: team.founded, venue: team.venue })}</div>

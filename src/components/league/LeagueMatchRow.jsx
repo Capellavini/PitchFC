@@ -3,7 +3,7 @@ import { C, R, S, T, TOUCH, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { teamById as DEMO_TEAMS, fmtKickoff } from "../../lib/leagueDemo";
 import { LG } from "../../lib/leagueCopy";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 import LeagueStateChip from "./LeagueStateChip";
 
 const SHOWS_SCORE = new Set(["live", "ended_provisional", "in_review", "homologated", "walkover", "abandoned"]);
@@ -11,8 +11,8 @@ const SHOWS_SCORE = new Set(["live", "ended_provisional", "in_review", "homologa
 const side = (team, align) => {
   return (
     <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: S.sm, flexDirection: align === "right" ? "row-reverse" : "row", textAlign: align }}>
-      <RivalsCrest initials={(team.short || "?").slice(0, 2)} color={team.color} size={26} />
-      <span style={{ fontSize: T.body, fontWeight: 700, color: C.text1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{team.name}</span>
+      <TeamCrest initials={(team.short || "?").slice(0, 2)} color={team.color} size={26} />
+      <span style={{ fontSize: T.body, fontWeight: 700, color: C.text1, minWidth: 0, lineHeight: 1.2, overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{team.name}</span>
     </div>
   );
 }

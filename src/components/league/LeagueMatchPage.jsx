@@ -3,12 +3,12 @@ import { Video, MapPin, Clock, Shield, AlertTriangle } from "lucide-react";
 import { C, R, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
-import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION } from "../../lib/leagueDemo";
+import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById } from "../../lib/leagueDemo";
 import { canCorrect, DEMO_RULES } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SegmentedControl from "../SegmentedControl";
 import Chip from "../Chip";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 import LeagueStateChip from "./LeagueStateChip";
 import LeagueTimeline from "./LeagueTimeline";
 import LeagueLineups from "./LeagueLineups";
@@ -83,14 +83,14 @@ export default function LeagueMatchPage({ ctx, matchId }) {
 
   return (
     <div>
-      <BackHeader title={`${home.short} – ${away.short}`} subtitle={`${tf(LG.round, { n: match.round })} · ${COMPETITION.name} · ${t(COMPETITION.category)}`} onBack={back} />
+      <BackHeader title={`${home.short} – ${away.short}`} subtitle={`${match.roundName ? t(match.roundName) : tf(LG.round, { n: match.round })} · ${t((competitionById[match.competitionId] || COMPETITION).name)} · ${t(COMPETITION.category)}`} onBack={back} />
 
       <div style={{ ...cardStyle, marginBottom: S.md, textAlign: "center" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: S.sm }}><LeagueStateChip state={match.state} /></div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: S.sm }}>
           {[home, null, away].map((tm, i) => (tm ? (
             <button key={tm.id} type="button" onClick={() => open({ kind: "team", id: tm.id })} style={{ background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, minWidth: 0, minHeight: 44, padding: 0 }}>
-              <RivalsCrest initials={tm.short.slice(0, 2)} color={tm.color} size={44} />
+              <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={44} />
               <span style={{ fontSize: T.meta, fontWeight: 800, maxWidth: "100%", overflowWrap: "anywhere" }}>{tm.name}</span>
             </button>
           ) : (

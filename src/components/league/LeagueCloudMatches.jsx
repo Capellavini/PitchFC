@@ -7,6 +7,8 @@ import BtnPrimary from "../BtnPrimary";
 import Chip from "../Chip";
 import SectionLabel from "../SectionLabel";
 import LeagueMatchRow from "./LeagueMatchRow";
+import BtnGhost from '../BtnGhost';
+import LeagueFixturesPreview from './LeagueFixturesPreview';
 
 /** Jogos (cloud): the calendar by jornada, reusing the demo's
  *  LeagueMatchRow. Manager with no fixtures yet: "Gerar calendário"
@@ -15,6 +17,7 @@ export default function LeagueCloudMatches({ leagues, competition, dir, matches,
   const [teamId, setTeamId] = useState("");
   const [double, setDouble] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState(false);
   const lang = getLang();
   const list = matches.filter((m) => !teamId || m.homeId === teamId || m.awayId === teamId);
   const rounds = [...new Set(list.map((m) => m.round))].sort((a, b) => a - b);
@@ -39,10 +42,14 @@ export default function LeagueCloudMatches({ leagues, competition, dir, matches,
               {t(LM.generateHint)} {tf(t("{n} equipas homologadas."), { n: dir.teams.length })}
             </div>
             <label style={{ display: "flex", alignItems: "center", gap: S.sm, minHeight: TOUCH.min, fontSize: T.body, cursor: "pointer", marginBottom: S.sm }}>
-              <input type="checkbox" checked={double} onChange={(e) => setDouble(e.target.checked)} style={{ width: 20, height: 20, accentColor: C.accent }} />
+              <input type="checkbox" checked={double} disabled={busy} onChange={(e) => { setDouble(e.target.checked); setPreview(false); }} style={{ width: 20, height: 20, accentColor: C.accent }} />
               {t(LM.doubleLegged)}
             </label>
-            <BtnPrimary block disabled={busy || dir.teams.length < 2} onClick={generate}>{t(LM.generate)}</BtnPrimary>
+            {preview ? <>
+              <LeagueFixturesPreview teams={dir.teams} doubleLegged={double} />
+              <BtnPrimary block disabled={busy || dir.teams.length < 2} onClick={generate}>{t('Confirmar e gerar calendário')}</BtnPrimary>
+              <BtnGhost block disabled={busy} onClick={() => setPreview(false)} style={{ marginTop: S.sm }}>{t('Voltar à configuração')}</BtnGhost>
+            </> : <BtnPrimary block disabled={busy || dir.teams.length < 2} onClick={() => setPreview(true)}>{t('Ver confrontos antes de gerar')}</BtnPrimary>}
           </>
         ) : <div style={{ fontSize: T.meta, color: C.text2 }}>{t("A organização ainda não publicou o calendário.")}</div>}
       </div>

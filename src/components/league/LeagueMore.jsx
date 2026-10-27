@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { ChevronRight, Users, BookOpen, Gavel, SlidersHorizontal, FlaskConical, Star } from "lucide-react";
+import { ChevronRight, Users, BookOpen, Gavel, SlidersHorizontal, FlaskConical, Star, Gamepad2 } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG } from "../../lib/leagueCopy";
 import { TEAMS, playerById, teamById, PHASE2_DECISIONS } from "../../lib/leagueDemo";
 import BackHeader from "../BackHeader";
 import BtnGhost from "../BtnGhost";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 import SectionLabel from "../SectionLabel";
 import LeagueRegulation from "./LeagueRegulation";
 import LeagueDiscipline from "./LeagueDiscipline";
@@ -59,7 +59,7 @@ export default function LeagueMore({ ctx }) {
         {followedTeams.length + followedPlayers.length === 0 && <span style={{ fontSize: T.body, color: C.text2 }}>{t("Ainda não segues nenhuma equipa ou atleta.")}</span>}
         {followedTeams.map((tm) => (
           <button key={tm.id} type="button" onClick={() => open({ kind: "team", id: tm.id })} style={{ minHeight: TOUCH.min, display: "inline-flex", alignItems: "center", gap: S.xs, padding: `0 ${S.md}px`, borderRadius: R.pill, border: `1px solid ${tm.id === prefs.supportTeamId ? C.accentBorder : C.border}`, background: "transparent", color: C.text1, cursor: "pointer", fontSize: T.meta, fontWeight: 700 }}>
-            <RivalsCrest initials={tm.short.slice(0, 2)} color={tm.color} size={18} /> {tm.name}
+            <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={18} /> {tm.name}
           </button>
         ))}
         {followedPlayers.map((p) => (
@@ -70,13 +70,14 @@ export default function LeagueMore({ ctx }) {
       </div>
 
       <SectionLabel>{t(LG.teams)}</SectionLabel>
-      {TEAMS.map((tm) => <div key={tm.id}>{row(() => <RivalsCrest initials={tm.short.slice(0, 2)} color={tm.color} size={22} />, tm.name, () => open({ kind: "team", id: tm.id }), tm.venue)}</div>)}
+      {TEAMS.map((tm) => <div key={tm.id}>{row(() => <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={22} />, tm.name, () => open({ kind: "team", id: tm.id }), tm.venue)}</div>)}
 
       <SectionLabel style={{ marginTop: S.xl }}>{t("Liga")}</SectionLabel>
       {row(BookOpen, t("Regulamento"), () => setSub("regulamento"), t("Demonstração · só leitura"))}
       {row(Gavel, t("Disciplina"), () => setSub("disciplina"), t("Cartões e suspensões (regras demo)"))}
       {row(SlidersHorizontal, t("Preferências"), () => setSub("prefs"), t("Equipa do coração e avisos"))}
       {row(Users, t("Atletas"), () => open({ kind: "players" }), t("Cartões, OVR e comparação"))}
+      {(ctx.role === "captain" || ctx.role === "athlete") && row(Gamepad2, t("Fantasy"), () => ctx.goTab("fantasy"), t("Monta a tua equipa de adepto"))}
 
       <div style={{ ...cardStyle, marginTop: S.xl, borderStyle: "dashed", borderColor: `${C.orange}88` }}>
         <div style={{ display: "flex", alignItems: "center", gap: S.sm, fontWeight: 800, marginBottom: S.xs }}><FlaskConical size={16} color={C.orange} aria-hidden /> {t(LG.demoMode)}</div>

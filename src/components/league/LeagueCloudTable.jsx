@@ -19,7 +19,7 @@ const TB_LABEL = { pts: "pontos", gd: "diferença de golos", gf: "golos marcados
  *  ended / in-review scores from match_page, computed client-side), then
  *  the official player rankings. Reuses the demo's LeagueStandingsTable +
  *  LeagueRankingList. Gestor: point adjustments (reason, audited). */
-export default function LeagueCloudTable({ leagues, competition, dir, matches, isManager, viewKey, ui, followId }) {
+export default function LeagueCloudTable({ leagues, competition, dir, matches, isManager, viewKey, ui, followId, onTeam = () => {} }) {
   const [table, setTable] = useState(null);
   const [stats, setStats] = useState([]);
   const [pending, setPending] = useState([]);
@@ -88,7 +88,7 @@ export default function LeagueCloudTable({ leagues, competition, dir, matches, i
       )}
 
       <SectionLabel>{t(prov ? LM.provisionalTable : LM.officialTable)}</SectionLabel>
-      {rows.length ? <LeagueStandingsTable rows={rows} followId={followId} provisional={prov} onTeam={() => {}} />
+      {rows.length ? <LeagueStandingsTable rows={rows} followId={followId} provisional={prov} onTeam={onTeam} />
         : <div style={{ fontSize: T.meta, color: C.text2 }}>{t("A classificação aparece quando o regulamento estiver publicado e houver equipas homologadas.")}</div>}
       <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, margin: `${S.sm}px 0 ${S.lg}px` }}>
         {tf(t("Vitória {w} · empate {d} · derrota {l}. Desempate:"), { w: table.points.win, d: table.points.draw, l: table.points.loss })} {(table.tiebreakers || []).map((k) => t(TB_LABEL[k] || k)).join(" → ")}.

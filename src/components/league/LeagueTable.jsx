@@ -3,7 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG } from "../../lib/leagueCopy";
-import { PLAYERS } from "../../lib/leagueDemo";
+import { PLAYERS, COMPETITION } from "../../lib/leagueDemo";
 import { ranking, DEMO_RULES } from "../../lib/core/league";
 import SectionLabel from "../SectionLabel";
 import SegmentedControl from "../SegmentedControl";
@@ -25,7 +25,7 @@ export default function LeagueTable({ ctx }) {
   const followId = acc.teamId || state.prefs.supportTeamId;
   const cardRows = PLAYERS.map((p) => ({ player: p, y: stats[p.id]?.yellows || 0, r: stats[p.id]?.reds || 0 }))
     .filter((x) => x.y + x.r > 0).sort((a, b) => (b.r - a.r) || (b.y - a.y)).map((x) => ({ ...x, value: x.r * 10 + x.y }));
-  const pendingCount = state.matches.filter((m) => ["live", "ended_provisional", "in_review"].includes(m.state)).length;
+  const pendingCount = state.matches.filter((m) => (!m.competitionId || m.competitionId === COMPETITION.id) && ["live", "ended_provisional", "in_review"].includes(m.state)).length;
 
   return (
     <div>

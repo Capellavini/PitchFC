@@ -12,7 +12,7 @@ import { computeOverall } from "./core/overall.js";
 import { presentationMode } from "./presentation.js";
 import { demoPortrait } from "./demoAvatars.js";
 
-export const LEAGUE_DEMO_VERSION = 3;
+export const LEAGUE_DEMO_VERSION = 4;
 export const LEAGUE_DEMO_KEY = "leagueDemo"; // usePersistentState prefix → pitch.v2.leagueDemo
 
 export const LEAGUE = Object.freeze({
@@ -22,10 +22,21 @@ export const LEAGUE = Object.freeze({
 
 export const COMPETITION = Object.freeze({
   id: "cp-demo-2627", leagueId: LEAGUE.id,
-  name: "Época 2026/27", season: "2026/27", category: "Futebol 7", format: "Campeonato",
+  name: "Campeonato 2026/27", season: "2026/27", category: "Futebol 7", format: "Pontos corridos",
+  kind: "league", short: "Campeonato",
   points: DEMO_RULES.points, tiebreakers: DEMO_RULES.tiebreakers,
   rounds: 5,
 });
+
+/** A league runs several competitions at once (league table + cup, ...). The
+ *  Gestor sees them all; followers see the primary one (COMPETITION). */
+export const CUP = Object.freeze({
+  id: "cp-demo-taca", leagueId: LEAGUE.id,
+  name: "Taça da Liga 2026/27", season: "2026/27", category: "Futebol 7", format: "Eliminatória",
+  kind: "cup", short: "Taça", rounds: 2,
+});
+export const COMPETITIONS = Object.freeze([COMPETITION, CUP]);
+export const competitionById = Object.fromEntries(COMPETITIONS.map((c) => [c.id, c]));
 
 // Team kit colours are DATA (like teams.color in Rivals) — values from
 // theme TEAM_COLORS.
@@ -96,16 +107,6 @@ export const futPlayer = (p) => ({ ...p, position: POSITION_FULL[p.position] || 
 export const ovrOfPlayer = (p) => computeOverall(POSITION_FULL[p.position], p.attrs);
 export const tierOf = (ovr) => (ovr >= 86 ? "LENDA" : ovr >= 80 ? "OURO" : ovr >= 70 ? "PRATA" : "BRONZE");
 
-/** Other contexts where a demo athlete also plays — shown SEPARATELY on
- *  the athlete page, never summed with this competition (brief §10). */
-export const OTHER_CONTEXTS = Object.freeze({
-  t1p8: [
-    { kind: "group", label: "Grupo semanal · FC Amigos", season: "2026/27", games: 9, goals: 7, assists: 3 },
-    { kind: "friendly", label: "Amigáveis da equipa · Marés FC", season: "2026/27", games: 2, goals: 1, assists: 0 },
-  ],
-  t1p5: [{ kind: "group", label: "Grupo semanal · Futebol de quinta", season: "2026/27", games: 6, goals: 2, assists: 4 }],
-  t1p7: [{ kind: "group", label: "Grupo semanal · FC Amigos", season: "2026/27", games: 8, goals: 9, assists: 1 }],
-});
 
 /** Owner answers for Fase 2 (2026-10-16) — recorded here so the demo copy
  *  and the next phase stay aligned. No behaviour depends on them yet. */
@@ -146,18 +147,21 @@ const SEED_AT = (date, time) => `${date}T${time}:00+01:00`;
 function seedMatches() {
   const all = roundRobinFixtures(TEAMS.map((t) => t.id), false);
   // 3 fixtures per round; keep the first 3 rounds for the demo
-  return all.slice(0, 9).map((f, i) => {
-    const round = Math.floor(i / 3) + 1;
-    const date = ROUND_DATES[round - 1];
-    const home = TEAMS.find((t) => t.id === f.homeId);
-    return {
-      id: `m${i + 1}`, competitionId: COMPETITION.id, round, homeId: f.homeId, awayId: f.awayId,
-      kickoff: SEED_AT(date, KICKOFF_TIMES[i % 3]), venue: home.venue,
-      referee: ["Árbitro: J. Correia", "Árbitro: M. Faria", "Árbitro: P. Leite"][i % 3],
-      state: "scheduled", history: [], lineups: {}, officialMvp: null, fanVoteClosed: false,
-      contest: null, var: { enabled: false },
-    };
+  const base = (id, competitionId, round, homeId, awayId, kickoff, referee) => ({
+    id, competitionId, round, homeId, awayId, kickoff, venue: TEAMS.find((t) => t.id === homeId).venue, referee,
+    state: "scheduled", history: [], lineups: {}, officialMvp: null, fanVoteClosed: false, contest: null, var: { enabled: false },
   });
+  const league = all.slice(0, 9).map((f, i) => {
+    const round = Math.floor(i / 3) + 1;
+    return base(`m${i + 1}`, COMPETITION.id, round, f.homeId, f.awayId, SEED_AT(ROUND_DATES[round - 1], KICKOFF_TIMES[i % 3]),
+      ["Árbitro: J. Correia", "Árbitro: M. Faria", "Árbitro: P. Leite"][i % 3]);
+  });
+  // Taça da Liga, meias-finais (round 1 = phase); the final is created once both ties are official.
+  const cup = [
+    { ...base("c1", CUP.id, 1, "t3", "t6", SEED_AT("2026-10-11", "11:00"), "Árbitro: M. Faria"), roundName: "Meias-finais" },
+    { ...base("c2", CUP.id, 1, "t2", "t5", SEED_AT("2026-10-18", "11:00"), "Árbitro: J. Correia"), roundName: "Meias-finais" },
+  ];
+  return [...league, ...cup];
 }
 
 const fullSquad = (teamId) => PLAYERS.filter((p) => p.teamId === teamId).map((p) => p.id);
@@ -250,6 +254,13 @@ export function buildLeagueDemoSeed() {
   // ── Round 3 — scheduled; m7 has VAR switched on (state only) ──
   set("m7", (m) => ({ ...m, var: { enabled: true } }));
 
+  // ── Taça da Liga: semi-final 1 ended (provisional, awaiting homologation), semi-final 2 scheduled ──
+  ev("c1", "goal", "t3", "t3p7", "t3p6", 13);
+  ev("c1", "card_yellow", "t6", "t6p4", null, 27);
+  ev("c1", "goal", "t6", "t6p8", null, 34);
+  ev("c1", "goal", "t3", "t3p8", "t3p7", 48);
+  play("c1");
+
   const fanVotes = {
     m1: { "acc-x1": "t1p7", "acc-x2": "t1p8", "acc-x3": "t1p7", "acc-x4": "t6p7" },
     m4: { "acc-x1": "t1p7", "acc-x2": "t1p7", "acc-x3": "t5p7", "acc-x5": "t1p6" },
@@ -280,10 +291,12 @@ export const playerById = Object.fromEntries(PLAYERS.map((p) => [p.id, p]));
 export function deriveLeague(state) {
   const scores = Object.fromEntries(state.matches.map((m) => [m.id, matchScore(state.logs[m.id] || [], m)]));
   const comp = { ...COMPETITION, teams: TEAMS };
+  // The league table only counts the league competition; the cup has no table.
+  const leagueMatches = state.matches.filter((m) => !m.competitionId || m.competitionId === COMPETITION.id);
   return {
     scores,
-    table: standings(comp, state.matches, state.logs),
-    tableProvisional: standings(comp, state.matches, state.logs, { includeProvisional: true }),
+    table: standings(comp, leagueMatches, state.logs),
+    tableProvisional: standings(comp, leagueMatches, state.logs, { includeProvisional: true }),
     stats: playerStats(state.matches, state.logs),
     statsProvisional: playerStats(state.matches, state.logs, { includeProvisional: true }),
     discipline: discipline(state.matches, state.logs, PLAYERS),

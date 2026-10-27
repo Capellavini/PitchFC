@@ -3,7 +3,7 @@ import { t } from "../../lib/i18n";
 import { tf, POSITION_LABEL } from "../../lib/leagueCopy";
 import { TEAMS, PLAYERS, COMPETITION, captainOf } from "../../lib/leagueDemo";
 import Chip from "../Chip";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 
 /** Inscrições: registered teams + the squad snapshot inscribed in this
  *  competition (read-only in Fase 1). */
@@ -18,7 +18,7 @@ export default function LeagueManageRegistrations({ ctx }) {
         return (
           <details key={tm.id} style={{ ...cardStyle, marginBottom: S.sm, padding: `0 ${S.md}px` }}>
             <summary style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: TOUCH.button + 4, cursor: "pointer", listStyle: "none" }}>
-              <RivalsCrest initials={tm.short.slice(0, 2)} color={tm.color} size={26} />
+              <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={26} />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontSize: T.body, fontWeight: 800 }}>{tm.name}</span>
                 <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>{tf(t("{n} atletas · capitão {c}"), { n: squad.length, c: PLAYERS.find((p) => p.id === captainOf(tm.id)).name })}</span>
