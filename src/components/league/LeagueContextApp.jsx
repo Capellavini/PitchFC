@@ -13,7 +13,8 @@ import { adjuntoName } from "../../lib/leagueAdjunto";
 import { leagueToday } from "../../lib/leagueToday";
 import { useWide } from "../../lib/useWide";
 import { teamHome } from "../../lib/leagueTeamHome";
-import { competitionById, CUP, LEAGUE } from "../../lib/leagueDemo";
+import { competitionById, CUP, LEAGUE, COMPETITION } from "../../lib/leagueDemo";
+import { tabTitle } from "../../lib/leagueNav";
 import LeagueHeader from "./LeagueHeader";
 import LeagueBottomNav from "./LeagueBottomNav";
 import LeagueSideNav from "./LeagueSideNav";
@@ -181,7 +182,7 @@ export default function LeagueContextApp({ entry = null }) {
 
   const entering = entryMode === "fan" || !state.viewer?.entered;
   const manager = role === "manager";
-  const desktop = wide && manager && !entering; // the Gestor's computer layout: sidebar + wide content
+  const desktop = wide && !entering; // computer layout for every role: sidebar + wide content
   // Only the Gestor looks across competitions; followers see the primary one.
   const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog };
   const pushed = !entering && Boolean(view);
@@ -205,16 +206,16 @@ export default function LeagueContextApp({ entry = null }) {
   else body = <LeagueHome ctx={ctx} />;
 
   if (desktop) {
-    const TITLES = { inicio: "Painel", jogos: "Jogos", adjunto: adjuntoName(lang), classificacao: "Classificação", gerir: "Gerir", mais: "Mais" };
+    const title = tab === "adjunto" ? adjuntoName(lang) : tabTitle(role, tab);
     const scopeLabel = ctx.scope === "all" ? t("Todas as competições") : t(competitionById[ctx.scope].name);
-    const pending = leagueToday(state, derived, { scope: ctx.scope }).items.length;
+    const deskBadges = manager ? { inicio: leagueToday(state, derived, { scope: ctx.scope }).items.length } : badges;
     return (
       <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT }}>
         <div style={{ display: "grid", gridTemplateColumns: "264px minmax(0, 1fr)" }}>
-          <LeagueSideNav tab={tab} onSelect={goTab} scope={ctx.scope} onScope={setScope} role={role} onRole={changeRole} pendingCount={pending} />
+          <LeagueSideNav tab={tab} onSelect={goTab} scope={ctx.scope} onScope={setScope} role={role} onRole={changeRole} badges={deskBadges} />
           <main style={{ padding: `${S.xxl}px ${S.xxl + 8}px ${S.xxl}px`, boxSizing: "border-box", maxWidth: 1320, width: "100%" }}>
-            <LeagueHeader desktop title={t(TITLES[tab] || "Painel")} subtitle={`${LEAGUE.name} · ${scopeLabel}`} />
-            <div style={{ maxWidth: !view && ["inicio", "jogos", "gerir"].includes(tab) ? undefined : 880 }}>{body}</div>
+            <LeagueHeader desktop title={t(title)} subtitle={manager ? `${LEAGUE.name} · ${scopeLabel}` : `${LEAGUE.name} · ${t(COMPETITION.short)}`} />
+            <div style={{ maxWidth: !view && ["inicio", "jogos", "gerir", "eu"].includes(tab) ? undefined : 880 }}>{body}</div>
           </main>
         </div>
         <LeagueToast toast={toast} onDone={() => setToast(null)} />

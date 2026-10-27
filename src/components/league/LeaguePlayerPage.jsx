@@ -38,10 +38,13 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
     activeEvents(state.logs[m.id] || []).filter((e) => e.playerId === playerId || e.assistId === playerId).map((e) => ({ m, e })));
   const others = OTHER_CONTEXTS[playerId] || [];
   const ovr = ovrOfPlayer(p);
+  const split = Boolean(ctx.wide); // computer: card on the left, numbers on the right
 
   return (
     <div>
       {!embedded && <BackHeader title={p.nick} subtitle={`${team.name} · ${COMPETITION.name}`} onBack={back} />}
+      <div style={split ? { display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", gap: S.xxl, alignItems: "start" } : undefined}>
+      <div>
       <div style={{ display: "flex", justifyContent: "center", marginBottom: S.md }}>
         <FutCard player={futPlayer(p)} width={236} />
       </div>
@@ -63,6 +66,8 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
           : <BtnPrimary onClick={toggle} style={{ flex: "1 1 140px" }}><Star size={16} aria-hidden /> {t("Seguir atleta")}</BtnPrimary>)}
       </div>
 
+      </div>
+      <div>
       <SectionLabel>{t("Nesta competição · homologados")}</SectionLabel>
       <div style={{ ...cardStyle, marginBottom: S.sm }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: S.sm }}>
@@ -107,6 +112,8 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
           <span style={{ fontSize: T.meta, color: C.text2 }}>{teamById[m.homeId].short}–{teamById[m.awayId].short} · {m.state === "homologated" ? t("homologado") : t("provisório")}</span>
         </button>
       ))}
+      </div>
+      </div>
     </div>
   );
 }

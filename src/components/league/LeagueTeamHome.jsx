@@ -27,7 +27,7 @@ const KINDS = {
  *  every competition, recent results and the squad. Nothing here writes;
  *  every card opens the screen where the action lives. */
 export default function LeagueTeamHome({ ctx }) {
-  const { state, derived, role, acc, lang, open } = ctx;
+  const { state, derived, role, acc, lang, open, wide } = ctx;
   const team = teamById[acc.teamId];
   const home = teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role });
   const squad = PLAYERS.filter((p) => p.teamId === acc.teamId);
@@ -70,6 +70,8 @@ export default function LeagueTeamHome({ ctx }) {
         </div>
       </div>
 
+      <div style={wide ? { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: S.xxl, alignItems: "start" } : undefined}>
+      <div>
       <SectionLabel>{home.queue.length ? tf(t("Precisa de ti · {n}"), { n: home.queue.length }) : t("Precisa de ti")}</SectionLabel>
       {home.queue.length === 0 && (
         <div style={{ ...cardStyle, color: C.text2, fontSize: T.body, marginBottom: S.lg }}>{t("Nada à espera de ti. Quando houver convocatória, resultado ou voto, aparece aqui.")}</div>
@@ -116,9 +118,11 @@ export default function LeagueTeamHome({ ctx }) {
         <div style={{ ...cardStyle, color: C.text2, fontSize: T.body, marginBottom: S.lg }}>{t("Sem jogos agendados para esta equipa. O calendário da próxima jornada aparece aqui quando for publicado.")}</div>
       )}
 
+      </div>
+      <div>
       {home.recent.length > 0 && (
         <>
-          <SectionLabel style={{ marginTop: S.xl }}>{t("Resultados recentes")}</SectionLabel>
+          <SectionLabel style={{ marginTop: wide ? 0 : S.xl }}>{t("Resultados recentes")}</SectionLabel>
           {home.recent.map((m) => <LeagueMatchRow key={m.id} match={m} score={derived.scores[m.id]} lang={lang} onOpen={openMatch} highlightTeamId={acc.teamId} />)}
         </>
       )}
@@ -126,6 +130,8 @@ export default function LeagueTeamHome({ ctx }) {
       <SectionLabel style={{ marginTop: S.xl }}>{tf(t("Plantel inscrito ({n})"), { n: squad.length })}</SectionLabel>
       <LeagueSquadGrid players={squad} suspended={home.banned} captainId={captainOf(acc.teamId)} meId={acc.playerId} onPlayer={(id) => open({ kind: "player", id })} />
       <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, lineHeight: 1.5 }}>{t(LG.demoData)}</div>
+      </div>
+      </div>
     </div>
   );
 }

@@ -24,6 +24,16 @@ export const TEAM_NAV = [
 /** Phone-bar destinations for a demo role. */
 export const navFor = (role) => (role === "manager" ? MANAGER_NAV.filter((n) => n.phone !== false) : role === "captain" || role === "athlete" ? TEAM_NAV : FOLLOW_NAV);
 
+/** Computer sidebar destinations: the Gestor lists "Mais" too; everyone else
+ *  has the same five as on the phone. */
+export const deskNavFor = (role) => (role === "manager" ? MANAGER_NAV : navFor(role));
+
+/** Page title of a tab for a role (computer header). */
+export const tabTitle = (role, tab) => {
+  if (tab === "inicio") return role === "manager" ? "Painel" : role === "captain" || role === "athlete" ? "Equipa" : "Início";
+  return { jogos: "Jogos", classificacao: "Classificação", gerir: "Gerir", mais: "Mais", fantasy: "Fantasy", eu: "Eu" }[tab] || "Painel";
+};
+
 // The Gestor works the league. Fantasy is a follower module (switched on per
 // competition) and stays out of the way. The phone bar keeps 5 slots, so
 // "Mais" lives in the header there and only the desktop sidebar lists it.

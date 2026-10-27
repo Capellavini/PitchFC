@@ -4,16 +4,18 @@ import { t, getLang } from "../../lib/i18n";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { LG } from "../../lib/leagueCopy";
 import { LEAGUE } from "../../lib/leagueDemo";
-import { MANAGER_NAV } from "../../lib/leagueNav";
+import { deskNavFor } from "../../lib/leagueNav";
 import Chip from "../Chip";
 import LeagueScopeBar from "./LeagueScopeBar";
 import LeagueRoleSwitcher from "./LeagueRoleSwitcher";
 
-/** Desktop navigation for the Gestor: the work areas on the left, the
- *  competition switcher under them, and the demo-only role switcher at the
- *  bottom. The league is a web app on a computer, not a phone column. */
-export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onRole, pendingCount = 0 }) {
-  const NAV = MANAGER_NAV.map((n) => ({ ...n, label: n.label || adjuntoName(getLang()) }));
+/** Desktop navigation, per role: the Gestor gets the work areas and the
+ *  competition switcher; captain, athlete and fan get their own five
+ *  destinations. The demo-only role switcher sits at the bottom. The league
+ *  is a web app on a computer, not a phone column. `badges` is a
+ *  { tabId: count } map of what is waiting on this role. */
+export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onRole, badges = {} }) {
+  const NAV = deskNavFor(role).map((n) => ({ ...n, label: n.label || adjuntoName(getLang()) }));
   return (
     <aside style={{
       position: "sticky", top: 0, alignSelf: "start", height: "100vh", boxSizing: "border-box", overflowY: "auto",
@@ -39,21 +41,23 @@ export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onR
             }}>
               <Icon size={19} strokeWidth={active ? 2.5 : 1.8} aria-hidden />
               <span style={{ flex: 1 }}>{t(label)}</span>
-              {id === "inicio" && pendingCount > 0 && (
-                <span aria-label={`${pendingCount}`} style={{ minWidth: 22, padding: "1px 7px", borderRadius: 999, background: C.orange, color: C.bg, fontSize: T.min, fontWeight: 900, textAlign: "center" }}>{pendingCount}</span>
+              {badges[id] > 0 && (
+                <span aria-label={`${badges[id]}`} style={{ minWidth: 22, padding: "1px 7px", borderRadius: 999, background: C.orange, color: C.bg, fontSize: T.min, fontWeight: 900, textAlign: "center" }}>{badges[id]}</span>
               )}
             </button>
           );
         })}
       </nav>
 
-      <div>
-        <div style={{ fontSize: T.min, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text2, marginBottom: S.sm }}>{t("Competições")}</div>
-        <LeagueScopeBar scope={scope} onScope={onScope} vertical />
-      </div>
+      {role === "manager" && (
+        <div>
+          <div style={{ fontSize: T.min, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text2, marginBottom: S.sm }}>{t("Competições")}</div>
+          <LeagueScopeBar scope={scope} onScope={onScope} vertical />
+        </div>
+      )}
 
       <div style={{ marginTop: "auto" }}>
-        <LeagueRoleSwitcher role={role} onRole={onRole} />
+        <LeagueRoleSwitcher role={role} onRole={onRole} grid />
       </div>
     </aside>
   );
