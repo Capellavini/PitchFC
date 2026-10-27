@@ -9,7 +9,7 @@ import LeagueDiscipline from "./LeagueDiscipline";
 import LeagueRegulation from "./LeagueRegulation";
 
 const SECTIONS = [
-  { id: "overview", label: "Visão geral" },
+  { id: "overview", label: "Competições" },
   { id: "registrations", label: "Inscrições" },
   { id: "calendar", label: "Calendário" },
   { id: "reports", label: "Fichas de jogo" },

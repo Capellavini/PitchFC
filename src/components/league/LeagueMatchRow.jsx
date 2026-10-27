@@ -12,7 +12,7 @@ const side = (team, align) => {
   return (
     <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: S.sm, flexDirection: align === "right" ? "row-reverse" : "row", textAlign: align }}>
       <TeamCrest initials={(team.short || "?").slice(0, 2)} color={team.color} size={26} />
-      <span style={{ fontSize: T.body, fontWeight: 700, color: C.text1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{team.name}</span>
+      <span style={{ fontSize: T.body, fontWeight: 700, color: C.text1, minWidth: 0, lineHeight: 1.2, overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{team.name}</span>
     </div>
   );
 }

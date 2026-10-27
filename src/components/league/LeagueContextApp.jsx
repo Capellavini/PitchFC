@@ -39,7 +39,7 @@ const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sa
  * PITCH Ligas — a standalone product for league organizers (route
  * /league/demo). Followers (adepto · atleta · capitão) get Início · Jogos ·
  * Classificação · Fantasy · Mais on a phone column. The Gestor works the
- * league: Hoje · Jogos · Adjunto · Classificação · Gerir (+ Mais), across
+ * league: Painel · Jogos · Adjunto · Classificação · Gerir (+ Mais), across
  * every competition the league runs, as a full web app on a computer
  * (sidebar + two columns) and a bottom bar on a phone.
  *
@@ -200,7 +200,7 @@ export default function LeagueContextApp({ entry = null }) {
   else body = <LeagueHome ctx={ctx} />;
 
   if (desktop) {
-    const TITLES = { inicio: "Hoje", jogos: "Jogos", adjunto: adjuntoName(lang), classificacao: "Classificação", gerir: "Gerir", mais: "Mais" };
+    const TITLES = { inicio: "Painel", jogos: "Jogos", adjunto: adjuntoName(lang), classificacao: "Classificação", gerir: "Gerir", mais: "Mais" };
     const scopeLabel = ctx.scope === "all" ? t("Todas as competições") : t(competitionById[ctx.scope].name);
     const pending = leagueToday(state, derived, { scope: ctx.scope }).items.length;
     return (
@@ -208,7 +208,7 @@ export default function LeagueContextApp({ entry = null }) {
         <div style={{ display: "grid", gridTemplateColumns: "264px minmax(0, 1fr)" }}>
           <LeagueSideNav tab={tab} onSelect={goTab} scope={ctx.scope} onScope={setScope} role={role} onRole={changeRole} pendingCount={pending} />
           <main style={{ padding: `${S.xxl}px ${S.xxl + 8}px ${S.xxl}px`, boxSizing: "border-box", maxWidth: 1320, width: "100%" }}>
-            <LeagueHeader desktop title={t(TITLES[tab] || "Hoje")} subtitle={`${LEAGUE.name} · ${scopeLabel}`} />
+            <LeagueHeader desktop title={t(TITLES[tab] || "Painel")} subtitle={`${LEAGUE.name} · ${scopeLabel}`} />
             <div style={{ maxWidth: !view && ["inicio", "jogos", "gerir"].includes(tab) ? undefined : 880 }}>{body}</div>
           </main>
         </div>

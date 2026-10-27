@@ -22,7 +22,7 @@ export function adjuntoBrief(today) {
   }
   const counts = today.items.reduce((o, i) => ({ ...o, [i.kind]: (o[i.kind] || 0) + 1 }), {});
   const parts = Object.keys(KIND_TEXT).filter((k) => counts[k]).map((k) => KIND_TEXT[k](counts[k]));
-  return { text: `Hoje precisas de tratar de ${parts.join(", ")}.`, counts };
+  return { text: `Tens para tratar: ${parts.join(", ")}.`, counts };
 }
 
 /**

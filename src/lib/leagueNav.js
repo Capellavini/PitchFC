@@ -15,7 +15,7 @@ export const FOLLOW_NAV = [
 // "Mais" lives in the header there and only the desktop sidebar lists it.
 // `adjunto` labels come from adjuntoName(lang) at render time.
 export const MANAGER_NAV = [
-  { id: "inicio", Icon: ClipboardCheck, label: "Hoje" },
+  { id: "inicio", Icon: ClipboardCheck, label: "Painel" },
   { id: "jogos", Icon: CalendarDays, label: LG.navMatches },
   { id: "adjunto", Icon: Sparkles, label: null },
   { id: "classificacao", Icon: ListOrdered, label: LG.navTable },
