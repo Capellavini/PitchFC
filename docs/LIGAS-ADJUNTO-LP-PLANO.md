@@ -96,7 +96,7 @@ Este é o ciclo que o Excel e o Tournify não fazem: **antes do jogo** (validaç
 ### 4.1 Duas marcas, um só motor
 
 - **PITCH Leagues (marca PITCH):** navy + lima, "Powered by PITCH" visível. Para ligas que querem arrancar já.
-- **Marca da Liga (white label):** logótipo, nome curto, cor principal, imagem de capa, texto de abertura, patrocinadores. "Powered by PITCH" fica discreto no rodapé (nunca removível no piloto). **Domínio próprio** é fase posterior.
+- **Marca da Liga (white label):** logótipo, nome curto, cor principal, imagem de capa, texto de abertura, patrocinadores, **aplicados sempre dentro do nosso modelo de página** (a estrutura e o desenho são os do PITCH; não há páginas à medida). "Powered by PITCH" fica discreto no rodapé (nunca removível no piloto). **Domínio próprio** é fase posterior. A página é um **produto geral** para qualquer liga e não um substituto de blog ou site (a liga pode incorporar widgets nossos no seu site, se quiser).
 - Implementação: tokens por Liga (`--brand`, `--on-brand`, `--surface`, logótipo) sobre o tema base. O GPT já tem `LeagueIdentity`, `leagueMonogram` e `safeLeagueLogo`. Acrescentar: cor segura (contraste mínimo calculado, cor de texto automática, recusar cores ilegíveis), capa opcional, e modo claro/escuro que respeita o contraste.
 
 ### 4.2 Estrutura (mobile first)
