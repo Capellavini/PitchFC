@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import { presentationMode } from "./presentation";
 
 // v2: schema gained FUT attributes, session, settings and posts —
 // bumping the prefix invalidates v1 demo data cleanly.
-const PREFIX = "pitch.v2.";
+// Presentation mode keeps its own namespace so a demo run never touches (or
+// inherits) a real browser's local data.
+const PREFIX = presentationMode ? "pitch.demo.v1." : "pitch.v2.";
 
 /** useState that survives reloads via localStorage. */
 export function usePersistentState(key, initial) {
@@ -30,6 +33,6 @@ export function usePersistentState(key, initial) {
 /** Drop all persisted app state (used by "repor dados de demonstração"). */
 export function clearAppStorage() {
   Object.keys(localStorage)
-    .filter((k) => k.startsWith("pitch."))
+    .filter((k) => k.startsWith(presentationMode ? "pitch.demo." : "pitch.v2."))
     .forEach((k) => localStorage.removeItem(k));
 }

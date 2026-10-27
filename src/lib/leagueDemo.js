@@ -9,6 +9,8 @@ import {
 } from "./core/league.js";
 import { roundRobinFixtures } from "./core/standings.js";
 import { computeOverall } from "./core/overall.js";
+import { presentationMode } from "./presentation.js";
+import { demoPortrait } from "./demoAvatars.js";
 
 export const LEAGUE_DEMO_VERSION = 4;
 export const LEAGUE_DEMO_KEY = "leagueDemo"; // usePersistentState prefix → pitch.v2.leagueDemo
@@ -95,7 +97,7 @@ export const PLAYERS = Object.freeze(TEAMS.flatMap((team, ti) => SLOTS.map((slot
     nick: si % 3 === 0 ? `${first} ${last[0]}.` : last,
     position: slot.position, number: slot.number, price: slot.base + ((ti + si) % 2),
     foot: FEET[i % FEET.length], nationality: NATIONS[(i * 3) % NATIONS.length], age: 19 + ((i * 7) % 20),
-    attrs: attrsFor(slot.position, target, i), photo: PHOTOS[`${team.id}p${si + 1}`] || null,
+    attrs: attrsFor(slot.position, target, i), photo: PHOTOS[`${team.id}p${si + 1}`] || (presentationMode ? demoPortrait({ seed: `${first} ${last}${team.id}`, kit: team.color }) : null),
   };
 })));
 
@@ -129,7 +131,16 @@ export const ROLE_ACCOUNTS = Object.freeze({
   manager: { accountId: "acc-gestor", playerId: null, teamId: null, label: "Gestor" },
 });
 
-const ROUND_DATES = ["2026-10-03", "2026-10-10", "2026-10-17"];
+// Presentation mode keeps the league "alive": the three rounds slide in whole
+// weeks so round 3 is always the coming Saturday (rounds 1–2 already played).
+const SHIFT_DAYS = (() => {
+  if (!presentationMode) return 0;
+  const d = new Date(); d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + (((6 - d.getDay() + 7) % 7) || 7));
+  return Math.round((d - new Date("2026-10-17T12:00:00")) / 864e5);
+})();
+const shiftTs = (s) => (SHIFT_DAYS ? new Date(Date.parse(s) + SHIFT_DAYS * 864e5).toISOString() : s);
+const ROUND_DATES = ["2026-10-03", "2026-10-10", "2026-10-17"].map((s) => shiftTs(`${s}T12:00:00Z`).slice(0, 10));
 const KICKOFF_TIMES = ["18:00", "19:15", "20:30"];
 const SEED_AT = (date, time) => `${date}T${time}:00+01:00`;
 
@@ -191,13 +202,13 @@ export function buildLeagueDemoSeed() {
   // correction already in history: the 38' scorer was t1p8, not t1p6
   ev("m1", "goal", "t1", "t1p8", "t1p7", 38, {
     supersedes: wrong, voidReason: "Autor do golo corrigido após revisão da ficha de jogo com os capitães",
-    recordedBy: "Gestor (demo)", recordedAt: "2026-10-04T10:12:00.000Z",
+    recordedBy: "Gestor (demo)", recordedAt: shiftTs("2026-10-04T10:12:00.000Z"),
   });
   play("m1", "homologated");
-  set("m1", (m) => ({ ...setOfficialMvp(m, "t1p7", { ...manager, at: "2026-10-04T10:15:00.000Z" }), fanVoteClosed: true }));
+  set("m1", (m) => ({ ...setOfficialMvp(m, "t1p7", { ...manager, at: shiftTs("2026-10-04T10:15:00.000Z") }), fanVoteClosed: true }));
   // Marés published its Futebol 7 board for m1 (captain); nº 11 on the bench
   set("m1", (m) => ({ ...m, tactics: { t1: {
-    formation: "2-3-1", by: "Marco Ramos (Capitão)", at: "2026-10-03T16:30:00.000Z",
+    formation: "2-3-1", by: "Marco Ramos (Capitão)", at: shiftTs("2026-10-03T16:30:00.000Z"),
     slots: { "gk-0": "t1p1", "def-0": "t1p2", "def-1": "t1p3", "mid-0": "t1p4", "mid-1": "t1p5", "mid-2": "t1p6", "fwd-0": "t1p7" },
   } } }));
 
@@ -237,7 +248,7 @@ export function buildLeagueDemoSeed() {
   set("m6", (m) => ({ ...m, lineups: { ...m.lineups, t3: m.lineups.t3.filter((id) => id !== "t3p2") } }));
   set("m6", (m) => transition(m, "in_review", {
     role: "captain", teamId: "t3", by: PLAYERS.find((p) => p.id === captainOf("t3")).name,
-    at: "2026-10-10T22:40:00.000Z", reason: "O segundo golo do Unidos foi em fora de jogo — pedimos revisão",
+    at: shiftTs("2026-10-10T22:40:00.000Z"), reason: "O segundo golo do Unidos foi em fora de jogo — pedimos revisão",
   }));
 
   // ── Round 3 — scheduled; m7 has VAR switched on (state only) ──
@@ -261,8 +272,8 @@ export function buildLeagueDemoSeed() {
     viewer: null, // { role, entered } — set by the entry screen (fan / athlete / captain / manager)
     prefs: { supportTeamId: "t1", followTeamIds: ["t1"], followPlayerIds: [], notifyResults: true, notifyCalendar: true },
     announcements: [
-      { id: "a1", at: "2026-10-12T09:00:00.000Z", title: "Jornada 3 confirmada", body: "Todos os jogos da jornada 3 mantêm-se no sábado. Chegada 20 min antes para a verificação de cartões de atleta." },
-      { id: "a2", at: "2026-10-05T09:00:00.000Z", title: "Jornada 1 homologada", body: "Resultados da jornada 1 homologados. Uma correção de autoria de golo registada na ficha de jogo Marés FC – Velha Guarda 1990." },
+      { id: "a1", at: shiftTs("2026-10-12T09:00:00.000Z"), title: "Jornada 3 confirmada", body: "Todos os jogos da jornada 3 mantêm-se no sábado. Chegada 20 min antes para a verificação de cartões de atleta." },
+      { id: "a2", at: shiftTs("2026-10-05T09:00:00.000Z"), title: "Jornada 1 homologada", body: "Resultados da jornada 1 homologados. Uma correção de autoria de golo registada na ficha de jogo Marés FC – Velha Guarda 1990." },
     ],
   };
 }
