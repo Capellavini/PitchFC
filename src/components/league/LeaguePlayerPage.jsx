@@ -12,7 +12,7 @@ import BtnPrimary from "../BtnPrimary";
 import FutCard from "../FutCard";
 import FormPills from "../FormPills";
 import Chip from "../Chip";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 
 /** Athlete page — the PITCH identity (FUT card with OVR/tier, photo or
  *  initials) plus stats for THIS competition only, recent form, and the
@@ -56,7 +56,7 @@ export default function LeaguePlayerPage({ ctx, playerId }) {
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", marginBottom: S.lg }}>
         <button type="button" onClick={() => open({ kind: "team", id: p.teamId })}
           style={{ flex: "1 1 160px", minHeight: TOUCH.button, display: "flex", alignItems: "center", gap: S.sm, background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text1, cursor: "pointer", padding: `0 ${S.md}px`, fontWeight: 700, fontSize: T.body }}>
-          <RivalsCrest initials={team.short.slice(0, 2)} color={team.color} size={22} /> <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{team.name}</span>
+          <TeamCrest initials={team.short.slice(0, 2)} color={team.color} size={22} /> <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{team.name}</span>
         </button>
         {!isMe && (follows
           ? <BtnGhost onClick={toggle} style={{ flex: "1 1 140px" }}><Star size={16} aria-hidden /> {t("A seguir")}</BtnGhost>

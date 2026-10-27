@@ -44,10 +44,11 @@ const SHELL_W = 430; // same column as the app shell
  * Props: contexts { groups: [{id,name}], teams: [{id,name}] } from the
  * app (local demo session); entry "fan" → start the "Sou adepto" flow.
  */
-export default function LeagueContextApp({ contexts, entry = null }) {
+export default function LeagueContextApp({ entry = null }) {
   const [raw, setRaw] = usePersistentState(LEAGUE_DEMO_KEY, null);
   const state = useMemo(() => normalizeLeagueState(raw), [raw]);
-  const [tab, setTab] = usePersistentState("leagueDemoTab", "inicio");
+  const [storedTab, setTab] = usePersistentState("leagueDemoTab", "inicio");
+  const [manageSection, setManageSection] = usePersistentState("leagueDemoManage", "overview");
   const [stack, setStack] = usePersistentState("leagueDemoStack", []);
   const [entryMode, setEntryMode] = useState(entry); // "fan" forces the fan flow once
   const [toast, setToast] = useState(null);
@@ -68,16 +69,21 @@ export default function LeagueContextApp({ contexts, entry = null }) {
   const derived = useMemo(() => deriveLeague(state), [state]);
   const acc = ROLE_ACCOUNTS[role] || ROLE_ACCOUNTS.fan;
   const lang = getLang();
-  // The management area exists only for the Gestor role — a persisted
-  // stack can't reopen it under another role (direct-route guard).
-  const visible = (stack || []).filter((v) => v && (v.kind !== "manage" || role === "manager"));
+  // "Gerir" is a tab of the Gestor only — a persisted tab can't reopen it
+  // under another role (direct-route guard). Stacks saved by the old
+  // "manage" push view are ignored.
+  const tab = storedTab === "gerir" && role !== "manager" ? "inicio" : storedTab;
+  const visible = (stack || []).filter((v) => v && v.kind !== "manage");
   const view = visible[visible.length - 1] || null;
 
   const notify = (msg, tone = "ok") => setToast({ msg, tone, n: Date.now() });
   const top = () => { try { window.scrollTo(0, 0); } catch { /* jsdom */ } };
-  const open = (v) => { setStack((s) => [...(s || []), v]); top(); };
-  const back = () => { setStack((s) => (s || []).slice(0, -1)); top(); };
   const goTab = (id) => { setTab(id); setStack([]); top(); };
+  const open = (v) => {
+    if (v.kind === "manage") { setManageSection(v.section || "overview"); goTab("gerir"); return; }
+    setStack((s) => [...(s || []), v]); top();
+  };
+  const back = () => { setStack((s) => (s || []).slice(0, -1)); top(); };
 
   /** Apply a pure update to the demo state; LeagueError → toast. */
   const apply = (fn, okMsg) => {
@@ -98,7 +104,6 @@ export default function LeagueContextApp({ contexts, entry = null }) {
 
   const changeRole = (r) => {
     apply((s) => ({ ...s, viewer: { ...(s.viewer || {}), role: r, entered: true } }));
-    if (r !== "manager") setStack((s) => (s || []).filter((v) => v.kind !== "manage"));
   };
 
   const act = {
@@ -163,17 +168,16 @@ export default function LeagueContextApp({ contexts, entry = null }) {
 
   const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab };
   const entering = entryMode === "fan" || !state.viewer?.entered;
-  const inManage = !entering && view?.kind === "manage";
-  const pushed = !entering && view && view.kind !== "manage";
+  const pushed = !entering && Boolean(view);
 
   let body;
   if (entering) body = <LeagueEntry key={entryMode || "choose"} startAt={entryMode === "fan" ? "fan" : "choose"} onEnter={act.enter} />;
-  else if (inManage) body = <LeagueManage ctx={ctx} section={view.section} onSection={(sec) => setStack((s) => [...(s || []).filter((v) => v.kind !== "manage"), { kind: "manage", section: sec }])} />;
   else if (view?.kind === "match") body = <LeagueMatchPage key={view.id} ctx={ctx} matchId={view.id} />;
   else if (view?.kind === "team") body = <LeagueTeamPage key={view.id} ctx={ctx} teamId={view.id} />;
   else if (view?.kind === "player") body = <LeaguePlayerPage key={view.id} ctx={ctx} playerId={view.id} />;
   else if (view?.kind === "players") body = <LeaguePlayersDirectory ctx={ctx} />;
   else if (view?.kind === "compare") body = <LeagueCompare ctx={ctx} />;
+  else if (tab === "gerir") body = <LeagueManage ctx={ctx} section={manageSection} onSection={setManageSection} />;
   else if (tab === "jogos") body = <LeagueMatches ctx={ctx} />;
   else if (tab === "classificacao") body = <LeagueTable ctx={ctx} />;
   else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;
@@ -182,13 +186,11 @@ export default function LeagueContextApp({ contexts, entry = null }) {
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, overflowX: "hidden" }}>
-      <div style={{ maxWidth: SHELL_W, margin: "0 auto", padding: `0 ${S.lg}px ${entering || inManage ? S.xxl : 104}px`, boxSizing: "border-box" }}>
-        <LeagueHeader ctx={ctx} contexts={contexts} role={role} onRole={changeRole} inManage={inManage} compact={entering} slim={pushed}
-          onManage={() => open({ kind: "manage", section: "overview" })}
-          onExitManage={() => setStack((s) => (s || []).filter((v) => v.kind !== "manage"))} />
+      <div style={{ maxWidth: SHELL_W, margin: "0 auto", padding: `0 ${S.lg}px ${entering ? S.xxl : 104}px`, boxSizing: "border-box" }}>
+        <LeagueHeader role={role} onRole={changeRole} compact={entering} slim={pushed} />
         {body}
       </div>
-      {!entering && !inManage && <LeagueBottomNav tab={tab} onSelect={goTab} maxWidth={SHELL_W} />}
+      {!entering && <LeagueBottomNav tab={tab} role={role} onSelect={goTab} maxWidth={SHELL_W} />}
       <LeagueToast toast={toast} onDone={() => setToast(null)} />
     </div>
   );

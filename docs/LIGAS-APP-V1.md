@@ -38,6 +38,24 @@
 9. **Entrada direta**: `/l/<slug>` abre a competição, sem passar por "grupos" nem por escolhas. Quem já tem PITCH fica no mesmo login.
 10. **Adeptos, Fantasy e voto**: ficam como módulos **desligados por defeito**, ligados por competição (decisão: entram na v1, mas a mensagem a estas ligas é a operação, não a torcida).
 
+### 2.1 O que a AFPCE publica hoje (afpce.pt, visto a 27/10)
+
+Site WordPress com SportsPress; cinco épocas online (2021/22 a 2025/26) e uma página por clube.
+
+| Publicam | Não publicam (está no papel/Excel) |
+|---|---|
+| Classificação (forma V-E-D, J V E D GM GS DG P) e matriz de resultados por divisão | **Marcadores, assistências, minutos** |
+| Jogo: jornada, local (ex.: "Seara"), data e hora, resultado final e **intervalo**, forma dos dois clubes | **Convocados e escalações** |
+| Clube: jogos, V-E-D, golos marcados e sofridos, jogos sem sofrer golos (casa/fora/total) | **Cartões por atleta** (os campos amarelos/vermelhos do clube aparecem a zero) |
+| **Taça Fair Play** por divisão: amarelos (A), vermelhos (V) e Total | **Qualquer página de atleta** |
+
+Pontos que mudam o desenho:
+- **Fair Play = amarelos × 1 + vermelhos × 3** (confere nas linhas: 21+3×3=30; 22+5×3=37). Está atualizado "por reunião do Conselho de Disciplina" (a tabela indica a ata, p. ex. "CD 24 de 16/05/2024"). Um clube foi **desclassificado** por um artigo do regulamento. Logo: as sanções são **decisões do Conselho de Disciplina**, não contagens automáticas. O PITCH calcula e propõe; a direção/CD decide. A Taça Fair Play passa a sair do registo, sem Excel.
+- **Os nomes das competições levam patrocinador** ("Liga RSTAR AFPCE", "Taça Associação | Peraltafil", "Taça Fair Play | Falkuslog", "Taça Cidade Espinho | Beatriz dos Panos"). O nosso modelo de página tem de ter **patrocinador titular** por competição.
+- **Várias competições por época**: 1.ª e 2.ª Divisão, Taça da Associação, Taça da Cidade, Taça Fair Play (em algumas épocas), Supertaça. A 1.ª Divisão de 2025/26 tem 8 clubes e 21 jogos cada (**três voltas**); a direção diz que passam a duas. O nº de voltas é parâmetro.
+- **O que o PITCH acrescenta de raiz**: individuais (golos, assistências, jogos, cartões), convocados, ficha por jogo e perfil de atleta. Nada disto existe online hoje, portanto não há "migração" a fazer: é valor novo.
+- Os dados de clubes, épocas e resultados passados estão **públicos** no site; importá-los (histórico de clubes e classificações) só se a liga o pedir, como combinado.
+
 ## 3. Arquitetura (decisão)
 
 Há dois mundos no repositório que não se falam:

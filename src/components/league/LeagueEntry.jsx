@@ -5,7 +5,7 @@ import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { LEAGUE, COMPETITION, TEAMS, ROLE_ACCOUNTS, teamById } from "../../lib/leagueDemo";
 import BackHeader from "../BackHeader";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 
 /**
  * How you come into a league (demo). "Sou adepto" is first-class:
@@ -46,7 +46,7 @@ export default function LeagueEntry({ startAt = "choose", onEnter }) {
           {TEAMS.map((tm) => (
             <button key={tm.id} role="listitem" type="button" onClick={() => onEnter({ role: "fan", supportTeamId: tm.id })}
               style={{ ...cardStyle, minHeight: 110, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: S.sm, cursor: "pointer", color: C.text1, textAlign: "center" }}>
-              <RivalsCrest initials={tm.short.slice(0, 2)} color={tm.color} size={40} />
+              <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={40} />
               <span style={{ fontSize: T.body, fontWeight: 800, overflowWrap: "anywhere" }}>{tm.name}</span>
             </button>
           ))}

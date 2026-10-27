@@ -8,7 +8,7 @@ import { canCorrect, DEMO_RULES } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SegmentedControl from "../SegmentedControl";
 import Chip from "../Chip";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 import LeagueStateChip from "./LeagueStateChip";
 import LeagueTimeline from "./LeagueTimeline";
 import LeagueLineups from "./LeagueLineups";
@@ -90,7 +90,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: S.sm }}>
           {[home, null, away].map((tm, i) => (tm ? (
             <button key={tm.id} type="button" onClick={() => open({ kind: "team", id: tm.id })} style={{ background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, minWidth: 0, minHeight: 44, padding: 0 }}>
-              <RivalsCrest initials={tm.short.slice(0, 2)} color={tm.color} size={44} />
+              <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={44} />
               <span style={{ fontSize: T.meta, fontWeight: 800, maxWidth: "100%", overflowWrap: "anywhere" }}>{tm.name}</span>
             </button>
           ) : (

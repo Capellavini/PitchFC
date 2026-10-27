@@ -10,7 +10,7 @@ import { CLOUD_EVENT_TYPES, SCORE_STATES, matchPermissions, newCloudEventId } fr
 import BackHeader from "../BackHeader";
 import BtnGhost from "../BtnGhost";
 import Chip from "../Chip";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 import SectionLabel from "../SectionLabel";
 import SegmentedControl from "../SegmentedControl";
 import LeagueStateChip from "./LeagueStateChip";
@@ -167,7 +167,7 @@ export default function LeagueCloudMatchPage({ leagues, competition, dir, profil
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: S.sm }}>
           {[home, null, away].map((tm, i) => (tm ? (
             <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, minWidth: 0 }}>
-              <RivalsCrest initials={(tm.short || "?").slice(0, 2)} color={tm.color} size={44} />
+              <TeamCrest initials={(tm.short || "?").slice(0, 2)} color={tm.color} size={44} />
               <span style={{ fontSize: T.meta, fontWeight: 800, maxWidth: "100%", overflowWrap: "anywhere" }}>{tm.name}</span>
             </div>
           ) : (

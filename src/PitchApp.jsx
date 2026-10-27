@@ -1348,11 +1348,8 @@ export default function PitchApp() {
   }
   if (path === "/league/demo") {
     const leagueEntry = new URLSearchParams(window.location.search).get("entrada") === "adepto" ? "fan" : null;
-    const leagueTeams = (rivals.myTeams || []).map((tm) => ({ id: tm.id, name: tm.name }));
-    const leagueContexts = localMode
-      ? { groups: session.onboarded && !session.teamOnly && groupSettings.groupName ? [{ id: "local", name: groupSettings.groupName }] : [], teams: leagueTeams }
-      : { groups: (cloud.myGroups || []).filter((m) => !m.banned).map((m) => ({ id: m.group_id, name: m.groups?.name || "—" })), teams: leagueTeams };
-    return shell(<LeagueContextApp contexts={leagueContexts} entry={leagueEntry} />);
+    // PITCH Ligas is a standalone product: no groups/teams contexts from the other apps.
+    return shell(<LeagueContextApp entry={leagueEntry} />);
   }
   // Real leagues (Fase 2): /league/minhas, /league/<slug>, /league/<slug>/<comp>.
   // Same gate as the demo: flag off → the public /league page, nothing else.

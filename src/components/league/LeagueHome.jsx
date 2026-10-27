@@ -8,11 +8,12 @@ import { PLAYERS } from "../../lib/leagueDemo";
 import SectionLabel from "../SectionLabel";
 import BtnPrimary from "../BtnPrimary";
 import Chip from "../Chip";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 import LeagueMatchRow from "./LeagueMatchRow";
 import LeagueStateChip from "./LeagueStateChip";
 import LeagueRoleCard from "./LeagueRoleCard";
 import LeagueHighlight from "./LeagueHighlight";
+import LeagueToday from "./LeagueToday";
 
 const PLAYED = new Set(["ended_provisional", "in_review", "homologated", "walkover"]);
 
@@ -31,6 +32,9 @@ export default function LeagueHome({ ctx }) {
   const lastMvpMatch = matches.filter((m) => m.officialMvp && m.state === "homologated").sort((a, b) => b.kickoff.localeCompare(a.kickoff))[0];
   const openMatch = (id) => open({ kind: "match", id });
 
+  // The Gestor opens on the work queue, not on the follower feed.
+  if (role === "manager") return <LeagueToday ctx={ctx} />;
+
   return (
     <div>
       <LeagueRoleCard ctx={ctx} />
@@ -44,7 +48,7 @@ export default function LeagueHome({ ctx }) {
           {next ? (
             <div style={{ ...cardStyle, marginBottom: S.lg }}>
               <div style={{ display: "flex", alignItems: "center", gap: S.md, marginBottom: S.md }}>
-                <RivalsCrest initials={follow.short.slice(0, 2)} color={follow.color} size={40} />
+                <TeamCrest initials={follow.short.slice(0, 2)} color={follow.color} size={40} />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: T.cardTitle, fontWeight: 800, overflowWrap: "anywhere" }}>{teamById[next.homeId].name} – {teamById[next.awayId].name}</div>
                   <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{tf(LG.round, { n: next.round })} · {fmtKickoff(next.kickoff, lang)} ({t("hora de Lisboa")}) · {next.venue}</div>
