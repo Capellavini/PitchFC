@@ -3,7 +3,7 @@ import { Video, MapPin, Clock, Shield, AlertTriangle } from "lucide-react";
 import { C, R, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
-import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION } from "../../lib/leagueDemo";
+import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById } from "../../lib/leagueDemo";
 import { canCorrect, DEMO_RULES } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SegmentedControl from "../SegmentedControl";
@@ -83,7 +83,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
 
   return (
     <div>
-      <BackHeader title={`${home.short} – ${away.short}`} subtitle={`${tf(LG.round, { n: match.round })} · ${COMPETITION.name} · ${t(COMPETITION.category)}`} onBack={back} />
+      <BackHeader title={`${home.short} – ${away.short}`} subtitle={`${match.roundName ? t(match.roundName) : tf(LG.round, { n: match.round })} · ${t((competitionById[match.competitionId] || COMPETITION).name)} · ${t(COMPETITION.category)}`} onBack={back} />
 
       <div style={{ ...cardStyle, marginBottom: S.md, textAlign: "center" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: S.sm }}><LeagueStateChip state={match.state} /></div>

@@ -9,8 +9,15 @@ import {
   buildLeagueDemoSeed, normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY, PLAYERS,
 } from "../../lib/leagueDemo";
 import { LG, leagueError } from "../../lib/leagueCopy";
+import { adjuntoName } from "../../lib/leagueAdjunto";
+import { leagueToday } from "../../lib/leagueToday";
+import { useWide } from "../../lib/useWide";
+import { competitionById, CUP, LEAGUE } from "../../lib/leagueDemo";
 import LeagueHeader from "./LeagueHeader";
 import LeagueBottomNav from "./LeagueBottomNav";
+import LeagueSideNav from "./LeagueSideNav";
+import LeagueAdjunto from "./LeagueAdjunto";
+import LeagueCupPhase from "./LeagueCupPhase";
 import LeagueEntry from "./LeagueEntry";
 import LeagueHome from "./LeagueHome";
 import LeagueMatches from "./LeagueMatches";
@@ -25,15 +32,16 @@ import LeaguePlayersDirectory from "./LeaguePlayersDirectory";
 import LeagueCompare from "./LeagueCompare";
 import LeagueToast from "./LeagueToast";
 
-const SHELL_W = 430; // same column as the app shell
+const SHELL_W = 430; // same column as the app shell (phone layout)
+const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif"; // same as the app shell
 
 /**
- * League CONTEXT of the app (PITCH Ligas, Fase 1 demo — route
- * /league/demo). The app shell adapts to this context the way team-only
- * users get their own nav: Início · Jogos · Classificação · Fantasy ·
- * Mais, a header with league → competition → category, a context
- * switcher (Meus grupos / Minhas equipas / Minhas ligas / Acompanhando)
- * and — Gestor only — "Gerir liga" (a separate area with no follow nav).
+ * PITCH Ligas — a standalone product for league organizers (route
+ * /league/demo). Followers (adepto · atleta · capitão) get Início · Jogos ·
+ * Classificação · Fantasy · Mais on a phone column. The Gestor works the
+ * league: Hoje · Jogos · Adjunto · Classificação · Gerir (+ Mais), across
+ * every competition the league runs, as a full web app on a computer
+ * (sidebar + two columns) and a bottom bar on a phone.
  *
  * Everything runs on the deterministic demo seed in this browser
  * (localStorage pitch.v2.leagueDemo); every write is a pure function from
@@ -41,8 +49,7 @@ const SHELL_W = 430; // same column as the app shell
  * Supabase. The role switcher only changes which demo account you look
  * through — it never grants anything real.
  *
- * Props: contexts { groups: [{id,name}], teams: [{id,name}] } from the
- * app (local demo session); entry "fan" → start the "Sou adepto" flow.
+ * Props: entry "fan" → start the "Sou adepto" flow.
  */
 export default function LeagueContextApp({ entry = null }) {
   const [raw, setRaw] = usePersistentState(LEAGUE_DEMO_KEY, null);
@@ -50,6 +57,9 @@ export default function LeagueContextApp({ entry = null }) {
   const [storedTab, setTab] = usePersistentState("leagueDemoTab", "inicio");
   const [manageSection, setManageSection] = usePersistentState("leagueDemoManage", "overview");
   const [stack, setStack] = usePersistentState("leagueDemoStack", []);
+  const [scope, setScope] = usePersistentState("leagueDemoScope", "all"); // Gestor: "all" or a competition id
+  const [adjuntoLog, setAdjuntoLog] = useState([]);
+  const wide = useWide();
   const [entryMode, setEntryMode] = useState(entry); // "fan" forces the fan flow once
   const [toast, setToast] = useState(null);
   const lastEvent = useRef({});
@@ -72,7 +82,8 @@ export default function LeagueContextApp({ entry = null }) {
   // "Gerir" is a tab of the Gestor only — a persisted tab can't reopen it
   // under another role (direct-route guard). Stacks saved by the old
   // "manage" push view are ignored.
-  const tab = storedTab === "gerir" && role !== "manager" ? "inicio" : storedTab;
+  const tab = ["gerir", "adjunto"].includes(storedTab) && role !== "manager" ? "inicio" : storedTab;
+  const scopeNow = scope === "all" || competitionById[scope] ? scope : "all";
   const visible = (stack || []).filter((v) => v && v.kind !== "manage");
   const view = visible[visible.length - 1] || null;
 
@@ -166,8 +177,11 @@ export default function LeagueContextApp({ entry = null }) {
     reset: () => { setRaw(buildLeagueDemoSeed()); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
   };
 
-  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab };
   const entering = entryMode === "fan" || !state.viewer?.entered;
+  const manager = role === "manager";
+  const desktop = wide && manager && !entering; // the Gestor's computer layout: sidebar + wide content
+  // Only the Gestor looks across competitions; followers see the primary one.
+  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog };
   const pushed = !entering && Boolean(view);
 
   let body;
@@ -178,16 +192,35 @@ export default function LeagueContextApp({ entry = null }) {
   else if (view?.kind === "players") body = <LeaguePlayersDirectory ctx={ctx} />;
   else if (view?.kind === "compare") body = <LeagueCompare ctx={ctx} />;
   else if (tab === "gerir") body = <LeagueManage ctx={ctx} section={manageSection} onSection={setManageSection} />;
+  else if (tab === "adjunto") body = <LeagueAdjunto ctx={ctx} />;
   else if (tab === "jogos") body = <LeagueMatches ctx={ctx} />;
-  else if (tab === "classificacao") body = <LeagueTable ctx={ctx} />;
+  else if (tab === "classificacao") body = ctx.scope === CUP.id ? <LeagueCupPhase ctx={ctx} /> : <LeagueTable ctx={ctx} />;
   else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;
   else if (tab === "mais") body = <LeagueMore ctx={ctx} />;
   else body = <LeagueHome ctx={ctx} />;
 
+  if (desktop) {
+    const TITLES = { inicio: "Hoje", jogos: "Jogos", adjunto: adjuntoName(lang), classificacao: "Classificação", gerir: "Gerir", mais: "Mais" };
+    const scopeLabel = ctx.scope === "all" ? t("Todas as competições") : t(competitionById[ctx.scope].name);
+    const pending = leagueToday(state, derived, { scope: ctx.scope }).items.length;
+    return (
+      <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT }}>
+        <div style={{ display: "grid", gridTemplateColumns: "264px minmax(0, 1fr)" }}>
+          <LeagueSideNav tab={tab} onSelect={goTab} scope={ctx.scope} onScope={setScope} role={role} onRole={changeRole} pendingCount={pending} />
+          <main style={{ padding: `${S.xxl}px ${S.xxl + 8}px ${S.xxl}px`, boxSizing: "border-box", maxWidth: 1320, width: "100%" }}>
+            <LeagueHeader desktop title={t(TITLES[tab] || "Hoje")} subtitle={`${LEAGUE.name} · ${scopeLabel}`} />
+            <div style={{ maxWidth: !view && ["inicio", "jogos", "gerir"].includes(tab) ? undefined : 880 }}>{body}</div>
+          </main>
+        </div>
+        <LeagueToast toast={toast} onDone={() => setToast(null)} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, overflowX: "hidden" }}>
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, overflowX: "hidden", fontFamily: FONT }}>
       <div style={{ maxWidth: SHELL_W, margin: "0 auto", padding: `0 ${S.lg}px ${entering ? S.xxl : 104}px`, boxSizing: "border-box" }}>
-        <LeagueHeader role={role} onRole={changeRole} compact={entering} slim={pushed} />
+        <LeagueHeader role={role} onRole={changeRole} compact={entering} slim={pushed} scope={ctx.scope} onScope={setScope} onMore={() => goTab("mais")} />
         {body}
       </div>
       {!entering && <LeagueBottomNav tab={tab} role={role} onSelect={goTab} maxWidth={SHELL_W} />}

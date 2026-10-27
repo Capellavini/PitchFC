@@ -2,7 +2,7 @@ import { Megaphone, Star, Target } from "lucide-react";
 import { C, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
-import { teamById, playerById, currentRound, matchesOfTeam, fmtKickoff, fmtDateTime } from "../../lib/leagueDemo";
+import { teamById, playerById, currentRound, matchesOfTeam, fmtKickoff, fmtDateTime, COMPETITION } from "../../lib/leagueDemo";
 import { ranking } from "../../lib/core/league";
 import { PLAYERS } from "../../lib/leagueDemo";
 import SectionLabel from "../SectionLabel";
@@ -21,7 +21,8 @@ const PLAYED = new Set(["ended_provisional", "in_review", "homologated", "walkov
  *  recent results → highlights → announcements. */
 export default function LeagueHome({ ctx }) {
   const { state, derived, role, acc, lang, open } = ctx;
-  const matches = state.matches;
+  // Followers see the primary competition; the cup has its own phase view.
+  const matches = state.matches.filter((m) => !m.competitionId || m.competitionId === COMPETITION.id);
   const round = currentRound(matches);
   const roundMatches = matches.filter((m) => m.round === round);
   const followId = acc.teamId || state.prefs.supportTeamId;

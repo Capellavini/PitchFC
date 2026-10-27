@@ -1348,8 +1348,9 @@ export default function PitchApp() {
   }
   if (path === "/league/demo") {
     const leagueEntry = new URLSearchParams(window.location.search).get("entrada") === "adepto" ? "fan" : null;
-    // PITCH Ligas is a standalone product: no groups/teams contexts from the other apps.
-    return shell(<LeagueContextApp entry={leagueEntry} />);
+    // PITCH Ligas is a standalone product: no groups/teams contexts from the
+    // other apps and no phone-column app shell (the Gestor gets a full web layout).
+    return <LeagueContextApp entry={leagueEntry} />;
   }
   // Real leagues (Fase 2): /league/minhas, /league/<slug>, /league/<slug>/<comp>.
   // Same gate as the demo: flag off → the public /league page, nothing else.

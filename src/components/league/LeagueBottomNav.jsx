@@ -1,29 +1,12 @@
-import { Home, CalendarDays, ListOrdered, Gamepad2, Menu, ClipboardCheck, Settings2 } from "lucide-react";
 import { C, S, T, TOUCH } from "../../theme";
-import { t } from "../../lib/i18n";
-import { LG } from "../../lib/leagueCopy";
+import { t, getLang } from "../../lib/i18n";
+import { adjuntoName } from "../../lib/leagueAdjunto";
+import { FOLLOW_NAV, MANAGER_NAV } from "../../lib/leagueNav";
 
-const FOLLOW_NAV = [
-  { id: "inicio", Icon: Home, label: LG.navHome },
-  { id: "jogos", Icon: CalendarDays, label: LG.navMatches },
-  { id: "classificacao", Icon: ListOrdered, label: LG.navTable },
-  { id: "fantasy", Icon: Gamepad2, label: LG.navFantasy },
-  { id: "mais", Icon: Menu, label: LG.navMore },
-];
-
-// The Gestor works the league: Fantasy is a follower module and stays out of
-// the way (it is switched on per competition), "Gerir" takes its slot.
-const MANAGER_NAV = [
-  { id: "inicio", Icon: ClipboardCheck, label: "Hoje" },
-  { id: "jogos", Icon: CalendarDays, label: LG.navMatches },
-  { id: "classificacao", Icon: ListOrdered, label: LG.navTable },
-  { id: "gerir", Icon: Settings2, label: "Gerir" },
-  { id: "mais", Icon: Menu, label: LG.navMore },
-];
-
-/** League nav — exactly 5 destinations per role (brief §6). */
+/** Phone nav — exactly 5 destinations per role (brief §6). */
 export default function LeagueBottomNav({ tab, onSelect, maxWidth, role }) {
-  const NAV = role === "manager" ? MANAGER_NAV : FOLLOW_NAV;
+  const NAV = (role === "manager" ? MANAGER_NAV.filter((n) => n.phone !== false) : FOLLOW_NAV)
+    .map((n) => ({ ...n, label: n.label || adjuntoName(getLang()) }));
   return (
     <nav aria-label={t("Navegação da liga")} style={{
       position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth, boxSizing: "border-box",
