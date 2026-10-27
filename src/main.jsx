@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import PitchApp from "./PitchApp.jsx";
 import CookieConsent from "./components/CookieConsent.jsx";
+import PresentationBar from "./components/PresentationBar.jsx";
+import { presentationMode } from "./lib/presentation.js";
 import { getThemeMode, applyThemeMode } from "./lib/themeMode.js";
 import { applyRouteMeta } from "./lib/seo.js";
 import { syncAnalyticsConsent, trackPageView } from "./lib/analytics.js";
@@ -23,6 +25,6 @@ onConsentChange(() => { if (syncAnalyticsConsent()) trackPageView(); });
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <PitchApp />
-    <CookieConsent />
+    {presentationMode ? <PresentationBar /> : <CookieConsent />}
   </React.StrictMode>
 );

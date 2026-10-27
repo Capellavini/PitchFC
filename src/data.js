@@ -3,7 +3,9 @@
 // This becomes the seed data when the backend lands.
 // ─────────────────────────────────────────────────────────
 import { isoDay } from "./lib/helpers";
-export const INITIAL_GROUP = [
+import { presentationMode } from "./lib/presentation";
+import { demoPortrait } from "./lib/demoAvatars";
+const BASE_GROUP = [
   { id: 1,  name: "Carlos Silva",     nick: "Carlão",     status: "confirmed", paid: true,  isMe: true,
     email: "carlos@email.com", phone: "+351 912 345 678", position: "Médio",    foot: "Direito",
     age: 29, nationality: "🇵🇹 Portugal", club: "FC Porto",
@@ -83,6 +85,47 @@ export const INITIAL_GROUP = [
     goals: 4,  assists: 2,  mvps: 0, gamesPlayed: 3 },
 ];
 
+// Presentation mode (/demo): every player gets an invented portrait.
+const LOOKS = {
+  1: { skin: "#EBBF98", hair: 4, hairColor: "#2A1B12", beard: true, kit: "#C8FF00" },
+  2: { skin: "#F6D5B8", hair: 0, hairColor: "#14100E", beard: false, kit: "#FF3B5C" },
+  3: { skin: "#D9A074", hair: 2, hairColor: "#14100E", beard: true, kit: "#4895FF" },
+  4: { skin: "#EBBF98", hair: 5, hairColor: "#14100E", beard: true, kit: "#FF9F0A" },
+  5: { skin: "#F6D5B8", hair: 4, hairColor: "#6B4A2B", beard: false, kit: "#A78BFA" },
+  6: { skin: "#C28458", hair: 3, hairColor: "#14100E", beard: false, kit: "#00D08A" },
+  7: { skin: "#D9A074", hair: 0, hairColor: "#2A1B12", beard: true, kit: "#E8ECF4" },
+  8: { skin: "#F6D5B8", hair: 1, hairColor: "#9A6B34", beard: false, kit: "#4895FF" },
+  9: { skin: "#EBBF98", hair: 2, hairColor: "#8C8C8C", beard: true, kit: "#FF3B5C" },
+  10: { skin: "#D9A074", hair: 4, hairColor: "#14100E", beard: false, kit: "#C8FF00" },
+  11: { skin: "#F6D5B8", hair: 5, hairColor: "#14100E", beard: true, kit: "#FF9F0A" },
+  12: { skin: "#5B3623", hair: 2, hairColor: "#14100E", beard: false, kit: "#00D08A" },
+  13: { skin: "#EBBF98", hair: 0, hairColor: "#4A3020", beard: true, kit: "#A78BFA" },
+  14: { skin: "#D9A074", hair: 3, hairColor: "#2A1B12", beard: false, kit: "#E8ECF4" },
+  15: { skin: "#7C4B2F", hair: 1, hairColor: "#14100E", beard: false, kit: "#FF3B5C" },
+};
+// Presentation roster: a full house (10/10) so the team draw and the live
+// Matchday work straight away; 3 still pending (reminder demo), 2 out.
+const PRESENTATION_IN = { 9: { paid: false }, 12: { paid: false } };
+export const INITIAL_GROUP = presentationMode
+  // gamesPlayed is scaled to the seeded 27-game history (9 nights × 3) so
+  // reliability % reads like a real regular group (≈40–95%), not 11–56%.
+  ? BASE_GROUP.map((p) => ({ ...p, gamesPlayed: Math.min(27, Math.round(p.gamesPlayed * 1.75)), ...(PRESENTATION_IN[p.id] ? { status: "confirmed", ...PRESENTATION_IN[p.id] } : {}), photo: demoPortrait({ seed: p.name, ...LOOKS[p.id] }) }))
+  : BASE_GROUP;
+
+// Presentation: the game is TODAY (a couple of hours ahead, capped at 23:30)
+// so Matchday is "hot" and playable whenever the meeting happens; late at
+// night it rolls to tomorrow. Confirmations are always open (opened
+// yesterday morning).
+function presentationSchedule(now = new Date()) {
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const target = Math.max(21 * 60, Math.ceil((mins + 120) / 30) * 30);
+  const today = target <= 23 * 60 + 30;
+  const day = today ? now : new Date(now.getTime() + 864e5);
+  const at = today ? target : 21 * 60;
+  const hh = String(Math.floor(at / 60)).padStart(2, "0"), mm = String(at % 60).padStart(2, "0");
+  return { weekday: day.getDay(), time: `${hh}:${mm}`, openWeekday: (now.getDay() + 6) % 7, openTime: "08:00" };
+}
+
 // Organizer-configurable group settings (defaults for the demo).
 export const DEFAULT_SETTINGS = {
   groupName:    "FC Amigos",
@@ -95,6 +138,7 @@ export const DEFAULT_SETTINGS = {
   recurring:    true,     // weekly recurring game
   openWeekday:  1,        // 0=Domingo … 6=Sábado — when confirmations open
   openTime:     "17:00",  // ...at this time, each week before the game
+  ...(presentationMode ? presentationSchedule() : {}),
 };
 
 export const LAST_GAME = {

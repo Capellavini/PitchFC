@@ -111,6 +111,8 @@ import OnboardingAiChat from "./components/OnboardingAiChat";
 import OnboardingAiInvite from "./components/OnboardingAiInvite";
 import { toGroupForm, normalizeProposal, inviteText, perPlayerPrice } from "./lib/onboardingAi";
 import { isEnabled } from "./lib/flags";
+import { presentationMode } from "./lib/presentation";
+import PresentationHub from "./components/PresentationHub";
 
 const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 
@@ -235,7 +237,7 @@ export default function PitchApp() {
   // pilot opt-in ?rivals=1 (persisted). Teams load for any player row —
   // incl. team-only players with no group (status needsGroup).
   const [rivalsParams] = useState(() => readRivalsParams(window.location.search));
-  const [rivalsOptIn] = useState(() => rivalsParams.optIn || readRivalsOptIn());
+  const [rivalsOptIn] = useState(() => rivalsParams.optIn || readRivalsOptIn() || presentationMode);
   useEffect(() => { if (rivalsParams.optIn) saveRivalsOptIn(true); }, [rivalsParams.optIn]);
   const localMe = localMode ? group.find((p) => p.isMe) : null;
   const rivals = useTeams({
@@ -1303,6 +1305,8 @@ export default function PitchApp() {
 
   // ── PITCH para Ligas (path /league) — full width, no shell ───
   const path = window.location.pathname.replace(/\/+$/, "");
+  // ── Presentation launcher (/demo) — full width, public, no login ───
+  if (path === "/demo" && presentationMode) return <PresentationHub />;
   // Leagues are a service for EXISTING amateur leagues (PITCH runs none).
   // /league is the public page for league organizers (pilot form via
   // submit_lead). /league/demo is the league as an in-app context (local

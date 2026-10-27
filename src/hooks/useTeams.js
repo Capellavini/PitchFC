@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, supabaseEnabled } from "../lib/supabase";
 import { usePersistentState } from "../lib/storage";
+import { presentationMode } from "../lib/presentation";
+import { presentationRivalsSeed } from "../lib/presentationRivals";
 import {
   demoMyTeams, demoInvitePreview, demoOp, demoSeed, emptyRecord, listTeamsLocal, normDirectoryItem, normMember,
   normRecord, normTeam, rivalsErrorCode, sortRoster, teamInviteUrl,
@@ -98,7 +100,7 @@ export function useTeams({ cloudStatus, myPlayer, demoMe, uploadMedia, watch = f
 
   // ── Demo state ─────────────────────────────────────────
   const [demo, setDemo] = usePersistentState("rivalsDemo", null);
-  const demoState = useMemo(() => withChallengeSeed(demo && demo.v === 1 ? demo : demoSeed()), [demo]);
+  const demoState = useMemo(() => withChallengeSeed(demo && demo.v === 1 ? demo : presentationMode ? presentationRivalsSeed() : demoSeed()), [demo]);
   const demoRef = useRef(demoState);
   demoRef.current = demoState;
 

@@ -47,12 +47,13 @@ const ROUTES = {
   "/pitch-deck": { ...HOME, title: "PITCH — Pitch Deck", noindex: true },
   "/roadmap": { ...HOME, title: "PITCH — Roadmap", noindex: true },
   "/admin": { ...HOME, title: "PITCH — Admin", noindex: true },
+  "/demo": { ...HOME, title: "PITCH — Demonstração", noindex: true },
 };
 
 // One-time links carrying a secret token, the owner deep link, and the
 // PITCH Rivals deep links (team invites, challenges, team pages, pilot
 // opt-in) — reachable, never indexed.
-const TOKEN_PARAMS = ["join", "confirm", "rate", "admin", "tjoin", "desafio", "team", "rivals"];
+const TOKEN_PARAMS = ["join", "confirm", "rate", "admin", "tjoin", "desafio", "team", "rivals", "demo"];
 
 /** Pure: what the head should say for this URL. */
 export function routeMeta(pathname, search = "") {

@@ -1,11 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { presentationMode } from "./presentation";
 
 // Keys live in .env.local (never committed — see env.example).
 // Without them the app keeps working on localStorage only.
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabaseEnabled = Boolean(url && key);
+// Presentation mode (/demo) never talks to the backend: local seed only.
+export const supabaseEnabled = Boolean(url && key) && !presentationMode;
 export const supabase = supabaseEnabled
   ? createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } })
   : null;
