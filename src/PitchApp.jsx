@@ -68,6 +68,8 @@ import PitchDeckPage from "./components/PitchDeckPage";
 import LeagueContextApp from "./components/league/LeagueContextApp";
 import LeagueOperationsDemo from './components/league/operations/LeagueOperationsDemo';
 import LeagueHub from "./components/league/LeagueHub";
+import LeagueAuth from "./components/league/LeagueAuth";
+import { isLeagueAccount, leagueAccountRedirect, leagueProfileForm, LEAGUE_ENTRY_PATH } from "./lib/leagueAccount";
 import LeagueCloudPage from "./components/league/LeagueCloudPage";
 import LeagueCompetitionCloud from "./components/league/LeagueCompetitionCloud";
 import { useLeagues } from "./hooks/useLeagues";
@@ -267,7 +269,14 @@ export default function PitchApp() {
   });
   // Membership discovery is read-only. It enables existing league staff,
   // without enabling the public pilot or granting any backend permission.
-  const leaguesFlagOn = localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin }) || leagues.myLeagues.some(l => l.roles?.length);
+  // A league account (created on /league/entrar) always has the league product.
+  const leagueAccount = !localMode && isLeagueAccount(cloud.user);
+  const leaguesFlagOn = localMode || leagueAccount || isEnabled("leagues", { isAdmin: cloud.isAdmin }) || leagues.myLeagues.some(l => l.roles?.length);
+  // A league account has no weekly-group onboarding: it gets the minimal
+  // player row league RPCs need, and nothing else.
+  useEffect(() => {
+    if (leagueAccount && cloud.status === "needsProfile") cloud.createPlayerProfile(leagueProfileForm(cloud.user));
+  }, [leagueAccount, cloud.status, cloud.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const leaguesCloudActive = leaguesFlagOn && leagueRouteActive;
   const [homePreferences, setHomePreferences] = usePersistentState("homeContexts", {});
   const [contextMetadata, setContextMetadata] = useState({userId:null,data:{}});
@@ -282,7 +291,7 @@ export default function PitchApp() {
   const contextUser = cloud.user?.id || "demo";
   const contextMeta = contextMetadata.userId === cloud.user?.id ? contextMetadata.data : {};
   const contextReady = localMode || !cloud.myPlayer?.id || (leagues.loaded && contextMetadata.userId === cloud.user?.id);
-  const homeInputs = {leagues:leagues.loaded?leagues.myLeagues:[],teams:rivals.myTeams,mode:contextMeta.pitch_context_mode};
+  const homeInputs = {leagues:leagues.loaded?leagues.myLeagues:[],teams:rivals.myTeams,mode:contextMeta.pitch_context_mode,product:leagueAccount?'league':undefined};
   const homeOptions = homeContexts(homeInputs);
   const homeContext = resolveHomeContext({...homeInputs,preferred:new URLSearchParams(window.location.search).get("context") || homePreferences[contextUser] || contextMeta.pitch_home_context});
   const [teamSlug, setTeamSlug] = useState(rivalsParams.team);
@@ -1329,6 +1338,12 @@ export default function PitchApp() {
 
   // ── PITCH para Ligas (path /league) — full width, no shell ───
   const path = window.location.pathname.replace(/\/+$/, "");
+  // A league account (created on /league/entrar) only ever sees the league
+  // product: anywhere else it is sent to its league home.
+  const accountRedirect = !localMode ? leagueAccountRedirect(cloud.user, path) : null;
+  if (accountRedirect) { window.location.replace(accountRedirect); return null; }
+  // /league/entrar — the one place a league account is created or signed into.
+  if (path === LEAGUE_ENTRY_PATH && !localMode) return <LeagueAuth cloud={cloud} lang={lang} onLang={changeLang} />;
   // Leagues are a service for EXISTING amateur leagues (PITCH runs none).
   // /league is the public page for league organizers (pilot form via
   // submit_lead). /league/demo is the league as an in-app context (local
@@ -1356,13 +1371,13 @@ export default function PitchApp() {
   // Same gate as the demo: flag off → the public /league page, nothing else.
   if (leagueRoute && ["hub", "league", "competition"].includes(leagueRoute.kind)) {
     // Don't flash the public page while the session (and so isAdmin) is still resolving.
-    if (cloud.status === "loading" || (!localMode && cloud.myPlayer?.id && !contextReady)) return <div role="status" style={{ minHeight: "100vh", background: C.bg, color:C.text2, padding:24 }}>{t("A carregar a organização…")}</div>;
+    if (cloud.status === "loading" || (leagueAccount && cloud.status === "needsProfile") || (!localMode && cloud.myPlayer?.id && !contextReady)) return <div role="status" style={{ minHeight: "100vh", background: C.bg, color:C.text2, padding:24 }}>{t("A carregar a organização…")}</div>;
     if (!leaguesCloudActive) {
       return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }} {...leagueDemoProps} />;
     }
     const viewKey = new URLSearchParams(window.location.search).get("k");
     if (leagueRoute.kind === "hub") {
-      return shell(<LeagueHub contextOptions={homeOptions} leagues={leagues} rivals={rivals} onSignIn={() => { window.location.href = "/"; }} />);
+      return shell(<LeagueHub contextOptions={homeOptions} leagues={leagues} rivals={rivals} onSignIn={() => { window.location.href = LEAGUE_ENTRY_PATH; }} />);
     }
     if (leagueRoute.kind === "league") return <LeagueCloudPage contextOptions={homeOptions} leagues={leagues} slug={leagueRoute.slug} viewKey={viewKey} />;
     return shell(<LeagueCompetitionCloud contextOptions={homeOptions} leagues={leagues} slug={leagueRoute.slug} competitionSlug={leagueRoute.competitionSlug} viewKey={viewKey} />);

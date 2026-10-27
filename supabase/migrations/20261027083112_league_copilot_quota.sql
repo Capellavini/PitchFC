@@ -12,11 +12,11 @@ grant all on table public.league_copilot_usage to service_role;
 
 -- Read-only eligibility for the pre-creation AI wizard; never grants creation rights.
 create or replace function public.league_onboarding_allowed()
-returns boolean language sql stable security invoker set search_path = '' as $
+returns boolean language sql stable security invoker set search_path = '' as $$
  select auth.uid() is not null and (public.is_admin() or exists (
   select 1 from public.league_access_requests r where r.requester_player_id=public.my_player_id()
     and r.status='approved' and r.used_by_league_id is null));
-$;
+$$;
 revoke all on function public.league_onboarding_allowed() from public,anon;
 grant execute on function public.league_onboarding_allowed() to authenticated;
 

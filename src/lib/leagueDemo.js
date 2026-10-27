@@ -105,16 +105,6 @@ export const futPlayer = (p) => ({ ...p, position: POSITION_FULL[p.position] || 
 export const ovrOfPlayer = (p) => computeOverall(POSITION_FULL[p.position], p.attrs);
 export const tierOf = (ovr) => (ovr >= 86 ? "LENDA" : ovr >= 80 ? "OURO" : ovr >= 70 ? "PRATA" : "BRONZE");
 
-/** Other contexts where a demo athlete also plays — shown SEPARATELY on
- *  the athlete page, never summed with this competition (brief §10). */
-export const OTHER_CONTEXTS = Object.freeze({
-  t1p8: [
-    { kind: "group", label: "Grupo semanal · FC Amigos", season: "2026/27", games: 9, goals: 7, assists: 3 },
-    { kind: "friendly", label: "Amigáveis da equipa · Marés FC", season: "2026/27", games: 2, goals: 1, assists: 0 },
-  ],
-  t1p5: [{ kind: "group", label: "Grupo semanal · Futebol de quinta", season: "2026/27", games: 6, goals: 2, assists: 4 }],
-  t1p7: [{ kind: "group", label: "Grupo semanal · FC Amigos", season: "2026/27", games: 8, goals: 9, assists: 1 }],
-});
 
 /** Owner answers for Fase 2 (2026-10-16) — recorded here so the demo copy
  *  and the next phase stay aligned. No behaviour depends on them yet. */

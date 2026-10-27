@@ -12,7 +12,7 @@
 import { leagueMatchDemoOp } from "./leagueMatchMirror.js";
 
 /** Path words that are app routes, never league slugs (mirrors league_unique_slug). */
-export const RESERVED_LEAGUE_SLUGS = Object.freeze(["demo", "minhas", "me", "admin", "new", "nova", "convite", "inscricao", "pilot", "piloto"]);
+export const RESERVED_LEAGUE_SLUGS = Object.freeze(["demo", "minhas", "me", "admin", "new", "nova", "convite", "inscricao", "pilot", "piloto", "entrar"]);
 
 /**
  * Parse a pathname under /league.

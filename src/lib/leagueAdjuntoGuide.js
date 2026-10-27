@@ -15,14 +15,32 @@ const KIND_TEXT = {
 
 const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-/** One-paragraph morning brief from the work queue. */
+// What each kind of work opens (ids are resolved by the screen).
+const KIND_ACTION = {
+  contest: { id: "contest", label: "Decidir contestação" },
+  homologate: { id: "homologate", label: "Homologar" },
+  live: { id: "live", label: "Abrir jogo" },
+  suspended: { id: "discipline", label: "Ver disciplina" },
+  lineup: { id: "lineups", label: "Ver convocatórias" },
+  conflict: { id: "calendar", label: "Abrir calendário" },
+};
+
+/** Briefing from the work queue: one line, then one bullet per kind of work,
+ *  most urgent first, with a button for each (at most three). */
 export function adjuntoBrief(today) {
   if (!today.items.length) {
-    return { text: today.done ? "Está tudo em dia e as jornadas atuais estão fechadas. Se quiseres, preparo o resumo para partilhar." : "Está tudo em dia. Não há nada à espera de decisão.", counts: {} };
+    return { text: today.done ? "Está tudo em dia e as jornadas atuais estão fechadas. Se quiseres, preparo o resumo para partilhar." : "Está tudo em dia. Não há nada à espera de decisão.", get summary() { return this.text; }, counts: {}, actions: [] };
   }
   const counts = today.items.reduce((o, i) => ({ ...o, [i.kind]: (o[i.kind] || 0) + 1 }), {});
-  const parts = Object.keys(KIND_TEXT).filter((k) => counts[k]).map((k) => KIND_TEXT[k](counts[k]));
-  return { text: `Tens para tratar: ${parts.join(", ")}.`, counts };
+  const kinds = Object.keys(KIND_TEXT).filter((k) => counts[k]);
+  const n = today.items.length;
+  const lines = kinds.map((k) => `- ${KIND_TEXT[k](counts[k])}`);
+  return {
+    text: `${n === 1 ? "Tens 1 coisa por tratar:" : `Tens ${n} coisas por tratar:`}\n${lines.join("\n")}`,
+    summary: `Tens para tratar: ${kinds.map((k) => KIND_TEXT[k](counts[k])).join(", ")}.`, // one line, for the Painel card
+    counts,
+    actions: kinds.slice(0, 3).map((k) => KIND_ACTION[k]),
+  };
 }
 
 /**
@@ -61,7 +79,7 @@ export function adjuntoReply(question, today, { names = {} } = {}) {
   }
   if (/pend|falta|fechar|jornada|hoje|resta/.test(q) || !q) {
     const b = adjuntoBrief(today);
-    return { text: b.text, actions: [counts.homologate ? act("homologate", "Homologar") : null, counts.contest ? act("contest", "Ver contestações") : null].filter(Boolean) };
+    return { text: b.text, actions: b.actions };
   }
   const known = COMPETITIONS.map((c) => c.short).join(" e ");
   return { text: `Posso ajudar com pendências, suspensões, conflitos de calendário, convocatórias, resumos e fichas (${known}). Sobre qual queres trabalhar?`, actions: [] };

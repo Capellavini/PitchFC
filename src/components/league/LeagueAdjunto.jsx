@@ -11,6 +11,7 @@ import { recapShareUrl } from "../../lib/leagueShare";
 import BtnPrimary from "../BtnPrimary";
 import BtnGhost from "../BtnGhost";
 import Chip from "../Chip";
+import AdjuntoText from "./AdjuntoText";
 
 /** O Adjunto da Liga, dentro da app: pergunta o que falta fechar, quem está
  *  suspenso, se há conflitos — e abre o passo certo. Demo guiada: as
@@ -22,13 +23,15 @@ export default function LeagueAdjunto({ ctx }) {
   const name = adjuntoName(getLang());
   const [text, setText] = useState("");
   const end = useRef(null);
-  const messages = adjuntoLog.length ? adjuntoLog : [{ role: "assistant", text: adjuntoBrief(today).text, actions: [] }];
+  const brief = adjuntoBrief(today);
+  const messages = adjuntoLog.length ? adjuntoLog : [{ role: "assistant", text: brief.text, actions: brief.actions }];
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [adjuntoLog.length]);
 
   const firstOf = (kind) => today.items.find((i) => i.kind === kind);
   const run = (id) => {
     const go = (it) => it && open({ kind: "match", id: it.matchId || it.matchIds?.[0] });
     if (id === "homologate") return go(firstOf("homologate"));
+    if (id === "live") return go(firstOf("live"));
     if (id === "contest") return go(firstOf("contest"));
     if (id === "lineups") return go(firstOf("lineup"));
     if (id === "calendar") return open({ kind: "manage", section: "calendar" });
@@ -55,8 +58,7 @@ export default function LeagueAdjunto({ ctx }) {
   return (
     <div style={{ maxWidth: 760 }}>
       <div style={{ display: "flex", alignItems: "center", gap: S.sm, flexWrap: "wrap", marginBottom: S.md }}>
-        <Sparkles size={20} color={C.accent} aria-hidden />
-        <h2 style={{ margin: 0, fontSize: T.h }}>{name}</h2>
+        {!ctx.wide && <><Sparkles size={20} color={C.accent} aria-hidden /><h2 style={{ margin: 0, fontSize: T.h }}>{name}</h2></>}
         <Chip variant="orange">{t("Demonstração guiada")}</Chip>
       </div>
       <p style={{ color: C.text2, fontSize: T.meta, lineHeight: 1.5, margin: `0 0 ${S.lg}px` }}>
@@ -69,7 +71,7 @@ export default function LeagueAdjunto({ ctx }) {
             ...cardStyle, alignSelf: m.role === "user" ? "flex-end" : "stretch", maxWidth: m.role === "user" ? "85%" : "100%",
             background: m.role === "user" ? C.accentDim : C.card, borderLeft: m.role === "assistant" ? `3px solid ${C.accent}` : undefined,
           }}>
-            <div style={{ fontSize: T.body, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{m.text}</div>
+            <AdjuntoText text={m.text} />
             {m.actions?.length > 0 && (
               <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", marginTop: S.md }}>
                 {m.actions.map((a, k) => (k === 0

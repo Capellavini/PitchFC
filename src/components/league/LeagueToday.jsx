@@ -12,6 +12,7 @@ import BtnPrimary from "../BtnPrimary";
 import BtnGhost from "../BtnGhost";
 import Chip from "../Chip";
 import LeagueMatchRow from "./LeagueMatchRow";
+import AdjuntoText from "./AdjuntoText";
 
 // One entry per kind of work: icon, tone (a C token) and the call to action.
 const KINDS = {
@@ -66,7 +67,7 @@ export default function LeagueToday({ ctx }) {
           <Sparkles size={18} color={C.accent} aria-hidden />
           <span style={{ fontSize: T.meta, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.accent }}>{name}</span>
         </div>
-        <div style={{ fontSize: T.body, color: C.text1, lineHeight: 1.5, marginBottom: S.md }}>{t(brief.text)}</div>
+        <div style={{ marginBottom: S.md }}><AdjuntoText text={brief.summary} /></div>
         <BtnGhost tone="accent" onClick={() => goTab("adjunto")}>{tf(t("Falar com o {name}"), { name })}</BtnGhost>
       </div>
 

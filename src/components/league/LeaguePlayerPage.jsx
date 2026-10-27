@@ -1,8 +1,8 @@
-import { Star, GitCompare, Layers } from "lucide-react";
+import { Star, GitCompare } from "lucide-react";
 import { C, S, T, TOUCH, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { tf, plural, EVENT_LABEL } from "../../lib/leagueCopy";
-import { playerById, teamById, COMPETITION, futPlayer, OTHER_CONTEXTS, ovrOfPlayer, tierOf } from "../../lib/leagueDemo";
+import { playerById, teamById, COMPETITION, futPlayer, ovrOfPlayer, tierOf } from "../../lib/leagueDemo";
 import { activeEvents, countedMatches } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SectionLabel from "../SectionLabel";
@@ -36,7 +36,6 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
   });
   const trace = countedMatches(state.matches, { includeProvisional: true }).flatMap((m) =>
     activeEvents(state.logs[m.id] || []).filter((e) => e.playerId === playerId || e.assistId === playerId).map((e) => ({ m, e })));
-  const others = OTHER_CONTEXTS[playerId] || [];
   const ovr = ovrOfPlayer(p);
   const split = Boolean(ctx.wide); // computer: card on the left, numbers on the right
 
@@ -85,21 +84,6 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
       {(sp.goals !== s.goals || sp.assists !== s.assists) && (
         <div style={{ fontSize: T.meta, color: C.orange, marginBottom: S.lg }}>{tf(t("Com jogos provisórios: {g} · {a}."), { g: plural(sp.goals || 0, "golo", "golos"), a: plural(sp.assists || 0, "assistência", "assistências") })}</div>
       )}
-
-      <SectionLabel style={{ marginTop: S.lg }}>{t("Noutros contextos · não somados")}</SectionLabel>
-      <div style={{ ...cardStyle, marginBottom: S.lg }}>
-        {others.length === 0 && <div style={{ fontSize: T.body, color: C.text2 }}>{t("Sem outros contextos públicos neste PITCH.")}</div>}
-        {others.map((o, i) => (
-          <div key={o.label} style={{ display: "flex", gap: S.sm, alignItems: "flex-start", padding: `${S.sm}px 0`, borderTop: i ? `1px solid ${C.border}` : "none" }}>
-            <Layers size={16} color={C.text2} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: T.body, fontWeight: 700 }}>{o.label}</div>
-              <div style={{ fontSize: T.meta, color: C.text2 }}>{o.season} · {plural(o.games, "jogo", "jogos")} · {plural(o.goals, "golo", "golos")} · {plural(o.assists, "assistência", "assistências")}</div>
-            </div>
-          </div>
-        ))}
-        <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.sm, lineHeight: 1.5 }}>{t("Grupos semanais, amigáveis e competições têm estatísticas próprias — nunca se misturam com as desta liga.")}</div>
-      </div>
 
       <BtnGhost block onClick={() => open({ kind: "compare" })} style={{ marginBottom: S.xl }}><GitCompare size={16} aria-hidden /> {t("Comparar atletas")}</BtnGhost>
 
