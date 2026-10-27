@@ -66,6 +66,7 @@ import AdminDashboardPage from "./components/admin/AdminDashboardPage";
 import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
 import LeagueContextApp from "./components/league/LeagueContextApp";
+import LeagueOperationsDemo from './components/league/operations/LeagueOperationsDemo';
 import LeagueHub from "./components/league/LeagueHub";
 import LeagueCloudPage from "./components/league/LeagueCloudPage";
 import LeagueCompetitionCloud from "./components/league/LeagueCompetitionCloud";
@@ -1341,6 +1342,7 @@ export default function PitchApp() {
     onFan: () => { window.location.href = "/league/demo?entrada=adepto"; },
     onMyLeagues: () => { window.location.href = "/league/minhas"; },
   } : {};
+  if (path === '/league/demo' && leagueDemoOn && new URLSearchParams(window.location.search).get('central') === '1') return <LeagueOperationsDemo/>;
   if (path === "/league" || (path === "/league/demo" && !leagueDemoOn)) {
     return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }} {...leagueDemoProps} />;
   }
@@ -1364,7 +1366,7 @@ export default function PitchApp() {
     if (leagueRoute.kind === "hub") {
       return shell(<LeagueHub contextOptions={homeOptions} leagues={leagues} rivals={rivals} onSignIn={() => { window.location.href = "/"; }} />);
     }
-    if (leagueRoute.kind === "league") return shell(<LeagueCloudPage contextOptions={homeOptions} leagues={leagues} slug={leagueRoute.slug} viewKey={viewKey} />);
+    if (leagueRoute.kind === "league") return <LeagueCloudPage contextOptions={homeOptions} leagues={leagues} slug={leagueRoute.slug} viewKey={viewKey} />;
     return shell(<LeagueCompetitionCloud contextOptions={homeOptions} leagues={leagues} slug={leagueRoute.slug} competitionSlug={leagueRoute.competitionSlug} viewKey={viewKey} />);
   }
 

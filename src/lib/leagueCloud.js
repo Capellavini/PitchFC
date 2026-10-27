@@ -262,7 +262,8 @@ export function leagueDemoOp(state, op, args = {}, actor = null, now = Date.now(
       if (!lg || (!staff && (lg.status === "draft" || (lg.visibility === "private" && !keyed)))) return { state: s, data: null };
       const myRoles = [...new Set(s.members.filter((m) => m.leagueId === lg.id && m.playerId === me && m.status === "active").map((m) => m.role))];
       return { state: s, data: {
-        id: lg.id, slug: lg.slug, name: lg.name, city: lg.city, country: lg.country, visibility: lg.visibility, status: lg.status, color: lg.color,
+        id: lg.id, slug: lg.slug, name: lg.name, short_name: lg.short_name ?? null, description: lg.description ?? null,
+        logo_url: lg.logo_url ?? null, city: lg.city, country: lg.country, visibility: lg.visibility, status: lg.status, color: lg.color,
         responsaveis: s.members.filter((m) => m.leagueId === lg.id && m.status === "active" && ["owner", "manager"].includes(m.role)).map((m) => ({ name: m.name || "—", role: m.role })),
         myRoles,
         competitions: s.competitions.filter((c) => c.leagueId === lg.id && (staff || (c.status !== "draft" && ((c.visibility || lg.visibility) === "public" || keyed))))
