@@ -270,3 +270,23 @@ export function setupSteps(state) {
     { id: "calendar", done: state.matches.length > 0, section: "calendar" },
   ];
 }
+
+/** Moves a match that has not started to another day, time or ground. */
+export function rescheduleMatch(state, { matchId, date, time, venue }) {
+  const m = state.matches.find((x) => x.id === matchId);
+  if (!m) throw new SetupError("not_found", matchId);
+  if (m.state !== "scheduled") throw new SetupError("match_started");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "") || !/^\d{2}:\d{2}$/.test(time || "")) throw new SetupError("date_required");
+  const kickoff = zonedIso(date, time, state.data.league.timeZone || "Europe/Lisbon");
+  return { ...state, matches: state.matches.map((x) => (x.id === matchId ? { ...x, kickoff, venue: clean(venue) || x.venue } : x)) };
+}
+
+/** A notice shown to the fans on the league page (newest first). */
+export function addAnnouncement(state, { title, body, at }) {
+  const t = clean(title); const b = String(body ?? "").trim().slice(0, 1200);
+  if (t.length < 2) throw new SetupError("title_required");
+  if (!b) throw new SetupError("body_required");
+  const taken = new Set(state.announcements.map((a) => a.id)); let n = state.announcements.length + 1;
+  while (taken.has(`a${n}`)) n++;
+  return { ...state, announcements: [{ id: `a${n}`, at: at || new Date().toISOString(), title: t.slice(0, 120), body: b }, ...state.announcements] };
+}
