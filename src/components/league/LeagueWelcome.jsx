@@ -1,7 +1,8 @@
 import { Sparkles } from "lucide-react";
 import { C, S, T, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
-import { welcomeFor, isWelcomed } from "../../lib/leagueWelcome";
+import { welcomeFor, welcomeLines, isWelcomed } from "../../lib/leagueWelcome";
+import { modOn } from "../../lib/leagueDemo";
 import BtnGhost from "../BtnGhost";
 
 /** First-visit card on a role's home: three lines on what the screen is for,
@@ -16,7 +17,7 @@ export default function LeagueWelcome({ role, seen, onSeen }) {
         <span style={{ fontSize: T.cardTitle, fontWeight: 800 }}>{t(w.title)}</span>
       </div>
       <ol style={{ margin: `0 0 ${S.md}px`, paddingLeft: S.lg, display: "flex", flexDirection: "column", gap: S.xs, fontSize: T.body, lineHeight: 1.5, color: C.text1 }}>
-        {w.lines.map((l) => <li key={l}>{t(l)}</li>)}
+        {welcomeLines(role, modOn).map((l) => <li key={l}>{t(l)}</li>)}
       </ol>
       <BtnGhost tone="accent" onClick={() => onSeen(role)}>{t("Percebi")}</BtnGhost>
     </section>

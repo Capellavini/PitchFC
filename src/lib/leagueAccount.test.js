@@ -17,7 +17,7 @@ test("a league account is kept inside the league product", () => {
   for (const p of ["/", "/?join=abc", "/rivals", "/pricing", "/admin", "/demo", "/desafios"]) {
     assert.equal(leagueAccountRedirect(league, p.split("?")[0]), LEAGUE_HOME_PATH, p);
   }
-  for (const p of ["/league", "/league/minhas", "/league/liga-x/campeonato", "/league/entrar", "/league/demo", "/privacidade", "/termos", "/league/"]) {
+  for (const p of ["/league", "/league/minhas", "/league/liga-x/campeonato", "/league/entrar", "/league/demo", "/l/afpce", "/privacidade", "/termos", "/league/"]) {
     assert.equal(leagueAccountRedirect(league, p), null, p);
   }
 });

@@ -41,3 +41,11 @@ export const welcomeFor = (role) => WELCOME[role] || null;
 
 /** Role → seen flag map ({ manager: true, … }). */
 export const isWelcomed = (seen, role) => Boolean(seen && seen[role]);
+
+// Lines that only make sense when a module is on (a league that keeps Fantasy or the fan vote off must not advertise them).
+const NEEDS = Object.freeze({
+  "Vota no craque do jogo quando a votação estiver aberta.": "fan_vote",
+  "Monta a tua equipa de Fantasy com os resultados oficiais.": "fantasy",
+});
+/** The role's welcome lines without the ones about modules that are off. `isOn(moduleId)` → boolean. */
+export const welcomeLines = (role, isOn) => (welcomeFor(role)?.lines || []).filter((l) => !NEEDS[l] || isOn(NEEDS[l]));

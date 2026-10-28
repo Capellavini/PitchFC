@@ -6,6 +6,8 @@ import SectionLabel from "../SectionLabel";
 import BtnPrimary from "../BtnPrimary";
 import LeagueField from "./LeagueField";
 import LeagueManageModules from "./LeagueManageModules";
+import LeagueManageBrand from "./LeagueManageBrand";
+import LeagueManagePublish from "./LeagueManagePublish";
 
 /** "Liga": the league's name and city, and which modules it runs. */
 export default function LeagueManageSetup({ ctx }) {
@@ -31,6 +33,8 @@ export default function LeagueManageSetup({ ctx }) {
         </LeagueField>
         <div><BtnPrimary type="submit" disabled={!dirty || name.trim().length < 2}>{t("Guardar")}</BtnPrimary></div>
       </form>
+      <LeagueManageBrand ctx={ctx} />
+      {ctx.live && <LeagueManagePublish ctx={ctx} />}
       <LeagueManageModules ctx={ctx} />
     </div>
   );

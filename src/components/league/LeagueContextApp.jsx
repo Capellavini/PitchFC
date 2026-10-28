@@ -36,6 +36,8 @@ import LeagueManage from "./LeagueManage";
 import LeaguePlayersDirectory from "./LeaguePlayersDirectory";
 import LeagueCompare from "./LeagueCompare";
 import LeagueToast from "./LeagueToast";
+import { LeagueSyncBanner } from "./LeagueSyncStatus";
+import LeagueOnboarding from "./LeagueOnboarding";
 
 const SHELL_W = 430; // same column as the app shell (phone layout)
 const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif"; // same as the app shell
@@ -55,10 +57,18 @@ const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sa
  * through — it never grants anything real.
  *
  * Props: entry "fan" → start the "Sou adepto" flow.
+ *        store → a real account's league (useLeagueWorkspace): the state lives
+ *        in the cloud, the viewer is always the Gestor and the demo-only
+ *        furniture (role switcher, demo chip, reset) is hidden.
  */
-export default function LeagueContextApp({ entry = null }) {
-  const [raw, setRaw] = usePersistentState(LEAGUE_DEMO_KEY, null);
+export default function LeagueContextApp({ entry = null, store = null }) {
+  const live = Boolean(store);
+  const readOnly = Boolean(store?.readOnly); // a public page: followers look, nothing is written
+  const local = usePersistentState(live ? "leagueWorkspaceLocal" : LEAGUE_DEMO_KEY, null);
+  const [raw, setRaw] = live ? [store.raw, store.setRaw] : local;
   const state = useMemo(() => normalizeLeagueState(raw), [raw]);
+  const latest = useRef(state);
+  latest.current = state;
   const [storedTab, setTab] = usePersistentState("leagueDemoTab", "inicio");
   const [manageSection, setManageSection] = usePersistentState("leagueDemoManage", "overview");
   const [stack, setStack] = usePersistentState("leagueDemoStack", []);
@@ -82,7 +92,7 @@ export default function LeagueContextApp({ entry = null }) {
     } catch { /* ignore */ }
   }, [entry]);
 
-  const role = state.viewer?.role || "fan";
+  const role = live && !readOnly ? "manager" : state.viewer?.role || "fan";
   const derived = useMemo(() => deriveLeague(state), [state]);
   const acc = ROLE_ACCOUNTS[role] || ROLE_ACCOUNTS.fan;
   const lang = getLang();
@@ -107,8 +117,13 @@ export default function LeagueContextApp({ entry = null }) {
   /** Apply a pure update to the demo state; LeagueError → toast. */
   const apply = (fn, okMsg) => {
     try {
-      const next = fn(state);
-      if (next === state) return { same: true };
+      // Two writes in one gesture (save the name, then move to the next step) must chain:
+      // each starts from the latest result, not from the state of the last render.
+      if (readOnly) return { same: true };
+      const base = latest.current;
+      const next = fn(base);
+      if (next === base) return { same: true };
+      latest.current = next;
       setRaw(next);
       if (okMsg) notify(okMsg);
       return { ok: true };
@@ -119,7 +134,7 @@ export default function LeagueContextApp({ entry = null }) {
   };
   const setMatch = (s, id, fn) => ({ ...s, matches: s.matches.map((m) => (m.id === id ? fn(m) : m)) });
   const now = () => new Date().toISOString();
-  const who = role === "manager" ? t("Gestor (demo)") : `${t(acc.label)} (demo)`;
+  const who = role === "manager" ? (live ? t("Gestor") : t("Gestor (demo)")) : `${t(acc.label)} (demo)`;
 
   const changeRole = (r) => {
     apply((s) => ({ ...s, viewer: { ...(s.viewer || {}), role: r, entered: true } }));
@@ -188,11 +203,11 @@ export default function LeagueContextApp({ entry = null }) {
     reset: () => { setRaw(emptyLeagueState()); setWelcomeSeen({}); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
   };
 
-  const entering = entryMode === "fan" || !state.viewer?.entered;
+  const entering = !live && (entryMode === "fan" || !state.viewer?.entered);
   const manager = role === "manager";
   const desktop = wide && !entering; // computer layout for every role: sidebar + wide content
   // Only the Gestor looks across competitions; followers see the primary one.
-  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, welcomeSeen, markWelcome };
+  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, welcomeSeen, markWelcome, live, store };
   const pushed = !entering && Boolean(view);
   // What is waiting on a captain / athlete shows as a count on their Equipa tab.
   const badges = inTeam ? { inicio: teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role }).queue.length } : {};
@@ -213,6 +228,16 @@ export default function LeagueContextApp({ entry = null }) {
   else if (tab === "mais") body = <LeagueMore ctx={ctx} />;
   else body = <LeagueHome ctx={ctx} />;
 
+  // A real account that has not finished the guided start lands there first.
+  if (live && !readOnly && !state.setup?.done) {
+    return (
+      <div style={{ fontFamily: FONT }}>
+        <LeagueOnboarding ctx={ctx} />
+        <LeagueToast toast={toast} onDone={() => setToast(null)} />
+      </div>
+    );
+  }
+
   if (desktop) {
     const title = tab === "adjunto" ? adjuntoName(lang) : tabTitle(role, tab);
     const scopeLabel = ctx.scope === "all" ? t("Todas as competições") : t(competitionTitle(competitionById[ctx.scope]));
@@ -220,9 +245,10 @@ export default function LeagueContextApp({ entry = null }) {
     return (
       <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT }}>
         <div style={{ display: "grid", gridTemplateColumns: "264px minmax(0, 1fr)" }}>
-          <LeagueSideNav tab={tab} onSelect={goTab} scope={ctx.scope} onScope={setScope} role={role} onRole={changeRole} badges={deskBadges} />
+          <LeagueSideNav tab={tab} onSelect={goTab} scope={ctx.scope} onScope={setScope} role={role} onRole={changeRole} badges={deskBadges} live={live} sync={store?.sync} />
           <main style={{ padding: `${S.xxl}px ${S.xxl + 8}px ${S.xxl}px`, boxSizing: "border-box", maxWidth: 1320, width: "100%" }}>
             <LeagueHeader desktop title={t(title)} subtitle={manager ? `${LEAGUE.name} · ${scopeLabel}` : `${LEAGUE.name} · ${t(COMPETITION.short)}`} />
+            <LeagueSyncBanner store={store} />
             <div style={{ maxWidth: !view && ["inicio", "jogos", "gerir", "eu"].includes(tab) ? undefined : 880 }}>{body}</div>
           </main>
         </div>
@@ -234,7 +260,8 @@ export default function LeagueContextApp({ entry = null }) {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, overflowX: "hidden", fontFamily: FONT }}>
       <div style={{ maxWidth: SHELL_W, margin: "0 auto", padding: `0 ${S.lg}px ${entering ? S.xxl : 104}px`, boxSizing: "border-box" }}>
-        <LeagueHeader role={role} onRole={changeRole} compact={entering} slim={pushed} scope={ctx.scope} onScope={setScope} onMore={() => goTab("mais")} />
+        <LeagueHeader role={role} onRole={changeRole} compact={entering} slim={pushed} scope={ctx.scope} onScope={setScope} onMore={() => goTab("mais")} live={live} sync={store?.sync} />
+        <LeagueSyncBanner store={store} />
         {body}
       </div>
       {!entering && <LeagueBottomNav tab={tab} role={role} onSelect={goTab} maxWidth={SHELL_W} badges={badges} />}

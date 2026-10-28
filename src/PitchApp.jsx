@@ -69,8 +69,10 @@ import LeagueContextApp from "./components/league/LeagueContextApp";
 import LeagueOperationsDemo from './components/league/operations/LeagueOperationsDemo';
 import LeagueHub from "./components/league/LeagueHub";
 import LeagueAuth from "./components/league/LeagueAuth";
-import { isLeagueAccount, leagueAccountRedirect, leagueProfileForm, LEAGUE_ENTRY_PATH } from "./lib/leagueAccount";
+import { isLeagueAccount, leagueAccountRedirect, leagueProfileForm, LEAGUE_ENTRY_PATH, LEAGUE_HOME_PATH } from "./lib/leagueAccount";
 import LeagueCloudPage from "./components/league/LeagueCloudPage";
+import LeagueWorkspaceApp from "./components/league/LeagueWorkspaceApp";
+import LeaguePublicPage from "./components/league/LeaguePublicPage";
 import LeagueCompetitionCloud from "./components/league/LeagueCompetitionCloud";
 import { useLeagues } from "./hooks/useLeagues";
 import { parseLeaguePath } from "./lib/leagueCloud";
@@ -1344,6 +1346,9 @@ export default function PitchApp() {
   // product: anywhere else it is sent to its league home.
   const accountRedirect = !localMode ? leagueAccountRedirect(cloud.user, path) : null;
   if (accountRedirect) { window.location.replace(accountRedirect); return null; }
+  // /l/<slug> — a league's public page (published by its Gestor). Public, read-only.
+  const publicLeague = path.match(/^\/l\/([a-z0-9-]{1,60})$/);
+  if (publicLeague && !localMode) return <LeaguePublicPage slug={publicLeague[1]} />;
   // /league/entrar — the one place a league account is created or signed into.
   if (path === LEAGUE_ENTRY_PATH && !localMode) return <LeagueAuth cloud={cloud} lang={lang} onLang={changeLang} />;
   // ── Presentation launcher (/demo) — full width, public, no login ───
@@ -1370,6 +1375,12 @@ export default function PitchApp() {
     // PITCH Ligas is a standalone product: no groups/teams contexts from the
     // other apps and no phone-column app shell (the Gestor gets a full web layout).
     return <LeagueContextApp entry={leagueEntry} />;
+  }
+  // The league workspace (PITCH Ligas on the account's own cloud copy). A league
+  // account lands here from /league/minhas; any other signed-in account (the
+  // PITCH admin) opens it on /league/minhas/painel and keeps the old hub.
+  if (!localMode && cloud.user?.id && (path === "/league/minhas/painel" || (leagueAccount && path === LEAGUE_HOME_PATH))) {
+    return <LeagueWorkspaceApp user={cloud.user} />;
   }
   // Real leagues (Fase 2): /league/minhas, /league/<slug>, /league/<slug>/<comp>.
   // Same gate as the demo: flag off → the public /league page, nothing else.

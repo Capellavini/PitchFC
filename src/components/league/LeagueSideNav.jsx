@@ -7,14 +7,16 @@ import { LEAGUE } from "../../lib/leagueDemo";
 import { deskNavFor } from "../../lib/leagueNav";
 import Chip from "../Chip";
 import LeagueScopeBar from "./LeagueScopeBar";
+import LeagueMark from "./LeagueMark";
 import LeagueRoleSwitcher from "./LeagueRoleSwitcher";
+import { LeagueSyncChip } from "./LeagueSyncStatus";
 
 /** Desktop navigation, per role: the Gestor gets the work areas and the
  *  competition switcher; captain, athlete and fan get their own five
  *  destinations. The demo-only role switcher sits at the bottom. The league
  *  is a web app on a computer, not a phone column. `badges` is a
  *  { tabId: count } map of what is waiting on this role. */
-export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onRole, badges = {} }) {
+export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onRole, badges = {}, live = false, sync }) {
   const NAV = deskNavFor(role).map((n) => ({ ...n, label: n.label || adjuntoName(getLang()) }));
   return (
     <aside style={{
@@ -26,8 +28,13 @@ export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onR
           <img src={BRAND.logo} alt="PITCH" style={{ height: 18 }} />
           <span style={{ ...displayFont, fontSize: T.meta, letterSpacing: "0.12em", color: C.accent }}>LIGAS</span>
         </div>
-        <div style={{ ...displayFont, fontSize: T.h, lineHeight: 1.15, marginTop: S.md, color: C.text1 }}>{LEAGUE.name}</div>
-        <div style={{ marginTop: S.sm }}><Chip variant="orange" Icon={FlaskConical} title={t(LG.demoData)}>{t("Demo")}</Chip></div>
+        <div style={{ display: "flex", alignItems: "center", gap: S.md, marginTop: S.md }}>
+          {live && <LeagueMark size={44} />}
+          <div style={{ ...displayFont, fontSize: T.h, lineHeight: 1.15, color: C.text1, minWidth: 0 }}>{LEAGUE.name}</div>
+        </div>
+        <div style={{ marginTop: S.sm }}>
+          {live ? <LeagueSyncChip sync={sync} /> : <Chip variant="orange" Icon={FlaskConical} title={t(LG.demoData)}>{t("Demo")}</Chip>}
+        </div>
       </div>
 
       <nav aria-label={t("Navegação da liga")} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -56,9 +63,11 @@ export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onR
         </div>
       )}
 
-      <div style={{ marginTop: "auto" }}>
-        <LeagueRoleSwitcher role={role} onRole={onRole} grid />
-      </div>
+      {!live && (
+        <div style={{ marginTop: "auto" }}>
+          <LeagueRoleSwitcher role={role} onRole={onRole} grid />
+        </div>
+      )}
     </aside>
   );
 }
