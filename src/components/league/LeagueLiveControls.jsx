@@ -1,3 +1,4 @@
+import { modOn } from "../../lib/leagueDemo";
 import { Play, Square, CheckCircle2, RotateCcw, Plus, Repeat, Video, CalendarClock } from "lucide-react";
 import { C, S, T, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
@@ -21,7 +22,7 @@ export default function LeagueLiveControls({ match, act, onAddEvent, onReason })
           <div style={row}>
             <BtnPrimary onClick={() => act.move(match.id, "live", {}, t("Jogo iniciado."))} style={grow}><Play size={16} aria-hidden /> {t("Iniciar jogo")}</BtnPrimary>
             <BtnGhost onClick={() => onReason("postponed")} style={grow}><CalendarClock size={16} aria-hidden /> {t("Adiar")}</BtnGhost>
-            <BtnGhost onClick={() => act.toggleVar(match.id)} style={grow}><Video size={16} aria-hidden /> {match.var?.enabled ? t("Desligar VAR") : t("Ativar VAR")}</BtnGhost>
+            {modOn("var") && <BtnGhost onClick={() => act.toggleVar(match.id)} style={grow}><Video size={16} aria-hidden /> {match.var?.enabled ? t("Desligar VAR") : t("Ativar VAR")}</BtnGhost>}
           </div>
         </>
       )}

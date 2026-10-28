@@ -3,7 +3,7 @@ import { Award, Users } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf, plural } from "../../lib/leagueCopy";
-import { playerById, teamById, fmtDateTime } from "../../lib/leagueDemo";
+import { playerById, teamById, fmtDateTime, modOn } from "../../lib/leagueDemo";
 import { fanVoteOpen, tallyFanVotes } from "../../lib/core/league";
 import BtnPrimary from "../BtnPrimary";
 import BtnGhost from "../BtnGhost";
@@ -45,7 +45,7 @@ export default function LeagueAwards({ ctx, match }) {
         )}
       </section>
 
-      <section style={cardStyle} aria-labelledby="lg-fans-mvp">
+      {modOn("fan_vote") && <section style={cardStyle} aria-labelledby="lg-fans-mvp">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: S.sm, flexWrap: "wrap", marginBottom: S.sm }}>
           <span id="lg-fans-mvp" style={{ display: "flex", alignItems: "center", gap: S.sm, fontSize: T.meta, fontWeight: 800, color: C.text2, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             <Users size={16} color={C.blue} aria-hidden /> {t(LG.fansMvp)}
@@ -84,7 +84,7 @@ export default function LeagueAwards({ ctx, match }) {
         {open && role === "manager" && (
           <BtnPrimary block onClick={() => act.closeVote(match.id)} style={{ marginTop: S.md }}>{t("Fechar votação dos adeptos")}</BtnPrimary>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

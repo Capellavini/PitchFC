@@ -1,7 +1,7 @@
 // "Equipa" do capitão e do atleta — what a team's own people need to do or
 // know right now, across every competition the team plays. Pure: derives it
 // from the league state; no I/O, no writes.
-import { COMPETITION, matchesOfTeam } from "./leagueDemo.js";
+import { COMPETITION, matchesOfTeam, tableOfTeam, modOn } from "./leagueDemo.js";
 import { fanVoteOpen } from "./core/league.js";
 
 const PLAYED = new Set(["ended_provisional", "in_review", "homologated", "walkover"]);
@@ -44,11 +44,11 @@ export function teamHome(state, derived, { teamId, playerId = null, accountId = 
       queue.push({ kind: "contest", key: `contest-${m.id}`, matchId: m.id, competitionId: compOf(m) });
     }
   }
-  for (const m of mine.filter(fanVoteOpen).sort((a, b) => byKickoff(b, a)).slice(0, 1)) {
+  for (const m of (modOn("fan_vote") ? mine.filter(fanVoteOpen) : []).sort((a, b) => byKickoff(b, a)).slice(0, 1)) {
     if (!(accountId && state.fanVotes?.[m.id]?.[accountId])) queue.push({ kind: "vote", key: `vote-${m.id}`, matchId: m.id, competitionId: compOf(m) });
   }
   queue.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
 
-  const position = (derived?.table || []).findIndex((r) => r.id === teamId);
-  return { queue, next, upcoming, recent, position, row: position >= 0 ? derived.table[position] : null, banned };
+  const { position, row, competitionId } = tableOfTeam(derived || {}, teamId);
+  return { queue, next, upcoming, recent, position, row, competitionId, banned };
 }

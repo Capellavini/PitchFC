@@ -4,7 +4,8 @@ import { C, R, S, T, TOUCH, BRAND, cardStyle, displayFont, fieldBackdrop } from 
 import { t } from "../lib/i18n";
 import { LP } from "../lib/leaguePageCopy";
 import { STATE_LABEL } from "../lib/leagueCopy";
-import { buildLeagueDemoSeed, deriveLeague, LEAGUE } from "../lib/leagueDemo";
+import { deriveLeague } from "../lib/leagueDemo";
+import { buildExampleState } from "../lib/leagueExample";
 import BtnPrimary from "./BtnPrimary";
 import BtnGhost from "./BtnGhost";
 import Chip from "./Chip";
@@ -36,7 +37,8 @@ const FAQ = [{ q: LP.q1, a: LP.a1 }, { q: LP.q2, a: LP.a2 }, { q: LP.q3, a: LP.a
  * as the app), not a drawing.
  */
 export default function LeaguePage({ onEnterApp, onDemo, onFan, onMyLeagues, lang, onLang }) {
-  const table = useMemo(() => deriveLeague(buildLeagueDemoSeed()).table.slice(0, 4), []);
+  const example = useMemo(() => buildExampleState(), []);
+  const table = useMemo(() => deriveLeague(example).table.slice(0, 4), [example]);
   const goPilot = () => document.getElementById("piloto")?.scrollIntoView({ behavior: "smooth" });
 
   return (
@@ -103,7 +105,7 @@ export default function LeaguePage({ onEnterApp, onDemo, onFan, onMyLeagues, lan
                   <span style={{ ...displayFont, fontSize: T.cardTitle, width: 28, textAlign: "right" }}>{r.pts}</span>
                 </div>
               ))}
-              <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm }}>{LEAGUE.name} · {t(LP.fictional)}</div>
+              <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm }}>{example.data.league.name} · {t(LP.fictional)}</div>
             </div>
           </div>
         </div>

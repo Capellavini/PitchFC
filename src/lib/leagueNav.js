@@ -1,5 +1,6 @@
 import { Home, CalendarDays, ListOrdered, Gamepad2, Menu, ClipboardCheck, Settings2, Sparkles, Shield, User } from "lucide-react";
 import { LG } from "./leagueCopy";
+import { modOn } from "./leagueDemo.js";
 
 // Followers (fan · athlete · captain): exactly 5 destinations (brief §6).
 export const FOLLOW_NAV = [
@@ -22,11 +23,13 @@ export const TEAM_NAV = [
 ];
 
 /** Phone-bar destinations for a demo role. */
-export const navFor = (role) => (role === "manager" ? MANAGER_NAV.filter((n) => n.phone !== false) : role === "captain" || role === "athlete" ? TEAM_NAV : FOLLOW_NAV);
+/** A destination that belongs to an optional module only shows while it is on. */
+const gated = (list) => list.filter((n) => (n.id !== "fantasy" || modOn("fantasy")) && (n.id !== "adjunto" || modOn("adjunto")));
+export const navFor = (role) => gated(role === "manager" ? MANAGER_NAV.filter((n) => n.phone !== false) : role === "captain" || role === "athlete" ? TEAM_NAV : FOLLOW_NAV);
 
 /** Computer sidebar destinations: the Gestor lists "Mais" too; everyone else
  *  has the same five as on the phone. */
-export const deskNavFor = (role) => (role === "manager" ? MANAGER_NAV : navFor(role));
+export const deskNavFor = (role) => (role === "manager" ? gated(MANAGER_NAV) : navFor(role));
 
 /** Page title of a tab for a role (computer header). */
 export const tabTitle = (role, tab) => {

@@ -28,6 +28,9 @@ const KIND_ACTION = {
 /** Briefing from the work queue: one line, then one bullet per kind of work,
  *  most urgent first, with a button for each (at most three). */
 export function adjuntoBrief(today) {
+  if (!today.sections.length) {
+    return { text: "Ainda não há jogos na liga. Segue os passos de «Montar a liga» e passo a ajudar com o que houver por tratar.", get summary() { return this.text; }, counts: {}, actions: [] };
+  }
   if (!today.items.length) {
     return { text: today.done ? "Está tudo em dia e as jornadas atuais estão fechadas. Se quiseres, preparo o resumo para partilhar." : "Está tudo em dia. Não há nada à espera de decisão.", get summary() { return this.text; }, counts: {}, actions: [] };
   }

@@ -3,7 +3,7 @@ import { Video, MapPin, Clock, Shield, AlertTriangle } from "lucide-react";
 import { C, R, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
-import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById } from "../../lib/leagueDemo";
+import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById, modOn } from "../../lib/leagueDemo";
 import { canCorrect, DEMO_RULES } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SegmentedControl from "../SegmentedControl";
@@ -42,7 +42,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
     return (
       <div>
         <BackHeader title={t("Jogo não encontrado")} onBack={back} />
-        <div style={{ color: C.text2 }}>{t("Este jogo não existe nesta demonstração (talvez os exemplos tenham sido repostos).")}</div>
+        <div style={{ color: C.text2 }}>{t("Este jogo já não existe (a liga pode ter sido limpa).")}</div>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
     { id: "escalacoes", label: LG.secLineups }, // always: call-up or inscribed squad (scouting) + boards
     started && { id: "lances", label: LG.secTimeline },
     ENDED.has(match.state) && { id: "destaques", label: LG.secHighlights },
-    match.var?.enabled && { id: "videos", label: LG.secVideos },
+    modOn("var") && match.var?.enabled && { id: "videos", label: LG.secVideos },
     (match.history || []).length > 0 && { id: "sumula", label: LG.secReport },
   ].filter(Boolean);
   const current = sections.some((s) => s.id === sec) ? sec : "resumo";
@@ -113,8 +113,8 @@ export default function LeagueMatchPage({ ctx, matchId }) {
           <div style={{ ...cardStyle, marginBottom: S.md, display: "grid", gap: S.sm, fontSize: T.body }}>
             {info(Clock, <>{fmtKickoff(match.kickoff, lang)} · {t("hora de Lisboa")} ({LEAGUE.timeZone})</>)}
             {info(MapPin, <>{match.venue}</>)}
-            {info(Shield, <>{match.referee} · {t("arbitragem (demo)")}</>)}
-            {info(Video, <>{t(match.var?.enabled ? LG.varOn : LG.varOff)}</>)}
+            {match.referee && info(Shield, <>{match.referee}</>)}
+            {modOn("var") && info(Video, <>{t(match.var?.enabled ? LG.varOn : LG.varOff)}</>)}
           </div>
 
           {suspendedHere.length > 0 && (
@@ -125,7 +125,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
           )}
 
           <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.6, marginBottom: S.lg }}>
-            {t("Regulamento (demo): 2×25 min, Futebol 7, vitória 3 pts.")} {tf(t("{n} amarelos acumulados = 1 jogo de suspensão; vermelho = {r} jogo."), { n: DEMO_RULES.yellowsForSuspension, r: DEMO_RULES.redSuspensionMatches })}
+            {tf(t("Pontos: vitória {w}, empate {d}, derrota {l}."), { w: (competitionById[match.competitionId] || COMPETITION).points.win, d: (competitionById[match.competitionId] || COMPETITION).points.draw, l: (competitionById[match.competitionId] || COMPETITION).points.loss })} {tf(t("{n} amarelos acumulados = 1 jogo de suspensão; vermelho = {r} jogo."), { n: DEMO_RULES.yellowsForSuspension, r: DEMO_RULES.redSuspensionMatches })}
           </div>
 
           {started && <><div style={{ fontSize: T.meta, color: C.text2, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: S.sm }}>{t("Últimos lances")}</div><LeagueTimeline match={match} log={log} /></>}

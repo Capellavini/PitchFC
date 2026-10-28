@@ -20,13 +20,13 @@ export const plural = (n, one, many) => `${n} ${t(n === 1 ? one : many)}`;
 
 export const LG = {
   demoMode: L("Modo demonstração", "Demo mode", "Modo demonstração"),
-  demoData: L("Dados de demonstração — liga, equipas e atletas fictícios, guardados só neste browser.", "Demo data — fictional league, teams and athletes, stored only in this browser.", "Dados de demonstração — liga, times e atletas fictícios, salvos só neste navegador."),
+  demoData: L("Ambiente de teste — o que criares fica guardado só neste browser.", "Test environment — what you create is stored only in this browser.", "Ambiente de teste — o que você criar fica salvo só neste navegador."),
   viewAs: L("Ver como", "View as", "Ver como"),
   roleNote: L("Trocar de papel só muda a vista. Não concede permissões reais.", "Switching role only changes the view. It grants no real permissions.", "Trocar de papel só muda a visão. Não concede permissões reais."),
   manage: L("Gerir liga", "Manage league", "Gerenciar liga"),
   backToLeague: L("Voltar à liga", "Back to the league", "Voltar à liga"),
-  reset: L("Repor exemplos", "Reset examples", "Restaurar exemplos"),
-  resetDone: L("Exemplos repostos.", "Examples restored.", "Exemplos restaurados."),
+  reset: L("Apagar tudo e começar do zero", "Erase everything and start over", "Apagar tudo e começar do zero"),
+  resetDone: L("Liga limpa. Podes começar de novo.", "League cleared. You can start over.", "Liga limpa. Você pode começar de novo."),
   // nav
   navHome: L("Início", "Home", "Início"),
   navMatches: L("Jogos", "Matches", "Jogos"),

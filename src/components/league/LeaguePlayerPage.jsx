@@ -1,8 +1,9 @@
 import { Star, GitCompare } from "lucide-react";
-import { C, S, T, TOUCH, cardStyle } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
+import Avatar from "../Avatar";
 import { t } from "../../lib/i18n";
-import { tf, plural, EVENT_LABEL } from "../../lib/leagueCopy";
-import { playerById, teamById, COMPETITION, futPlayer, ovrOfPlayer, tierOf } from "../../lib/leagueDemo";
+import { tf, plural, EVENT_LABEL, POSITION_LABEL } from "../../lib/leagueCopy";
+import { playerById, teamById, COMPETITION, futPlayer, ovrOfPlayer, tierOf, modOn } from "../../lib/leagueDemo";
 import { activeEvents, countedMatches } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SectionLabel from "../SectionLabel";
@@ -36,6 +37,7 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
   });
   const trace = countedMatches(state.matches, { includeProvisional: true }).flatMap((m) =>
     activeEvents(state.logs[m.id] || []).filter((e) => e.playerId === playerId || e.assistId === playerId).map((e) => ({ m, e })));
+  const ovrOn = modOn("ovr");
   const ovr = ovrOfPlayer(p);
   const split = Boolean(ctx.wide); // computer: card on the left, numbers on the right
 
@@ -44,16 +46,26 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
       {!embedded && <BackHeader title={p.nick} subtitle={`${team.name} · ${COMPETITION.name}`} onBack={back} />}
       <div style={split ? { display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", gap: S.xxl, alignItems: "start" } : undefined}>
       <div>
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: S.md }}>
-        <FutCard player={futPlayer(p)} width={236} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "center", gap: S.xs, flexWrap: "wrap", marginBottom: S.md }}>
-        <Chip>{tf(t("OVR {n} · {tier}"), { n: ovr, tier: t(tierOf(ovr)) })}</Chip>
+      {ovrOn ? (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: S.md }}>
+          <FutCard player={futPlayer(p)} width={236} />
+        </div>
+      ) : (
+        <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: S.lg, marginBottom: S.md }}>
+          <Avatar name={p.name} photo={p.photo} color={team.color} size={64} isMe={isMe} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ ...displayFont, fontSize: T.h + 2 }}>{p.name}</div>
+            <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{team.name} · {t(POSITION_LABEL[p.position])}</div>
+          </div>
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: ovrOn ? "center" : "flex-start", gap: S.xs, flexWrap: "wrap", marginBottom: S.md }}>
+        {ovrOn && <Chip>{tf(t("OVR {n} · {tier}"), { n: ovr, tier: t(tierOf(ovr)) })}</Chip>}
         <Chip>{tf(t("Nº {n}"), { n: p.number })}</Chip>
         {isMe && <Chip variant="lime">{t("És tu")}</Chip>}
         {disc?.pending > 0 && <Chip variant="red">{t("Suspenso no próximo jogo oficial")}</Chip>}
       </div>
-      <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginBottom: S.md, lineHeight: 1.5 }}>{t("Atributos de demonstração. No PITCH real, o OVR vem das avaliações dos colegas (mínimo 3).")}</div>
+      {ovrOn && <div style={{ fontSize: T.meta, color: C.text2, textAlign: "center", marginBottom: S.md, lineHeight: 1.5 }}>{t("Atributos de demonstração. No PITCH real, o OVR vem das avaliações dos colegas (mínimo 3).")}</div>}
 
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", marginBottom: S.lg }}>
         <button type="button" onClick={() => open({ kind: "team", id: p.teamId })}
@@ -85,7 +97,7 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
         <div style={{ fontSize: T.meta, color: C.orange, marginBottom: S.lg }}>{tf(t("Com jogos provisórios: {g} · {a}."), { g: plural(sp.goals || 0, "golo", "golos"), a: plural(sp.assists || 0, "assistência", "assistências") })}</div>
       )}
 
-      <BtnGhost block onClick={() => open({ kind: "compare" })} style={{ marginBottom: S.xl }}><GitCompare size={16} aria-hidden /> {t("Comparar atletas")}</BtnGhost>
+      {modOn("compare") && <BtnGhost block onClick={() => open({ kind: "compare" })} style={{ marginBottom: S.xl }}><GitCompare size={16} aria-hidden /> {t("Comparar atletas")}</BtnGhost>}
 
       <SectionLabel>{t("Origem dos números")}</SectionLabel>
       {trace.length === 0 && <div style={{ fontSize: T.body, color: C.text2 }}>{t("Ainda sem golos, assistências ou cartões registados.")}</div>}

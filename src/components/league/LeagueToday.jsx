@@ -2,7 +2,7 @@ import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardChec
 import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
 import { t, getLang } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
-import { LEAGUE, teamById, playerById, competitionById } from "../../lib/leagueDemo";
+import { LEAGUE, teamById, playerById, competitionById, modOn } from "../../lib/leagueDemo";
 import { leagueToday, roundRecapText } from "../../lib/leagueToday";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { adjuntoBrief } from "../../lib/leagueAdjuntoGuide";
@@ -13,6 +13,7 @@ import BtnGhost from "../BtnGhost";
 import Chip from "../Chip";
 import LeagueMatchRow from "./LeagueMatchRow";
 import AdjuntoText from "./AdjuntoText";
+import LeagueSetupChecklist from "./LeagueSetupChecklist";
 
 // One entry per kind of work: icon, tone (a C token) and the call to action.
 const KINDS = {
@@ -62,17 +63,18 @@ export default function LeagueToday({ ctx }) {
 
   const queue = (
     <div>
-      <div style={{ ...cardStyle, marginBottom: S.xl, borderLeft: `3px solid ${C.accent}` }}>
+      <LeagueSetupChecklist ctx={ctx} />
+      {modOn("adjunto") && <div style={{ ...cardStyle, marginBottom: S.xl, borderLeft: `3px solid ${C.accent}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginBottom: S.sm }}>
           <Sparkles size={18} color={C.accent} aria-hidden />
           <span style={{ fontSize: T.meta, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.accent }}>{name}</span>
         </div>
         <div style={{ marginBottom: S.md }}><AdjuntoText text={brief.summary} /></div>
         <BtnGhost tone="accent" onClick={() => goTab("adjunto")}>{tf(t("Falar com o {name}"), { name })}</BtnGhost>
-      </div>
+      </div>}
 
       <SectionLabel>{today.items.length ? tf(t("Precisa de ti · {n}"), { n: today.items.length }) : t("Precisa de ti")}</SectionLabel>
-      {today.items.length === 0 && (
+      {today.items.length === 0 && state.matches.length > 0 && (
         <div style={{ ...cardStyle, display: "flex", gap: S.md, alignItems: "flex-start", marginBottom: S.lg }}>
           <CheckCircle2 size={20} color={C.green} aria-hidden style={{ flexShrink: 0, marginTop: 1 }} />
           <div>

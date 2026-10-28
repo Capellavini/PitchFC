@@ -12,7 +12,7 @@ export default function LeagueDiscipline({ discipline, onPlayer, dir = null, not
   return (
     <div>
       <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, marginBottom: S.md }}>
-        {note ?? tf(t("Regras demo: {n} amarelos = 1 jogo; vermelho = {r} jogo. Só jogos homologados contam; não é uma regra universal."), { n: DEMO_RULES.yellowsForSuspension, r: DEMO_RULES.redSuspensionMatches })}
+        {note ?? tf(t("Regras por defeito: {n} amarelos = 1 jogo; vermelho = {r} jogo. Só jogos homologados contam; não é uma regra universal."), { n: DEMO_RULES.yellowsForSuspension, r: DEMO_RULES.redSuspensionMatches })}
       </div>
       {rows.length === 0 && <div style={{ color: C.text2 }}>{t("Sem cartões em jogos homologados.")}</div>}
       <div style={{ ...cardStyle, padding: `0 ${S.md}px` }}>

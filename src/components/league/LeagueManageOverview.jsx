@@ -2,7 +2,8 @@ import { CalendarDays, ListOrdered, Trophy } from "lucide-react";
 import { C, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
-import { COMPETITIONS, COMPETITION, TEAMS, PLAYERS } from "../../lib/leagueDemo";
+import { COMPETITIONS, COMPETITION, TEAMS, PLAYERS, competitionTitle } from "../../lib/leagueDemo";
+import LeagueCompetitionForm from "./LeagueCompetitionForm";
 import SectionLabel from "../SectionLabel";
 import BtnGhost from "../BtnGhost";
 import StatTile from "../StatTile";
@@ -24,7 +25,9 @@ export default function LeagueManageOverview({ ctx, onSection }) {
         <StatTile value={PLAYERS.length} label={t("Atletas")} />
         <StatTile value={official} label={t("Homologados")} color={C.green} />
       </div>
+      <LeagueCompetitionForm ctx={ctx} />
       <SectionLabel>{t("Competições")}</SectionLabel>
+      {COMPETITIONS.length === 0 && <div style={{ ...cardStyle, color: C.text2, fontSize: T.body }}>{t("Ainda não há competições. Cria a primeira acima.")}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: S.md }}>
         {COMPETITIONS.map((c) => {
           const ms = own(c);
@@ -34,9 +37,9 @@ export default function LeagueManageOverview({ ctx, onSection }) {
             <div key={c.id} style={cardStyle}>
               <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginBottom: S.xs }}>
                 <Icon size={18} color={C.accent} aria-hidden />
-                <span style={{ fontSize: T.cardTitle, fontWeight: 800 }}>{t(c.name)}</span>
+                <span style={{ fontSize: T.cardTitle, fontWeight: 800 }}>{t(competitionTitle(c))}</span>
               </div>
-              <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.md }}>{t(c.format)} · {tf(t("{n} equipas"), { n: teamsOf(c) })}</div>
+              <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.md }}>{t(c.format)} · {tf(t("{n} equipas"), { n: Math.max(teamsOf(c), (c.teamIds || []).length) })}</div>
               <div style={{ display: "flex", alignItems: "baseline", gap: S.sm, marginBottom: S.md }}>
                 <span style={{ ...displayFont, fontSize: 32, lineHeight: 1 }}>{done}</span>
                 <span style={{ fontSize: T.body, color: C.text2 }}>{tf(t("de {n} jogos homologados"), { n: ms.length })}</span>

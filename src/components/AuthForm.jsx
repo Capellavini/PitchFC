@@ -9,7 +9,7 @@ import PhoneInput from "./PhoneInput";
  *  Talks to Supabase Auth via the onSignUp / onSignIn callbacks. */
 const LANG_OPTIONS = [["pt", "🇵🇹 PT-PT"], ["pt-br", "🇧🇷 PT-BR"], ["en", "🇬🇧 EN"]];
 
-export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack, lang = "pt", onLang }) {
+export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack, lang = "pt", onLang, subtitle }) {
   const [mode, setMode] = useState("signup"); // 'signup' | 'login'
   const [form, setForm] = useState({ name: "", phone: "", email: "", password: "" });
   const [busy, setBusy] = useState(false);
@@ -62,6 +62,7 @@ export default function AuthForm({ onSignUp, onSignIn, onResetPassword, onBack, 
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 20px", ...fieldBackdrop(0.5, 0.94) }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <img src={BRAND.logo} alt="PITCH App" style={{ width: "62%", maxWidth: 230 }} />
+        {subtitle}
       </div>
 
       <div style={{ ...cardStyle, padding: 20 }}>

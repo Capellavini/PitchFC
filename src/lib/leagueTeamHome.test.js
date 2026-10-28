@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLeagueDemoSeed, deriveLeague, ROLE_ACCOUNTS } from "./leagueDemo.js";
+import { loadExample, deriveLeague, ROLE_ACCOUNTS } from "./leagueDemo.js";
 import { teamHome } from "./leagueTeamHome.js";
 
-const seed = () => { const state = buildLeagueDemoSeed(); return { state, derived: deriveLeague(state) }; };
+const seed = () => { const state = loadExample(); return { state, derived: deriveLeague(state) }; };
 const who = (role) => ({ teamId: ROLE_ACCOUNTS[role].teamId, playerId: ROLE_ACCOUNTS[role].playerId, accountId: ROLE_ACCOUNTS[role].accountId, role });
 
 test("the captain gets the team's duties; the athlete does not", () => {

@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLeagueDemoSeed, deriveLeague, teamById, COMPETITION, CUP } from "./leagueDemo.js";
+import { loadExample, deriveLeague, teamById, COMPETITION, CUP } from "./leagueDemo.js";
 import { leagueToday, roundRecapText } from "./leagueToday.js";
 
-const seed = () => { const state = buildLeagueDemoSeed(); return { state, derived: deriveLeague(state) }; };
+const seed = () => { const state = loadExample(); return { state, derived: deriveLeague(state) }; };
 const section = (today, id) => today.sections.find((s) => s.competition.id === id);
 
 test("the league runs two competitions and each has its own current round", () => {

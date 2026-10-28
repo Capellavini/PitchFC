@@ -2,7 +2,7 @@ import { Gamepad2, Megaphone, Radio, Star, Target, Vote } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
-import { teamById, playerById, TEAMS, fmtKickoff, fmtDateTime, competitionById, COMPETITION } from "../../lib/leagueDemo";
+import { teamById, playerById, TEAMS, fmtKickoff, fmtDateTime, competitionById, COMPETITION, modOn } from "../../lib/leagueDemo";
 import { fanHome } from "../../lib/leagueFanHome";
 import SectionLabel from "../SectionLabel";
 import BtnPrimary from "../BtnPrimary";
@@ -83,7 +83,7 @@ export default function LeagueFanHome({ ctx }) {
     </div>
   );
 
-  const vote = h.voteMatch && (
+  const vote = modOn("fan_vote") && h.voteMatch && (
     <div style={{ ...cardStyle, marginBottom: S.xl, display: "flex", alignItems: "center", gap: S.md }}>
       <Vote size={22} color={C.accent} aria-hidden style={{ flexShrink: 0 }} />
       <div style={{ minWidth: 0, flex: 1 }}>
@@ -115,7 +115,7 @@ export default function LeagueFanHome({ ctx }) {
     </div>
   );
 
-  const fantasy = (
+  const fantasy = modOn("fantasy") && (
     <div style={{ ...cardStyle, marginBottom: S.xl, display: "flex", alignItems: "center", gap: S.md }}>
       <Gamepad2 size={22} color={C.accent} aria-hidden style={{ flexShrink: 0 }} />
       <div style={{ minWidth: 0, flex: 1 }}>
