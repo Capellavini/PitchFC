@@ -81,5 +81,25 @@ A folha é o **Boletim de Participantes (futebol 11, séniores)**, de **um clube
 ### Frases livres
 «O Porto FC jogou hoje com o Corinthians, terminou 2x0, dois golos do Vini e amarelo ao Barto» vira uma proposta de resultado: o sistema (não o modelo) resolve as equipas, o jogo e os atletas; se o nome for ambíguo ou não existir, diz porquê. Sem marcadores, os golos ficam registados «sem marcador». Um autogolo conta para a outra equipa.
 
-### WhatsApp (próximo PR)
-Mesmo número do piloto. Fluxo: a direção gera um código na app («Ligar WhatsApp»), envia-o ao bot, e a partir daí o bot trata das mensagens e fotos dessa pessoa como o chat da app: lê, mostra o resumo e só aplica com «sim». O bot continua a correr só quando alguém o arranca num computador (ver `CLAUDE.md`), por isso «sempre ligado» exige alojá-lo.
+### WhatsApp (feito, atrás de uma flag)
+Mesmo número do piloto (351 913 813 845). Não toca no Adjunto dos grupos: só trata das mensagens de quem ligou a liga.
+
+**Como se liga.** Em Gerir → Liga → «Adjunto no WhatsApp», a direção carrega em «Ligar o meu WhatsApp», abre o WhatsApp com a mensagem pronta («Quero ligar o Adjunto da minha liga. Código: LIGA-XXXXXX») e envia-a. O código vale 15 minutos e usa-se uma vez. Se o mesmo número for ligado a outra conta, passa para essa.
+
+**O que faz.**
+- Frase: «o Porto FC vs Corinthians jogou hoje, terminou 2x0, 2 golos do Vini, amarelo ao Barto» → o bot responde com o resumo (✅ linhas / ❌ o que não conseguiu e porquê) e pede «sim».
+- Foto ou PDF da súmula → o mesmo caminho, com a leitura do Boletim de Participantes. Se a letra não lê bem, mandar como *documento* (sem compressão).
+- «sim» aplica; «não» cancela. Antes de aplicar, o bot volta a ler a liga como está **nesse momento** (se a app a mudou entretanto, nada é sobrescrito; se o jogo já tem resultado, recusa). Resultados ficam por homologar.
+- «ajuda» e «desligar». Limite de 40 pedidos à IA por conta e por dia (o mesmo da app).
+
+**Como se liga no servidor do bot** (o bot corre num computador; ver `CLAUDE.md`). No `.env` do bot, além das chaves de sempre (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`):
+```
+LEAGUE_WA_ENABLED=true     # interruptor geral; sem isto o bot ignora tudo isto
+LEAGUE_WA_AUTOSEND=true    # sem isto só regista no ecrã o que responderia (modo de teste)
+# LEAGUE_WA_MODEL=claude-sonnet-5-5   (opcional)
+```
+Reiniciar o bot. A chave da Vercel não chega ao bot: ele lê o `.env` do computador onde corre.
+
+**Migração:** `20261028220000_league_whatsapp.sql` (códigos, ligações, pedidos pendentes, cota e a escrita da liga pelo bot). A função de gravação da app passou a usar o mesmo caminho de escrita.
+
+**Ainda não:** mensagens proativas (lembretes de jogos, resultados por homologar, Fantasy), fica para quando o bot estiver alojado 24 h; o plano está em `docs/ADJUNTO-LIGAS-PLANO.md`. «Sempre ligado» exige alojar o bot.

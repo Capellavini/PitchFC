@@ -8,6 +8,7 @@ import LeagueField from "./LeagueField";
 import LeagueManageModules from "./LeagueManageModules";
 import LeagueManageBrand from "./LeagueManageBrand";
 import LeagueManagePublish from "./LeagueManagePublish";
+import LeagueManageWhatsApp from "./LeagueManageWhatsApp";
 
 /** "Liga": the league's name and city, and which modules it runs. */
 export default function LeagueManageSetup({ ctx }) {
@@ -35,6 +36,7 @@ export default function LeagueManageSetup({ ctx }) {
       </form>
       <LeagueManageBrand ctx={ctx} />
       {ctx.live && <LeagueManagePublish ctx={ctx} />}
+      {ctx.live && ctx.store?.wa && <LeagueManageWhatsApp ctx={ctx} />}
       <LeagueManageModules ctx={ctx} />
     </div>
   );
