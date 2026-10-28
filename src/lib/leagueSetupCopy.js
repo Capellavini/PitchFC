@@ -17,6 +17,11 @@ export const SETUP_ERROR = Object.freeze({
   match_started: "Só se pode mudar um jogo que ainda não começou.",
   title_required: "Indica um título com pelo menos 2 letras.",
   body_required: "Escreve o texto do comunicado.",
+  result_exists: "Este jogo já tem resultado. Corrige-o em Lances (com motivo).",
+  score_required: "Indica o resultado do jogo (golos de cada equipa).",
+  scorers_exceed_score: "Há mais golos atribuídos a atletas do que no resultado.",
+  not_in_match: "Esse atleta não joga neste jogo.",
+  invalid: "Não foi possível aplicar. Confirma os dados.",
   cup_not_scheduled_by_rounds: "As taças montam-se jogo a jogo, em «Adicionar jogo».",
 });
 

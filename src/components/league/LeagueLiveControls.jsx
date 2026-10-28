@@ -1,15 +1,20 @@
 import { modOn } from "../../lib/leagueDemo";
-import { Play, Square, CheckCircle2, RotateCcw, Plus, Repeat, Video, CalendarClock } from "lucide-react";
+import { useState } from "react";
+import { Play, Square, CheckCircle2, RotateCcw, Plus, Repeat, Video, CalendarClock, PenLine, FileUp } from "lucide-react";
 import { C, S, T, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import BtnPrimary from "../BtnPrimary";
 import BtnGhost from "../BtnGhost";
+import LeagueResultForm from "./LeagueResultForm";
 
 /** Gestor-only match operation, by state: start → register events →
  *  end (provisional) → homologate / send to review; reopen a homologated
  *  match for review; postpone; VAR on/off (state only). One primary CTA. */
-export default function LeagueLiveControls({ match, act, onAddEvent, onReason }) {
+export default function LeagueLiveControls({ match, act, onAddEvent, onReason, hasEvents = false }) {
   const s = match.state;
+  const [typing, setTyping] = useState(false);
+  // A game that has not been played yet (or is open with nothing recorded) can get its result in one go.
+  const canResult = (s === "scheduled" || s === "live") && !hasEvents;
   const box = { ...cardStyle, borderColor: C.accentBorder, marginBottom: S.lg };
   const row = { display: "flex", gap: S.sm, flexWrap: "wrap", marginTop: S.sm };
   const grow = { flex: "1 1 150px" };
@@ -21,11 +26,14 @@ export default function LeagueLiveControls({ match, act, onAddEvent, onReason })
           <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{t("Ao iniciar, os lances passam a ser registados nesta ficha de jogo. O relógio não é partilhado nesta demo.")}</div>
           <div style={row}>
             <BtnPrimary onClick={() => act.move(match.id, "live", {}, t("Jogo iniciado."))} style={grow}><Play size={16} aria-hidden /> {t("Iniciar jogo")}</BtnPrimary>
+            <BtnGhost onClick={() => setTyping(true)} style={grow}><PenLine size={16} aria-hidden /> {t("Só lançar resultado")}</BtnGhost>
+            <BtnGhost onClick={() => act.sumula(match.id)} style={grow}><FileUp size={16} aria-hidden /> {t("Subir súmula")}</BtnGhost>
             <BtnGhost onClick={() => onReason("postponed")} style={grow}><CalendarClock size={16} aria-hidden /> {t("Adiar")}</BtnGhost>
             {modOn("var") && <BtnGhost onClick={() => act.toggleVar(match.id)} style={grow}><Video size={16} aria-hidden /> {match.var?.enabled ? t("Desligar VAR") : t("Ativar VAR")}</BtnGhost>}
           </div>
         </>
       )}
+      {typing && canResult && <LeagueResultForm match={match} act={act} onClose={() => setTyping(false)} />}
       {s === "postponed" && (
         <div style={row}><BtnPrimary onClick={() => act.move(match.id, "scheduled", {}, t("Jogo reagendado."))} style={grow}>{t("Voltar a agendar")}</BtnPrimary></div>
       )}
@@ -36,6 +44,8 @@ export default function LeagueLiveControls({ match, act, onAddEvent, onReason })
             <BtnPrimary onClick={onAddEvent} style={grow}><Plus size={16} aria-hidden /> {t("Registar lance")}</BtnPrimary>
             <BtnGhost onClick={() => act.resendLast(match.id)} disabled={!act.hasLast(match.id)} style={grow} title={t("Simula um reenvio do último lance (ex.: rede instável) — não duplica.")}><Repeat size={16} aria-hidden /> {t("Reenviar último lance")}</BtnGhost>
             <BtnGhost onClick={() => act.move(match.id, "ended_provisional", {}, t("Jogo terminado — resultado provisório."))} style={grow}><Square size={16} aria-hidden /> {t("Terminar jogo")}</BtnGhost>
+            {canResult && <BtnGhost onClick={() => setTyping(true)} style={grow}><PenLine size={16} aria-hidden /> {t("Só lançar resultado")}</BtnGhost>}
+            <BtnGhost onClick={() => act.sumula(match.id)} style={grow}><FileUp size={16} aria-hidden /> {t("Subir súmula")}</BtnGhost>
           </div>
         </>
       )}

@@ -107,7 +107,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
 
       {current === "resumo" && (
         <>
-          {role === "manager" && <LeagueLiveControls match={match} act={act} onAddEvent={() => setSheet({ kind: "event" })} onReason={onReason} />}
+          {role === "manager" && <LeagueLiveControls match={match} act={act} hasEvents={log.length > 0} onAddEvent={() => setSheet({ kind: "event" })} onReason={onReason} />}
           {captainHere && <LeagueCaptainTools match={match} teamId={acc.teamId} onLineup={() => setSheet({ kind: "lineup" })} onContest={() => onReason("contest")} />}
 
           <div style={{ ...cardStyle, marginBottom: S.md, display: "grid", gap: S.sm, fontSize: T.body }}>

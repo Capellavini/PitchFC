@@ -57,3 +57,29 @@ Até cada fatia chegar, a ponte continua a ser a fonte; a migração de uma liga
 6. **Papéis e convites** (vários operadores; capitães/atletas) — só existem como demonstração. Para a AFPCE no 1.º ano (direção opera sozinha) não bloqueia.
 7. **EN:** os textos novos estão em PT-PT; a tradução inglesa fica por fazer.
 8. **WhatsApp do Adjunto:** continua em plano (ver `docs/ADJUNTO-LIGAS-PLANO.md`); precisa da liga na nuvem — agora existe.
+
+## 6. Segunda ronda de comentários (28/10, `leagues.pptx` v2) e súmula
+
+| # | Comentário | Estado |
+|---|---|---|
+| 5 | **MUITO IMPORTANTE:** botão para só lançar o resultado; no Painel, resultado pendente depois do jogo passar; botão «subir súmula» com o Adjunto a ler foto/PDF; ligado ao WhatsApp | **Feito na app**: «Só lançar resultado» e «Subir súmula» na ficha do jogo; «Resultado em falta» no Painel (2 h depois do apito inicial); o Adjunto propõe o resultado (marcadores, cartões, quem jogou) e a direção confirma. **WhatsApp: próximo PR** |
+| 1 | Atletas com email, telefone e data de nascimento (separar jovens e veteranos; email/telefone criam conta de jogador ligada à equipa) | Pendente. Mexe em privacidade (menores) e em convites; precisa de decisão sobre o consentimento |
+| 2 | Menu «outras opções» maior ou campo aberto (modalidade, escalão) | Pendente, pequeno |
+| 3 | Zona para o organizador escrever o regulamento | Pendente. O regulamento hoje é só de leitura |
+| 4 | Calendário como o Tournify: arrastar e largar, modelos de confrontos, fases das taças (oitavos, quartos, meias), nome do campo, previsão do tempo | Pendente, é o maior. Nome do campo já existe; fases das taças existem como «nome da fase» |
+| 6 | Fase de grupos das taças, para gerar confrontos automaticamente | Pendente (grupos + cruzamento para o quadro final) |
+| 7 | Página com todas as equipas da liga (golos, jogos, forma VVDVVD); botões «convidar equipa» e «convidar atleta» | Pendente. Convites existem no backend relacional (B5) |
+
+### A súmula da AFPCE
+A folha é o **Boletim de Participantes (futebol 11, séniores)**, de **um clube**: efetivos e suplentes com número, nome, licença e as colunas **Am · A/V · Vm · Gl · SB**, resultado ao intervalo / final / prolongamento / penáltis, capitão, equipa técnica, observações do árbitro e do delegado, carimbo e assinaturas. O Adjunto lê-a assim:
+
+- **Am** = amarelo; **A/V** = segundo amarelo (vira vermelho); **Vm** = vermelho direto; **Gl** = golos do atleta. **SB** não está confirmado e é ignorado.
+- Quem aparece na folha conta como «jogou» (alimenta a convocatória).
+- O resultado fica **provisório** e a homologação é sempre da direção.
+- **Por confirmar com a AFPCE:** o que significa SB, e se os dois números do resultado são «casa/fora» pela ordem impressa. Enquanto não se souber, o Adjunto pergunta em vez de adivinhar.
+
+### Frases livres
+«O Porto FC jogou hoje com o Corinthians, terminou 2x0, dois golos do Vini e amarelo ao Barto» vira uma proposta de resultado: o sistema (não o modelo) resolve as equipas, o jogo e os atletas; se o nome for ambíguo ou não existir, diz porquê. Sem marcadores, os golos ficam registados «sem marcador». Um autogolo conta para a outra equipa.
+
+### WhatsApp (próximo PR)
+Mesmo número do piloto. Fluxo: a direção gera um código na app («Ligar WhatsApp»), envia-o ao bot, e a partir daí o bot trata das mensagens e fotos dessa pessoa como o chat da app: lê, mostra o resumo e só aplica com «sim». O bot continua a correr só quando alguém o arranca num computador (ver `CLAUDE.md`), por isso «sempre ligado» exige alojá-lo.

@@ -1,8 +1,8 @@
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, Gavel, Radio, ShieldAlert, Share2, Sparkles, Users } from "lucide-react";
+import { AlertTriangle, PenLine, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, Gavel, Radio, ShieldAlert, Share2, Sparkles, Users } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
 import { t, getLang } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
-import { LEAGUE, teamById, playerById, competitionById, modOn } from "../../lib/leagueDemo";
+import { LEAGUE, teamById, playerById, competitionById, modOn, fmtKickoff } from "../../lib/leagueDemo";
 import { leagueToday, roundRecapText } from "../../lib/leagueToday";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { adjuntoBrief } from "../../lib/leagueAdjuntoGuide";
@@ -19,6 +19,7 @@ import LeagueSetupChecklist from "./LeagueSetupChecklist";
 const KINDS = {
   contest:    { Icon: Gavel,          tone: C.red,    cta: "Decidir" },
   homologate: { Icon: ClipboardCheck, tone: C.orange, cta: "Conferir" },
+  result:     { Icon: PenLine,        tone: C.orange, cta: "Lançar" },
   live:       { Icon: Radio,          tone: C.accent, cta: "Abrir" },
   suspended:  { Icon: ShieldAlert,    tone: C.red,    cta: "Ver" },
   lineup:     { Icon: Users,          tone: C.orange, cta: "Ver" },
@@ -49,6 +50,7 @@ export default function LeagueToday({ ctx }) {
         const s = derived.scores[m.id];
         return { title: t("Resultado por homologar"), sub: `${teamById[m.homeId].name} ${s.home}–${s.away} ${teamById[m.awayId].name}`, go: () => openMatch(m.id) };
       }
+      case "result": return { title: t("Resultado em falta"), sub: `${matchName(m)} · ${fmtKickoff(m.kickoff, lang)}`, go: () => openMatch(m.id) };
       case "live": return { title: t("Jogo a decorrer"), sub: matchName(m), go: () => openMatch(m.id) };
       case "suspended": return { title: t("Atleta suspenso na convocatória"), sub: `${playerById[it.playerId].name} · ${teamById[it.teamId].name}`, go: () => openMatch(m.id) };
       case "lineup": return { title: t("Convocatória em falta"), sub: `${teamById[it.teamId].name} · ${matchName(m)}`, go: () => openMatch(m.id) };
