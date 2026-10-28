@@ -32,11 +32,17 @@ export function leagueToday(state, derived, { duration = 60, scope = "all" } = {
     const round = currentRound(own);
     const roundMatches = own.filter((m) => m.round === round);
     const items = [];
-    for (const m of roundMatches) {
-      const tag = { competitionId: competition.id };
+    const tag = { competitionId: competition.id };
+    // A result that needs a decision (or a game on right now) is work whatever
+    // its round: a catch-up game of round 3 played while round 2 is still open
+    // must not hide in the queue.
+    for (const m of own) {
       if (m.state === "in_review") items.push({ ...tag, kind: "contest", key: `contest-${m.id}`, matchId: m.id, reason: m.contest?.reason || null });
       if (m.state === "ended_provisional") items.push({ ...tag, kind: "homologate", key: `homologate-${m.id}`, matchId: m.id });
       if (m.state === "live") items.push({ ...tag, kind: "live", key: `live-${m.id}`, matchId: m.id });
+    }
+    // Call-ups and suspended players are about the games still to be played in the current round.
+    for (const m of roundMatches) {
       if (m.state === "scheduled") {
         for (const teamId of [m.homeId, m.awayId]) {
           const lineup = m.lineups?.[teamId] || [];
