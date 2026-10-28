@@ -14,6 +14,9 @@ export const SETUP_ERROR = Object.freeze({
   date_required: "Indica a data e a hora.",
   time_required: "Indica pelo menos uma hora de jogo (ex.: 15:00).",
   two_different_teams: "Escolhe duas equipas diferentes.",
+  match_started: "Só se pode mudar um jogo que ainda não começou.",
+  title_required: "Indica um título com pelo menos 2 letras.",
+  body_required: "Escreve o texto do comunicado.",
   cup_not_scheduled_by_rounds: "As taças montam-se jogo a jogo, em «Adicionar jogo».",
 });
 
