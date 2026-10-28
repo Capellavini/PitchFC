@@ -1,4 +1,4 @@
-import { ChevronRight, FlaskConical, Menu } from "lucide-react";
+import { FlaskConical, Menu } from "lucide-react";
 import { C, S, T, TOUCH, BRAND, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG } from "../../lib/leagueCopy";
@@ -49,14 +49,7 @@ export default function LeagueHeader({ role, onRole, compact, slim, desktop = fa
           {manager
             ? <LeagueScopeBar scope={scope} onScope={onScope} />
             : (
-              <nav aria-label={t("Contexto da liga")} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4, fontSize: T.meta, color: C.text2 }}>
-                {crumbs.map((c, i) => (
-                  <span key={c} style={{ display: "inline-flex", alignItems: "center", gap: 4, minWidth: 0 }}>
-                    {i > 0 && <ChevronRight size={12} aria-hidden />}
-                    <span style={{ fontWeight: i === 0 ? 800 : 600, color: i === 0 ? C.text1 : C.text2 }}>{c}</span>
-                  </span>
-                ))}
-              </nav>
+              <div aria-label={t("Contexto da liga")} style={{ fontSize: T.meta, color: C.text2, fontWeight: 600 }}>{crumbs.join(" · ")}</div>
             )}
           {!slim && (
             <details style={{ marginTop: S.md }}>

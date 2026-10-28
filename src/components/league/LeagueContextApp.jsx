@@ -61,6 +61,8 @@ export default function LeagueContextApp({ entry = null }) {
   const [stack, setStack] = usePersistentState("leagueDemoStack", []);
   const [scope, setScope] = usePersistentState("leagueDemoScope", "all"); // Gestor: "all" or a competition id
   const [adjuntoLog, setAdjuntoLog] = useState([]);
+  const [welcomeSeen, setWelcomeSeen] = usePersistentState("leagueDemoWelcome", {}); // role → true once dismissed
+  const markWelcome = (r) => setWelcomeSeen({ ...(welcomeSeen || {}), [r]: true });
   const wide = useWide();
   const [entryMode, setEntryMode] = useState(entry); // "fan" forces the fan flow once
   const [toast, setToast] = useState(null);
@@ -177,14 +179,14 @@ export default function LeagueContextApp({ entry = null }) {
       return { ok: true };
     },
     setPrefs: (patch) => apply((s) => ({ ...s, prefs: { ...s.prefs, ...patch } })),
-    reset: () => { setRaw(buildLeagueDemoSeed()); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
+    reset: () => { setRaw(buildLeagueDemoSeed()); setWelcomeSeen({}); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
   };
 
   const entering = entryMode === "fan" || !state.viewer?.entered;
   const manager = role === "manager";
   const desktop = wide && !entering; // computer layout for every role: sidebar + wide content
   // Only the Gestor looks across competitions; followers see the primary one.
-  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog };
+  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, welcomeSeen, markWelcome };
   const pushed = !entering && Boolean(view);
   // What is waiting on a captain / athlete shows as a count on their Equipa tab.
   const badges = inTeam ? { inicio: teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role }).queue.length } : {};
