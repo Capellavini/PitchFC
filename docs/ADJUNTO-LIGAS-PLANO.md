@@ -110,6 +110,7 @@ Recomendação: A para a AFPCE/Coimbra, B logo a seguir, com o catálogo de prop
 |---|---|---|
 | 0 (este PR) | Chat com documentos, propostas, privacidade, cota | tuas chaves na Vercel para a IA |
 | 1 | Persistência da liga na nuvem (A) + a app carrega/guarda | decisão A vs B; migração pelo CI |
+| 1b | **Logos** da liga e dos clubes (secção 8) | Fase 1 (armazenamento) + autorização da AFPCE |
 | 2 | WhatsApp para o gestor: vinculação, conversa, propostas com #n, documentos | Fase 1; número e transporte |
 | 3 | Envios proativos à direção (tabela acima), resumo semanal | Fase 2 |
 | 4 | Capitães, atletas, adeptos e Fantasy | Cloud API + templates + opt-in |
@@ -122,7 +123,19 @@ Recomendação: A para a AFPCE/Coimbra, B logo a seguir, com o catálogo de prop
 3. **Transporte:** Baileys só para o piloto com gestores, Cloud API para o resto?
 4. **Modelo:** Sonnet 5.5 por defeito (recomendado para ler documentos) ou Haiku para poupar?
 5. **Cota:** 40 chamadas por conta e dia chega para o piloto?
+6. **Logos:** quem fornece os ficheiros dos clubes e a AFPCE autoriza o uso? Sem isso as equipas continuam só com sigla e cor.
 
 ## 7. O que não faz
 
 Não homologa, não decide castigos, não altera resultados, não envia mensagens a terceiros por conta própria e não guarda documentos no servidor (passam pelo pedido e desaparecem). Texto de documentos é tratado como dados: instruções escritas lá dentro não são ordens.
+
+## 8. Em falta: os logos
+
+A plataforma não tem logos. Hoje cada equipa aparece com sigla e cor de camisola, e a liga só com o nome. Falta em todo o produto, não só no Adjunto:
+
+- **Liga e competições:** logo na página da liga, no cabeçalho da app, nas partilhas (resumo da jornada, cartão para WhatsApp) e no PPT de apresentação.
+- **Clubes:** logo em classificação, calendário, ficha de jogo, convocatórias, página da equipa e partilhas. Sem logo, manter o escudo de sigla e cor como alternativa.
+- **Armazenamento:** os logos precisam de um sítio na nuvem (Fase 1); no browser não dá para partilhar com o WhatsApp nem com a página pública.
+- **Como entram:** upload por equipa em Gerir → Equipas e atletas (PNG, SVG ou WebP, fundo transparente, limite de tamanho, verificação do tipo real do ficheiro) e, pelo Adjunto, uma foto ou ficheiro com a mensagem «este é o logo do Alfa FC» vira uma proposta `set_team_logo` que o gestor confirma. A proposta ainda não existe no catálogo.
+- **Direitos:** o piloto AFPCE depende de autorização da associação e dos clubes para usar os escudos; os maquetes já entregues foram feitos sem logos por isso. Pedir na reunião de quinta (29/10) e registar quem autorizou e quando.
+- **Largura de banda:** servir versões reduzidas (≈ 128 e 256 px) em vez do original, com `alt` com o nome do clube.
