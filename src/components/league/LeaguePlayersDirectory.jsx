@@ -3,7 +3,7 @@ import { GitCompare } from "lucide-react";
 import { C, S, T, TOUCH, cardStyle, inputStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { POSITION_LABEL, tf } from "../../lib/leagueCopy";
-import { PLAYERS, TEAMS, teamById, ovrOfPlayer } from "../../lib/leagueDemo";
+import { PLAYERS, TEAMS, teamById, ovrOfPlayer, modOn } from "../../lib/leagueDemo";
 import BackHeader from "../BackHeader";
 import SegmentedControl from "../SegmentedControl";
 import BtnGhost from "../BtnGhost";
@@ -19,15 +19,18 @@ export default function LeaguePlayersDirectory({ ctx }) {
   const { derived, acc, back, open } = ctx;
   const [team, setTeam] = useState("");
   const [pos, setPos] = useState("");
-  const [sort, setSort] = useState("ovr");
+  const ovrOn = modOn("ovr");
+  const sorts = ovrOn ? SORTS : SORTS.filter((s) => s.id !== "ovr");
+  const [picked, setSort] = useState(ovrOn ? "ovr" : "goals");
+  const sort = sorts.some((s) => s.id === picked) ? picked : sorts[0].id;
   const val = (p) => (sort === "ovr" ? ovrOfPlayer(p) : derived.stats[p.id]?.[sort] || 0);
   const rows = PLAYERS.filter((p) => (!team || p.teamId === team) && (!pos || p.position === pos))
-    .sort((a, b) => (val(b) - val(a)) || (ovrOfPlayer(b) - ovrOfPlayer(a)) || a.name.localeCompare(b.name, "pt"));
+    .sort((a, b) => (val(b) - val(a)) || (ovrOn ? ovrOfPlayer(b) - ovrOfPlayer(a) : 0) || a.name.localeCompare(b.name, "pt"));
 
   return (
     <div>
       <BackHeader title={t("Atletas")} subtitle={tf(t("{n} inscritos nesta competição"), { n: PLAYERS.length })} onBack={back} />
-      <BtnGhost block onClick={() => open({ kind: "compare" })} style={{ marginBottom: S.md }}><GitCompare size={16} aria-hidden /> {t("Comparar atletas")}</BtnGhost>
+      {modOn("compare") && <BtnGhost block onClick={() => open({ kind: "compare" })} style={{ marginBottom: S.md }}><GitCompare size={16} aria-hidden /> {t("Comparar atletas")}</BtnGhost>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: S.sm, marginBottom: S.md }}>
         <label style={{ fontSize: T.meta, color: C.text2, fontWeight: 700 }}>{t("Equipa")}
           <select value={team} onChange={(e) => setTeam(e.target.value)} style={{ ...inputStyle(), marginTop: S.xs }}>
@@ -42,7 +45,7 @@ export default function LeaguePlayersDirectory({ ctx }) {
           </select>
         </label>
       </div>
-      <SegmentedControl options={SORTS} value={sort} onChange={setSort} />
+      <SegmentedControl options={sorts} value={sort} onChange={setSort} />
       <div style={{ ...cardStyle, padding: `0 ${S.md}px` }}>
         {rows.map((p, i) => (
           <button key={p.id} type="button" onClick={() => open({ kind: "player", id: p.id })}

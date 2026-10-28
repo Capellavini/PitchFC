@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLeagueDemoSeed, deriveLeague, ROLE_ACCOUNTS } from "./leagueDemo.js";
+import { loadExample, deriveLeague, ROLE_ACCOUNTS } from "./leagueDemo.js";
 import { fanHome } from "./leagueFanHome.js";
 
-const seed = () => { const state = buildLeagueDemoSeed(); return { state, derived: deriveLeague(state) }; };
+const seed = () => { const state = loadExample(); return { state, derived: deriveLeague(state) }; };
 const who = { accountId: ROLE_ACCOUNTS.fan.accountId };
 
 test("a fan sees their supported team: position, form and next game", () => {

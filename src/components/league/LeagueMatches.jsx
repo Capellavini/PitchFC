@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C, S, T, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf, STATE_LABEL } from "../../lib/leagueCopy";
-import { TEAMS } from "../../lib/leagueDemo";
+import { TEAMS, competitionTitle } from "../../lib/leagueDemo";
 import { competitionRounds } from "../../lib/leagueGroups";
 import SectionLabel from "../SectionLabel";
 import Chip from "../Chip";
@@ -33,7 +33,7 @@ export default function LeagueMatches({ ctx }) {
       {groups.length === 0 && <div style={{ color: C.text2, fontSize: T.body }}>{t("Sem jogos para este filtro.")}</div>}
       {groups.map(({ competition, rounds }) => (
         <div key={competition.id} style={{ marginBottom: S.xxl }}>
-          {(scope === "all" || groups.length > 1) && <h2 style={{ fontSize: T.h, margin: `0 0 ${S.md}px`, color: C.text1 }}>{t(competition.short)}</h2>}
+          {(scope === "all" || groups.length > 1) && <h2 style={{ fontSize: T.h, margin: `0 0 ${S.md}px`, color: C.text1 }}>{t(competition.sponsor ? competitionTitle(competition) : competition.short)}</h2>}
           {rounds.map(({ round, name, matches }) => (
             <section key={round} style={{ marginBottom: S.xl }}>
               <SectionLabel>{name ? t(name) : tf(LG.round, { n: round })}</SectionLabel>

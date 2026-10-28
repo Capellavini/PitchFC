@@ -6,15 +6,18 @@ import {
   appendEvent, transition, setOfficialMvp, castFanVote, validateFantasyPicks, LeagueError, setTactics,
 } from "../../lib/core/league";
 import {
-  buildLeagueDemoSeed, normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY, PLAYERS,
+  normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY, PLAYERS, emptyLeagueState, modOn, competitionTitle,
 } from "../../lib/leagueDemo";
 import { LG, leagueError } from "../../lib/leagueCopy";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { leagueToday } from "../../lib/leagueToday";
 import { useWide } from "../../lib/useWide";
 import { teamHome } from "../../lib/leagueTeamHome";
-import { competitionById, CUP, LEAGUE, COMPETITION } from "../../lib/leagueDemo";
+import { competitionById, LEAGUE, COMPETITION } from "../../lib/leagueDemo";
 import { tabTitle } from "../../lib/leagueNav";
+import { SetupError } from "../../lib/leagueSetup";
+import { SETUP_ERROR } from "../../lib/leagueSetupCopy";
+import { setModule } from "../../lib/leagueModules";
 import LeagueHeader from "./LeagueHeader";
 import LeagueBottomNav from "./LeagueBottomNav";
 import LeagueSideNav from "./LeagueSideNav";
@@ -87,7 +90,7 @@ export default function LeagueContextApp({ entry = null }) {
   // under another role (direct-route guard). Stacks saved by the old
   // "manage" push view are ignored.
   const inTeam = role === "captain" || role === "athlete";
-  const tab = (["gerir", "adjunto"].includes(storedTab) && role !== "manager") || (storedTab === "eu" && !inTeam) ? "inicio" : storedTab;
+  const tab = (["gerir", "adjunto"].includes(storedTab) && role !== "manager") || (storedTab === "eu" && !inTeam) || (storedTab === "fantasy" && !modOn("fantasy")) || (storedTab === "adjunto" && !modOn("adjunto")) ? "inicio" : storedTab;
   const scopeNow = scope === "all" || competitionById[scope] ? scope : "all";
   const visible = (stack || []).filter((v) => v && v.kind !== "manage");
   const view = visible[visible.length - 1] || null;
@@ -110,7 +113,7 @@ export default function LeagueContextApp({ entry = null }) {
       if (okMsg) notify(okMsg);
       return { ok: true };
     } catch (e) {
-      notify(e instanceof LeagueError ? leagueError(e) : t("Não foi possível guardar. Tenta outra vez."), "error");
+      notify(e instanceof LeagueError ? leagueError(e) : e instanceof SetupError ? t(SETUP_ERROR[e.code] || "Não foi possível guardar. Tenta outra vez.") : t("Não foi possível guardar. Tenta outra vez."), "error");
       return { error: e };
     }
   };
@@ -178,8 +181,11 @@ export default function LeagueContextApp({ entry = null }) {
       apply((s) => ({ ...s, fantasy: { ...s.fantasy, [acc.accountId]: ids } }), t("Equipa de Fantasy guardada (só neste browser)."));
       return { ok: true };
     },
+    /** Build the league: `fn` is a pure leagueSetup function (state → state). */
+    setup: (fn, okMsg) => apply(fn, okMsg),
+    setModule: (id, on) => apply((s) => ({ ...s, modules: setModule(s.modules, id, on) })),
     setPrefs: (patch) => apply((s) => ({ ...s, prefs: { ...s.prefs, ...patch } })),
-    reset: () => { setRaw(buildLeagueDemoSeed()); setWelcomeSeen({}); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
+    reset: () => { setRaw(emptyLeagueState()); setWelcomeSeen({}); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
   };
 
   const entering = entryMode === "fan" || !state.viewer?.entered;
@@ -201,7 +207,7 @@ export default function LeagueContextApp({ entry = null }) {
   else if (tab === "gerir") body = <LeagueManage ctx={ctx} section={manageSection} onSection={setManageSection} />;
   else if (tab === "adjunto") body = <LeagueAdjunto ctx={ctx} />;
   else if (tab === "jogos") body = <LeagueMatches ctx={ctx} />;
-  else if (tab === "classificacao") body = ctx.scope === CUP.id ? <LeagueCupPhase ctx={ctx} /> : <LeagueTable ctx={ctx} />;
+  else if (tab === "classificacao") body = competitionById[ctx.scope]?.kind === "cup" ? <LeagueCupPhase ctx={ctx} competition={competitionById[ctx.scope]} /> : <LeagueTable ctx={ctx} />;
   else if (tab === "eu") body = <LeaguePlayerPage ctx={ctx} playerId={acc.playerId} embedded />;
   else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;
   else if (tab === "mais") body = <LeagueMore ctx={ctx} />;
@@ -209,7 +215,7 @@ export default function LeagueContextApp({ entry = null }) {
 
   if (desktop) {
     const title = tab === "adjunto" ? adjuntoName(lang) : tabTitle(role, tab);
-    const scopeLabel = ctx.scope === "all" ? t("Todas as competições") : t(competitionById[ctx.scope].name);
+    const scopeLabel = ctx.scope === "all" ? t("Todas as competições") : t(competitionTitle(competitionById[ctx.scope]));
     const deskBadges = manager ? { inicio: leagueToday(state, derived, { scope: ctx.scope }).items.length } : badges;
     return (
       <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT }}>

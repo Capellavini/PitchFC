@@ -1,13 +1,17 @@
 import { C, R, S, T } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, ROLE_LABEL } from "../../lib/leagueCopy";
+import { ROLE_ACCOUNTS, modOn } from "../../lib/leagueDemo";
 import SegmentedControl from "../SegmentedControl";
 
-const ROLES = ["fan", "athlete", "captain", "manager"];
+// Only the views that have someone to look through (a team with athletes) and, for the fan, the module.
+const availableRoles = () => ["fan", "athlete", "captain", "manager"].filter((r) => (r === "fan" ? modOn("fans") : r === "manager" || Boolean(ROLE_ACCOUNTS[r])));
 
 /** Demo-only role switcher (Adepto · Atleta · Capitão · Gestor). Clearly
  *  marked: it changes the view, never grants anything real. */
 export default function LeagueRoleSwitcher({ role, onRole, grid = false }) {
+  const ROLES = availableRoles();
+  if (ROLES.length < 2) return null;
   return (
     <section aria-label={t(LG.viewAs)} style={{ background: C.surface, border: `1px dashed ${C.orange}66`, borderRadius: R.card, padding: `${S.sm}px ${S.md}px ${S.xs}px` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: S.sm, flexWrap: "wrap", marginBottom: S.xs }}>

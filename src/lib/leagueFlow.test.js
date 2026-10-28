@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { appendEvent, transition, fantasyTeamPoints, setOfficialMvp } from "./core/league.js";
-import { buildLeagueDemoSeed, deriveLeague, PLAYERS, teamById } from "./leagueDemo.js";
+import { loadExample, deriveLeague, PLAYERS, teamById } from "./leagueDemo.js";
 import { leagueToday } from "./leagueToday.js";
 import { teamHome } from "./leagueTeamHome.js";
 import { fanHome } from "./leagueFanHome.js";
@@ -17,7 +17,7 @@ const squad = (teamId) => PLAYERS.filter((p) => p.teamId === teamId).map((p) => 
 /** m7 (round 3, t1 Marés – t4 Atlético) goes live with a goal, an assist and a
  *  yellow card, and ends provisionally. */
 function playedMatch() {
-  const state = buildLeagueDemoSeed();
+  const state = loadExample();
   const m0 = state.matches.find((m) => m.id === "m7");
   assert.equal(m0.state, "scheduled");
   const lineups = { [m0.homeId]: squad(m0.homeId), [m0.awayId]: squad(m0.awayId) };
@@ -33,7 +33,7 @@ function playedMatch() {
 test("provisional result: shown with a mark, never in the official numbers", () => {
   const { state } = playedMatch();
   const d = deriveLeague(state);
-  const before = deriveLeague(buildLeagueDemoSeed());
+  const before = deriveLeague(loadExample());
   const g = (x, id, k) => x[id]?.[k] || 0;
   assert.equal(g(d.stats, "t1p7", "goals"), g(before.stats, "t1p7", "goals"), "scorer official goals unchanged");
   assert.equal(g(d.statsProvisional, "t1p7", "goals"), g(before.statsProvisional, "t1p7", "goals") + 1, "scorer provisional goals +1");

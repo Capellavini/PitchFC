@@ -3,7 +3,7 @@ import { Video, MapPin, Clock, Shield, AlertTriangle } from "lucide-react";
 import { C, R, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
-import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById } from "../../lib/leagueDemo";
+import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById, modOn } from "../../lib/leagueDemo";
 import { canCorrect, DEMO_RULES } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SegmentedControl from "../SegmentedControl";
@@ -57,7 +57,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
     { id: "escalacoes", label: LG.secLineups }, // always: call-up or inscribed squad (scouting) + boards
     started && { id: "lances", label: LG.secTimeline },
     ENDED.has(match.state) && { id: "destaques", label: LG.secHighlights },
-    match.var?.enabled && { id: "videos", label: LG.secVideos },
+    modOn("var") && match.var?.enabled && { id: "videos", label: LG.secVideos },
     (match.history || []).length > 0 && { id: "sumula", label: LG.secReport },
   ].filter(Boolean);
   const current = sections.some((s) => s.id === sec) ? sec : "resumo";
@@ -114,7 +114,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
             {info(Clock, <>{fmtKickoff(match.kickoff, lang)} · {t("hora de Lisboa")} ({LEAGUE.timeZone})</>)}
             {info(MapPin, <>{match.venue}</>)}
             {info(Shield, <>{match.referee} · {t("arbitragem (demo)")}</>)}
-            {info(Video, <>{t(match.var?.enabled ? LG.varOn : LG.varOff)}</>)}
+            {modOn("var") && info(Video, <>{t(match.var?.enabled ? LG.varOn : LG.varOff)}</>)}
           </div>
 
           {suspendedHere.length > 0 && (

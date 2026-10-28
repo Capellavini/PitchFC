@@ -7,8 +7,10 @@ import LeagueManageCalendar from "./LeagueManageCalendar";
 import LeagueManageReports from "./LeagueManageReports";
 import LeagueDiscipline from "./LeagueDiscipline";
 import LeagueRegulation from "./LeagueRegulation";
+import LeagueManageSetup from "./LeagueManageSetup";
 
 const SECTIONS = [
+  { id: "setup", label: "Liga e módulos" },
   { id: "overview", label: "Competições" },
   { id: "registrations", label: "Inscrições" },
   { id: "calendar", label: "Calendário" },
@@ -25,6 +27,7 @@ export default function LeagueManage({ ctx, section = "overview", onSection }) {
   return (
     <div>
       <SegmentedControl options={SECTIONS} value={section} onChange={onSection} />
+      {section === "setup" && <LeagueManageSetup ctx={ctx} />}
       {section === "overview" && <LeagueManageOverview ctx={ctx} onSection={onSection} openMatch={openMatch} />}
       {section === "registrations" && <LeagueManageRegistrations ctx={ctx} />}
       {section === "calendar" && <LeagueManageCalendar ctx={ctx} openMatch={openMatch} />}

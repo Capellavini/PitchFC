@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLeagueDemoSeed, deriveLeague, CUP } from "./leagueDemo.js";
+import { loadExample, deriveLeague, CUP } from "./leagueDemo.js";
 import { leagueToday } from "./leagueToday.js";
 import { adjuntoBrief, adjuntoReply } from "./leagueAdjuntoGuide.js";
 
-const today = () => { const s = buildLeagueDemoSeed(); return leagueToday(s, deriveLeague(s)); };
+const today = () => { const s = loadExample(); return leagueToday(s, deriveLeague(s)); };
 
 test("the brief counts what is waiting, across competitions", () => {
   const b = adjuntoBrief(today());
