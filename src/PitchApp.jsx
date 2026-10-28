@@ -72,6 +72,7 @@ import LeagueAuth from "./components/league/LeagueAuth";
 import { isLeagueAccount, leagueAccountRedirect, leagueProfileForm, LEAGUE_ENTRY_PATH, LEAGUE_HOME_PATH } from "./lib/leagueAccount";
 import LeagueCloudPage from "./components/league/LeagueCloudPage";
 import LeagueWorkspaceApp from "./components/league/LeagueWorkspaceApp";
+import LeaguePublicPage from "./components/league/LeaguePublicPage";
 import LeagueCompetitionCloud from "./components/league/LeagueCompetitionCloud";
 import { useLeagues } from "./hooks/useLeagues";
 import { parseLeaguePath } from "./lib/leagueCloud";
@@ -1345,6 +1346,9 @@ export default function PitchApp() {
   // product: anywhere else it is sent to its league home.
   const accountRedirect = !localMode ? leagueAccountRedirect(cloud.user, path) : null;
   if (accountRedirect) { window.location.replace(accountRedirect); return null; }
+  // /l/<slug> — a league's public page (published by its Gestor). Public, read-only.
+  const publicLeague = path.match(/^\/l\/([a-z0-9-]{1,60})$/);
+  if (publicLeague && !localMode) return <LeaguePublicPage slug={publicLeague[1]} />;
   // /league/entrar — the one place a league account is created or signed into.
   if (path === LEAGUE_ENTRY_PATH && !localMode) return <LeagueAuth cloud={cloud} lang={lang} onLang={changeLang} />;
   // ── Presentation launcher (/demo) — full width, public, no login ───

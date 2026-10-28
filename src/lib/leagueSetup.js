@@ -290,3 +290,23 @@ export function addAnnouncement(state, { title, body, at }) {
   while (taken.has(`a${n}`)) n++;
   return { ...state, announcements: [{ id: `a${n}`, at: at || new Date().toISOString(), title: t.slice(0, 120), body: b }, ...state.announcements] };
 }
+
+/** The league's logo (a small PNG data URL) and colour. Passing null clears. */
+export function setLeagueBrand(state, { logo, color }) {
+  const ok = /^#[0-9A-Fa-f]{6}$/.test(color || "");
+  const league = { ...state.data.league };
+  if (logo !== undefined) { if (logo) league.logo = logo; else delete league.logo; }
+  if (color !== undefined) { if (ok) league.color = color.toUpperCase(); else if (!color) delete league.color; }
+  return withData(state, { league });
+}
+
+/** A team's emblem (a small PNG data URL). Passing null clears. */
+export function setTeamLogo(state, teamId, logo) {
+  if (!state.data.teams.some((t) => t.id === teamId)) throw new SetupError("not_found", teamId);
+  return withData(state, { teams: state.data.teams.map((t) => { if (t.id !== teamId) return t; const next = { ...t }; if (logo) next.logo = logo; else delete next.logo; return next; }) });
+}
+
+/** The guided start is over (finished or skipped): the league opens on its Painel from now on. */
+export function finishOnboarding(state) {
+  return { ...state, setup: { ...(state.setup || {}), done: true } };
+}

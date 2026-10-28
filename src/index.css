@@ -28,3 +28,12 @@ input,
 select {
   font-family: inherit;
 }
+
+/* Scrollbars follow the theme: dark and thin instead of the white system bar. */
+html:not([data-theme="light"]) { color-scheme: dark; }
+* { scrollbar-width: thin; scrollbar-color: #2e3a50 transparent; }
+html[data-theme="light"] * { scrollbar-color: #b8c2d6 transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2e3a50; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #b8c2d6; background-clip: content-box; }

@@ -6,6 +6,7 @@ import { LEAGUE, COMPETITION } from "../../lib/leagueDemo";
 import Chip from "../Chip";
 import LeagueRoleSwitcher from "./LeagueRoleSwitcher";
 import LeagueScopeBar from "./LeagueScopeBar";
+import LeagueMark from "./LeagueMark";
 import { LeagueSyncChip } from "./LeagueSyncStatus";
 
 /** League top bar. PITCH Ligas is a standalone product: no link back to the
@@ -48,7 +49,12 @@ export default function LeagueHeader({ role, onRole, compact, slim, desktop = fa
       </div>
       {compact ? null : (
         <>
-          {!slim && <h1 style={{ ...displayFont, fontSize: T.title - 6, lineHeight: 1.1, margin: `${S.xs}px 0 ${S.md}px`, color: C.text1 }}>{LEAGUE.name}</h1>}
+          {!slim && (
+            <div style={{ display: "flex", alignItems: "center", gap: S.md, margin: `${S.xs}px 0 ${S.md}px` }}>
+              {live && <LeagueMark size={44} />}
+              <h1 style={{ ...displayFont, fontSize: T.title - 6, lineHeight: 1.1, margin: 0, color: C.text1, minWidth: 0 }}>{LEAGUE.name}</h1>
+            </div>
+          )}
           {manager
             ? <LeagueScopeBar scope={scope} onScope={onScope} />
             : (

@@ -7,6 +7,7 @@ import { LEAGUE } from "../../lib/leagueDemo";
 import { deskNavFor } from "../../lib/leagueNav";
 import Chip from "../Chip";
 import LeagueScopeBar from "./LeagueScopeBar";
+import LeagueMark from "./LeagueMark";
 import LeagueRoleSwitcher from "./LeagueRoleSwitcher";
 import { LeagueSyncChip } from "./LeagueSyncStatus";
 
@@ -27,7 +28,10 @@ export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onR
           <img src={BRAND.logo} alt="PITCH" style={{ height: 18 }} />
           <span style={{ ...displayFont, fontSize: T.meta, letterSpacing: "0.12em", color: C.accent }}>LIGAS</span>
         </div>
-        <div style={{ ...displayFont, fontSize: T.h, lineHeight: 1.15, marginTop: S.md, color: C.text1 }}>{LEAGUE.name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: S.md, marginTop: S.md }}>
+          {live && <LeagueMark size={44} />}
+          <div style={{ ...displayFont, fontSize: T.h, lineHeight: 1.15, color: C.text1, minWidth: 0 }}>{LEAGUE.name}</div>
+        </div>
         <div style={{ marginTop: S.sm }}>
           {live ? <LeagueSyncChip sync={sync} /> : <Chip variant="orange" Icon={FlaskConical} title={t(LG.demoData)}>{t("Demo")}</Chip>}
         </div>

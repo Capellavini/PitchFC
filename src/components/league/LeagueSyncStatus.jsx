@@ -14,6 +14,7 @@ const CHIP = {
 
 /** Small pill: is what the Gestor just did safe in the cloud? */
 export function LeagueSyncChip({ sync = "idle" }) {
+  if (sync === "public") return null; // a public page has nothing to save
   const c = CHIP[sync] || CHIP.idle;
   return <span role="status" aria-live="polite"><Chip variant={c.variant} Icon={c.Icon}>{t(c.label)}</Chip></span>;
 }

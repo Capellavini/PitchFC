@@ -37,6 +37,7 @@ import LeaguePlayersDirectory from "./LeaguePlayersDirectory";
 import LeagueCompare from "./LeagueCompare";
 import LeagueToast from "./LeagueToast";
 import { LeagueSyncBanner } from "./LeagueSyncStatus";
+import LeagueOnboarding from "./LeagueOnboarding";
 
 const SHELL_W = 430; // same column as the app shell (phone layout)
 const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif"; // same as the app shell
@@ -62,9 +63,12 @@ const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sa
  */
 export default function LeagueContextApp({ entry = null, store = null }) {
   const live = Boolean(store);
+  const readOnly = Boolean(store?.readOnly); // a public page: followers look, nothing is written
   const local = usePersistentState(live ? "leagueWorkspaceLocal" : LEAGUE_DEMO_KEY, null);
   const [raw, setRaw] = live ? [store.raw, store.setRaw] : local;
   const state = useMemo(() => normalizeLeagueState(raw), [raw]);
+  const latest = useRef(state);
+  latest.current = state;
   const [storedTab, setTab] = usePersistentState("leagueDemoTab", "inicio");
   const [manageSection, setManageSection] = usePersistentState("leagueDemoManage", "overview");
   const [stack, setStack] = usePersistentState("leagueDemoStack", []);
@@ -88,7 +92,7 @@ export default function LeagueContextApp({ entry = null, store = null }) {
     } catch { /* ignore */ }
   }, [entry]);
 
-  const role = live ? "manager" : state.viewer?.role || "fan";
+  const role = live && !readOnly ? "manager" : state.viewer?.role || "fan";
   const derived = useMemo(() => deriveLeague(state), [state]);
   const acc = ROLE_ACCOUNTS[role] || ROLE_ACCOUNTS.fan;
   const lang = getLang();
@@ -113,8 +117,13 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   /** Apply a pure update to the demo state; LeagueError → toast. */
   const apply = (fn, okMsg) => {
     try {
-      const next = fn(state);
-      if (next === state) return { same: true };
+      // Two writes in one gesture (save the name, then move to the next step) must chain:
+      // each starts from the latest result, not from the state of the last render.
+      if (readOnly) return { same: true };
+      const base = latest.current;
+      const next = fn(base);
+      if (next === base) return { same: true };
+      latest.current = next;
       setRaw(next);
       if (okMsg) notify(okMsg);
       return { ok: true };
@@ -218,6 +227,16 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;
   else if (tab === "mais") body = <LeagueMore ctx={ctx} />;
   else body = <LeagueHome ctx={ctx} />;
+
+  // A real account that has not finished the guided start lands there first.
+  if (live && !readOnly && !state.setup?.done) {
+    return (
+      <div style={{ fontFamily: FONT }}>
+        <LeagueOnboarding ctx={ctx} />
+        <LeagueToast toast={toast} onDone={() => setToast(null)} />
+      </div>
+    );
+  }
 
   if (desktop) {
     const title = tab === "adjunto" ? adjuntoName(lang) : tabTitle(role, tab);
