@@ -24,7 +24,7 @@ Documentos que o chat lê: calendário em PDF ou foto, plantéis em CSV/TXT/PDF/
 
 1. Vercel → Environment Variables: `ANTHROPIC_API_KEY` e `LEAGUE_COPILOT_ENABLED=true` (a mesma chave do Adjunto dos grupos serve; o interruptor é o mesmo do copiloto antigo).
 2. Opcional: `LEAGUE_ADJUNTO_MODEL` (por defeito `claude-sonnet-5-5`; `claude-haiku-4-5` baixa o custo, lê pior documentos difíceis).
-3. A migração `20261028190000_league_adjunto_quota.sql` sai com o merge pelo CI. Sem ela, o chat cai no modo guiado (a cota falha fechada).
+3. A migração `20261028205000_league_adjunto_quota.sql` sai com o merge pelo CI. Sem ela, o chat cai no modo guiado (a cota falha fechada).
 
 Custo de referência (Sonnet): uma conversa com um PDF de calendário ou um plantel de 15 atletas fica na ordem de cêntimos; o teto de 40 chamadas/dia limita o pior caso por conta.
 
