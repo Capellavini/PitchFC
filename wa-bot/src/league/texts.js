@@ -1,0 +1,22 @@
+// PITCH Ligas on WhatsApp — what the bot says (PT-PT). Short: it is a chat, not a report.
+export const LEAGUE_TEXT = Object.freeze({
+  welcome: (league) => `Ligado ✅ Sou o Adjunto de Ligas${league ? ` da ${league}` : ""}.\n\nPodes escrever-me um resultado («Porto FC vs Corinthians, 2x0, 2 golos do Vini, amarelo ao Barto»), mandar a *foto ou o PDF da súmula*, ou pedir qualquer coisa da liga. Mostro-te o resumo e só aplico quando disseres *sim*.\n\nDica: se a letra não ler bem, manda a súmula como *documento* (clipe → Documento), sem compressão.\n\nO texto e as fotos são lidos por uma IA (Anthropic). Mascaro contactos e licenças no texto; uma foto pode ter nomes de atletas. Para desligar, escreve «desligar».`,
+  noLeague: "Ligado ✅ Ainda não tens liga criada. Abre pitch-fc.com/league/minhas, monta a liga e volta a falar comigo.",
+  codeInvalid: "Esse código não é válido ou já expirou. Na app, em Gerir → Liga, gera outro («Ligar WhatsApp») e envia-o aqui.",
+  help: "Posso:\n• lançar resultados: «Porto FC vs Corinthians 2x0, 2 golos do Vini, amarelo ao Barto»\n• ler a súmula: manda a foto ou o PDF\n• marcar ou mudar jogos, acrescentar equipas e plantéis, publicar comunicados\n\nAntes de mudar algo mostro o resumo e espero o teu *sim*. Não homologo resultados: isso fica contigo na app.",
+  unlinked: "Desligado. Deixo de ler as tuas mensagens como Adjunto de Ligas.",
+  aiOff: "O Adjunto com IA não está disponível neste momento. Usa a app: pitch-fc.com/league/minhas.",
+  limit: "Atingiste o limite diário do Adjunto. Amanhã há mais; hoje usa a app.",
+  invalidMedia: "Não consegui usar esse ficheiro. Aceito foto (JPG, PNG, WebP) ou PDF até 2,4 MB.",
+  notUnderstood: "Não percebi. Podes dizer de outra forma ou mandar a súmula?",
+  modelDown: "A IA não respondeu. Não alterei nada. Tenta daqui a pouco.",
+  badState: "A tua liga na nuvem está num formato que não consigo ler. Abre a app e grava qualquer alteração para a atualizar.",
+  cancelled: "Cancelado. Não alterei nada.",
+  nothingPending: "Não tenho nada à espera de confirmação.",
+  expired: "Esse pedido expirou. Diz-me outra vez o que queres e preparo de novo.",
+  conflict: "A liga mudou entretanto na app e não consegui aplicar. Repete o pedido.",
+  writeFailed: "Não consegui guardar na liga. Não alterei nada. Tenta outra vez.",
+  nothingApplicable: (lines) => `Não consegui aplicar nada:\n${lines}`,
+  summary: (lines, lead) => `${lead ? `${lead}\n\n` : ""}Entendi:\n${lines}\n\nRespondes *sim* para aplicar, ou *não* para cancelar.`,
+  applied: (n, lines, hasResult) => `Feito ✅ ${n === 1 ? "1 alteração" : `${n} alterações`} na liga.${lines ? `\n${lines}` : ""}${hasResult ? "\n\nO resultado está *por homologar*: confirma-o na app (Painel)." : ""}`,
+});

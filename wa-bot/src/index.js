@@ -6,7 +6,7 @@
 try { process.loadEnvFile(); } catch { /* no .env: rely on real env */ }
 
 import crypto from "node:crypto";
-import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, jidNormalizedUser, generateMessageIDV2 } from "@whiskeysockets/baileys";
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, jidNormalizedUser, generateMessageIDV2, downloadMediaMessage } from "@whiskeysockets/baileys";
 import qrcode from "qrcode-terminal";
 import pino from "pino";
 import { cfg } from "./config.js";
@@ -201,6 +201,29 @@ const adjunto = () => (adjuntoP ??= import("./adjunto/index.js").then(({ createA
     if (id) await markSent(id);
   },
 })));
+
+// -- PITCH Ligas on WhatsApp (league managers) -----------------------------------
+// Loaded lazily and only when LEAGUE_WA_ENABLED=true. Handles the DMs of linked league
+// managers (and the LIGA-XXXXXX link code); everything else falls through to the Adjunto above.
+let leagueP = null;
+const leagueBot = () => (leagueP ??= import("./league/index.js").then(({ createLeagueBot }) => createLeagueBot({
+  log, getSock: () => sock, send: sendLeagueDm,
+  download: (m) => downloadMediaMessage(m, "buffer", {}, { logger: pino({ level: "silent" }), reuploadRequest: sock.updateMediaMessage }),
+})));
+
+/** Reply in a league manager's DM. Dry-run unless LEAGUE_WA_AUTOSEND=true. */
+async function sendLeagueDm(jid, text) {
+  if (!cfg().leagueWaAutosend) { log(`[league wa dry-run] DM -> ${maskJid(jid)}:
+${text}
+`); return; }
+  await sleep(800 + Math.random() * 1800);
+  await sock.sendPresenceUpdate("composing", jid);
+  await sleep(400 + Math.random() * 900);
+  // The bot's own reply must never look like a human taking over a chat (the weekly-groups Adjunto listens for that).
+  const messageId = generateMessageIDV2(sock.user?.id);
+  if (adjuntoP) (await adjuntoP).takeover.noteBotSent(messageId);
+  await sock.sendMessage(jid, { text }, { messageId });
+}
 
 /** DM to a linked organizer (or one of the allowed replies to an unlinked
  *  sender: activation code/phrase, PITCH Rivals captain guide). Dry-run unless ADJUNTO_AUTOSEND=true. The message id is
@@ -443,6 +466,8 @@ async function onMessage(m) {
   try {
     const jid = m.key.remoteJid;
     if (!jid?.endsWith("@g.us")) {
+      // League managers first (their link code and their linked number); anyone else continues below.
+      if (cfg().leagueWaEnabled && isDmJid(jid) && !m.key.fromMe && (await (await leagueBot()).onDirectMessage(m))) return;
       // DMs: only with the Treinador Adjunto on; status/broadcast/newsletter never.
       if (cfg().adjuntoEnabled && isDmJid(jid)) {
         const a = await adjunto();

@@ -82,5 +82,12 @@ export function useLeagueWorkspace({ enabled = true, userId = null } = {}) {
     return { data: r.data };
   }, [engine]);
 
-  return { phase, raw, setRaw, sync, slug: meta.slug, published: meta.published, publish, reload, retry: () => engine?.retry() };
+  // WhatsApp link (the Adjunto on the bot's number): one-time code, status, unlink.
+  const wa = useMemo(() => ({
+    status: () => rpc("league_wa_status", {}),
+    createCode: () => rpc("league_wa_create_code", {}),
+    unlink: () => rpc("league_wa_unlink", {}),
+  }), []);
+
+  return { phase, raw, setRaw, sync, slug: meta.slug, published: meta.published, publish, wa, reload, retry: () => engine?.retry() };
 }
