@@ -6,6 +6,7 @@ import { LEAGUE, COMPETITION } from "../../lib/leagueDemo";
 import Chip from "../Chip";
 import LeagueRoleSwitcher from "./LeagueRoleSwitcher";
 import LeagueScopeBar from "./LeagueScopeBar";
+import { LeagueSyncChip } from "./LeagueSyncStatus";
 
 /** League top bar. PITCH Ligas is a standalone product: no link back to the
  *  other PITCH apps and no context switcher.
@@ -16,7 +17,7 @@ import LeagueScopeBar from "./LeagueScopeBar";
  *  - phone, followers: logo + chip, breadcrumb, role switcher.
  *  `compact` (entry screen) shows only the top row; `slim` (pushed screens)
  *  keeps the top row + breadcrumb. */
-export default function LeagueHeader({ role, onRole, compact, slim, desktop = false, title, subtitle, scope, onScope, onMore }) {
+export default function LeagueHeader({ role, onRole, compact, slim, desktop = false, title, subtitle, scope, onScope, onMore, live = false, sync }) {
   if (desktop) {
     return (
       <header style={{ marginBottom: S.xl }}>
@@ -35,7 +36,9 @@ export default function LeagueHeader({ role, onRole, compact, slim, desktop = fa
           <span style={{ ...displayFont, fontSize: T.meta, letterSpacing: "0.12em", color: C.accent }}>LIGAS</span>
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: S.sm }}>
-          <Chip variant="orange" Icon={FlaskConical} title={t(LG.demoData)}>{t("Demo")}</Chip>
+          {live
+            ? <LeagueSyncChip sync={sync} />
+            : <Chip variant="orange" Icon={FlaskConical} title={t(LG.demoData)}>{t("Demo")}</Chip>}
           {manager && !compact && (
             <button type="button" onClick={onMore} aria-label={t("Mais")} style={{ width: TOUCH.min, height: TOUCH.min, display: "grid", placeItems: "center", background: "none", border: `1px solid ${C.border}`, borderRadius: 999, color: C.text1, cursor: "pointer" }}>
               <Menu size={18} aria-hidden />
@@ -51,7 +54,7 @@ export default function LeagueHeader({ role, onRole, compact, slim, desktop = fa
             : (
               <div aria-label={t("Contexto da liga")} style={{ fontSize: T.meta, color: C.text2, fontWeight: 600 }}>{crumbs.join(" · ")}</div>
             )}
-          {!slim && (
+          {!slim && !live && (
             <details style={{ marginTop: S.md }}>
               <summary style={{ cursor: "pointer", fontSize: T.meta, color: C.text2, minHeight: TOUCH.min, display: "flex", alignItems: "center" }}>{t("Ver como (só na demonstração)")}</summary>
               <LeagueRoleSwitcher role={role} onRole={onRole} />

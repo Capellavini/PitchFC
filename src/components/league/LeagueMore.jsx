@@ -74,12 +74,12 @@ export default function LeagueMore({ ctx }) {
 
       <SectionLabel style={{ marginTop: S.xl }}>{t("Liga")}</SectionLabel>
       {row(BookOpen, t("Regulamento"), () => setSub("regulamento"), t("Regras por defeito · só leitura"))}
-      {row(Gavel, t("Disciplina"), () => setSub("disciplina"), t("Cartões e suspensões (regras demo)"))}
+      {row(Gavel, t("Disciplina"), () => setSub("disciplina"), ctx.live ? t("Cartões e suspensões") : t("Cartões e suspensões (regras demo)"))}
       {row(SlidersHorizontal, t("Preferências"), () => setSub("prefs"), t("Equipa do coração e avisos"))}
       {row(Users, t("Atletas"), () => open({ kind: "players" }), modOn("ovr") || modOn("compare") ? t("Cartões, OVR e comparação") : t("Golos, assistências e cartões"))}
       {modOn("fantasy") && (ctx.role === "captain" || ctx.role === "athlete") && row(Gamepad2, t("Fantasy"), () => ctx.goTab("fantasy"), t("Monta a tua equipa de adepto"))}
 
-      <div style={{ ...cardStyle, marginTop: S.xl, borderStyle: "dashed", borderColor: `${C.orange}88` }}>
+      {!ctx.live && <div style={{ ...cardStyle, marginTop: S.xl, borderStyle: "dashed", borderColor: `${C.orange}88` }}>
         <div style={{ display: "flex", alignItems: "center", gap: S.sm, fontWeight: 800, marginBottom: S.xs }}><FlaskConical size={16} color={C.orange} aria-hidden /> {t(LG.demoMode)}</div>
         <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, marginBottom: S.md }}>{t(LG.demoData)} {t("Nada é enviado para servidores.")}</div>
         <details style={{ marginBottom: S.md }}>
@@ -89,7 +89,7 @@ export default function LeagueMore({ ctx }) {
           </ul>
         </details>
         <BtnGhost block onClick={() => { let ok = true; try { ok = window.confirm(t("Apagar a liga e começar do zero? Isto remove equipas, atletas, jogos e resultados guardados neste browser.")); } catch { /* no dialogs */ } if (ok) act.reset(); }}>{t(LG.reset)}</BtnGhost>
-      </div>
+      </div>}
     </div>
   );
 }
