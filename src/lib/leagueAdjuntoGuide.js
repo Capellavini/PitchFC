@@ -7,6 +7,7 @@ import { COMPETITIONS } from "./leagueDemo.js";
 const KIND_TEXT = {
   contest: (n) => `${n} ${n === 1 ? "contestação à espera de decisão" : "contestações à espera de decisão"}`,
   homologate: (n) => `${n} ${n === 1 ? "resultado por homologar" : "resultados por homologar"}`,
+  result: (n) => `${n} ${n === 1 ? "jogo já passou e ainda não tem resultado" : "jogos já passaram e ainda não têm resultado"}`,
   live: (n) => `${n} ${n === 1 ? "jogo a decorrer" : "jogos a decorrer"}`,
   suspended: (n) => `${n} ${n === 1 ? "atleta suspenso numa convocatória" : "atletas suspensos em convocatórias"}`,
   lineup: (n) => `${n} ${n === 1 ? "convocatória em falta" : "convocatórias em falta"}`,
@@ -19,6 +20,7 @@ const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-
 const KIND_ACTION = {
   contest: { id: "contest", label: "Decidir contestação" },
   homologate: { id: "homologate", label: "Homologar" },
+  result: { id: "results", label: "Lançar resultado" },
   live: { id: "live", label: "Abrir jogo" },
   suspended: { id: "discipline", label: "Ver disciplina" },
   lineup: { id: "lineups", label: "Ver convocatórias" },

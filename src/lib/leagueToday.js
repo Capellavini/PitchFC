@@ -9,7 +9,10 @@ const isOfficial = (m) => OFFICIAL.has(m.state);
 const compOf = (m) => m.competitionId || COMPETITION.id;
 
 /** Urgency order: contest → homologate → live → suspended → lineup → conflict. */
-const ORDER = ["contest", "homologate", "live", "suspended", "lineup", "conflict"];
+const ORDER = ["contest", "homologate", "result", "live", "suspended", "lineup", "conflict"];
+
+/** A game with no result this long after kick-off is waiting for one (ms). */
+export const RESULT_GRACE = 2 * 3600e3;
 
 /**
  * @param {{matches: object[]}} state   league demo state
@@ -20,7 +23,7 @@ const ORDER = ["contest", "homologate", "live", "suspended", "lineup", "conflict
  *   sections: one per competition with matches → { competition, round, label,
  *   total, official, done, items }. items: the merged queue, most urgent first.
  */
-export function leagueToday(state, derived, { duration = 60, scope = "all" } = {}) {
+export function leagueToday(state, derived, { duration = 60, scope = "all", now = Date.now() } = {}) {
   const matches = state.matches || [];
   const banned = new Set(Object.values(derived?.discipline || {}).filter((d) => d.pending > 0).map((d) => d.playerId));
   const sections = [];
@@ -40,6 +43,7 @@ export function leagueToday(state, derived, { duration = 60, scope = "all" } = {
       if (m.state === "in_review") items.push({ ...tag, kind: "contest", key: `contest-${m.id}`, matchId: m.id, reason: m.contest?.reason || null });
       if (m.state === "ended_provisional") items.push({ ...tag, kind: "homologate", key: `homologate-${m.id}`, matchId: m.id });
       if (m.state === "live") items.push({ ...tag, kind: "live", key: `live-${m.id}`, matchId: m.id });
+      if (m.state === "scheduled" && m.kickoff && Date.parse(m.kickoff) + RESULT_GRACE < now && !(state.logs?.[m.id] || []).length) items.push({ ...tag, kind: "result", key: `result-${m.id}`, matchId: m.id });
     }
     // Call-ups and suspended players are about the games still to be played in the current round.
     for (const m of roundMatches) {

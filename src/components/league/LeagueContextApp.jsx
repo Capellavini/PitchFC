@@ -13,9 +13,10 @@ import { adjuntoName } from "../../lib/leagueAdjunto";
 import { leagueToday } from "../../lib/leagueToday";
 import { useWide } from "../../lib/useWide";
 import { teamHome } from "../../lib/leagueTeamHome";
-import { competitionById, LEAGUE, COMPETITION } from "../../lib/leagueDemo";
+import { competitionById, LEAGUE, COMPETITION, teamById } from "../../lib/leagueDemo";
 import { tabTitle } from "../../lib/leagueNav";
 import { SetupError } from "../../lib/leagueSetup";
+import { recordResult } from "../../lib/leagueResults";
 import { SETUP_ERROR } from "../../lib/leagueSetupCopy";
 import { setModule } from "../../lib/leagueModules";
 import LeagueHeader from "./LeagueHeader";
@@ -74,6 +75,7 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   const [stack, setStack] = usePersistentState("leagueDemoStack", []);
   const [scope, setScope] = usePersistentState("leagueDemoScope", "all"); // Gestor: "all" or a competition id
   const [adjuntoLog, setAdjuntoLog] = useState([]);
+  const [adjuntoPrefill, setAdjuntoPrefill] = useState(null); // { text, n }: what the Adjunto chat opens with
   const [welcomeSeen, setWelcomeSeen] = usePersistentState("leagueDemoWelcome", {}); // role → true once dismissed
   const markWelcome = (r) => setWelcomeSeen({ ...(welcomeSeen || {}), [r]: true });
   const wide = useWide();
@@ -196,6 +198,15 @@ export default function LeagueContextApp({ entry = null, store = null }) {
       apply((s) => ({ ...s, fantasy: { ...s.fantasy, [acc.accountId]: ids } }), t("Equipa de Fantasy guardada (só neste browser)."));
       return { ok: true };
     },
+    /** A played game: just the score (provisional, no scorers). */
+    recordResult: (matchId, score) => apply((s) => recordResult(s, { matchId, score, by: who, at: now() }), t("Resultado lançado — fica por homologar.")),
+    /** "Subir súmula": the Adjunto chat opens ready for the photo or PDF of this match. */
+    sumula: (matchId) => {
+      const m = state.matches.find((x) => x.id === matchId);
+      const names = m ? `${teamById[m.homeId]?.name} – ${teamById[m.awayId]?.name}` : "";
+      setAdjuntoPrefill({ text: `${t("Vou anexar a súmula do jogo")} ${names}.`, n: Date.now() });
+      goTab("adjunto");
+    },
     /** Build the league: `fn` is a pure leagueSetup function (state → state). */
     setup: (fn, okMsg) => apply(fn, okMsg),
     setModule: (id, on) => apply((s) => ({ ...s, modules: setModule(s.modules, id, on) })),
@@ -207,7 +218,7 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   const manager = role === "manager";
   const desktop = wide && !entering; // computer layout for every role: sidebar + wide content
   // Only the Gestor looks across competitions; followers see the primary one.
-  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, welcomeSeen, markWelcome, live, store };
+  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, adjuntoPrefill, welcomeSeen, markWelcome, live, store };
   const pushed = !entering && Boolean(view);
   // What is waiting on a captain / athlete shows as a count on their Equipa tab.
   const badges = inTeam ? { inicio: teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role }).queue.length } : {};

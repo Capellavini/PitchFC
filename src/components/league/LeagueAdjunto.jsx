@@ -37,6 +37,9 @@ export default function LeagueAdjunto({ ctx, ask = askAdjunto }) {
   const [needConsent, setNeedConsent] = useState(false);
   const end = useRef(null);
   const picker = useRef(null);
+  const prefill = ctx.adjuntoPrefill;
+  // "Subir súmula" from a match opens the chat with the first line written and the clip pointed at.
+  useEffect(() => { if (prefill?.text) setText(prefill.text); }, [prefill?.n]); // eslint-disable-line react-hooks/exhaustive-deps
   const brief = adjuntoBrief(today);
   const messages = adjuntoLog.length ? adjuntoLog : [{ role: "assistant", text: brief.text, actions: brief.actions }];
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [adjuntoLog.length, busy]);
@@ -46,6 +49,7 @@ export default function LeagueAdjunto({ ctx, ask = askAdjunto }) {
     const go = (it) => it && open({ kind: "match", id: it.matchId || it.matchIds?.[0] });
     if (id === "homologate") return go(firstOf("homologate"));
     if (id === "live") return go(firstOf("live"));
+    if (id === "results") return go(firstOf("result"));
     if (id === "contest") return go(firstOf("contest"));
     if (id === "lineups") return go(firstOf("lineup"));
     if (id === "calendar") return open({ kind: "manage", section: "calendar" });
@@ -127,6 +131,11 @@ export default function LeagueAdjunto({ ctx, ask = askAdjunto }) {
         {ai === "on" && <Chip variant="green">{t("IA ativa")}</Chip>}
         {ai === "off" && <Chip variant="orange">{t("Modo guiado")}</Chip>}
       </div>
+      {prefill?.text && (
+        <div role="note" style={{ ...cardStyle, borderColor: C.accentBorder, marginBottom: S.md, fontSize: T.meta, color: C.text2, lineHeight: 1.5 }}>
+          {t("Carrega no clipe, anexa a foto ou o PDF da súmula e envia. O Adjunto lê o resultado, os marcadores e os cartões e mostra-te o resumo para confirmares.")}
+        </div>
+      )}
       <p style={{ color: C.text2, fontSize: T.meta, lineHeight: 1.5, margin: `0 0 ${S.lg}px` }}>
         {t("Escreve o que precisas ou anexa um documento (calendário, plantéis, regulamento). Preparo as alterações e tu confirmas. Não homologo, não decido sanções e não envio mensagens: isso é contigo.")}
       </p>

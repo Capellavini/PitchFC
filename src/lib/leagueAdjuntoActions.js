@@ -7,6 +7,7 @@
 // The same catalog serves the in-app chat and, later, the WhatsApp bot, so a
 // proposal means the same thing in both. Pure: state in, state out.
 import * as S from "./leagueSetup.js";
+import { recordResult } from "./leagueResults.js";
 import { SETUP_ERROR } from "./leagueSetupCopy.js";
 import { MODULES, setModule, moduleOn } from "./leagueModules.js";
 
@@ -31,6 +32,10 @@ export const PROPOSAL_ERROR = Object.freeze({
   match_ambiguous: "Há mais de um jogo entre estas equipas. Indica a jornada ou a competição.",
   module_unknown: "Não conheço esse módulo.",
   roster_empty: "Não há atletas para acrescentar.",
+  score_missing: "Falta o resultado (golos de cada equipa).",
+  same_team: "Escolhe duas equipas diferentes.",
+  match_played: "Esse jogo já tem resultado. Para o corrigir usa Lances, com motivo.",
+  match_unplayed_unknown: "Não encontrei um jogo por jogar entre estas equipas. Se for um jogo novo, marca-o primeiro.",
 });
 
 /** Human text for any error thrown while preparing a proposal. */
@@ -78,6 +83,49 @@ function matchOf(s, a) {
   if (!found.length) throw new ProposalError("match_unknown");
   if (found.length > 1) throw new ProposalError("match_ambiguous");
   return { match: found[0], home, away };
+}
+
+const lisbonDay = (iso) => { try { return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Lisbon" }).format(new Date(iso)); } catch { return String(iso).slice(0, 10); } };
+
+/** The match a played result belongs to: the two teams, any home/away order, a game still to be played.
+ *  With several candidates (two legs, league and cup) the date, competition or round decides; never a guess. */
+function playedMatchOf(s, a) {
+  const x = findTeam(s, a.home), y = findTeam(s, a.away);
+  if (x.id === y.id) throw new ProposalError("same_team");
+  const comp = norm(a.competition) ? findCompetition(s, a.competition) : null;
+  const between = s.matches.filter((m) => [m.homeId, m.awayId].sort().join() === [x.id, y.id].sort().join() && (!comp || m.competitionId === comp.id) && (!a.round || m.round === a.round));
+  let open = between.filter((m) => ["scheduled", "live"].includes(m.state));
+  if (!open.length) throw new ProposalError(between.length ? "match_played" : "match_unplayed_unknown");
+  if (open.length > 1) {
+    // Several games still to play (two legs, league and cup). With a day, the one on that day (or clearly nearest) wins;
+    // without it, only a game whose time has already passed can be the one that was just played.
+    if (a.date) {
+      const exact = open.filter((m) => lisbonDay(m.kickoff) === a.date);
+      if (exact.length === 1) open = exact;
+      else {
+        const ref = Date.parse(`${a.date}T12:00:00Z`);
+        const ranked = open.map((m) => ({ m, d: Math.abs(Date.parse(m.kickoff) - ref) })).sort((p, q) => p.d - q.d);
+        if (ranked[1].d - ranked[0].d < 2 * 864e5) throw new ProposalError("match_ambiguous");
+        open = [ranked[0].m];
+      }
+    } else {
+      const past = open.filter((m) => Date.parse(m.kickoff) <= Date.now());
+      if (past.length !== 1) throw new ProposalError("match_ambiguous");
+      open = past;
+    }
+  }
+  return { match: open[0], x, y };
+}
+
+/** A person named in a sentence or on a sheet → { player, team } within the two teams of the match. */
+function personIn(s, teams, ref, teamRef) {
+  const pool = teamRef ? [findTeam(s, teamRef)] : teams;
+  const hits = [];
+  for (const tm of pool) {
+    try { hits.push({ player: findPlayer(s, tm.id, ref), team: tm }); } catch (e) { if (e.code === "player_ambiguous") throw e; }
+  }
+  if (hits.length === 1) return hits[0];
+  throw new ProposalError(hits.length ? "player_ambiguous" : "player_unknown", ref);
 }
 
 const obj = (properties, required = []) => ({ type: "object", additionalProperties: false, required, properties });
@@ -167,6 +215,58 @@ export const PROPOSALS = Object.freeze({
       return { state: S.rescheduleMatch(s, { matchId: match.id, date: a.date, time: a.time, venue: a.venue }), line: `${home.name} – ${away.name} passa para ${fmtDate(a.date)} às ${a.time}${a.venue ? ` · ${a.venue}` : ""}` };
     },
   },
+  record_result: {
+    label: "Resultado",
+    description: "Lança o resultado de um jogo já jogado: as duas equipas (pela ordem em que foram nomeadas), os golos de cada uma, quem marcou e os cartões. É a ÚNICA forma de registar um resultado. Fica sempre PROVISÓRIO: a homologação é da direção. Usa os nomes tal como foram ditos; quem resolve atletas e jogo é o sistema. Não inventes marcadores nem cartões que não foram mencionados.",
+    schema: obj({
+      home: text(80, "Primeira equipa nomeada"), away: text(80, "Segunda equipa nomeada"),
+      home_goals: { type: "integer", minimum: 0, maximum: 99 }, away_goals: { type: "integer", minimum: 0, maximum: 99 },
+      competition: text(80), round: { type: "integer", minimum: 1, maximum: 60 }, date: text(10, "AAAA-MM-DD, dia do jogo, se for dito"),
+      scorers: { type: "array", maxItems: 40, items: obj({ player: text(80), team: text(80), goals: { type: "integer", minimum: 1, maximum: 20 }, own_goal: { type: "boolean", description: "Autogolo: o golo conta para a outra equipa" } }, ["player"]) },
+      cards: { type: "array", maxItems: 40, items: obj({ player: text(80), team: text(80), type: { type: "string", enum: ["yellow", "red", "second_yellow"] } }, ["player", "type"]) },
+      appeared: { type: "array", maxItems: 2, description: "Quem jogou, só se vier numa súmula", items: obj({ team: text(80), players: { type: "array", maxItems: 40, items: text(80) } }, ["team", "players"]) },
+    }, ["home", "away", "home_goals", "away_goals"]),
+    clean: (a) => ({
+      home: str(a.home, 80), away: str(a.away, 80),
+      home_goals: Number.isInteger(a.home_goals) && a.home_goals >= 0 && a.home_goals <= 99 ? a.home_goals : null,
+      away_goals: Number.isInteger(a.away_goals) && a.away_goals >= 0 && a.away_goals <= 99 ? a.away_goals : null,
+      competition: str(a.competition, 80), round: Number.isInteger(a.round) && a.round > 0 ? Math.min(60, a.round) : 0, date: date(a.date),
+      scorers: (Array.isArray(a.scorers) ? a.scorers : []).slice(0, 40).map((x) => ({ player: str(x?.player, 80), team: str(x?.team, 80), goals: Number.isInteger(x?.goals) ? Math.min(20, Math.max(1, x.goals)) : 1, own_goal: x?.own_goal === true })).filter((x) => x.player),
+      cards: (Array.isArray(a.cards) ? a.cards : []).slice(0, 40).map((x) => ({ player: str(x?.player, 80), team: str(x?.team, 80), type: ["yellow", "red", "second_yellow"].includes(x?.type) ? x.type : "yellow" })).filter((x) => x.player),
+      appeared: (Array.isArray(a.appeared) ? a.appeared : []).slice(0, 2).map((x) => ({ team: str(x?.team, 80), players: (Array.isArray(x?.players) ? x.players : []).slice(0, 40).map((p) => str(p, 80)).filter(Boolean) })).filter((x) => x.team),
+    }),
+    run: (s, a) => {
+      if (a.home_goals === null || a.away_goals === null) throw new ProposalError("score_missing");
+      const { match, x, y } = playedMatchOf(s, a);
+      const goalsOf = { [x.id]: a.home_goals, [y.id]: a.away_goals };
+      const teams = [x, y];
+      const other = (id) => (id === x.id ? y : x);
+      const goals = [];
+      for (const sc of a.scorers) {
+        const { player, team } = personIn(s, teams, sc.player, sc.team);
+        for (let i = 0; i < sc.goals; i += 1) goals.push(sc.own_goal ? { teamId: other(team.id).id, playerId: player.id, own: true } : { teamId: team.id, playerId: player.id });
+      }
+      const cards = a.cards.map((c) => { const { player, team } = personIn(s, teams, c.player, c.team); return { teamId: team.id, playerId: player.id, type: c.type }; });
+      const lineups = {}; const missing = [];
+      for (const ap of a.appeared) {
+        const tm = findTeam(s, ap.team);
+        if (![match.homeId, match.awayId].includes(tm.id)) continue;
+        lineups[tm.id] = [];
+        for (const nm of ap.players) { try { lineups[tm.id].push(findPlayer(s, tm.id, nm).id); } catch { missing.push(nm); } }
+      }
+      const next = recordResult(s, {
+        matchId: match.id, score: { home: goalsOf[match.homeId], away: goalsOf[match.awayId] }, goals, cards,
+        lineups: Object.keys(lineups).length ? lineups : null, by: "Adjunto · confirmado pela direção", at: new Date().toISOString(),
+      });
+      const named = a.scorers.map((sc) => `${sc.own_goal ? "autogolo " : ""}${sc.player}${sc.goals > 1 ? ` (${sc.goals})` : ""}`).join(", ");
+      const carded = a.cards.map((c) => `${c.player} (${c.type === "red" ? "vermelho" : c.type === "second_yellow" ? "2.º amarelo" : "amarelo"})`).join(", ");
+      const unnamed = a.home_goals + a.away_goals - goals.length;
+      return {
+        state: next,
+        line: `${x.name} ${a.home_goals}–${a.away_goals} ${y.name}${named ? ` · golos: ${named}` : ""}${unnamed > 0 ? (named ? ` · ${unnamed} sem marcador` : " · sem marcadores") : ""}${carded ? ` · cartões: ${carded}` : ""}${missing.length ? ` · fora do plantel: ${missing.join(", ")}` : ""} — fica por homologar`,
+      };
+    },
+  },
   post_announcement: {
     label: "Comunicado",
     description: "Publica um comunicado da organização, visível aos adeptos na página da liga. Texto curto, factual, sem contactos.",
@@ -191,7 +291,7 @@ export const PROPOSAL_KINDS = Object.freeze(Object.keys(PROPOSALS));
 
 /** Screens the Adjunto can send the Gestor to (the "orientações"). */
 export const OPEN_SCREENS = Object.freeze({
-  homologate: "Homologar", contest: "Decidir contestação", live: "Abrir jogo", lineups: "Ver convocatórias", calendar: "Abrir calendário",
+  homologate: "Homologar", results: "Lançar resultado", contest: "Decidir contestação", live: "Abrir jogo", lineups: "Ver convocatórias", calendar: "Abrir calendário",
   discipline: "Ver disciplina", reports: "Fichas de jogo", recap: "Preparar resumo", setup: "Liga e módulos", registrations: "Equipas e atletas",
 });
 
@@ -245,8 +345,12 @@ export function adjuntoContext(state, { now = Date.now() } = {}) {
     league: { name: d.league.name || null, city: d.league.city || null },
     competitions: d.competitions.slice(0, 12).map((c) => ({ name: c.name, kind: c.kind, legs: c.legs || null, teams: (c.teamIds || []).length, rounds: c.rounds || 0 })),
     teams: d.teams.slice(0, 80).map((t) => ({ name: t.name, venue: t.venue || null, athletes: squad[t.id] || 0, competitions: d.competitions.filter((c) => (c.teamIds || []).includes(t.id)).map((c) => c.name) })),
+    today: lisbonDay(now),
     matches: { total: state.matches.length, byState },
     upcoming,
+    awaitingResult: state.matches.filter((m) => m.state === "scheduled" && m.kickoff && Date.parse(m.kickoff) < now)
+      .sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff)).slice(0, 12)
+      .map((m) => ({ competition: comp[m.competitionId], round: m.round, home: team[m.homeId], away: team[m.awayId], date: lisbonDay(m.kickoff) })),
     modulesOn: MODULES.filter((m) => moduleOn(state, m.id)).map((m) => m.id),
   };
 }
