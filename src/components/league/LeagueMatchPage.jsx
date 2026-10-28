@@ -42,7 +42,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
     return (
       <div>
         <BackHeader title={t("Jogo não encontrado")} onBack={back} />
-        <div style={{ color: C.text2 }}>{t("Este jogo não existe nesta demonstração (talvez os exemplos tenham sido repostos).")}</div>
+        <div style={{ color: C.text2 }}>{t("Este jogo já não existe (a liga pode ter sido limpa).")}</div>
       </div>
     );
   }
@@ -113,7 +113,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
           <div style={{ ...cardStyle, marginBottom: S.md, display: "grid", gap: S.sm, fontSize: T.body }}>
             {info(Clock, <>{fmtKickoff(match.kickoff, lang)} · {t("hora de Lisboa")} ({LEAGUE.timeZone})</>)}
             {info(MapPin, <>{match.venue}</>)}
-            {info(Shield, <>{match.referee} · {t("arbitragem (demo)")}</>)}
+            {match.referee && info(Shield, <>{match.referee}</>)}
             {modOn("var") && info(Video, <>{t(match.var?.enabled ? LG.varOn : LG.varOff)}</>)}
           </div>
 
@@ -125,7 +125,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
           )}
 
           <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.6, marginBottom: S.lg }}>
-            {t("Regulamento (demo): 2×25 min, Futebol 7, vitória 3 pts.")} {tf(t("{n} amarelos acumulados = 1 jogo de suspensão; vermelho = {r} jogo."), { n: DEMO_RULES.yellowsForSuspension, r: DEMO_RULES.redSuspensionMatches })}
+            {tf(t("Pontos: vitória {w}, empate {d}, derrota {l}."), { w: (competitionById[match.competitionId] || COMPETITION).points.win, d: (competitionById[match.competitionId] || COMPETITION).points.draw, l: (competitionById[match.competitionId] || COMPETITION).points.loss })} {tf(t("{n} amarelos acumulados = 1 jogo de suspensão; vermelho = {r} jogo."), { n: DEMO_RULES.yellowsForSuspension, r: DEMO_RULES.redSuspensionMatches })}
           </div>
 
           {started && <><div style={{ fontSize: T.meta, color: C.text2, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: S.sm }}>{t("Últimos lances")}</div><LeagueTimeline match={match} log={log} /></>}

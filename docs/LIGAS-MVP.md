@@ -89,3 +89,12 @@ Razões: na AFPCE, no primeiro ano, **os clubes não mexem em nada** e o Fantasy
 - **A IA não pode ser caminho crítico:** o boletim é escrito à mão e há campos ilegíveis. O fluxo manual tem de funcionar sozinho.
 - **Escopo:** cada módulo de torcida que fica ligado por defeito dilui a mensagem "menos trabalho para a direção".
 - **Isolamento de contas:** hoje é feito no ecrã; falta uma regra no servidor para que uma conta de liga não escreva em tabelas de outros produtos.
+
+## 8. Atualização de 28/10 (noite): plataforma limpa e modular
+
+- **Começa vazia.** Nenhum dado fictício na plataforma: a liga inventada passou para `src/lib/leagueExample.js` (só testes e o modo `/demo` de apresentações). Estados antigos guardados no browser são descartados e a liga arranca vazia.
+- **Monta-se à mão.** O Gestor cria a liga, as competições (campeonato com 1–4 voltas, ou taça), as equipas, cola os plantéis (um atleta por linha, também do Excel), gera o calendário (com folga em número ímpar) e adiciona jogos soltos. O Painel mostra «Montar a liga» até estar tudo feito. Lógica pura em `src/lib/leagueSetup.js`, com testes.
+- **Modular.** `src/lib/leagueModules.js` é o registo: Adjunto, Taça Fair Play, patrocinadores e área do adepto (leves), e voto dos adeptos, Fantasy, quadro tático, comparar, VAR e cartão OVR (desligados por defeito). Liga-se em Gerir → «Liga e módulos». Desligar esconde; os dados ficam.
+- **Várias classificações.** `deriveLeague` calcula uma tabela por competição (1.ª e 2.ª Divisão lado a lado); as taças mostram as fases.
+- **Ainda local.** Tudo isto vive no browser (como a demo). Guardar os módulos e a liga na nuvem faz parte do adaptador da app nova aos dados reais (P0 #1): não foi criada nenhuma migração.
+- **AFPCE:** maquetes em PPT com os resultados públicos de 2025/26 (as classificações da 1.ª e 2.ª Divisão batem com as do site). A AFPCE não está carregada na plataforma.

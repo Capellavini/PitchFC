@@ -18,7 +18,7 @@ export default function LeagueLineupSheet({ match, teamId, discipline, onSave, o
   return (
     <Sheet title={tf(t("Convocatória · {team}"), { team: teamById[teamId].name })} onClose={onClose}
       footer={<BtnPrimary block onClick={save} disabled={sel.size < 5}>{tf(t("Guardar convocatória ({n})"), { n: sel.size })}</BtnPrimary>}>
-      <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.sm, lineHeight: 1.5 }}>{t("Futebol 7: mínimo 5 atletas para o jogo se realizar (regra de demonstração). Só atletas inscritos nesta competição.")}</div>
+      <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.sm, lineHeight: 1.5 }}>{t("Mínimo de 5 atletas para o jogo se realizar (regra por defeito). Só atletas inscritos nesta competição.")}</div>
       {squad.map((p) => {
         const ban = suspended(p.id);
         const on = sel.has(p.id);

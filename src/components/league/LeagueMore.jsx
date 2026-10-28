@@ -73,7 +73,7 @@ export default function LeagueMore({ ctx }) {
       {TEAMS.map((tm) => <div key={tm.id}>{row(() => <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={22} />, tm.name, () => open({ kind: "team", id: tm.id }), tm.venue)}</div>)}
 
       <SectionLabel style={{ marginTop: S.xl }}>{t("Liga")}</SectionLabel>
-      {row(BookOpen, t("Regulamento"), () => setSub("regulamento"), t("Demonstração · só leitura"))}
+      {row(BookOpen, t("Regulamento"), () => setSub("regulamento"), t("Regras por defeito · só leitura"))}
       {row(Gavel, t("Disciplina"), () => setSub("disciplina"), t("Cartões e suspensões (regras demo)"))}
       {row(SlidersHorizontal, t("Preferências"), () => setSub("prefs"), t("Equipa do coração e avisos"))}
       {row(Users, t("Atletas"), () => open({ kind: "players" }), modOn("ovr") || modOn("compare") ? t("Cartões, OVR e comparação") : t("Golos, assistências e cartões"))}

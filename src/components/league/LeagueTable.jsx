@@ -73,7 +73,7 @@ export default function LeagueTable({ ctx }) {
           : <LeagueRankingList rows={ranking(stats, compPlayers, rank, 10)} onPlayer={(id) => open({ kind: "player", id })} />}
       </div>
       <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, marginTop: S.sm }}>
-        <BtnGhost block onClick={() => open({ kind: "players" })} style={{ margin: `${S.sm}px 0` }}>{t("Ver todos os atletas (cartões e OVR)")}</BtnGhost>
+        <BtnGhost block onClick={() => open({ kind: "players" })} style={{ margin: `${S.sm}px 0` }}>{modOn("ovr") ? t("Ver todos os atletas (cartões e OVR)") : t("Ver todos os atletas")}</BtnGhost>
         {t("Golos não incluem autogolos nem penáltis de desempate. Assistências só contam quando registadas na ficha de jogo. Golos de autor por identificar contam no resultado, não no ranking.")}
       </div>
       {modOn("fairplay") && <LeagueFairPlay ctx={ctx} competition={comp} />}

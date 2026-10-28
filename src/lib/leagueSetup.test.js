@@ -6,6 +6,8 @@ import {
 } from "./leagueSetup.js";
 import { emptyLeagueState, deriveLeague, normalizeLeagueState } from "./leagueDemo.js";
 import { appendEvent, transition } from "./core/league.js";
+import { leagueToday } from "./leagueToday.js";
+import { adjuntoBrief } from "./leagueAdjuntoGuide.js";
 
 const throwsCode = (fn, code) => assert.throws(fn, (e) => e instanceof SetupError && e.code === code, code);
 
@@ -134,4 +136,12 @@ test("things with history can't be removed or moved out from under their matches
   throwsCode(() => removePlayer(lined, pid), "player_has_history");
   assert.equal(removePlayer(s, pid).data.players.length, 0);
   assert.equal(removeTeam(emptyLeagueState(), "nope").data.teams.length, 0, "removing what isn't there is a no-op");
+});
+
+test("the Adjunto does not say everything is fine about a league with no games", () => {
+  const s = emptyLeagueState();
+  normalizeLeagueState(s);
+  const brief = adjuntoBrief(leagueToday(s, deriveLeague(s)));
+  assert.match(brief.text, /Ainda não há jogos/);
+  assert.deepEqual(brief.actions, []);
 });

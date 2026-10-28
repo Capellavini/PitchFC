@@ -36,6 +36,6 @@ test("it never invents numbers: every figure in the reply is in the queue", () =
 });
 
 test("an empty queue says so", () => {
-  const b = adjuntoBrief({ items: [], sections: [], done: false });
+  const b = adjuntoBrief({ items: [], sections: [{ competition: { id: "c", short: "C" }, done: false }], done: false });
   assert.match(b.text, /tudo em dia/i);
 });
