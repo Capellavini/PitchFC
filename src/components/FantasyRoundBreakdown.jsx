@@ -2,6 +2,7 @@ import { C, R, S, T, cardStyle, displayFont } from "../theme";
 import { playerColor } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import "../lib/fantasyCopy";
+import "../lib/fantasyConnectionCopy";
 import Avatar from "./Avatar";
 
 const ITEM_ORDER = ["played", "goals", "assists", "saves", "cleanSheets", "wins", "hatTrick", "ownGoals", "noShow", "mvp"];
@@ -26,7 +27,7 @@ export default function FantasyRoundBreakdown({ score, group, title }) {
     <div style={{ ...cardStyle, marginBottom: S.lg, padding: `${S.md}px ${S.lg}px` }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: S.sm, marginBottom: S.sm }}>
         <div style={{ fontSize: T.cardTitle, fontWeight: 800, color: C.text1, minWidth: 0 }}>{title || t("A tua última ronda")}</div>
-        <div style={{ ...displayFont, fontSize: T.h + 2, color: C.text1, flexShrink: 0 }}>{Math.round(b.total)} <span style={{ fontSize: T.meta, color: C.text2 }}>pts</span></div>
+        <div style={{ ...displayFont, fontSize: T.h + 2, color: C.text1, flexShrink: 0 }}>{Math.round(b.base ?? b.total)} <span style={{ fontSize: T.meta, color: C.text2 }}>pts</span></div>
       </div>
       {rows.map((r, i) => {
         const p = byId(r.id);
@@ -58,6 +59,11 @@ export default function FantasyRoundBreakdown({ score, group, title }) {
       {b.transferCost > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between", padding: `${S.sm}px 0 0`, borderTop: `1px solid ${C.border}`, fontSize: T.meta, color: C.orange, fontWeight: 700 }}>
           <span>{t("Transferências extra")}</span><span>−{b.transferCost}</span>
+        </div>
+      )}
+      {b.connection?.points > 0 && (
+        <div style={{ display: "flex", justifyContent: "space-between", padding: `${S.sm}px 0 0`, marginTop: b.transferCost > 0 ? S.sm : 0, borderTop: `1px solid ${C.border}`, fontSize: T.meta, color: C.accent, fontWeight: 700 }}>
+          <span>{t("Bónus da conexão")}</span><span>+{b.connection.points}</span>
         </div>
       )}
       <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm, padding: `${S.xs}px ${S.sm}px`, background: C.surface, borderRadius: R.control, lineHeight: 1.4 }}>

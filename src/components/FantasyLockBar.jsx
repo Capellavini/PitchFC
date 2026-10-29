@@ -4,7 +4,7 @@ import { lisbonTimeLabel } from "../lib/helpers";
 import { t } from "../lib/i18n";
 import "../lib/fantasyCopy";
 
-const fmtLeft = (ms) => {
+export const fmtLeft = (ms) => {
   const min = Math.max(0, Math.round(ms / 60000));
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60);

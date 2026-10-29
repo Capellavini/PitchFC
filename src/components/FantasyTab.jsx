@@ -3,9 +3,11 @@ import { Pencil, X, Search, Check, ArrowRightLeft, Cross, Plus, Users, ArrowUp, 
 import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../theme";
 import { playerColor, computeOverall, POSITION_ABBR } from "../lib/helpers";
 import { fmtM, squadCostBasis, nextPricesPaid } from "../lib/fantasy";
-import { FANTASY_V2, ownershipCap, transferState, seasonStandings } from "../lib/core/fantasyRules";
+import { FANTASY_V2, ownershipCap, transferState, seasonStandings, connectionDraftIssue } from "../lib/core/fantasyRules";
 import { t } from "../lib/i18n";
 import "../lib/fantasyCopy";
+import "../lib/fantasyConnectionCopy";
+import useMinWidth from "../hooks/useMinWidth";
 import Avatar from "./Avatar";
 import SectionLabel from "./SectionLabel";
 import BtnPrimary from "./BtnPrimary";
@@ -19,8 +21,14 @@ import FantasyPlayerSheet from "./FantasyPlayerSheet";
 import FantasyStatsCard from "./FantasyStatsCard";
 import FantasyCreateLeague from "./FantasyCreateLeague";
 import FantasyLockBar from "./FantasyLockBar";
-import FantasyRoundBreakdown from "./FantasyRoundBreakdown";
 import FantasyTables from "./FantasyTables";
+import FantasyHeader from "./FantasyHeader";
+import FantasyContextColumn from "./FantasyContextColumn";
+import FantasyRoundView from "./FantasyRoundView";
+import FantasyMarketSummary from "./FantasyMarketSummary";
+import FantasyConnectionCard from "./FantasyConnectionCard";
+import FantasyConnectionPicker from "./FantasyConnectionPicker";
+import Sheet from "./Sheet";
 import FutCard from "./FutCard";
 
 const inputStyle = {
@@ -43,12 +51,13 @@ const rsvpOf = (p) => (p.status === "confirmed" ? { emoji: "✅", label: "confir
 export default function FantasyTab({
   group, me, isOrganizer, kickoffAt, fantasyLeague, fantasySquads = [], fantasyScores = [], fantasyTradeOffers = [],
   fantasyRounds = [], fantasyRoundPlayers = [], fantasySeasons = [], fantasyPrices = {},
+  groupName = "", onOpenRecord = null,
   onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy,
 }) {
   if (!fantasyLeague) return <FantasyCreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} />;
   return (
     <FantasyLeagueView
-      group={group} me={me} isOrganizer={isOrganizer} league={fantasyLeague} kickoffAt={kickoffAt}
+      group={group} me={me} isOrganizer={isOrganizer} league={fantasyLeague} kickoffAt={kickoffAt} groupName={groupName} onOpenRecord={onOpenRecord}
       squads={fantasySquads} scores={fantasyScores} offers={fantasyTradeOffers}
       rounds={fantasyRounds} roundPlayers={fantasyRoundPlayers} seasons={fantasySeasons} priceMap={fantasyPrices}
       onSaveSquad={onSaveSquad} onCreateTradeOffer={onCreateTradeOffer}
@@ -57,7 +66,7 @@ export default function FantasyTab({
   );
 }
 
-function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, scores, offers, rounds, roundPlayers, seasons, priceMap, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
+function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupName, onOpenRecord, squads, scores, offers, rounds, roundPlayers, seasons, priceMap, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
   const base = Number(league.scoring_weights?.priceBase) || FANTASY_V2.priceBase;
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
@@ -81,6 +90,12 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
   const [tradeTarget, setTradeTarget] = useState(null);
   const [sortMode, setSortMode] = useState("pos");
   const [viewingPlayerId, setViewingPlayerId] = useState(null);
+  const wide = useMinWidth(1024);
+  const [roundId, setRoundId] = useState(null);
+  // Conexão: undefined = same as stored, null = removed in the draft, {creatorId, finisherId} = draft pair.
+  const [connDraft, setConnDraft] = useState(undefined);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [benchConfirm, setBenchConfirm] = useState(null);
 
   const now = Date.now();
   const priceOf = (id) => Number(priceMap?.[id]?.price ?? base);
@@ -94,6 +109,12 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
     [rounds]
   );
   const lastRound = scoredRounds[0] || null;
+  // Round numbers: chronological order of ALL rounds of the league; the one being edited is the next.
+  const roundNumbers = useMemo(() => Object.fromEntries([...rounds].sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at)).map((r, i) => [r.id, i + 1])), [rounds]);
+  const roundNoOf = (id) => roundNumbers[id] ?? 0;
+  const editingRoundNo = rounds.length + 1;
+  const connRules = league.connection_rules?.enabled ? league.connection_rules : null;
+  const shownRound = scoredRounds.find((r) => r.id === roundId) || lastRound;
   const inProgress = rounds.some((r) => r.status === "locked" && !r.matchday_id && new Date(r.kickoff_at).getTime() <= now);
   const pointsById = useMemo(() => {
     if (!lastRound) return null;
@@ -128,6 +149,19 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
   const editingIds = view === "mercado" ? selected : (mySquad?.player_ids || []);
   const transfers = transferState(mySquad?.locked_player_ids ?? null, editingIds, mySquad?.free_transfers);
 
+  // ── Conexão da ronda (only leagues with connection_rules; cloud has none yet) ──
+  const toPair = (row) => (row ? { creatorId: row.creator_id, finisherId: row.finisher_id } : null);
+  const savedConn = toPair(mySquad?.connection);
+  const effectiveConn = connDraft !== undefined ? connDraft : savedConn;
+  const sameConn = (a, b) => (a?.creatorId ?? null) === (b?.creatorId ?? null) && (a?.finisherId ?? null) === (b?.finisherId ?? null);
+  const connDirty = connDraft !== undefined && !sameConn(connDraft, savedConn);
+  const draftBench = (mySquad?.reserve_ids || []).filter((id) => editingIds.includes(id));
+  const editStarters = editingIds.filter((id) => !draftBench.includes(id)).slice(0, league.squad_size);
+  const connIssue = connRules && effectiveConn ? connectionDraftIssue({ creator: effectiveConn.creatorId, finisher: effectiveConn.finisherId }, editStarters) : null;
+  const nickOf = (id) => group.find((p) => p.uuid === id);
+  const connPair = effectiveConn ? { creator: nickOf(effectiveConn.creatorId), finisher: nickOf(effectiveConn.finisherId) } : null;
+  const inSavedPair = (id) => Boolean(savedConn && (savedConn.creatorId === id || savedConn.finisherId === id));
+
   const toggle = (id) => {
     setSaved(false);
     setSelected((sel) => {
@@ -144,22 +178,28 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
     const prevIds = mySquad?.player_ids || [];
     const ids = extra.playerIds ?? [...prevIds.filter((id) => selected.includes(id)), ...selected.filter((id) => !prevIds.includes(id))];
     const bench = extra.reserveIds ?? (mySquad?.reserve_ids || []).filter((id) => ids.includes(id));
+    // Lineup + Conexão travel together in ONE call (the server answers for both).
+    const sendConn = connRules && extra.connection !== undefined;
     const res = await onSaveSquad(league.id, ids, extra.captainId !== undefined ? extra.captainId : (mySquad?.captain_id ?? null),
-      bench, extra.viceId !== undefined ? extra.viceId : (mySquad?.vice_captain_id ?? null));
+      bench, extra.viceId !== undefined ? extra.viceId : (mySquad?.vice_captain_id ?? null), ...(sendConn ? [extra.connection] : []));
     setSaving(false);
     if (!res?.error) {
+      if (sendConn) setConnDraft(undefined);
       setSaved(true); setTimeout(() => setSaved(false), 2000);
       if (ids.length >= league.squad_size && !extra.stay) setView("equipa");
-    } else setError(res.error);
+    } else setError(connDirty ? `${t("Não foi possível guardar. O rascunho foi mantido.")} ${res.error}` : res.error);
     return res;
   };
+  const saveConnection = () => save({ playerIds: mySquad.player_ids, connection: connDraft ?? null, stay: true });
 
   const reserves = mySquad?.reserve_ids || [];
   const starters = (mySquad?.player_ids || []).filter((id) => !reserves.includes(id));
   const toBench = (id) => save({ playerIds: mySquad.player_ids, reserveIds: [...reserves, id], stay: true });
+  // A Conexão member never leaves the XI silently: ask, then drop the pair in the same save.
+  const askBench = (id) => (connRules && inSavedPair(id) ? setBenchConfirm(id) : toBench(id));
   const toStarter = (id) => {
-    // Swap with the last starter who isn't captain/vice (keeps the XI size).
-    const demote = [...starters].reverse().find((s) => s !== mySquad.captain_id && s !== mySquad.vice_captain_id) || starters[starters.length - 1];
+    // Swap with the last starter who isn't captain/vice/in the Conexão (keeps the XI size).
+    const demote = [...starters].reverse().find((s) => s !== mySquad.captain_id && s !== mySquad.vice_captain_id && !inSavedPair(s)) || starters[starters.length - 1];
     const next = starters.length >= league.squad_size && demote ? reserves.map((r) => (r === id ? demote : r)) : reserves.filter((r) => r !== id);
     return save({ playerIds: mySquad.player_ids, reserveIds: next, stay: true });
   };
@@ -186,9 +226,10 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
   const sheetPlayer = sheetId && mySquad ? group.find((p) => p.uuid === sheetId) : null;
   const sheetBenchIndex = sheetPlayer ? reserves.indexOf(sheetPlayer.uuid) : -1;
   const viewOptions = [
-    { id: "equipa", label: "A minha equipa" },
-    { id: "liga", label: "Liga" },
+    { id: "equipa", label: "Meu time" },
     { id: "mercado", label: "Mercado", badge: incomingOffers.length > 0 },
+    { id: "rodada", label: "Rodada" },
+    { id: "liga", label: "Ranking" },
   ];
   const posLabel = { fontSize: T.meta, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text2, margin: `${S.md}px 0 ${S.xs}px` };
   const lockBar = <FantasyLockBar kickoffAt={kickoffAt} inProgress={inProgress} transfers={transfers} now={now} />;
@@ -245,9 +286,26 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
   const rivalSquad = viewingId ? squads.find((s) => s.participant_id === viewingId) : null;
   const rival = viewingId ? group.find((p) => p.uuid === viewingId) : null;
 
+  // Wide screens: the lineup/market/results column + a secondary context
+  // column. The app shell is a 430px column on every tab, so the Fantasy
+  // breaks out of it (centred) only from 1024px up; the bottom nav stays.
+  const wideBox = wide ? { width: "min(1100px, calc(100vw - 48px))", marginLeft: "calc(50% - min(550px, 50vw - 24px))" } : null;
+  const roundScore = shownRound ? scores.find((x) => x.round_id === shownRound.id && x.participant_id === me?.uuid) || null : null;
+  const roundRank = shownRound && roundScore ? 1 + scores.filter((x) => x.round_id === shownRound.id && Number(x.points) > Number(roundScore.points)).length : null;
+  const formPlayers = lastRound
+    ? roundPlayers.filter((rp) => rp.round_id === lastRound.id && Number(rp.points) > 0)
+      .sort((a, b) => Number(b.points) - Number(a.points)).slice(0, 3)
+      .map((rp) => ({ player: group.find((p) => p.uuid === rp.player_id), pts: Number(rp.points) })).filter((x) => x.player)
+    : [];
+  const myLastRankRow = lastRound && myLastRound ? 1 + lastRoundScores.filter((x) => Number(x.points) > Number(myLastRound.points)).length : null;
+  const context = wide ? (
+    <FantasyContextColumn group={group} me={me} lastScore={myLastRound} lastRoundNo={lastRound ? roundNoOf(lastRound.id) : null} lastRank={myLastRankRow}
+      standings={campeonatoRows} form={formPlayers} priceOf={priceOf} />
+  ) : null;
+
   return (
-    <div style={{ padding: `${S.xs}px ${S.lg}px ${S.xl}px` }}>
-      <SectionLabel right={<Chip variant="lime">{t("Clássico")}</Chip>}>{league.name || "Pitch Manager"}</SectionLabel>
+    <div style={{ padding: `${S.xs}px ${S.lg}px ${S.xl}px`, boxSizing: "border-box", ...wideBox }}>
+      <FantasyHeader groupName={groupName} title={league.name || "Pitch Manager"} roundNo={editingRoundNo} kickoffAt={kickoffAt} inProgress={inProgress} now={now} />
       <FantasyStatsCard
         count={inMarket ? selected.length : (mySquad?.player_ids?.length || 0)}
         squadSize={league.squad_size}
@@ -255,7 +313,9 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
         overBudget={inMarket && overBudget}
         points={myRow ? myRow.points : null} lastRound={myLastRound ? Number(myLastRound.points) : null}
         rank={myRow ? myRow.rank : null} participants={campeonatoRows.length} />
-      <SegmentedControl options={viewOptions} value={view} onChange={setView} />
+      <SegmentedControl options={viewOptions} value={view} onChange={setView} dense />
+      <div style={wide ? { display: "grid", gridTemplateColumns: "minmax(0, 1fr) 340px", gap: S.xl, alignItems: "start" } : null}>
+      <div style={{ minWidth: 0 }}>
 
       {/* ── A minha equipa ── */}
       {view === "equipa" && (complete ? (
@@ -267,10 +327,18 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
             </div>
           )}
           <FantasyPitch group={group} playerIds={mySquad.player_ids} captainId={mySquad.captain_id} viceId={mySquad.vice_captain_id}
-            reserveIds={reserves} pointsById={pointsById} onSelect={(p) => setSheetId(p.uuid)} />
+            reserveIds={reserves} pointsById={pointsById} onSelect={(p) => setSheetId(p.uuid)}
+            connection={connRules && effectiveConn && !connIssue ? effectiveConn : null} />
+          {connRules && (
+            <>
+              {inProgress && <div style={{ fontSize: T.meta, color: C.orange, margin: `0 0 ${S.sm}px`, lineHeight: 1.4 }}>{t("A conexão da ronda em curso já fechou. Esta escolha vale para a próxima.")}</div>}
+              <FantasyConnectionCard pair={connPair} saved={!connDirty && Boolean(savedConn)} issue={connIssue} roundNo={editingRoundNo}
+                saving={saving} error={connDirty ? error : null}
+                onEdit={() => setPickerOpen(true)} onRemove={() => setConnDraft(savedConn ? null : undefined)} onSave={saveConnection} />
+            </>
+          )}
           <FantasyBench group={group} reserveIds={reserves} pointsById={pointsById} onSelect={(p) => setSheetId(p.uuid)} />
           {error && <div style={{ fontSize: T.meta, color: C.red, margin: `-${S.md}px 0 ${S.md}px` }}>{error}</div>}
-          {myLastRound?.breakdown && <FantasyRoundBreakdown score={myLastRound} group={group} />}
           <BtnGhost block onClick={() => { setSelected(mySquad.player_ids); setView("mercado"); }}>
             <Pencil size={16} /> {t("Editar escalação")}
           </BtnGhost>
@@ -327,6 +395,16 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
             <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm }}>
               {t("Próximo jogo")}: ✅ {t("confirmado")} · ⏳ {t("pendente")} · ❌ {t("não vai")}
             </div>
+            {mySquad?.player_ids?.length > 0 && (
+              <FantasyMarketSummary
+                out={(mySquad.player_ids || []).filter((id) => !selected.includes(id)).map(nickOf).filter(Boolean)}
+                incoming={selected.filter((id) => !(mySquad.player_ids || []).includes(id)).map(nickOf).filter(Boolean)}
+                bankAfter={effectiveBudget - total} penalty={transfers.unlimited ? 0 : transfers.cost} />
+            )}
+            {connRules && connIssue && (
+              <FantasyConnectionCard pair={connPair} saved={false} issue={connIssue} roundNo={editingRoundNo}
+                onEdit={() => setPickerOpen(true)} onRemove={() => setConnDraft(null)} onSave={() => {}} />
+            )}
             {overBudget && (
               <div style={{ fontSize: T.meta, color: C.red, fontWeight: 700, padding: `${S.sm}px ${S.md}px`, marginTop: S.sm, border: `1px solid ${C.red}55`, background: C.redDim, borderRadius: R.control }}>
                 {t("Falta")} {fmtM(total - effectiveBudget)} — {t("tira alguém ou troca por um mais barato.")}
@@ -352,13 +430,20 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
               {complete && (
                 <BtnGhost onClick={() => { setSelected(mySquad.player_ids); setView("equipa"); }}>{t("Cancelar")}</BtnGhost>
               )}
-              <BtnPrimary onClick={() => save()} disabled={!canSave || saving} style={{ flex: 1 }}>
+              <BtnPrimary onClick={() => save({ connection: connDirty ? connDraft : undefined })} disabled={!canSave || saving || Boolean(connIssue)} style={{ flex: 1 }}>
                 {saving ? t("Um momento…") : saved ? t("Escalação guardada ✓") : t("Guardar escalação")}
               </BtnPrimary>
             </div>
-            {error && <div style={{ fontSize: T.meta, color: C.red, marginTop: S.sm }}>{error}</div>}
+            {connIssue && <div style={{ fontSize: T.meta, color: C.orange, marginTop: S.sm }}>{t("Resolve a conexão antes de guardar.")}</div>}
+            {error && <div role="alert" style={{ fontSize: T.meta, color: C.red, marginTop: S.sm }}>{error}</div>}
           </div>
         </>
+      )}
+
+      {/* ── Rodada ── */}
+      {view === "rodada" && (
+        <FantasyRoundView rounds={scoredRounds.map((r) => ({ id: r.id, no: roundNoOf(r.id) }))} roundId={shownRound?.id ?? ""} onRound={setRoundId}
+          score={roundScore} rank={roundRank} group={group} rules={connRules} myName={nickOf(me?.uuid)?.nick ?? ""} onOpenRecord={onOpenRecord} />
       )}
 
       {/* ── Liga ── */}
@@ -372,7 +457,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
           ) : null}>
             {t("Classificação")}
           </SectionLabel>
-          <FantasyTables group={group} seasons={seasons} scores={scores} rounds={rounds} squads={squads}
+          <FantasyTables group={group} seasons={seasons} scores={scores} rounds={rounds} squads={squads} roundNoOf={roundNoOf}
             selectedId={viewingId} onSelect={(pid) => setViewingId((v) => (v === pid ? null : pid))} />
 
           {rivalSquad && (
@@ -412,6 +497,29 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
         </>
       )}
 
+      </div>
+      {context}
+      </div>
+
+      {pickerOpen && connRules && (
+        <FantasyConnectionPicker group={group} starters={editStarters} value={effectiveConn} teams={null}
+          onUse={(pair) => { setConnDraft(sameConn(pair, savedConn) ? undefined : pair); setPickerOpen(false); }}
+          onClear={() => { setConnDraft(savedConn ? null : undefined); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)} />
+      )}
+
+      {benchConfirm && (
+        <Sheet title={t("Remover a conexão?")} onClose={() => setBenchConfirm(null)}
+          footer={(
+            <div style={{ display: "flex", flexDirection: "column", gap: S.sm }}>
+              <BtnPrimary block onClick={() => { const id = benchConfirm; setBenchConfirm(null); save({ playerIds: mySquad.player_ids, reserveIds: [...reserves, id], connection: null, stay: true }); }}>{t("Remover conexão e enviar")}</BtnPrimary>
+              <BtnGhost block onClick={() => setBenchConfirm(null)}>{t("Cancelar")}</BtnGhost>
+            </div>
+          )}>
+          <div style={{ fontSize: T.body, color: C.text2, lineHeight: 1.45 }}>{t("Este jogador faz parte da tua conexão. Se o enviares para o banco, a conexão é removida.")}</div>
+        </Sheet>
+      )}
+
       {tradeTarget && (
         <TradeOfferPanel
           group={group} mySquad={mySquad} priceOf={priceOf} myBank={squadBank(mySquad)}
@@ -432,7 +540,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, squads, 
           onCaptain={() => save({ playerIds: mySquad.player_ids, captainId: sheetPlayer.uuid,
             viceId: mySquad.vice_captain_id === sheetPlayer.uuid ? mySquad.captain_id : undefined, stay: true })}
           onVice={() => save({ playerIds: mySquad.player_ids, viceId: sheetPlayer.uuid, stay: true })}
-          onToggleBench={() => (sheetBenchIndex >= 0 ? toStarter(sheetPlayer.uuid) : toBench(sheetPlayer.uuid))}
+          onToggleBench={() => (sheetBenchIndex >= 0 ? toStarter(sheetPlayer.uuid) : askBench(sheetPlayer.uuid))}
           onMoveUp={() => moveUp(sheetPlayer.uuid)}
           onClose={() => setSheetId(null)}
         />
