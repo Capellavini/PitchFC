@@ -1,6 +1,6 @@
 import {registerStrings} from './i18n';
 const en={
-  'O teu espaço':'Your space','Jogador':'Player','Organização de Liga':'League management',
+  'O teu espaço':'Your space','Jogador':'Player','Liga':'League','Organização de Liga':'League management',
   'Painel da Liga':'League dashboard','A tua competição, sob controlo.':'Your competition, under control.',
   'Competições':'Competitions','Equipas inscritas':'Registered teams','Inscrições para rever':'Registrations to review',
   'Próximos jogos':'Upcoming matches','Rever inscrições':'Review registrations','Abrir competição':'Open competition',

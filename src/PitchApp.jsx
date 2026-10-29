@@ -297,7 +297,9 @@ export default function PitchApp() {
   const contextReady = localMode || !cloud.myPlayer?.id || (leagues.loaded && contextMetadata.userId === cloud.user?.id);
   const homeInputs = {leagues:leagues.loaded?leagues.myLeagues:[],teams:rivals.myTeams,mode:contextMeta.pitch_context_mode,product:leagueAccount?'league':undefined};
   const homeOptions = homeContexts(homeInputs);
-  const homeContext = resolveHomeContext({...homeInputs,preferred:new URLSearchParams(window.location.search).get("context") || homePreferences[contextUser] || contextMeta.pitch_home_context});
+  // Belongs to a group (demo: unless it is the team-only preview) → opens as Player by default.
+  const hasGroup = localMode ? !session.teamOnly : Boolean(cloud.groupRow?.id) || (cloud.myGroups || []).length > 0;
+  const homeContext = resolveHomeContext({...homeInputs,hasGroup,preferred:new URLSearchParams(window.location.search).get("context") || homePreferences[contextUser] || contextMeta.pitch_home_context});
   const [teamSlug, setTeamSlug] = useState(rivalsParams.team);
   // { teamId? , slug?, n } — asks RivalsHub to show a team (bump n).
   const [rivalsFocus, setRivalsFocus] = useState(null);
