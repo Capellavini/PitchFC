@@ -1,9 +1,9 @@
 // PITCH Ligas on WhatsApp — what the bot says (PT-PT). Short: it is a chat, not a report.
 export const LEAGUE_TEXT = Object.freeze({
-  welcome: (league) => `Ligado ✅ Sou o Adjunto de Ligas${league ? ` da ${league}` : ""}.\n\nPodes escrever-me um resultado («Porto FC vs Corinthians, 2x0, 2 golos do Vini, amarelo ao Barto»), mandar a *foto ou o PDF da súmula*, ou pedir qualquer coisa da liga. Mostro-te o resumo e só aplico quando disseres *sim*.\n\nDica: se a letra não ler bem, manda a súmula como *documento* (clipe → Documento), sem compressão.\n\nO texto e as fotos são lidos por uma IA (Anthropic). Mascaro contactos e licenças no texto; uma foto pode ter nomes de atletas. Para desligar, escreve «desligar».`,
+  welcome: (league) => `Olá! Sou o Adjunto de Ligas${league ? ` da ${league}` : ""}. Ligado ✅\n\nEstou aqui para ajudar-te no que precisares.\n\nPodes escrever-me um resultado, mandar a *foto ou o PDF da súmula*, ou pedir qualquer coisa da liga. Mostro-te o resumo e só aplico quando disseres *sim*.\n\nDica: se a letra não ler bem, manda a súmula como *documento* (clipe → Documento), sem compressão.\n\nPara desligar, escreve «desligar».`,
   noLeague: "Ligado ✅ Ainda não tens liga criada. Abre pitch-fc.com/league/minhas, monta a liga e volta a falar comigo.",
   codeInvalid: "Esse código não é válido ou já expirou. Na app, em Gerir → Liga, gera outro («Ligar WhatsApp») e envia-o aqui.",
-  help: "Posso:\n• lançar resultados: «Porto FC vs Corinthians 2x0, 2 golos do Vini, amarelo ao Barto»\n• ler a súmula: manda a foto ou o PDF\n• marcar ou mudar jogos, acrescentar equipas e plantéis, publicar comunicados\n\nAntes de mudar algo mostro o resumo e espero o teu *sim*. Não homologo resultados: isso fica contigo na app.",
+  help: "Posso:\n• lançar resultados: «Equipa X vs Equipa Y, 2 golos do Jogador A, amarelo ao Jogador B»\n• ler a súmula: manda a foto ou o PDF\n• marcar ou mudar jogos, acrescentar equipas e plantéis, publicar comunicados\n\nAntes de mudar algo mostro o resumo e espero o teu *sim*. Não homologo resultados: isso fica contigo na app.",
   unlinked: "Desligado. Deixo de ler as tuas mensagens como Adjunto de Ligas.",
   aiOff: "O Adjunto com IA não está disponível neste momento. Usa a app: pitch-fc.com/league/minhas.",
   limit: "Atingiste o limite diário do Adjunto. Amanhã há mais; hoje usa a app.",

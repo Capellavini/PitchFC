@@ -68,7 +68,7 @@ test("someone who is not a league manager is not ours: the weekly-groups Adjunto
 test("a valid code links the sender and welcomes them; a wrong one says how to get another", async () => {
   const t = setup({ link: false });
   assert.equal(await t.h.onDirectMessage(msg("Quero ligar o Adjunto da minha liga. Código: LIGA-ABC234")), true);
-  assert.match(t.sent[0], /Ligado ✅.*Liga do Porto/s);
+  assert.match(t.sent[0], /Adjunto de Ligas da Liga do Porto\. Ligado ✅/);
   assert.match(t.sent[0], /sim/);
   const t2 = setup({ link: false });
   assert.equal(await t2.h.onDirectMessage(msg("LIGA-ZZZZZ2")), true);
