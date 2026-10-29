@@ -12,7 +12,7 @@ import { LG, leagueError } from "../../lib/leagueCopy";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { leagueToday } from "../../lib/leagueToday";
 import { useWide } from "../../lib/useWide";
-import { teamHome } from "../../lib/leagueTeamHome";
+import { teamHome, readOnlyQueue } from "../../lib/leagueTeamHome";
 import { competitionById, LEAGUE, COMPETITION, teamById } from "../../lib/leagueDemo";
 import { tabTitle } from "../../lib/leagueNav";
 import { SetupError } from "../../lib/leagueSetup";
@@ -35,6 +35,7 @@ import LeagueTeamPage from "./LeagueTeamPage";
 import LeaguePlayerPage from "./LeaguePlayerPage";
 import LeagueManage from "./LeagueManage";
 import LeaguePlayersDirectory from "./LeaguePlayersDirectory";
+import LeagueSquadEditor from "./LeagueSquadEditor";
 import LeagueCompare from "./LeagueCompare";
 import LeagueToast from "./LeagueToast";
 import { LeagueSyncBanner } from "./LeagueSyncStatus";
@@ -96,7 +97,12 @@ export default function LeagueContextApp({ entry = null, store = null }) {
 
   const role = live && !readOnly ? "manager" : state.viewer?.role || "fan";
   const derived = useMemo(() => deriveLeague(state), [state]);
-  const acc = ROLE_ACCOUNTS[role] || ROLE_ACCOUNTS.fan;
+  // A real captain / athlete (store.me, from the server) is their own team and record; the demo roles
+  // are the registry's first team. A member's `acc` never comes from the demo registry.
+  const myScope = (store?.me || []).find((m) => m.role === role);
+  const acc = myScope
+    ? { accountId: `acc-${store.workspaceId}-${role}`, teamId: myScope.teamId, playerId: myScope.playerId || null, label: role === "captain" ? "Capitão" : "Atleta" }
+    : ROLE_ACCOUNTS[role] || ROLE_ACCOUNTS.fan;
   const lang = getLang();
   // "Gerir" is a tab of the Gestor only — a persisted tab can't reopen it
   // under another role (direct-route guard). Stacks saved by the old
@@ -221,7 +227,8 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, adjuntoPrefill, welcomeSeen, markWelcome, live, store };
   const pushed = !entering && Boolean(view);
   // What is waiting on a captain / athlete shows as a count on their Equipa tab.
-  const badges = inTeam ? { inicio: teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role }).queue.length } : {};
+  const teamQueue = inTeam ? teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role }).queue : [];
+  const badges = inTeam ? { inicio: (readOnly ? readOnlyQueue(teamQueue) : teamQueue).length } : {};
 
   let body;
   if (entering) body = <LeagueEntry key={entryMode || "choose"} startAt={entryMode === "fan" ? "fan" : "choose"} onEnter={act.enter} />;
@@ -229,12 +236,13 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   else if (view?.kind === "team") body = <LeagueTeamPage key={view.id} ctx={ctx} teamId={view.id} />;
   else if (view?.kind === "player") body = <LeaguePlayerPage key={view.id} ctx={ctx} playerId={view.id} />;
   else if (view?.kind === "players") body = <LeaguePlayersDirectory ctx={ctx} />;
+  else if (view?.kind === "squad" && store?.saveSquad) body = <LeagueSquadEditor key="squad" ctx={ctx} />;
   else if (view?.kind === "compare") body = <LeagueCompare ctx={ctx} />;
   else if (tab === "gerir") body = <LeagueManage ctx={ctx} section={manageSection} onSection={setManageSection} />;
   else if (tab === "adjunto") body = <LeagueAdjunto ctx={ctx} />;
   else if (tab === "jogos") body = <LeagueMatches ctx={ctx} />;
   else if (tab === "classificacao") body = competitionById[ctx.scope]?.kind === "cup" ? <LeagueCupPhase ctx={ctx} competition={competitionById[ctx.scope]} /> : <LeagueTable ctx={ctx} />;
-  else if (tab === "eu") body = <LeaguePlayerPage ctx={ctx} playerId={acc.playerId} embedded />;
+  else if (tab === "eu") body = acc.playerId ? <LeaguePlayerPage ctx={ctx} playerId={acc.playerId} embedded /> : store?.saveSquad ? <LeagueSquadEditor ctx={ctx} embedded /> : <LeagueHome ctx={ctx} />;
   else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;
   else if (tab === "mais") body = <LeagueMore ctx={ctx} />;
   else body = <LeagueHome ctx={ctx} />;

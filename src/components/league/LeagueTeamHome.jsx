@@ -3,7 +3,8 @@ import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { teamById, playerById, PLAYERS, captainOf, competitionById, COMPETITION, fmtKickoff } from "../../lib/leagueDemo";
-import { teamHome } from "../../lib/leagueTeamHome";
+import { teamHome, readOnlyQueue } from "../../lib/leagueTeamHome";
+import BtnGhost from "../BtnGhost";
 import SectionLabel from "../SectionLabel";
 import BtnPrimary from "../BtnPrimary";
 import Chip from "../Chip";
@@ -29,7 +30,8 @@ const KINDS = {
 export default function LeagueTeamHome({ ctx }) {
   const { state, derived, role, acc, lang, open, wide } = ctx;
   const team = teamById[acc.teamId];
-  const home = teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role });
+  const full = teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role });
+  const home = ctx.store?.readOnly ? { ...full, queue: readOnlyQueue(full.queue) } : full;
   const squad = PLAYERS.filter((p) => p.teamId === acc.teamId);
   const matchName = (m) => `${teamById[m.homeId].name} – ${teamById[m.awayId].name}`;
   const byId = Object.fromEntries(state.matches.map((m) => [m.id, m]));
@@ -129,7 +131,10 @@ export default function LeagueTeamHome({ ctx }) {
 
       <SectionLabel style={{ marginTop: S.xl }}>{tf(t("Plantel inscrito ({n})"), { n: squad.length })}</SectionLabel>
       <LeagueSquadGrid players={squad} suspended={home.banned} captainId={captainOf(acc.teamId)} meId={acc.playerId} onPlayer={(id) => open({ kind: "player", id })} />
-      <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, lineHeight: 1.5 }}>{t(LG.demoData)}</div>
+      {captain && ctx.store?.saveSquad && (
+        <BtnGhost block onClick={() => open({ kind: "squad" })} style={{ marginTop: S.md }}>{t("Gerir o plantel")}</BtnGhost>
+      )}
+      {!ctx.live && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.md, lineHeight: 1.5 }}>{t(LG.demoData)}</div>}
       </div>
       </div>
     </div>

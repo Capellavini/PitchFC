@@ -41,3 +41,10 @@ test("the team knows its next game, recent results and table position", () => {
   assert.ok(h.position >= 0);
   assert.equal(h.row.id, "t1");
 });
+
+test("a read-only member only sees the tasks that inform", async () => {
+  const { readOnlyQueue } = await import("./leagueTeamHome.js");
+  const queue = [{ kind: "lineup" }, { kind: "self_suspended" }, { kind: "contest" }, { kind: "banned_in_lineup" }, { kind: "vote" }];
+  assert.deepEqual(readOnlyQueue(queue).map((i) => i.kind), ["self_suspended", "banned_in_lineup"]);
+  assert.deepEqual(readOnlyQueue(), []);
+});

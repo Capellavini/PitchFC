@@ -52,3 +52,7 @@ export function teamHome(state, derived, { teamId, playerId = null, accountId = 
   const { position, row, competitionId } = tableOfTeam(derived || {}, teamId);
   return { queue, next, upcoming, recent, position, row, competitionId, banned };
 }
+
+/** On a read-only copy (a real captain or athlete, until their own writes exist) only what informs is
+ *  shown: tasks that need a write (call-up, contest, votes) would lead nowhere. */
+export const readOnlyQueue = (queue = []) => queue.filter((it) => it.kind === "self_suspended" || it.kind === "banned_in_lineup");

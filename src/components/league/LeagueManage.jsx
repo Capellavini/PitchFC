@@ -8,11 +8,13 @@ import LeagueManageReports from "./LeagueManageReports";
 import LeagueDiscipline from "./LeagueDiscipline";
 import LeagueRegulation from "./LeagueRegulation";
 import LeagueManageSetup from "./LeagueManageSetup";
+import LeagueManageAccess from "./LeagueManageAccess";
 
 const SECTIONS = [
   { id: "setup", label: "Liga e módulos" },
   { id: "overview", label: "Competições" },
   { id: "registrations", label: "Inscrições" },
+  { id: "access", label: "Acessos" },
   { id: "calendar", label: "Calendário" },
   { id: "reports", label: "Fichas de jogo" },
   { id: "discipline", label: "Disciplina" },
@@ -24,9 +26,13 @@ const SECTIONS = [
  *  shared match page, where the Gestor's controls appear. */
 export default function LeagueManage({ ctx, section = "overview", onSection }) {
   const openMatch = (id) => ctx.open({ kind: "match", id });
+  // Accesses (captain / athlete invites) exist only on a real account's league, not in the demo.
+  const hasAccess = Boolean(ctx.live && ctx.store?.roles);
+  const sections = hasAccess ? SECTIONS : SECTIONS.filter((s) => s.id !== "access");
   return (
     <div>
-      <SegmentedControl options={SECTIONS} value={section} onChange={onSection} />
+      <SegmentedControl options={sections} value={section} onChange={onSection} />
+      {section === "access" && hasAccess && <LeagueManageAccess ctx={ctx} />}
       {section === "setup" && <LeagueManageSetup ctx={ctx} />}
       {section === "overview" && <LeagueManageOverview ctx={ctx} onSection={onSection} openMatch={openMatch} />}
       {section === "registrations" && <LeagueManageRegistrations ctx={ctx} />}

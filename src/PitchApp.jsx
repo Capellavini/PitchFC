@@ -73,6 +73,10 @@ import { isLeagueAccount, leagueAccountRedirect, leagueProfileForm, LEAGUE_ENTRY
 import LeagueCloudPage from "./components/league/LeagueCloudPage";
 import LeagueWorkspaceApp from "./components/league/LeagueWorkspaceApp";
 import LeaguePublicPage from "./components/league/LeaguePublicPage";
+import LeagueInvitePage from "./components/league/LeagueInvitePage";
+import LeagueMemberApp from "./components/league/LeagueMemberApp";
+import LeagueMyLeagues from "./components/league/LeagueMyLeagues";
+import { inviteTokenFromPath, memberWorkspaceFromPath, MEMBER_HOME_PATH } from "./lib/leagueRoles";
 import LeagueCompetitionCloud from "./components/league/LeagueCompetitionCloud";
 import { useLeagues } from "./hooks/useLeagues";
 import { parseLeaguePath } from "./lib/leagueCloud";
@@ -1349,6 +1353,9 @@ export default function PitchApp() {
   // /l/<slug> — a league's public page (published by its Gestor). Public, read-only.
   const publicLeague = path.match(/^\/l\/([a-z0-9-]{1,60})$/);
   if (publicLeague && !localMode) return <LeaguePublicPage slug={publicLeague[1]} />;
+  // /l/convite/<token> — what a Gestor sends a captain or an athlete. Readable by anyone; accepting needs an account.
+  const inviteToken = inviteTokenFromPath(path);
+  if (inviteToken && !localMode) return <LeagueInvitePage token={inviteToken} signedIn={Boolean(cloud.user?.id)} authReady={cloud.status !== "loading"} />;
   // /league/entrar — the one place a league account is created or signed into.
   if (path === LEAGUE_ENTRY_PATH && !localMode) return <LeagueAuth cloud={cloud} lang={lang} onLang={changeLang} />;
   // ── Presentation launcher (/demo) — full width, public, no login ───
@@ -1379,8 +1386,14 @@ export default function PitchApp() {
   // The league workspace (PITCH Ligas on the account's own cloud copy). A league
   // account lands here from /league/minhas; any other signed-in account (the
   // PITCH admin) opens it on /league/minhas/painel and keeps the old hub.
-  if (!localMode && cloud.user?.id && (path === "/league/minhas/painel" || (leagueAccount && path === LEAGUE_HOME_PATH))) {
-    return <LeagueWorkspaceApp user={cloud.user} />;
+  if (!localMode && cloud.user?.id && path === "/league/minhas/painel") return <LeagueWorkspaceApp user={cloud.user} />;
+  // A league account's home: its own league as Gestor, or — when it also belongs to leagues as a
+  // captain or athlete — the list of them. Anyone signed in can open the member routes.
+  if (!localMode && cloud.user?.id && leagueAccount && path === LEAGUE_HOME_PATH) return <LeagueMyLeagues user={cloud.user} ownerFallback />;
+  const memberWorkspace = memberWorkspaceFromPath(path);
+  if (!localMode && (memberWorkspace || path === MEMBER_HOME_PATH)) {
+    if (cloud.user?.id) return memberWorkspace ? <LeagueMemberApp workspaceId={memberWorkspace} /> : <LeagueMyLeagues user={cloud.user} />;
+    if (cloud.status === "anon") { window.location.replace(LEAGUE_ENTRY_PATH); return null; }
   }
   // Real leagues (Fase 2): /league/minhas, /league/<slug>, /league/<slug>/<comp>.
   // Same gate as the demo: flag off → the public /league page, nothing else.
