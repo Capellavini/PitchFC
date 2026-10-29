@@ -14,7 +14,7 @@ export const SYNC_STATUS = Object.freeze({ IDLE: "idle", SAVING: "saving", SAVED
 
 const RETRY_MS = [2000, 5000, 15000, 30000];
 
-export function createWorkspaceSync({ api, debounceMs = 800, onStatus = () => {}, schedule = setTimeout, cancel = clearTimeout } = {}) {
+export function createWorkspaceSync({ api, debounceMs = 800, onStatus = () => {}, onSaved = () => {}, schedule = setTimeout, cancel = clearTimeout } = {}) {
   let version = 0;
   let pending = null; // latest local state not yet confirmed by the server
   let inFlight = false;
@@ -44,6 +44,8 @@ export function createWorkspaceSync({ api, debounceMs = 800, onStatus = () => {}
     }
     attempts = 0;
     version = r.data?.version ?? version + 1;
+    // The server may have published the league's page on this very save (first time it has a name).
+    if (r.data) onSaved({ slug: r.data.slug || null, published: Boolean(r.data.published) });
     if (pending === sending) pending = null; // nothing newer arrived while saving
     if (pending !== null) { timer = schedule(flush, 0); return; }
     setStatus(SYNC_STATUS.SAVED);

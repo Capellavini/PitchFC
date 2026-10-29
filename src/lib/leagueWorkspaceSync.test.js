@@ -113,3 +113,14 @@ test("refresh gives up when the user edits while it is fetching, and without a v
   const noApi = createWorkspaceSync({ api: { get: async () => ({ data: null }), save: async () => ({ data: { version: 1 } }) } });
   assert.equal(await noApi.refresh(), null);
 });
+
+test("a save tells the caller when the server published the league's page", async () => {
+  const m = manual(); const seen = [];
+  const api = fakeApi([{ data: { version: 1, slug: "liga-teste", published: true } }, { data: { version: 2, slug: null, published: false } }]);
+  const s = createWorkspaceSync({ api, schedule: m.schedule, cancel: m.cancel, onSaved: (x) => seen.push(x) });
+  s.change({ n: 1 });
+  await m.queue[0].fn();
+  s.change({ n: 2 });
+  await m.queue[0].fn();
+  assert.deepEqual(seen, [{ slug: "liga-teste", published: true }, { slug: null, published: false }]);
+});

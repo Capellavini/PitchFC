@@ -9,11 +9,13 @@ import LeagueDiscipline from "./LeagueDiscipline";
 import LeagueRegulation from "./LeagueRegulation";
 import LeagueManageSetup from "./LeagueManageSetup";
 import LeagueManageAccess from "./LeagueManageAccess";
+import LeagueManagePage from "./LeagueManagePage";
 
 const SECTIONS = [
   { id: "setup", label: "Liga e módulos" },
   { id: "overview", label: "Competições" },
   { id: "registrations", label: "Inscrições" },
+  { id: "page", label: "Página" },
   { id: "access", label: "Acessos" },
   { id: "calendar", label: "Calendário" },
   { id: "reports", label: "Fichas de jogo" },
@@ -28,10 +30,12 @@ export default function LeagueManage({ ctx, section = "overview", onSection }) {
   const openMatch = (id) => ctx.open({ kind: "match", id });
   // Accesses (captain / athlete invites) exist only on a real account's league, not in the demo.
   const hasAccess = Boolean(ctx.live && ctx.store?.roles);
-  const sections = hasAccess ? SECTIONS : SECTIONS.filter((s) => s.id !== "access");
+  // The league's own page (avisos, what it shows, sign-ups) exists only on a real account's league.
+  const sections = SECTIONS.filter((s) => (s.id === "access" ? hasAccess : s.id === "page" ? Boolean(ctx.live) : true));
   return (
     <div>
       <SegmentedControl options={sections} value={section} onChange={onSection} />
+      {section === "page" && ctx.live && <LeagueManagePage ctx={ctx} />}
       {section === "access" && hasAccess && <LeagueManageAccess ctx={ctx} />}
       {section === "setup" && <LeagueManageSetup ctx={ctx} />}
       {section === "overview" && <LeagueManageOverview ctx={ctx} onSection={onSection} openMatch={openMatch} />}

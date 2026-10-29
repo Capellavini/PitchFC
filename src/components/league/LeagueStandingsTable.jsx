@@ -42,11 +42,19 @@ export default function LeagueStandingsTable({ rows, followId, onTeam, provision
               <tr key={r.id} style={{ borderTop: `1px solid ${C.border}`, background: mine ? C.accentDim : "transparent" }}>
                 <td style={{ ...cell, fontWeight: 800, color: C.text2 }}>{i + 1}</td>
                 <td style={{ ...cell, textAlign: "left", padding: 0 }}>
-                  <button type="button" onClick={() => onTeam(r.id)} aria-label={r.name}
-                    style={{ display: "flex", alignItems: "center", gap: S.sm, minHeight: TOUCH.min, width: "100%", background: "none", border: "none", color: C.text1, cursor: "pointer", padding: `0 ${S.xs}px`, textAlign: "left", fontSize: narrow ? T.meta : T.body, fontWeight: 700 }}>
-                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 5, background: r.color, flexShrink: 0 }} />
-                    <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{narrow ? r.short : r.name}</span>
-                  </button>
+                  {onTeam ? (
+                    <button type="button" onClick={() => onTeam(r.id)} aria-label={r.name}
+                      style={{ display: "flex", alignItems: "center", gap: S.sm, minHeight: TOUCH.min, width: "100%", background: "none", border: "none", color: C.text1, cursor: "pointer", padding: `0 ${S.xs}px`, textAlign: "left", fontSize: narrow ? T.meta : T.body, fontWeight: 700 }}>
+                      <span aria-hidden style={{ width: 10, height: 10, borderRadius: 5, background: r.color, flexShrink: 0 }} />
+                      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{narrow ? r.short : r.name}</span>
+                    </button>
+                  ) : (
+                    // A read-only table (the league page): the team is a name, not a button that goes nowhere.
+                    <span title={r.name} style={{ display: "flex", alignItems: "center", gap: S.sm, minHeight: TOUCH.min, padding: `0 ${S.xs}px`, fontSize: narrow ? T.meta : T.body, fontWeight: 700, color: C.text1 }}>
+                      <span aria-hidden style={{ width: 10, height: 10, borderRadius: 5, background: r.color, flexShrink: 0 }} />
+                      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{narrow ? r.short : r.name}</span>
+                    </span>
+                  )}
                 </td>
                 {COLS.map(([k]) => (
                   <td key={k} style={{ ...cell, ...(k === "pts" ? { ...displayFont, color: C.text1, fontSize: T.body } : { color: k === "gd" ? (r.gd > 0 ? C.green : r.gd < 0 ? C.red : C.text2) : C.text2 }) }}>
