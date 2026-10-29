@@ -4,7 +4,8 @@
 // breakdown, prices by form, ownership cap, transfers, Taça do Mês +
 // Campeonato (and last month's champions). Pure: no React, no storage.
 import {
-  FANTASY_V2, nightFacts, playerNightPoints, scoreLineup, priceFromForm, seasonWindow, seasonStandings, ownershipCap,
+  FANTASY_V2, FANTASY_CONNECTION, nightFacts, playerNightPoints, scoreLineup, scoreLineupWithConnection, connectionDraftIssue,
+  priceFromForm, seasonWindow, seasonStandings, ownershipCap,
 } from "./core/fantasyRules";
 import { squadCostBasis, nextPricesPaid } from "./fantasy";
 
@@ -25,14 +26,24 @@ export function normalizeSquad({ playerIds, reserveIds, captainId, viceId }, squ
   return { player_ids: [...starters, ...bench], reserve_ids: bench, captain_id: cap, vice_captain_id: vice };
 }
 
-export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null, rivals, budget, squadSize, startsWeeksAgo, now = Date.now() }) {
+/** { creatorId, finisherId } (any id type) → the squad row's shape. */
+export const connectionRow = (c) => (c?.creatorId != null && c?.finisherId != null ? { creator_id: fk(c.creatorId), finisher_id: fk(c.finisherId) } : null);
+
+/** connectionConfig (demo seed): { fromDayId, locked: { [dayId]: { creator, finisher } } } — the pairs "I"
+ *  froze for past rounds, and the first round the rule applies to. Older
+ *  rounds never get a bonus retroactively. */
+/** `group` = the athletes (the pool a manager buys from). In the group app they
+ *  are also the managers, so `me` = the athlete flagged isMe; in Ligas the
+ *  managers are accounts, so the caller passes `meParticipant` ({ uuid, … }).
+ *  `localDays` = the rounds ({ id, playedOn, kickoffAt?, summary, mvpKey? }). */
+export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null, rivals, budget, squadSize, startsWeeksAgo, connectionConfig = null, meParticipant = null, now = Date.now() }) {
   const fGroup = group.map((p) => ({ ...p, uuid: fk(p.id) }));
-  const me = fGroup.find((p) => p.isMe);
+  const me = meParticipant ? { ...meParticipant, uuid: fk(meParticipant.uuid) } : fGroup.find((p) => p.isMe);
   const positions = Object.fromEntries(fGroup.map((p) => [p.uuid, p.position]));
   const startsAt = new Date(now - startsWeeksAgo * 7 * 24 * 3600 * 1000 - 3600 * 1000);
   const allDays = (localDays || [])
     .filter((d) => d.playedOn && d.summary)
-    .map((d) => ({ ...d, kickoff_at: iso(`${d.playedOn}T20:00:00`) }))
+    .map((d) => ({ ...d, kickoff_at: d.kickoffAt ? iso(d.kickoffAt) : iso(`${d.playedOn}T20:00:00`) }))
     .sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at));
   const days = allDays.filter((d) => new Date(d.kickoff_at) >= startsAt);
   // Nights before the v2 start = the closed "Temporada 1" (mirrors the
@@ -45,7 +56,8 @@ export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null
   const mine = normalizeSquad({ playerIds: mySquad.player_ids, reserveIds: mySquad.reserve_ids, captainId: mySquad.captain_id, viceId: mySquad.vice_captain_id }, squadSize);
   const squads = [
     { participant_id: me?.uuid, ...mine, prices_paid: mySquad.prices_paid || basePaid(mine.player_ids), budget_adjustment: 30,
-      locked_player_ids: (mySquad.locked_player_ids || mySquad.player_ids || []).map(fk), free_transfers: mySquad.free_transfers ?? 1 },
+      locked_player_ids: (mySquad.locked_player_ids || mySquad.player_ids || []).map(fk), free_transfers: mySquad.free_transfers ?? 1,
+      connection: connectionConfig ? (mySquad.connection ?? null) : null },
     ...rivals.filter((r) => fk(r.participant) !== me?.uuid).map((r) => {
       const n = normalizeSquad({ playerIds: r.player_ids, reserveIds: r.player_ids.slice(squadSize), captainId: r.captain_id, viceId: r.player_ids[1] }, squadSize);
       return { participant_id: fk(r.participant), ...n, prices_paid: basePaid(n.player_ids), budget_adjustment: 0, locked_player_ids: n.player_ids, free_transfers: 1 };
@@ -66,13 +78,21 @@ export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null
   };
   const scores = [];
   const roundPlayers = [];
+  // The rule is versioned per league and starts at a round: before it,
+  // breakdown.connection is null (not "no connection").
+  const connStart = connectionConfig?.fromDayId ? days.findIndex((d) => d.id === connectionConfig.fromDayId) : -1;
   rounds.forEach((r, i) => {
     const d = days[i];
     const podium = { mvp: d.mvpKey ?? null };
+    const connectionOn = connStart >= 0 && i >= connStart;
     squads.forEach((s) => {
-      const b = scoreLineup(lineupOf(s), d.summary, positions, podium);
+      // Round frozen with the pair I chose for THAT round (rivals pick none in the demo).
+      const frozen = connectionOn && s.participant_id === me?.uuid ? connectionConfig.locked?.[d.id] : null;
+      const lineup = { ...lineupOf(s), connection: frozen ? { creator: fk(frozen.creator), finisher: fk(frozen.finisher) } : null };
+      const b = connectionOn ? scoreLineupWithConnection(lineup, d.summary, positions, podium) : scoreLineup(lineup, d.summary, positions, podium);
       scores.push({ id: `${r.id}-${s.participant_id}`, league_id: "demo-league", round_id: r.id, matchday_id: d.id, participant_id: s.participant_id,
-        points: b.total, breakdown: b, captain_id: lockedOf(s).captain_id, vice_captain_id: lockedOf(s).vice_captain_id, transfer_cost: 0 });
+        points: b.total, breakdown: connectionOn ? { ...b, connectionPair: frozen ? { creator_id: fk(frozen.creator), finisher_id: fk(frozen.finisher) } : null } : b,
+        captain_id: lockedOf(s).captain_id, vice_captain_id: lockedOf(s).vice_captain_id, transfer_cost: 0 });
     });
     const f = nightFacts(d.summary);
     [...new Set([...f.appeared, ...f.noShows])].forEach((id) => {
@@ -124,9 +144,17 @@ export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null
   ];
 
   const priceOf = (id) => prices[id]?.price ?? base;
-  /** Same checks as save_fantasy_squad (budget, ownership cap, injured). */
-  const validate = (next) => {
+  /** Same checks as save_fantasy_squad (budget, ownership cap, injured) plus
+   *  the Conexão: it must still be two distinct starters of the squad being
+   *  saved — `connection` undefined keeps the saved one (and fails if the
+   *  new squad orphaned it), null removes it. */
+  const validate = (next, connection) => {
     if (next.player_ids.length < squadSize) return "fantasy:squad_incomplete";
+    if (connectionConfig) {
+      const row = connection === undefined ? squads[0].connection : connection;
+      const starters = next.player_ids.filter((id) => !next.reserve_ids.includes(id));
+      if (row && connectionDraftIssue({ creator: row.creator_id, finisher: row.finisher_id }, starters)) return "fantasy:connection_invalid";
+    }
     const prev = new Set(squads[0].player_ids);
     const added = next.player_ids.filter((id) => !prev.has(id));
     if (added.some((id) => fGroup.find((p) => p.uuid === id)?.injured)) return "fantasy:injured";
@@ -141,7 +169,8 @@ export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null
   return {
     group: fGroup, me,
     fantasyLeague: { id: "demo-league", name: "Pitch Manager", budget, squad_size: squadSize, mode: "classic", rules_version: 2,
-      v2_started_at: iso(startsAt), starts_at: iso(startsAt), created_at: iso(startsAt), scoring_weights: { priceBase: base } },
+      v2_started_at: iso(startsAt), starts_at: iso(startsAt), created_at: iso(startsAt), scoring_weights: { priceBase: base },
+      connection_rules: connectionConfig ? { enabled: true, version: FANTASY_CONNECTION.version, bonus_per_event: FANTASY_CONNECTION.bonusPerEvent, max_events: FANTASY_CONNECTION.maxEvents } : null },
     fantasySquads: squads, fantasyScores: scores, fantasyTradeOffers: [], fantasyRounds: rounds, fantasyRoundPlayers: roundPlayers,
     fantasySeasons: seasons, fantasyPrices: prices, trophies, validate,
   };

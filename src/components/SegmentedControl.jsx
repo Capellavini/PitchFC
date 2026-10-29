@@ -14,16 +14,18 @@ import { t } from "../lib/i18n";
  *  - value     active id.
  *  - onChange  (id) => void.
  *  - style     container overrides (default marginBottom 16).
+ *  - dense     tighter padding/gap so 4 short labels fit a 320px phone
+ *              without scrolling (Fantasy's Meu time · Mercado · Rodada · Ranking).
  */
-export default function SegmentedControl({ options, value, onChange, style }) {
+export default function SegmentedControl({ options, value, onChange, style, dense = false }) {
   return (
-    <div role="tablist" style={{ display: "flex", gap: 6, marginBottom: S.lg, overflowX: "auto", scrollbarWidth: "none", ...style }}>
+    <div role="tablist" style={{ display: "flex", gap: dense ? S.xs : 6, marginBottom: S.lg, overflowX: "auto", scrollbarWidth: "none", ...style }}>
       {options.map((o) => {
         const active = o.id === value;
         return (
           <button key={o.id} type="button" role="tab" aria-selected={active} onClick={() => onChange(o.id)}
             style={{
-              flex: "1 0 auto", minHeight: TOUCH.min, borderRadius: R.pill, padding: `0 ${S.md}px`,
+              flex: "1 0 auto", minHeight: TOUCH.min, borderRadius: R.pill, padding: `0 ${dense ? S.sm : S.md}px`,
               background: active ? C.accent : "transparent",
               color: active ? C.bg : C.text2,
               border: `1px solid ${active ? C.accent : C.border}`,

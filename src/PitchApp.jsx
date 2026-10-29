@@ -17,7 +17,7 @@ import {concludeMatch} from "./lib/currentMatch.js";
 import { hashId } from "./lib/core/ids.js";
 import { drawTeams as drawTeamsCore, balanceTeams as balanceTeamsCore } from "./lib/core/teamDraw.js";
 import { DEMO_MATCHDAYS, DEMO_HISTORY, DEMO_POSTS, DEMO_FANTASY, DEMO_PEER_RATINGS } from "./lib/demoSeed";
-import { buildDemoFantasy, normalizeSquad } from "./lib/fantasyDemo";
+import { buildDemoFantasy, normalizeSquad, connectionRow } from "./lib/fantasyDemo";
 import { fantasyErrorText } from "./lib/fantasyCopy";
 import { usePersistentState, clearAppStorage } from "./lib/storage";
 import {stampVarGoal} from "./lib/varProtocol.js";
@@ -2187,7 +2187,7 @@ export default function PitchApp() {
   if (localMode && me) {
     const demo = buildDemoFantasy({
       group: displayGroup, localDays, mySquad: demoFantasySquad, lockedSquad: DEMO_FANTASY.mySquad, rivals: DEMO_FANTASY.rivals,
-      budget: DEMO_FANTASY.budget, squadSize: DEMO_FANTASY.squadSize, startsWeeksAgo: DEMO_FANTASY.startsWeeksAgo,
+      connectionConfig: DEMO_FANTASY.connection, budget: DEMO_FANTASY.budget, squadSize: DEMO_FANTASY.squadSize, startsWeeksAgo: DEMO_FANTASY.startsWeeksAgo,
     });
     demoFantasyTrophies = demo.trophies;
     const unavailable = async () => ({ error: t("Indisponível na demonstração.") });
@@ -2198,11 +2198,14 @@ export default function PitchApp() {
       fantasySeasons: demo.fantasySeasons, fantasyPrices: demo.fantasyPrices,
       onCreateLeague: unavailable, onCreateTradeOffer: unavailable, onCancelTradeOffer: unavailable, onRespondTradeOffer: unavailable,
       onSyncFantasy: null,
-      onSaveSquad: async (_leagueId, playerIds, captainId, reserveIds, viceId) => {
+      // squad + Conexão are ONE write: `connection` undefined keeps the saved
+      // pair, null removes it, {creatorId, finisherId} replaces it.
+      onSaveSquad: async (_leagueId, playerIds, captainId, reserveIds, viceId, connection) => {
         const next = normalizeSquad({ playerIds, reserveIds, captainId, viceId }, DEMO_FANTASY.squadSize);
-        const ok = demo.validate(next);
+        const row = connection === undefined ? undefined : connectionRow(connection);
+        const ok = demo.validate(next, row);
         if (typeof ok === "string") return { error: fantasyErrorText(ok) };
-        setDemoFantasySquad((prev) => ({ ...prev, ...next, prices_paid: ok.prices_paid }));
+        setDemoFantasySquad((prev) => ({ ...prev, ...next, prices_paid: ok.prices_paid, ...(row === undefined ? {} : { connection: row }) }));
         return {};
       },
     };
@@ -2444,6 +2447,7 @@ export default function PitchApp() {
                 stats={<GroupRecords records={recordsView} canDelete={isOrganizer && cloudMode} onDeleteMatchday={deleteMatchdayRecord} />}
                 fantasy={cloud.canSeeFantasy ? (
                   <FantasyTab group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
+                    groupName={game.groupName} onOpenRecord={() => goToGroupView("stats")}
                     fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
                     fantasyTradeOffers={cloud.fantasyTradeOffers} fantasyRounds={cloud.fantasyRounds}
                     fantasyRoundPlayers={cloud.fantasyRoundPlayers} fantasySeasons={cloud.fantasySeasons} fantasyPrices={cloud.fantasyPrices}
@@ -2451,7 +2455,7 @@ export default function PitchApp() {
                     onCreateTradeOffer={cloud.createTradeOffer} onCancelTradeOffer={cloud.cancelTradeOffer}
                     onRespondTradeOffer={cloud.respondTradeOffer} onSyncFantasy={cloud.syncFantasyScores} />
                 ) : demoFantasyProps ? (
-                  <FantasyTab {...demoFantasyProps} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt} />
+                  <FantasyTab {...demoFantasyProps} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt} groupName={game.groupName} onOpenRecord={() => goToGroupView("stats")} />
                 ) : null}
                 settings={
                   <GroupSettings game={game} onEditGroup={() => setEditingGroup(true)}

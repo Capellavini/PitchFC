@@ -178,6 +178,101 @@ export function scoreLineup(lineup, summary, positions = {}, podium = {}, rules 
   return { total, transferCost, captain: eff, players };
 }
 
+// ── Conexão da Rodada (v1) ───────────────────────────────────────────
+// Optional pair chosen BEFORE the lock: creator (the assist) → finisher
+// (the goal). Worth +bonusPerEvent for every normal goal in which the
+// finisher scores from the creator's assist, at most maxEvents events per
+// round (shared across all games of the night), on top of the base total —
+// never multiplied by the captain, never changing a player's own points.
+// Pure: the JS mirror for demo/previews. The authoritative apuração
+// (SQL) is a later phase; until then a cloud league has no Conexão.
+//
+// A goal only counts when it is ONE event that carries both ids: totals
+// ("Diego has an assist, Lucas a goal") never imply a connection, and an
+// event without a stable `id` makes the night "insufficient" instead of
+// guessing.
+export const FANTASY_CONNECTION = Object.freeze({ version: 1, bonusPerEvent: 3, maxEvents: 2 });
+
+const noBonus = (status) => ({
+  status, points: 0, validEventIds: [], awardedEventIds: [], totalValid: 0, awarded: 0, capped: false, provisional: 0, events: [],
+});
+
+// Published order of the capped events: game of the night, minute (unknown
+// last), then id — never the array position the query happened to return.
+const byEventOrder = (a, b) => a.game - b.game || (a.min ?? Infinity) - (b.min ?? Infinity) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/** Why a draft pair can't be saved (null = fine). teams = real teams of
+ *  the round when already drawn ([[ids]…]) or null before the draw. */
+export function connectionDraftIssue(connection, starters, teams = null) {
+  const creator = S(connection?.creator), finisher = S(connection?.finisher);
+  if (creator == null && finisher == null) return null;
+  if (creator == null) return "incomplete_creator";
+  if (finisher == null) return "incomplete_finisher";
+  if (creator === finisher) return "same_player";
+  const st = arr(starters).map(S);
+  if (!st.includes(creator)) return "creator_not_starter";
+  if (!st.includes(finisher)) return "finisher_not_starter";
+  const drawn = arr(teams).filter((t) => Array.isArray(t));
+  const teamOf = (id) => drawn.findIndex((t) => t.map(S).includes(id));
+  if (drawn.length && teamOf(creator) !== -1 && teamOf(finisher) !== -1 && teamOf(creator) !== teamOf(finisher)) return "split_teams";
+  return null;
+}
+
+/** Bonus of one frozen pair against one night's summary.
+ *  connection: { creator, finisher } (real player ids); starters: the
+ *  FROZEN lineup's starters. status: none | invalid | insufficient |
+ *  provisional | no_match | activated. */
+export function connectionBonus(connection, starters, summary, rules = FANTASY_CONNECTION) {
+  const creator = S(connection?.creator), finisher = S(connection?.finisher);
+  if (creator == null && finisher == null) return noBonus("none");
+  if (connectionDraftIssue(connection, starters)) return noBonus("invalid");
+  const matches = arr(summary?.matches);
+  // Without a per-game event list for EVERY game we can't tell a night
+  // with no connection from a night we can't evaluate.
+  if (!matches.length || !matches.every((m) => Array.isArray(m?.events))) return noBonus("insufficient");
+  const games = nightFacts(summary).games;
+  const seen = new Set();
+  const valid = [];
+  let provisional = 0;
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    for (const e of m.events) {
+      if (e?.type !== "goal" || S(e.by) !== finisher || S(e.ast) !== creator) continue;
+      if (e.cancelled === true || e.shootout === true) continue;
+      const id = e.id == null || e.id === "" ? null : String(e.id);
+      if (id == null) return noBonus("insufficient");
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const team = e.side === "h" ? games[i].home : e.side === "a" ? games[i].away : [];
+      if (!team.length) return noBonus("insufficient");
+      if (!team.includes(creator) || !team.includes(finisher)) continue;
+      if (e.provisional === true) { provisional++; continue; }
+      valid.push({ id, game: int(m?.n) ?? i + 1, min: int(e.min), by: finisher, ast: creator });
+    }
+  }
+  valid.sort(byEventOrder);
+  const awardedEvents = valid.slice(0, rules.maxEvents);
+  const awarded = new Set(awardedEvents.map((e) => e.id));
+  return {
+    status: valid.length ? "activated" : provisional ? "provisional" : "no_match",
+    points: awardedEvents.length * rules.bonusPerEvent,
+    validEventIds: valid.map((e) => e.id), awardedEventIds: awardedEvents.map((e) => e.id),
+    totalValid: valid.length, awarded: awardedEvents.length, capped: valid.length > rules.maxEvents, provisional,
+    events: valid.map((e) => ({ ...e, awarded: awarded.has(e.id) })),
+  };
+}
+
+/** scoreLineup() + the Conexão as its own line: `total` = base + bonus,
+ *  `base` = the untouched scoreLineup total (captain, auto-subs and
+ *  transfer cost already inside), `connection` = connectionBonus(). The
+ *  pair comes from the frozen lineup (lineup.connection); a lineup without
+ *  one scores exactly like scoreLineup(). */
+export function scoreLineupWithConnection(lineup, summary, positions = {}, podium = {}, rules = FANTASY_V2, connectionRules = FANTASY_CONNECTION) {
+  const r = scoreLineup(lineup, summary, positions, podium, rules);
+  const connection = connectionBonus(lineup?.connection, lineup?.starters, summary, connectionRules);
+  return { ...r, base: r.total, total: r.total + connection.points, connection };
+}
+
 /** A player can be held by at most max(2, ceil(participants/2)) managers. */
 export const ownershipCap = (participants) => Math.max(2, Math.ceil((Number(participants) || 0) / 2));
 

@@ -21,14 +21,17 @@ import Avatar from "./Avatar";
  *  - bench            dimmed.
  *  - onPitch          white nick with shadow (on the green pitch).
  *  - onClick          tap handler (omit for read-only).
+ *  - connRole         "creator" | "finisher" — part of the round's Conexão:
+ *                     a labelled pill (never only colour/arrow) + aria.
  */
-export default function FantasyToken({ p, group, captain = false, vice = false, order = null, pts = null, highlight = false, bench = false, onPitch = true, onClick = null }) {
+export default function FantasyToken({ p, group, captain = false, vice = false, order = null, pts = null, highlight = false, bench = false, onPitch = true, onClick = null, connRole = null }) {
   const Tag = onClick ? "button" : "div";
   const ovr = computeOverall(p.position, p.attrs);
-  const role = captain ? ` · ${t("Capitão")}` : vice ? ` · ${t("Vice-capitão")}` : "";
+  const connLabel = connRole === "creator" ? t("Assistência") : connRole === "finisher" ? t("Golo") : null;
+  const role = (captain ? ` · ${t("Capitão")}` : vice ? ` · ${t("Vice-capitão")}` : "") + (connLabel ? ` · ${t("Conexão")}: ${connLabel}` : "");
   const badge = { position: "absolute", top: -9, width: 24, height: 24, borderRadius: "50%", border: `2px solid ${C.bg}`, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" };
   return (
-    <Tag type={onClick ? "button" : undefined} onClick={onClick || undefined}
+    <Tag type={onClick ? "button" : undefined} onClick={onClick || undefined} data-pid={p.uuid}
       aria-label={onClick ? `${order ? `${order}. ` : ""}${p.nick}${role}` : undefined}
       style={{
         display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, width: 76, minHeight: 44,
@@ -59,6 +62,9 @@ export default function FantasyToken({ p, group, captain = false, vice = false, 
         marginTop: S.xs + 2, fontSize: T.meta, fontWeight: 800, maxWidth: 76, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         color: onPitch ? C.onPitch : C.text1, textShadow: onPitch ? "0 1px 3px rgba(0,0,0,0.9)" : "none",
       }}>{p.nick}</span>
+      {connLabel && (
+        <span style={{ fontSize: T.min, fontWeight: 900, borderRadius: R.pill, padding: `1px ${S.sm}px`, background: C.accent, color: C.bg, letterSpacing: "0.04em", textTransform: "uppercase" }}>{connLabel}</span>
+      )}
       {pts !== null && (
         <span style={{
           fontSize: T.min, fontWeight: 900, borderRadius: R.pill, padding: `1px ${S.sm}px`, fontVariantNumeric: "tabular-nums",

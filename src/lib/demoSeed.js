@@ -118,6 +118,8 @@ function buildNight(week, date, group) {
       if (gk) { bump(gk.id, "epicSaves"); events.push({ side: side === 0 ? "h" : "a", type: "save", by: gk.id, min: 1 + Math.floor(rand() * 11) }); }
     }
     events.sort((a, b) => a.min - b.min);
+    // Stable ids (night + game + order), like the ones the Conexão needs.
+    events.forEach((e, i) => { e.id = `demo-${isoOf(date)}-g${n}-e${i + 1}`; });
     [0, 1].forEach((side) => {
       if (goals[1 - side] !== 0) return;
       teams[side].forEach((p) => { if (p.position === "Guarda-redes" || p.position === "Defesa") bump(p.id, "cleanSheets"); });
@@ -226,6 +228,17 @@ export const DEMO_FANTASY = {
   // the lineup of the last locked round (so the transfers counter starts
   // at "1 grátis").
   mySquad: { player_ids: [2, 6, 5, 3, 7, 4], captain_id: 2, vice_captain_id: 6, reserve_ids: [4], locked_player_ids: [2, 6, 5, 3, 7, 4], free_transfers: 1 },
+  // Conexão da Rodada: the rule starts 3 nights ago (older rounds get no bonus);
+  // each round froze the pair I chose for it — newest 6→7 (+3), then 7→6 (+3),
+  // none the night after, and 5→3 on the night it hit the +6 cap.
+  connection: {
+    fromDayId: DEMO_MATCHDAYS[3].id,
+    locked: {
+      [DEMO_MATCHDAYS[0].id]: { creator: 6, finisher: 7 },
+      [DEMO_MATCHDAYS[1].id]: { creator: 7, finisher: 6 },
+      [DEMO_MATCHDAYS[3].id]: { creator: 5, finisher: 3 },
+    },
+  },
   rivals: [
     { participant: 2, player_ids: [6, 12, 8, 10, 3, 13], captain_id: 6 },
     { participant: 6, player_ids: [2, 9, 1, 11, 7, 4], captain_id: 9 },

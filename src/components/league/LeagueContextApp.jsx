@@ -3,7 +3,7 @@ import { C, S } from "../../theme";
 import { getLang, t } from "../../lib/i18n";
 import { usePersistentState } from "../../lib/storage";
 import {
-  appendEvent, transition, setOfficialMvp, castFanVote, validateFantasyPicks, LeagueError, setTactics,
+  appendEvent, transition, setOfficialMvp, castFanVote, LeagueError, setTactics,
 } from "../../lib/core/league";
 import {
   normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY, PLAYERS, emptyLeagueState, modOn, competitionTitle,
@@ -198,12 +198,8 @@ export default function LeagueContextApp({ entry = null, store = null }) {
       at: now(), suspendedIds: Object.values(derived.discipline).filter((d) => d.pending > 0).map((d) => d.playerId),
     })), t("Formação publicada.")),
     toggleVar: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, var: { enabled: !m.var?.enabled } }))),
-    setPicks: (ids, players) => {
-      const errors = validateFantasyPicks(ids, players);
-      if (errors.length) return { errors };
-      apply((s) => ({ ...s, fantasy: { ...s.fantasy, [acc.accountId]: ids } }), t("Equipa de Fantasy guardada (só neste browser)."));
-      return { ok: true };
-    },
+    // Pitch Manager squad (same shape the group demo persists): one write for the lineup AND its Conexão.
+    setFantasySquad: (squad) => apply((s) => ({ ...s, fantasyV2: { ...(s.fantasyV2 || {}), [acc.accountId]: squad } }), t("Equipa guardada (só neste navegador).")),
     /** A played game: just the score (provisional, no scorers). */
     recordResult: (matchId, score) => apply((s) => recordResult(s, { matchId, score, by: who, at: now() }), t("Resultado lançado — fica por homologar.")),
     /** "Subir súmula": the Adjunto chat opens ready for the photo or PDF of this match. */

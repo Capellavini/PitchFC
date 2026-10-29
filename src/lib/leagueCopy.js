@@ -31,7 +31,7 @@ export const LG = {
   navHome: L("Início", "Home", "Início"),
   navMatches: L("Jogos", "Matches", "Jogos"),
   navTable: L("Classificação", "Standings", "Classificação"),
-  navFantasy: L("Fantasy", "Fantasy", "Fantasy"),
+  navFantasy: L("Pitch Manager", "Pitch Manager", "Pitch Manager"),
   navMore: L("Mais", "More", "Mais"),
   // roles
   roleFan: L("Adepto", "Fan", "Torcedor"),

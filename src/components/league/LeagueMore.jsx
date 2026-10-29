@@ -77,7 +77,7 @@ export default function LeagueMore({ ctx }) {
       {row(Gavel, t("Disciplina"), () => setSub("disciplina"), ctx.live ? t("Cartões e suspensões") : t("Cartões e suspensões (regras demo)"))}
       {row(SlidersHorizontal, t("Preferências"), () => setSub("prefs"), t("Equipa do coração e avisos"))}
       {row(Users, t("Atletas"), () => open({ kind: "players" }), modOn("ovr") || modOn("compare") ? t("Cartões, OVR e comparação") : t("Golos, assistências e cartões"))}
-      {modOn("fantasy") && (ctx.role === "captain" || ctx.role === "athlete") && row(Gamepad2, t("Fantasy"), () => ctx.goTab("fantasy"), t("Monta a tua equipa de adepto"))}
+      {modOn("fantasy") && (ctx.role === "captain" || ctx.role === "athlete") && row(Gamepad2, t("Pitch Manager"), () => ctx.goTab("fantasy"), t("Monta a tua equipa de adepto"))}
 
       {!ctx.live && <div style={{ ...cardStyle, marginTop: S.xl, borderStyle: "dashed", borderColor: `${C.orange}88` }}>
         <div style={{ display: "flex", alignItems: "center", gap: S.sm, fontWeight: 800, marginBottom: S.xs }}><FlaskConical size={16} color={C.orange} aria-hidden /> {t(LG.demoMode)}</div>

@@ -53,7 +53,7 @@ export default function LeagueAwards({ ctx, match }) {
           <Chip variant={open ? "orange" : "neutral"}>{open ? t("Votação aberta · parcial") : t("Votação fechada")}</Chip>
         </div>
         <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, marginBottom: S.md }}>
-          {t("Um voto por conta e por jogo; podes mudar até a votação fechar. Não altera o craque oficial nem pontua no Fantasy.")}
+          {t("Um voto por conta e por jogo; podes mudar até a votação fechar. Não altera o craque oficial nem pontua no Pitch Manager.")}
         </div>
         {tally.rows.length === 0 && <div style={{ fontSize: T.body, color: C.text2, marginBottom: S.sm }}>{t("Ainda sem votos.")}</div>}
         {tally.rows.slice(0, 5).map((r) => {

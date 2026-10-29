@@ -26,7 +26,7 @@ export const MODULES = Object.freeze([
   { id: "sponsors", group: "operacao", name: "Patrocinadores", desc: "Patrocinador titular por competição (ex.: «Liga X | Nome do patrocinador») nas páginas e nas partilhas.", default: false },
   { id: "fans", group: "adeptos", name: "Área do adepto", desc: "Os adeptos escolhem uma equipa para seguir e vêem o que interessa: próximo jogo, resultados, classificação.", default: true },
   { id: "fan_vote", group: "adeptos", name: "Voto de craque dos adeptos", desc: "Os adeptos votam no craque do jogo. O craque oficial continua a ser decidido pela direção.", default: false, requires: "fans" },
-  { id: "fantasy", group: "extras", name: "Fantasy", desc: "Os adeptos e atletas montam uma equipa de cinco e ganham pontos com os golos e as assistências reais.", default: false, requires: "fans" },
+  { id: "fantasy", group: "extras", name: "Pitch Manager", desc: "Os adeptos e atletas jogam o Pitch Manager da liga: montam uma equipa e ganham pontos com os golos e as assistências reais.", default: false, requires: "fans" },
   { id: "tactics", group: "extras", name: "Quadro tático", desc: "Os capitães publicam a formação antes do jogo.", default: false },
   { id: "compare", group: "extras", name: "Comparar atletas", desc: "Compara dois atletas lado a lado.", default: false },
   { id: "var", group: "extras", name: "VAR e clipes", desc: "Os jogos podem ter repetições de lances partilhadas pela liga.", default: false },
