@@ -32,3 +32,20 @@ Estado em 2026-10-29. Contrato original: `CLAUDE-IMPLEMENTAR-FANTASY.md` (pacote
   A barra inferior continua a 430 px. Alargar a shell inteira é decisão global.
 - O fecho segue o modelo atual: edição sempre aberta, e depois do fecho a edição conta para a **próxima** ronda.
 - Texto da UI em PT-PT ("ronda"); a variante PT-BR ("rodada") está em `src/lib/fantasyConnectionCopy.js`.
+
+## Pitch Manager nas Ligas (mesmo motor, dados das Ligas)
+
+Estado em 2026-10-29, só no **demo das Ligas** (`/league/demo`). A aba "Fantasy" passou a "Pitch Manager" e renderiza o
+mesmo `FantasyTab` e o mesmo motor (`core/fantasyRules.js`) do app de grupos; a prévia antiga (`FANTASY_DEMO_RULES`) deixou de ser usada na UI.
+
+- **Adaptador** `src/lib/leagueFantasy.js`: jornada da liga = ronda; só pontua com **todos** os jogos da jornada oficiais (homologado/WO).
+  Eventos vêm de `activeEvents()` (correções já aplicadas) com os **ids da liga** (a Conexão fica auditável). Golo→golo(+assistência),
+  autogolo→`og` para o lado beneficiado; cartões, substituições e desempate por penáltis não são eventos do Pitch Manager.
+- **Gestores = contas** (não atletas): `FantasyTab` ganhou `participants`, `rsvp={false}` (sem "próximo jogo") e `embedded`.
+  `LEAGUE_FANTASY` (leagueDemo.js) tem a equipa de seed, 5 gestores inventados e a dupla da Conexão (9→11 do Marés na jornada 1, golo dos 38' corrigido).
+- **Persistência**: `state.fantasyV2[accountId]` (só neste navegador). Homologar a jornada 2 em "Gerir liga" faz essa jornada pontuar sozinha;
+  corrigir uma súmula recalcula (nada é guardado como total).
+- "Ver registo do jogo" abre a súmula da liga (jogo e golo certos).
+
+Lacunas assumidas: sem pontos de MVP (o "craque oficial" é por jogo, não pódio da ronda); sem jornadas provisórias (jogo em revisão mantém a jornada aberta);
+sem cloud (as ligas reais não têm tabelas de Pitch Manager — migração + RPC como na fase 2 do grupo); sem trocas entre gestores (indisponível no demo, como nos grupos).

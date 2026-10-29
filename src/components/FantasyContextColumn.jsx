@@ -19,8 +19,10 @@ const empty = { fontSize: T.body - 1, color: C.text2, lineHeight: 1.4 };
  *  - form        [{ player, pts }] best raw players of the last round.
  *  - priceOf(uuid)
  */
-export default function FantasyContextColumn({ group, me, lastScore, lastRoundNo, lastRank, standings, form, priceOf }) {
-  const byId = (id) => group.find((p) => String(p.uuid) === String(id));
+export default function FantasyContextColumn({ group, participants = null, me, lastScore, lastRoundNo, lastRank, standings, form, priceOf }) {
+  const byId = (id) => group.find((p) => String(p.uuid) === String(id)); // athletes
+  const people = participants || group;
+  const managerOf = (id) => people.find((p) => String(p.uuid) === String(id));
   const cap = lastScore?.breakdown?.players?.find((p) => p.mult > 1) || null;
   const top = standings.slice(0, 3);
   const mine = standings.find((r) => r.participant_id === me?.uuid);
@@ -44,7 +46,7 @@ export default function FantasyContextColumn({ group, me, lastScore, lastRoundNo
       <section style={{ ...cardStyle, background: C.surface }}>
         <div style={eyebrow}>{t("Na tua liga")}</div>
         {rows.length ? rows.map((r, i) => {
-          const p = byId(r.participant_id);
+          const p = managerOf(r.participant_id);
           const isMe = r.participant_id === me?.uuid;
           return (
             <div key={r.participant_id} style={{ display: "flex", alignItems: "center", gap: S.sm, minHeight: 40, borderTop: i ? `1px solid ${C.border}` : "none", color: isMe ? C.accent : C.text1, fontWeight: isMe ? 800 : 600 }}>

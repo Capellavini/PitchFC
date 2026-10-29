@@ -59,7 +59,7 @@ export default function LeagueEntry({ startAt = "choose", onEnter }) {
     <div>
       <div style={{ ...displayFont, fontSize: T.h + 4, margin: `${S.md}px 0 ${S.xs}px` }}>{t("Como queres entrar nesta liga?")}</div>
       <div style={{ fontSize: T.body, color: C.text2, marginBottom: S.lg, lineHeight: 1.5 }}>{t("O PITCH é o serviço digital de ligas amadoras que já existem. Esta é uma liga fictícia para veres como funciona.")}</div>
-      {card(Heart, t(LG.fanEntry), t("Escolhe a tua equipa, acompanha jogos, vota no craque da torcida e joga o Fantasy. Sem criar nada."), () => setStep("league"), true)}
+      {card(Heart, t(LG.fanEntry), t("Escolhe a tua equipa, acompanha jogos, vota no craque da torcida e joga o Pitch Manager. Sem criar nada."), () => setStep("league"), true)}
       {card(Shirt, t("Jogo nesta liga"), tf(t("Atleta do {team} (conta de demonstração)."), { team }), () => onEnter({ role: "athlete" }))}
       {card(Flag, t("Sou capitão de uma equipa"), tf(t("Capitão do {team}: convocatória e contestação (demo)."), { team }), () => onEnter({ role: "captain" }))}
       {card(ClipboardCheck, t("Organizo esta liga"), t("Gestor: súmulas, homologação, calendário e disciplina (demo)."), () => onEnter({ role: "manager" }))}

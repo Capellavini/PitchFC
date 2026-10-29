@@ -17,8 +17,9 @@ import Chip from "./Chip";
  *                   = the rule wasn't active then → renders nothing).
  *  - group          roster (nicks).
  *  - bonusPerEvent, maxEvents   the league rules of that round.
- *  - onOpenRecord() optional: opens the group's match history. Offered only
- *                   when the app can really take the user there.
+ *  - onOpenRecord({ roundId, matchdayId, game, eventId }) optional: opens the record (the
+ *                   group's history, or the league match page). Offered only when
+ *                   the app can really take the user there.
  */
 export default function FantasyConnectionResult({ score, group, maxEvents = FANTASY_CONNECTION.maxEvents, bonusPerEvent = FANTASY_CONNECTION.bonusPerEvent, onOpenRecord }) {
   const c = score?.breakdown?.connection;
@@ -116,7 +117,7 @@ export default function FantasyConnectionResult({ score, group, maxEvents = FANT
         ))}
       </ol>
       {onOpenRecord && (
-        <button type="button" onClick={onOpenRecord} style={{ minHeight: TOUCH.min, marginTop: S.sm, background: "none", border: "none", color: C.accent, fontSize: T.body, fontWeight: 800, cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: S.xs }}>
+        <button type="button" onClick={() => onOpenRecord({ roundId: score.round_id, matchdayId: score.matchday_id, game: c.events[0]?.game, eventId: c.events[0]?.id })} style={{ minHeight: TOUCH.min, marginTop: S.sm, background: "none", border: "none", color: C.accent, fontSize: T.body, fontWeight: 800, cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: S.xs }}>
           {t("Ver registo do jogo")} <ArrowRight size={16} aria-hidden />
         </button>
       )}

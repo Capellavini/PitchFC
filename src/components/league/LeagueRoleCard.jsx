@@ -59,7 +59,7 @@ export default function LeagueRoleCard({ ctx }) {
       <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.md }}>{t("Acompanhar não exige criar organização nem equipa. Muda a equipa seguida em Mais → Preferências.")}</div>
       <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap" }}>
         {voteMatch && <BtnPrimary onClick={() => open({ kind: "match", id: voteMatch.id })} style={{ flex: "1 1 180px" }}>{myVote ? t("Mudar voto") : t("Votar craque da torcida")}</BtnPrimary>}
-        <BtnGhost onClick={() => ctx.goTab("fantasy")} style={{ flex: "1 1 180px" }}>{t("Montar Fantasy")}</BtnGhost>
+        <BtnGhost onClick={() => ctx.goTab("fantasy")} style={{ flex: "1 1 180px" }}>{t("Montar equipa")}</BtnGhost>
       </div>
     </div>
   );

@@ -118,6 +118,28 @@ export const PHASE2_DECISIONS = Object.freeze([
   "Uma liga por pedido de piloto aprovado.",
 ]);
 
+/** Pitch Manager (Fantasy) in the league: the SAME engine as the group app
+ *  (core/fantasyRules.js), 5 starters + bench, fed with this league's
+ *  athletes and homologated rounds. Managers are accounts, not athletes:
+ *  five invented rivals + whoever you are looking through. Round 1 is the
+ *  only fully homologated round in the seed; homologate round 2 in "Gerir
+ *  liga" and it scores by itself. */
+export const LEAGUE_FANTASY = Object.freeze({
+  budget: 120, squadSize: 5, startsWeeksAgo: 52,
+  // the squad locked for the scored rounds, and the seed of a fresh draft
+  mySquad: { player_ids: ["t4p1", "t1p4", "t1p7", "t1p8", "t5p8", "t2p5"], reserve_ids: ["t2p5"], captain_id: "t1p7", vice_captain_id: "t1p8",
+    locked_player_ids: ["t4p1", "t1p4", "t1p7", "t1p8", "t5p8", "t2p5"], free_transfers: 1 },
+  managers: [
+    { uuid: "mgr-1", name: "Os Imparáveis", nick: "Os Imparáveis", player_ids: ["t5p8", "t4p7", "t2p7", "t6p7", "t1p5", "t3p8"], captain_id: "t5p8" },
+    { uuid: "mgr-2", name: "Tropa do Gol", nick: "Tropa do Gol", player_ids: ["t1p7", "t2p8", "t4p8", "t5p7", "t3p7", "t6p6"], captain_id: "t1p7" },
+    { uuid: "mgr-3", name: "Bola Murcha FC", nick: "Bola Murcha FC", player_ids: ["t4p1", "t1p1", "t2p5", "t6p3", "t3p3", "t5p6"], captain_id: "t2p5" },
+    { uuid: "mgr-4", name: "Sem Rede", nick: "Sem Rede", player_ids: ["t1p8", "t5p8", "t2p7", "t4p7", "t6p7", "t3p6"], captain_id: "t1p8" },
+    { uuid: "mgr-5", name: "Capitães da Marginal", nick: "Capitães da Marginal", player_ids: ["t1p7", "t6p7", "t4p7", "t5p7", "t2p8", "t3p8"], captain_id: "t6p7" },
+  ],
+  // Conexão da Rodada: froze Marés' 9 → 11 for round 1 (the corrected 38' goal)
+  connection: { fromDayId: "round-1", locked: { "round-1": { creator: "t1p7", finisher: "t1p8" } } },
+});
+
 /** Squad captain = slot 5 (nº 8). */
 export const captainOf = (teamId) => `${teamId}p5`;
 
@@ -257,7 +279,8 @@ export function buildLeagueDemoSeed() {
 
   return {
     version: LEAGUE_DEMO_VERSION, matches, logs, fanVotes,
-    fantasy: {}, // { [accountId]: [playerId × 5] }
+    fantasy: {}, // legacy preview picks { [accountId]: [playerId × 5] } — superseded by fantasyV2
+    fantasyV2: {}, // Pitch Manager squads { [accountId]: { player_ids, reserve_ids, captain_id, vice_captain_id, prices_paid, connection… } }
     viewer: null, // { role, entered } — set by the entry screen (fan / athlete / captain / manager)
     prefs: { supportTeamId: "t1", followTeamIds: ["t1"], followPlayerIds: [], notifyResults: true, notifyCalendar: true },
     announcements: [

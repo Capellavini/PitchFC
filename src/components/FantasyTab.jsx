@@ -52,12 +52,16 @@ export default function FantasyTab({
   group, me, isOrganizer, kickoffAt, fantasyLeague, fantasySquads = [], fantasyScores = [], fantasyTradeOffers = [],
   fantasyRounds = [], fantasyRoundPlayers = [], fantasySeasons = [], fantasyPrices = {},
   groupName = "", onOpenRecord = null,
+  // Ligas: managers are accounts, not athletes (`participants`), there is no "next game" RSVP, and the
+  // tab sits inside an already padded column (`embedded`). Defaults = the group app.
+  participants = null, rsvp = true, embedded = false,
   onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy,
 }) {
   if (!fantasyLeague) return <FantasyCreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} />;
   return (
     <FantasyLeagueView
       group={group} me={me} isOrganizer={isOrganizer} league={fantasyLeague} kickoffAt={kickoffAt} groupName={groupName} onOpenRecord={onOpenRecord}
+      participants={participants || group} rsvp={rsvp} embedded={embedded}
       squads={fantasySquads} scores={fantasyScores} offers={fantasyTradeOffers}
       rounds={fantasyRounds} roundPlayers={fantasyRoundPlayers} seasons={fantasySeasons} priceMap={fantasyPrices}
       onSaveSquad={onSaveSquad} onCreateTradeOffer={onCreateTradeOffer}
@@ -66,7 +70,7 @@ export default function FantasyTab({
   );
 }
 
-function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupName, onOpenRecord, squads, scores, offers, rounds, roundPlayers, seasons, priceMap, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
+function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupName, onOpenRecord, participants, rsvp: showRsvp, embedded, squads, scores, offers, rounds, roundPlayers, seasons, priceMap, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
   const base = Number(league.scoring_weights?.priceBase) || FANTASY_V2.priceBase;
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
@@ -137,8 +141,8 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
     squads.forEach((s) => { if (s.participant_id !== me?.uuid) (s.player_ids || []).forEach((id) => { counts[id] = (counts[id] || 0) + 1; }); });
     return counts;
   }, [squads, me?.uuid]);
-  const participants = squads.filter((s) => s.participant_id !== me?.uuid && s.player_ids?.length).length + 1;
-  const cap = ownershipCap(participants);
+  const managerCount = squads.filter((s) => s.participant_id !== me?.uuid && s.player_ids?.length).length + 1;
+  const cap = ownershipCap(managerCount);
   const ownersOf = (uuid) => squads.filter((s) => s.player_ids?.includes(uuid));
 
   const squadBank = (squad) => league.budget + Number(squad?.budget_adjustment || 0) - squadCostBasis(squad?.prices_paid);
@@ -159,6 +163,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
   const editStarters = editingIds.filter((id) => !draftBench.includes(id)).slice(0, league.squad_size);
   const connIssue = connRules && effectiveConn ? connectionDraftIssue({ creator: effectiveConn.creatorId, finisher: effectiveConn.finisherId }, editStarters) : null;
   const nickOf = (id) => group.find((p) => p.uuid === id);
+  const participantOf = (id) => participants.find((p) => p.uuid === id);
   const connPair = effectiveConn ? { creator: nickOf(effectiveConn.creatorId), finisher: nickOf(effectiveConn.finisherId) } : null;
   const inSavedPair = (id) => Boolean(savedConn && (savedConn.creatorId === id || savedConn.finisherId === id));
 
@@ -254,7 +259,9 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
             <div style={{ fontSize: T.body + 1, fontWeight: 700, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}</div>
             <div style={{ fontSize: T.min, color: C.text2, marginTop: 2, lineHeight: 1.4 }}>
               <span style={{ whiteSpace: "nowrap" }}>
-                <span role="img" title={`${t("Próximo jogo")}: ${t(rsvp.label)}`} aria-label={`${t("Próximo jogo")}: ${t(rsvp.label)}`}>{rsvp.emoji}</span>
+                {showRsvp
+                  ? <span role="img" title={`${t("Próximo jogo")}: ${t(rsvp.label)}`} aria-label={`${t("Próximo jogo")}: ${t(rsvp.label)}`}>{rsvp.emoji}</span>
+                  : <span title={p.club}>{p.teamShort}</span>}
                 {" "}{t(POSITION_ABBR[p.position] || "MED")} · {Math.round(seasonPoints[p.uuid] || 0)} pts
               </span>{" "}
               <span title={t("Managers com este jogador")} style={{ color: atCap ? C.orange : C.text2, whiteSpace: "nowrap" }}>· <Users size={11} style={{ verticalAlign: -1 }} /> {count}/{cap}</span>
@@ -284,7 +291,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
   };
 
   const rivalSquad = viewingId ? squads.find((s) => s.participant_id === viewingId) : null;
-  const rival = viewingId ? group.find((p) => p.uuid === viewingId) : null;
+  const rival = viewingId ? participants.find((p) => p.uuid === viewingId) : null;
 
   // Wide screens: the lineup/market/results column + a secondary context
   // column. The app shell is a 430px column on every tab, so the Fantasy
@@ -299,12 +306,12 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
     : [];
   const myLastRankRow = lastRound && myLastRound ? 1 + lastRoundScores.filter((x) => Number(x.points) > Number(myLastRound.points)).length : null;
   const context = wide ? (
-    <FantasyContextColumn group={group} me={me} lastScore={myLastRound} lastRoundNo={lastRound ? roundNoOf(lastRound.id) : null} lastRank={myLastRankRow}
+    <FantasyContextColumn group={group} participants={participants} me={me} lastScore={myLastRound} lastRoundNo={lastRound ? roundNoOf(lastRound.id) : null} lastRank={myLastRankRow}
       standings={campeonatoRows} form={formPlayers} priceOf={priceOf} />
   ) : null;
 
   return (
-    <div style={{ padding: `${S.xs}px ${S.lg}px ${S.xl}px`, boxSizing: "border-box", ...wideBox }}>
+    <div style={{ padding: `${S.xs}px ${embedded ? 0 : S.lg}px ${S.xl}px`, boxSizing: "border-box", ...wideBox }}>
       <FantasyHeader groupName={groupName} title={league.name || "Pitch Manager"} roundNo={editingRoundNo} kickoffAt={kickoffAt} inProgress={inProgress} now={now} />
       <FantasyStatsCard
         count={inMarket ? selected.length : (mySquad?.player_ids?.length || 0)}
@@ -392,9 +399,11 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
                 <Chip key={id} variant={sortMode === id ? "lime" : "neutral"} onClick={() => setSortMode(id)}>{t(label)}</Chip>
               ))}
             </div>
-            <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm }}>
-              {t("Próximo jogo")}: ✅ {t("confirmado")} · ⏳ {t("pendente")} · ❌ {t("não vai")}
-            </div>
+            {showRsvp && (
+              <div style={{ fontSize: T.min, color: C.text2, marginTop: S.sm }}>
+                {t("Próximo jogo")}: ✅ {t("confirmado")} · ⏳ {t("pendente")} · ❌ {t("não vai")}
+              </div>
+            )}
             {mySquad?.player_ids?.length > 0 && (
               <FantasyMarketSummary
                 out={(mySquad.player_ids || []).filter((id) => !selected.includes(id)).map(nickOf).filter(Boolean)}
@@ -443,7 +452,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
       {/* ── Rodada ── */}
       {view === "rodada" && (
         <FantasyRoundView rounds={scoredRounds.map((r) => ({ id: r.id, no: roundNoOf(r.id) }))} roundId={shownRound?.id ?? ""} onRound={setRoundId}
-          score={roundScore} rank={roundRank} group={group} rules={connRules} myName={nickOf(me?.uuid)?.nick ?? ""} onOpenRecord={onOpenRecord} />
+          score={roundScore} rank={roundRank} group={group} rules={connRules} myName={participantOf(me?.uuid)?.nick ?? ""} onOpenRecord={onOpenRecord} />
       )}
 
       {/* ── Liga ── */}
@@ -457,7 +466,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
           ) : null}>
             {t("Classificação")}
           </SectionLabel>
-          <FantasyTables group={group} seasons={seasons} scores={scores} rounds={rounds} squads={squads} roundNoOf={roundNoOf}
+          <FantasyTables group={group} participants={participants} seasons={seasons} scores={scores} rounds={rounds} squads={squads} roundNoOf={roundNoOf}
             selectedId={viewingId} onSelect={(pid) => setViewingId((v) => (v === pid ? null : pid))} />
 
           {rivalSquad && (
@@ -475,10 +484,10 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
           {lastRoundScores.length > 0 && (
             <Collapsible title={t("Última ronda")} subtitle={t("Pontos de cada participante")}>
               {lastRoundScores.map((s, i) => {
-                const p = group.find((x) => x.uuid === s.participant_id);
+                const p = participantOf(s.participant_id);
                 return (
                   <div key={s.id ?? s.participant_id} style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: 48, borderTop: i > 0 ? `1px solid ${C.border}` : "none" }}>
-                    <Avatar name={p?.name || "?"} color={p ? playerColor(group, p) : C.text2} size={32} isMe={p?.isMe} photo={p?.photo} injured={p?.injured} />
+                    <Avatar name={p?.name || "?"} color={p ? playerColor(participants, p) : C.text2} size={32} isMe={p?.isMe} photo={p?.photo} injured={p?.injured} />
                     <div style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: p?.isMe ? 800 : 600, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p?.nick || "?"}</div>
                     {Number(s.transfer_cost || s.breakdown?.transferCost || 0) > 0 && (
                       <span style={{ fontSize: T.min, color: C.orange, fontWeight: 700 }}>−{s.transfer_cost || s.breakdown?.transferCost} {t("transf.")}</span>

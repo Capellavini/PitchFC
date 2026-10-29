@@ -157,6 +157,8 @@ export default function LeagueContextApp({ contexts, entry = null }) {
       apply((s) => ({ ...s, fantasy: { ...s.fantasy, [acc.accountId]: ids } }), t("Equipa de Fantasy guardada (só neste navegador)."));
       return { ok: true };
     },
+    // Pitch Manager squad (same shape the group demo persists): one write for the lineup AND its Conexão.
+    setFantasySquad: (squad) => apply((s) => ({ ...s, fantasyV2: { ...(s.fantasyV2 || {}), [acc.accountId]: squad } }), t("Equipa guardada (só neste navegador).")),
     setPrefs: (patch) => apply((s) => ({ ...s, prefs: { ...s.prefs, ...patch } })),
     reset: () => { setRaw(buildLeagueDemoSeed()); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
   };

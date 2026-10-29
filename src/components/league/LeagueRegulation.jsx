@@ -2,8 +2,8 @@ import { BookOpen } from "lucide-react";
 import { C, S, T, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
-import { DEMO_RULES, FANTASY_DEMO_RULES } from "../../lib/core/league";
-import { COMPETITION } from "../../lib/leagueDemo";
+import { DEMO_RULES } from "../../lib/core/league";
+import { COMPETITION, LEAGUE_FANTASY } from "../../lib/leagueDemo";
 
 /** Read-only DEMO regulation, rendered from the same centralized config
  *  the projections use (lib/core/league DEMO_RULES) — so what's written
@@ -19,7 +19,7 @@ export default function LeagueRegulation() {
     t("Assistências só contam quando registadas na súmula (nunca automáticas)."),
     tf(t("Disciplina: {n} amarelos acumulados = 1 jogo de suspensão; vermelho direto ou 2 amarelos no mesmo jogo = {r} jogo. A suspensão cumpre-se no jogo oficial seguinte da equipa."), { n: DEMO_RULES.yellowsForSuspension, r: DEMO_RULES.redSuspensionMatches }),
     t("Contestação: o capitão contesta um resultado provisório com motivo; a organização decide e regista a decisão."),
-    tf(t("Fantasy (prévia): orçamento {b}, {n} atletas, máx. {m} por equipa — regras de exemplo."), { b: FANTASY_DEMO_RULES.budget, n: FANTASY_DEMO_RULES.squadSize, m: FANTASY_DEMO_RULES.maxPerTeam }),
+    tf(t("Pitch Manager: {n} titulares e banco, orçamento {b}, capitão ×2 — as mesmas regras do Pitch Manager dos grupos. Só pontuam rondas com todos os jogos homologados."), { b: LEAGUE_FANTASY.budget, n: LEAGUE_FANTASY.squadSize }),
   ];
   return (
     <div style={cardStyle}>

@@ -32,14 +32,18 @@ export const connectionRow = (c) => (c?.creatorId != null && c?.finisherId != nu
 /** connectionConfig (demo seed): { fromDayId, locked: { [dayId]: { creator, finisher } } } — the pairs "I"
  *  froze for past rounds, and the first round the rule applies to. Older
  *  rounds never get a bonus retroactively. */
-export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null, rivals, budget, squadSize, startsWeeksAgo, connectionConfig = null, now = Date.now() }) {
+/** `group` = the athletes (the pool a manager buys from). In the group app they
+ *  are also the managers, so `me` = the athlete flagged isMe; in Ligas the
+ *  managers are accounts, so the caller passes `meParticipant` ({ uuid, … }).
+ *  `localDays` = the rounds ({ id, playedOn, kickoffAt?, summary, mvpKey? }). */
+export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null, rivals, budget, squadSize, startsWeeksAgo, connectionConfig = null, meParticipant = null, now = Date.now() }) {
   const fGroup = group.map((p) => ({ ...p, uuid: fk(p.id) }));
-  const me = fGroup.find((p) => p.isMe);
+  const me = meParticipant ? { ...meParticipant, uuid: fk(meParticipant.uuid) } : fGroup.find((p) => p.isMe);
   const positions = Object.fromEntries(fGroup.map((p) => [p.uuid, p.position]));
   const startsAt = new Date(now - startsWeeksAgo * 7 * 24 * 3600 * 1000 - 3600 * 1000);
   const allDays = (localDays || [])
     .filter((d) => d.playedOn && d.summary)
-    .map((d) => ({ ...d, kickoff_at: iso(`${d.playedOn}T20:00:00`) }))
+    .map((d) => ({ ...d, kickoff_at: d.kickoffAt ? iso(d.kickoffAt) : iso(`${d.playedOn}T20:00:00`) }))
     .sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at));
   const days = allDays.filter((d) => new Date(d.kickoff_at) >= startsAt);
   // Nights before the v2 start = the closed "Temporada 1" (mirrors the

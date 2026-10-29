@@ -12,7 +12,7 @@ import SegmentedControl from "./SegmentedControl";
  *  (calendar month) and Campeonato da Época (Aug → Jul) — plus the
  *  current champions (latest closed period of each). Standings are live
  *  sums of scored rounds inside the open period's window. */
-export default function FantasyTables({ group, seasons, scores, rounds, squads, selectedId, onSelect, roundNoOf = null }) {
+export default function FantasyTables({ group, participants = null, seasons, scores, rounds, squads, selectedId, onSelect, roundNoOf = null }) {
   // "Ronda" = the last scored round alone (official totals, Conexão already in).
   const lastRound = (rounds || []).filter((r) => r.status === "scored").sort((a, b) => new Date(b.kickoff_at) - new Date(a.kickoff_at))[0] || null;
   const [kind, setKind] = useState(lastRound ? "round" : "month");
@@ -20,7 +20,9 @@ export default function FantasyTables({ group, seasons, scores, rounds, squads, 
     ? (lastRound ? { starts_at: lastRound.kickoff_at, ends_at: new Date(new Date(lastRound.kickoff_at).getTime() + 1).toISOString(), label: roundNoOf ? `${t("Ronda")} ${String(roundNoOf(lastRound.id)).padStart(2, "0")}` : "" } : null)
     : (seasons || []).find((s) => s.kind === kind && s.status === "open");
   const rows = open ? seasonStandings(scores, rounds, open) : [];
-  const byId = (id) => group.find((p) => String(p.uuid) === String(id));
+  // Rows are managers: the group's members in the group app, accounts in Ligas.
+  const people = participants || group;
+  const byId = (id) => people.find((p) => String(p.uuid) === String(id));
   const lastClosed = (k) => (seasons || []).filter((s) => s.kind === k && s.status === "closed")
     .sort((a, b) => new Date(b.ends_at) - new Date(a.ends_at))[0];
   const champs = [["month", t("Taça do Mês")], ["season", t("Campeonato")], ["legacy", t("Temporada 1")]]
@@ -52,7 +54,7 @@ export default function FantasyTables({ group, seasons, scores, rounds, squads, 
                 color: "inherit", font: "inherit", textAlign: "left", cursor: Tag === "button" ? "pointer" : "default",
               }}>
               <span style={{ ...displayFont, width: 24, textAlign: "center", fontSize: top3 ? T.h - 2 : T.body, color: top3 ? [C.gold, C.silver, C.bronze][row.rank - 1] : C.text2, flexShrink: 0 }}>{row.rank}</span>
-              <Avatar name={player?.name || "?"} color={player ? playerColor(group, player) : C.text2} size={top3 ? 40 : 34} isMe={isMe} photo={player?.photo} />
+              <Avatar name={player?.name || "?"} color={player ? playerColor(people, player) : C.text2} size={top3 ? 40 : 34} isMe={isMe} photo={player?.photo} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: T.body + 1, fontWeight: top3 || isMe ? 800 : 600, color: C.text1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {player?.nick || "?"}{isMe && <span style={{ fontSize: T.meta, color: C.text2, fontWeight: 500 }}> {t("· tu")}</span>}

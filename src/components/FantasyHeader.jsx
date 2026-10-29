@@ -20,7 +20,7 @@ export default function FantasyHeader({ groupName, title, roundNo, kickoffAt, in
     <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: S.md, flexWrap: "wrap", margin: `${S.xs}px 0 ${S.lg}px` }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: T.meta, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent, overflowWrap: "anywhere" }}>
-          Fantasy{groupName ? ` / ${groupName}` : ""}
+          {groupName || "Pitch Manager"}
         </div>
         <h2 style={{ ...displayFont, margin: `${S.xs}px 0 0`, fontSize: T.title - 4, lineHeight: 1.1, color: C.text1, overflowWrap: "anywhere" }}>{title}</h2>
       </div>

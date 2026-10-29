@@ -44,8 +44,8 @@ export const LP = {
   b3: L("Calculadas a partir dos jogos, nunca editadas à mão.", "Calculated from the matches, never edited by hand.", "Calculadas a partir dos jogos, nunca editadas na mão."),
   b4t: L("Jogadores com PITCH ID", "Players with a PITCH ID", "Jogadores com PITCH ID"),
   b4: L("Cartão, OVR e estatísticas de cada competição.", "Card, OVR and stats for each competition.", "Card, OVR e estatísticas de cada competição."),
-  b5t: L("Adeptos e Fantasy", "Fans and Fantasy", "Torcida e Fantasy"),
-  b5: L("Seguem a equipa, votam no craque da torcida e jogam o Fantasy da liga.", "They follow their team, vote for the fans' player of the match and play the league's Fantasy.", "Seguem o time, votam no craque da torcida e jogam o Fantasy do campeonato."),
+  b5t: L("Adeptos e Pitch Manager", "Fans and Pitch Manager", "Torcida e Pitch Manager"),
+  b5: L("Seguem a equipa, votam no craque da torcida e jogam o Pitch Manager da liga.", "They follow their team, vote for the fans' player of the match and play the league's Pitch Manager.", "Seguem o time, votam no craque da torcida e jogam o Pitch Manager do campeonato."),
 
   howTitle: L("Como funciona o piloto", "How the pilot works", "Como funciona o piloto"),
   how1: L("Falamos contigo e configuramos a competição.", "We talk to you and set up the competition.", "A gente conversa com você e configura a competição."),
