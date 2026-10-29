@@ -5,7 +5,7 @@ import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { LEAGUE, COMPETITION, TEAMS, ROLE_ACCOUNTS, teamById } from "../../lib/leagueDemo";
 import BackHeader from "../BackHeader";
-import RivalsCrest from "../RivalsCrest";
+import TeamCrest from "../TeamCrest";
 
 /**
  * How you come into a league (demo). "Sou adepto" is first-class:
@@ -46,7 +46,7 @@ export default function LeagueEntry({ startAt = "choose", onEnter }) {
           {TEAMS.map((tm) => (
             <button key={tm.id} role="listitem" type="button" onClick={() => onEnter({ role: "fan", supportTeamId: tm.id })}
               style={{ ...cardStyle, minHeight: 110, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: S.sm, cursor: "pointer", color: C.text1, textAlign: "center" }}>
-              <RivalsCrest initials={tm.short.slice(0, 2)} color={tm.color} size={40} />
+              <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={40} />
               <span style={{ fontSize: T.body, fontWeight: 800, overflowWrap: "anywhere" }}>{tm.name}</span>
             </button>
           ))}
@@ -59,10 +59,10 @@ export default function LeagueEntry({ startAt = "choose", onEnter }) {
     <div>
       <div style={{ ...displayFont, fontSize: T.h + 4, margin: `${S.md}px 0 ${S.xs}px` }}>{t("Como queres entrar nesta liga?")}</div>
       <div style={{ fontSize: T.body, color: C.text2, marginBottom: S.lg, lineHeight: 1.5 }}>{t("O PITCH é o serviço digital de ligas amadoras que já existem. Esta é uma liga fictícia para veres como funciona.")}</div>
-      {card(Heart, t(LG.fanEntry), t("Escolhe a tua equipa, acompanha jogos, vota no craque da torcida e joga o Pitch Manager. Sem criar nada."), () => setStep("league"), true)}
+      {card(Heart, t(LG.fanEntry), t("Escolhe a tua equipa, acompanha jogos, vota no craque dos adeptos e joga o Pitch Manager. Sem criar nada."), () => setStep("league"), true)}
       {card(Shirt, t("Jogo nesta liga"), tf(t("Atleta do {team} (conta de demonstração)."), { team }), () => onEnter({ role: "athlete" }))}
       {card(Flag, t("Sou capitão de uma equipa"), tf(t("Capitão do {team}: convocatória e contestação (demo)."), { team }), () => onEnter({ role: "captain" }))}
-      {card(ClipboardCheck, t("Organizo esta liga"), t("Gestor: súmulas, homologação, calendário e disciplina (demo)."), () => onEnter({ role: "manager" }))}
+      {card(ClipboardCheck, t("Organizo esta liga"), t("Gestor: fichas de jogo, homologação, calendário e disciplina (demo)."), () => onEnter({ role: "manager" }))}
       <div style={{ fontSize: T.meta, color: C.orange, marginTop: S.md, lineHeight: 1.5 }}>{t(LG.demoData)}</div>
     </div>
   );

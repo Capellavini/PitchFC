@@ -31,3 +31,17 @@ test("bot copy of the core is importable and works", async () => {
   assert.equal(teams.flatMap((t) => t.players).length, 8);
   assert.equal(computeTable(["t1", "t2"], []).length, 2);
 });
+
+// PITCH Ligas: the league modules the WhatsApp Adjunto shares with the app (scripts/sync-core.mjs).
+test("wa-bot/src/leaguelib matches the app's league modules", { skip: !existsSync(APP_CORE) && "app src/lib not present" }, async () => {
+  const { expectedLeagueFiles } = await import("../../scripts/sync-core.mjs");
+  const want = expectedLeagueFiles();
+  const dir = fileURLToPath(new URL("../src/leaguelib/", import.meta.url));
+  assert.deepEqual(readdirSync(dir).filter((f) => f.endsWith(".js")).sort(), Object.keys(want).sort(), "file list differs — run npm run sync:core");
+  for (const [name, content] of Object.entries(want)) assert.equal(lf(readFileSync(dir + name, "utf8")), content, `${name} drifted — run npm run sync:core`);
+});
+
+test("the shared league catalog works inside the bot", async () => {
+  const { PROPOSAL_KINDS } = await import("../src/leaguelib/leagueAdjuntoActions.js");
+  assert.ok(PROPOSAL_KINDS.includes("record_result"));
+});

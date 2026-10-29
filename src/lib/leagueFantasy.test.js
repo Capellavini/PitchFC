@@ -2,13 +2,14 @@
 // (core/fantasyRules.js). Uses the real demo seed.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { leagueRounds, fantasyAthletes } from "./leagueFantasy.js";
-import { buildLeagueDemoSeed, PLAYERS, TEAMS, POSITION_FULL, LEAGUE_FANTASY } from "./leagueDemo.js";
+import { leagueRounds, fantasyAthletes, LEAGUE_FANTASY, leagueFantasySeed } from "./leagueFantasy.js";
+import { loadExample, PLAYERS, TEAMS, POSITION_FULL, COMPETITION } from "./leagueDemo.js";
 import { transition, appendEvent } from "./core/league.js";
 import { scoreLineupWithConnection, connectionBonus, playerNightPoints, nightFacts, ownershipCap } from "./core/fantasyRules.js";
 
-const seed = buildLeagueDemoSeed();
-const rounds = leagueRounds({ matches: seed.matches, logs: seed.logs, players: PLAYERS, teams: TEAMS });
+const seed = loadExample(); // the invented example league (also installs the registry)
+const league = { logs: seed.logs, players: PLAYERS, teams: TEAMS, competitionId: COMPETITION.id };
+const rounds = leagueRounds({ matches: seed.matches, ...league });
 const positions = Object.fromEntries(PLAYERS.map((p) => [p.id, POSITION_FULL[p.position]]));
 const r1 = rounds.find((r) => r.round === 1);
 
@@ -63,12 +64,12 @@ test("homologating round 2 makes it score, and a correction changes the result (
   let matches = seed.matches;
   const manager = { role: "manager", by: "Gestor", at: "2026-10-12T10:00:00.000Z" };
   for (const id of ["m4", "m6"]) matches = matches.map((m) => (m.id === id ? transition(m, "homologated", manager) : m));
-  const after = leagueRounds({ matches, logs: seed.logs, players: PLAYERS, teams: TEAMS });
+  const after = leagueRounds({ matches, ...league });
   assert.equal(after.find((r) => r.round === 2).official, true);
   assert.equal(after.find((r) => r.round === 2).summary.matches.length, 3);
   // a correction appended to m5's log changes that round's facts
   const logs = { ...seed.logs, m5: appendEvent(seed.logs.m5, { id: "fix-1", matchId: "m5", type: "goal", teamId: "t6", playerId: "t6p8", assistId: null, minute: 50, recordedBy: "t", recordedAt: "2026-10-12T10:00:00.000Z" }) };
-  const fixed = leagueRounds({ matches, logs, players: PLAYERS, teams: TEAMS }).find((r) => r.round === 2);
+  const fixed = leagueRounds({ matches, ...league, logs }).find((r) => r.round === 2);
   assert.equal(fixed.summary.lines.find((l) => l.key === "t6p8").goals, 1);
 });
 
@@ -85,4 +86,13 @@ test("seed squads respect the ownership cap of a 6-manager league", () => {
   for (const ids of [LEAGUE_FANTASY.mySquad.player_ids, ...LEAGUE_FANTASY.managers.map((m) => m.player_ids)]) for (const id of ids) counts[id] = (counts[id] || 0) + 1;
   assert.ok(Math.max(...Object.values(counts)) <= cap, JSON.stringify(counts));
   assert.ok(Object.keys(counts).every((id) => PLAYERS.some((p) => p.id === id)));
+});
+
+test("the cup's matches never become Pitch Manager rounds, and a real league gets no seeded rivals", () => {
+  const cup = seed.matches.filter((m) => m.competitionId && m.competitionId !== COMPETITION.id);
+  assert.ok(cup.length > 0, "the example has a cup");
+  assert.equal(leagueRounds({ matches: seed.matches, ...league }).flatMap((r) => r.matchIds).some((id) => cup.some((m) => m.id === id)), false);
+  assert.equal(leagueFantasySeed(PLAYERS), LEAGUE_FANTASY);
+  const real = leagueFantasySeed([{ id: "x1" }, { id: "x2" }]);
+  assert.deepEqual([real.managers.length, real.mySquad.player_ids.length, real.connection], [0, 0, null]);
 });

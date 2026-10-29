@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { FlaskConical } from "lucide-react";
-import { C, R, S, T } from "../../theme";
+import { C, R, S, T, cardStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import "../../lib/leagueFantasyCopy";
 import { fantasyErrorText } from "../../lib/fantasyCopy";
-import { PLAYERS, TEAMS, LEAGUE, LEAGUE_FANTASY, currentRound } from "../../lib/leagueDemo";
-import { leagueRounds, fantasyAthletes } from "../../lib/leagueFantasy";
+import { PLAYERS, TEAMS, LEAGUE, COMPETITION, currentRound } from "../../lib/leagueDemo";
+import { leagueRounds, fantasyAthletes, leagueFantasySeed } from "../../lib/leagueFantasy";
 import { buildDemoFantasy, normalizeSquad, connectionRow } from "../../lib/fantasyDemo";
 import FantasyTab from "../FantasyTab";
 
@@ -16,26 +16,28 @@ import FantasyTab from "../FantasyTab";
  *  Demo: squads live in this browser only (state.fantasyV2). */
 export default function LeagueFantasy({ ctx }) {
   const { state, acc, act, derived } = ctx;
-  const rounds = useMemo(() => leagueRounds({ matches: state.matches, logs: state.logs, players: PLAYERS, teams: TEAMS }), [state.matches, state.logs]);
-  const athletes = useMemo(() => fantasyAthletes(PLAYERS, TEAMS, derived.stats), [derived.stats]);
+  // The registry (PLAYERS, TEAMS, COMPETITION) mirrors the league last installed; `state` changes whenever it does.
+  const seed = useMemo(() => leagueFantasySeed(PLAYERS), [state]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rounds = useMemo(() => leagueRounds({ matches: state.matches, logs: state.logs, players: PLAYERS, teams: TEAMS, competitionId: COMPETITION.id }), [state.matches, state.logs]); // eslint-disable-line react-hooks/exhaustive-deps
+  const athletes = useMemo(() => fantasyAthletes(PLAYERS, TEAMS, derived.stats), [derived.stats, state]); // eslint-disable-line react-hooks/exhaustive-deps
   const me = useMemo(() => ({ uuid: acc.accountId, name: t(acc.label), nick: t(acc.label), isMe: true, photo: null }), [acc.accountId, acc.label]);
-  const mySquad = state.fantasyV2?.[acc.accountId] || LEAGUE_FANTASY.mySquad;
+  const mySquad = state.fantasyV2?.[acc.accountId] || seed.mySquad;
 
   const demo = useMemo(() => buildDemoFantasy({
     group: athletes, meParticipant: me,
     localDays: rounds.filter((r) => r.official).map((r) => ({ id: r.id, playedOn: r.playedOn, kickoffAt: r.kickoffAt, summary: r.summary, mvpKey: null })),
-    mySquad, lockedSquad: LEAGUE_FANTASY.mySquad,
-    rivals: LEAGUE_FANTASY.managers.map((m) => ({ participant: m.uuid, player_ids: m.player_ids, captain_id: m.captain_id })),
-    budget: LEAGUE_FANTASY.budget, squadSize: LEAGUE_FANTASY.squadSize, startsWeeksAgo: LEAGUE_FANTASY.startsWeeksAgo,
-    connectionConfig: LEAGUE_FANTASY.connection,
+    mySquad, lockedSquad: seed.mySquad,
+    rivals: seed.managers.map((m) => ({ participant: m.uuid, player_ids: m.player_ids, captain_id: m.captain_id })),
+    budget: seed.budget, squadSize: seed.squadSize, startsWeeksAgo: seed.startsWeeksAgo,
+    connectionConfig: seed.connection,
   }), [athletes, me, rounds, mySquad]);
-  const participants = useMemo(() => [me, ...LEAGUE_FANTASY.managers.map((m) => ({ uuid: m.uuid, name: m.name, nick: m.nick, photo: null }))], [me]);
+  const participants = useMemo(() => [me, ...seed.managers.map((m) => ({ uuid: m.uuid, name: m.name, nick: m.nick, photo: null }))], [me, seed]);
 
   const next = rounds.find((r) => r.round === currentRound(state.matches));
   const unavailable = async () => ({ error: t("Indisponível na demonstração.") });
   // Same contract as the group demo: lineup + Conexão in ONE write (undefined keeps the pair, null removes it).
   const onSaveSquad = async (_leagueId, playerIds, captainId, reserveIds, viceId, connection) => {
-    const squad = normalizeSquad({ playerIds, reserveIds, captainId, viceId }, LEAGUE_FANTASY.squadSize);
+    const squad = normalizeSquad({ playerIds, reserveIds, captainId, viceId }, seed.squadSize);
     const row = connection === undefined ? undefined : connectionRow(connection);
     const ok = demo.validate(squad, row);
     if (typeof ok === "string") return { error: fantasyErrorText(ok) };
@@ -48,6 +50,9 @@ export default function LeagueFantasy({ ctx }) {
     if (matchId) ctx.open({ kind: "match", id: matchId });
   };
 
+  if (athletes.length <= seed.squadSize) {
+    return <div style={{ ...cardStyle, fontSize: T.body - 1, color: C.text2, lineHeight: 1.45 }}>{t("O Pitch Manager precisa de mais atletas inscritos na liga para poderes montar uma equipa.")}</div>;
+  }
   return (
     <div>
       <div role="note" style={{ display: "flex", gap: S.sm, alignItems: "flex-start", border: `1px dashed ${C.orange}88`, background: C.orangeDim, borderRadius: R.control, padding: S.md, marginBottom: S.lg }}>

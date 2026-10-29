@@ -3,14 +3,27 @@ import { C, S } from "../../theme";
 import { getLang, t } from "../../lib/i18n";
 import { usePersistentState } from "../../lib/storage";
 import {
-  appendEvent, transition, setOfficialMvp, castFanVote, validateFantasyPicks, LeagueError, setTactics,
+  appendEvent, transition, setOfficialMvp, castFanVote, LeagueError, setTactics,
 } from "../../lib/core/league";
 import {
-  buildLeagueDemoSeed, normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY, PLAYERS,
+  normalizeLeagueState, deriveLeague, ROLE_ACCOUNTS, LEAGUE_DEMO_KEY, PLAYERS, emptyLeagueState, modOn, competitionTitle,
 } from "../../lib/leagueDemo";
 import { LG, leagueError } from "../../lib/leagueCopy";
+import { adjuntoName } from "../../lib/leagueAdjunto";
+import { leagueToday } from "../../lib/leagueToday";
+import { useWide } from "../../lib/useWide";
+import { teamHome, readOnlyQueue } from "../../lib/leagueTeamHome";
+import { competitionById, LEAGUE, COMPETITION, teamById } from "../../lib/leagueDemo";
+import { tabTitle } from "../../lib/leagueNav";
+import { SetupError } from "../../lib/leagueSetup";
+import { recordResult } from "../../lib/leagueResults";
+import { SETUP_ERROR } from "../../lib/leagueSetupCopy";
+import { setModule } from "../../lib/leagueModules";
 import LeagueHeader from "./LeagueHeader";
 import LeagueBottomNav from "./LeagueBottomNav";
+import LeagueSideNav from "./LeagueSideNav";
+import LeagueAdjunto from "./LeagueAdjunto";
+import LeagueCupPhase from "./LeagueCupPhase";
 import LeagueEntry from "./LeagueEntry";
 import LeagueHome from "./LeagueHome";
 import LeagueMatches from "./LeagueMatches";
@@ -22,18 +35,22 @@ import LeagueTeamPage from "./LeagueTeamPage";
 import LeaguePlayerPage from "./LeaguePlayerPage";
 import LeagueManage from "./LeagueManage";
 import LeaguePlayersDirectory from "./LeaguePlayersDirectory";
+import LeagueSquadEditor from "./LeagueSquadEditor";
 import LeagueCompare from "./LeagueCompare";
 import LeagueToast from "./LeagueToast";
+import { LeagueSyncBanner } from "./LeagueSyncStatus";
+import LeagueOnboarding from "./LeagueOnboarding";
 
-const SHELL_W = 430; // same column as the app shell
+const SHELL_W = 430; // same column as the app shell (phone layout)
+const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif"; // same as the app shell
 
 /**
- * League CONTEXT of the app (PITCH Ligas, Fase 1 demo — route
- * /league/demo). The app shell adapts to this context the way team-only
- * users get their own nav: Início · Jogos · Classificação · Fantasy ·
- * Mais, a header with league → competition → category, a context
- * switcher (Meus grupos / Minhas equipas / Minhas ligas / Acompanhando)
- * and — Gestor only — "Gerir liga" (a separate area with no follow nav).
+ * PITCH Ligas — a standalone product for league organizers (route
+ * /league/demo). Followers (adepto · atleta · capitão) get Início · Jogos ·
+ * Classificação · Fantasy · Mais on a phone column. The Gestor works the
+ * league: Painel · Jogos · Adjunto · Classificação · Gerir (+ Mais), across
+ * every competition the league runs, as a full web app on a computer
+ * (sidebar + two columns) and a bottom bar on a phone.
  *
  * Everything runs on the deterministic demo seed in this browser
  * (localStorage pitch.v2.leagueDemo); every write is a pure function from
@@ -41,14 +58,28 @@ const SHELL_W = 430; // same column as the app shell
  * Supabase. The role switcher only changes which demo account you look
  * through — it never grants anything real.
  *
- * Props: contexts { groups: [{id,name}], teams: [{id,name}] } from the
- * app (local demo session); entry "fan" → start the "Sou adepto" flow.
+ * Props: entry "fan" → start the "Sou adepto" flow.
+ *        store → a real account's league (useLeagueWorkspace): the state lives
+ *        in the cloud, the viewer is always the Gestor and the demo-only
+ *        furniture (role switcher, demo chip, reset) is hidden.
  */
-export default function LeagueContextApp({ contexts, entry = null }) {
-  const [raw, setRaw] = usePersistentState(LEAGUE_DEMO_KEY, null);
+export default function LeagueContextApp({ entry = null, store = null }) {
+  const live = Boolean(store);
+  const readOnly = Boolean(store?.readOnly); // a public page: followers look, nothing is written
+  const local = usePersistentState(live ? "leagueWorkspaceLocal" : LEAGUE_DEMO_KEY, null);
+  const [raw, setRaw] = live ? [store.raw, store.setRaw] : local;
   const state = useMemo(() => normalizeLeagueState(raw), [raw]);
-  const [tab, setTab] = usePersistentState("leagueDemoTab", "inicio");
+  const latest = useRef(state);
+  latest.current = state;
+  const [storedTab, setTab] = usePersistentState("leagueDemoTab", "inicio");
+  const [manageSection, setManageSection] = usePersistentState("leagueDemoManage", "overview");
   const [stack, setStack] = usePersistentState("leagueDemoStack", []);
+  const [scope, setScope] = usePersistentState("leagueDemoScope", "all"); // Gestor: "all" or a competition id
+  const [adjuntoLog, setAdjuntoLog] = useState([]);
+  const [adjuntoPrefill, setAdjuntoPrefill] = useState(null); // { text, n }: what the Adjunto chat opens with
+  const [welcomeSeen, setWelcomeSeen] = usePersistentState("leagueDemoWelcome", {}); // role → true once dismissed
+  const markWelcome = (r) => setWelcomeSeen({ ...(welcomeSeen || {}), [r]: true });
+  const wide = useWide();
   const [entryMode, setEntryMode] = useState(entry); // "fan" forces the fan flow once
   const [toast, setToast] = useState(null);
   const lastEvent = useRef({});
@@ -64,41 +95,57 @@ export default function LeagueContextApp({ contexts, entry = null }) {
     } catch { /* ignore */ }
   }, [entry]);
 
-  const role = state.viewer?.role || "fan";
+  const role = live && !readOnly ? "manager" : state.viewer?.role || "fan";
   const derived = useMemo(() => deriveLeague(state), [state]);
-  const acc = ROLE_ACCOUNTS[role] || ROLE_ACCOUNTS.fan;
+  // A real captain / athlete (store.me, from the server) is their own team and record; the demo roles
+  // are the registry's first team. A member's `acc` never comes from the demo registry.
+  const myScope = (store?.me || []).find((m) => m.role === role);
+  const acc = myScope
+    ? { accountId: `acc-${store.workspaceId}-${role}`, teamId: myScope.teamId, playerId: myScope.playerId || null, label: role === "captain" ? "Capitão" : "Atleta" }
+    : ROLE_ACCOUNTS[role] || ROLE_ACCOUNTS.fan;
   const lang = getLang();
-  // The management area exists only for the Gestor role — a persisted
-  // stack can't reopen it under another role (direct-route guard).
-  const visible = (stack || []).filter((v) => v && (v.kind !== "manage" || role === "manager"));
+  // "Gerir" is a tab of the Gestor only — a persisted tab can't reopen it
+  // under another role (direct-route guard). Stacks saved by the old
+  // "manage" push view are ignored.
+  const inTeam = role === "captain" || role === "athlete";
+  const tab = (["gerir", "adjunto"].includes(storedTab) && role !== "manager") || (storedTab === "eu" && !inTeam) || (storedTab === "fantasy" && !modOn("fantasy")) || (storedTab === "adjunto" && !modOn("adjunto")) ? "inicio" : storedTab;
+  const scopeNow = scope === "all" || competitionById[scope] ? scope : "all";
+  const visible = (stack || []).filter((v) => v && v.kind !== "manage");
   const view = visible[visible.length - 1] || null;
 
   const notify = (msg, tone = "ok") => setToast({ msg, tone, n: Date.now() });
   const top = () => { try { window.scrollTo(0, 0); } catch { /* jsdom */ } };
-  const open = (v) => { setStack((s) => [...(s || []), v]); top(); };
-  const back = () => { setStack((s) => (s || []).slice(0, -1)); top(); };
   const goTab = (id) => { setTab(id); setStack([]); top(); };
+  const open = (v) => {
+    if (v.kind === "manage") { setManageSection(v.section || "overview"); goTab("gerir"); return; }
+    setStack((s) => [...(s || []), v]); top();
+  };
+  const back = () => { setStack((s) => (s || []).slice(0, -1)); top(); };
 
   /** Apply a pure update to the demo state; LeagueError → toast. */
   const apply = (fn, okMsg) => {
     try {
-      const next = fn(state);
-      if (next === state) return { same: true };
+      // Two writes in one gesture (save the name, then move to the next step) must chain:
+      // each starts from the latest result, not from the state of the last render.
+      if (readOnly) return { same: true };
+      const base = latest.current;
+      const next = fn(base);
+      if (next === base) return { same: true };
+      latest.current = next;
       setRaw(next);
       if (okMsg) notify(okMsg);
       return { ok: true };
     } catch (e) {
-      notify(e instanceof LeagueError ? leagueError(e) : t("Não foi possível guardar. Tenta outra vez."), "error");
+      notify(e instanceof LeagueError ? leagueError(e) : e instanceof SetupError ? t(SETUP_ERROR[e.code] || "Não foi possível guardar. Tenta outra vez.") : t("Não foi possível guardar. Tenta outra vez."), "error");
       return { error: e };
     }
   };
   const setMatch = (s, id, fn) => ({ ...s, matches: s.matches.map((m) => (m.id === id ? fn(m) : m)) });
   const now = () => new Date().toISOString();
-  const who = role === "manager" ? t("Gestor (demo)") : `${t(acc.label)} (demo)`;
+  const who = role === "manager" ? (live ? t("Gestor") : t("Gestor (demo)")) : `${t(acc.label)} (demo)`;
 
   const changeRole = (r) => {
     apply((s) => ({ ...s, viewer: { ...(s.viewer || {}), role: r, entered: true } }));
-    if (r !== "manager") setStack((s) => (s || []).filter((v) => v.kind !== "manage"));
   };
 
   const act = {
@@ -141,7 +188,7 @@ export default function LeagueContextApp({ contexts, entry = null }) {
       return { ...next, lineups: { ...next.lineups, [m.homeId]: auto(m.homeId), [m.awayId]: auto(m.awayId) } };
     }), okMsg),
     setMvp: (matchId, playerId) => apply((s) => setMatch(s, matchId, (m) => setOfficialMvp(m, playerId, { role, by: who, at: now() })), t("Craque oficial definido.")),
-    closeVote: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, fanVoteClosed: true })), t("Votação da torcida fechada.")),
+    closeVote: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, fanVoteClosed: true })), t("Votação dos adeptos fechada.")),
     vote: (matchId, playerId) => apply((s) => ({
       ...s, fanVotes: castFanVote(s.fanVotes, s.matches.find((m) => m.id === matchId), acc.accountId, playerId),
     }), t("Voto registado. Podes mudá-lo até a votação fechar.")),
@@ -151,46 +198,88 @@ export default function LeagueContextApp({ contexts, entry = null }) {
       at: now(), suspendedIds: Object.values(derived.discipline).filter((d) => d.pending > 0).map((d) => d.playerId),
     })), t("Formação publicada.")),
     toggleVar: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, var: { enabled: !m.var?.enabled } }))),
-    setPicks: (ids, players) => {
-      const errors = validateFantasyPicks(ids, players);
-      if (errors.length) return { errors };
-      apply((s) => ({ ...s, fantasy: { ...s.fantasy, [acc.accountId]: ids } }), t("Equipa de Fantasy guardada (só neste navegador)."));
-      return { ok: true };
-    },
     // Pitch Manager squad (same shape the group demo persists): one write for the lineup AND its Conexão.
     setFantasySquad: (squad) => apply((s) => ({ ...s, fantasyV2: { ...(s.fantasyV2 || {}), [acc.accountId]: squad } }), t("Equipa guardada (só neste navegador).")),
+    /** A played game: just the score (provisional, no scorers). */
+    recordResult: (matchId, score) => apply((s) => recordResult(s, { matchId, score, by: who, at: now() }), t("Resultado lançado — fica por homologar.")),
+    /** "Subir súmula": the Adjunto chat opens ready for the photo or PDF of this match. */
+    sumula: (matchId) => {
+      const m = state.matches.find((x) => x.id === matchId);
+      const names = m ? `${teamById[m.homeId]?.name} – ${teamById[m.awayId]?.name}` : "";
+      setAdjuntoPrefill({ text: `${t("Vou anexar a súmula do jogo")} ${names}.`, n: Date.now() });
+      goTab("adjunto");
+    },
+    /** Build the league: `fn` is a pure leagueSetup function (state → state). */
+    setup: (fn, okMsg) => apply(fn, okMsg),
+    setModule: (id, on) => apply((s) => ({ ...s, modules: setModule(s.modules, id, on) })),
     setPrefs: (patch) => apply((s) => ({ ...s, prefs: { ...s.prefs, ...patch } })),
-    reset: () => { setRaw(buildLeagueDemoSeed()); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
+    reset: () => { setRaw(emptyLeagueState()); setWelcomeSeen({}); setStack([]); setTab("inicio"); lastEvent.current = {}; notify(t(LG.resetDone)); },
   };
 
-  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab };
-  const entering = entryMode === "fan" || !state.viewer?.entered;
-  const inManage = !entering && view?.kind === "manage";
-  const pushed = !entering && view && view.kind !== "manage";
+  const entering = !live && (entryMode === "fan" || !state.viewer?.entered);
+  const manager = role === "manager";
+  const desktop = wide && !entering; // computer layout for every role: sidebar + wide content
+  // Only the Gestor looks across competitions; followers see the primary one.
+  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, adjuntoPrefill, welcomeSeen, markWelcome, live, store };
+  const pushed = !entering && Boolean(view);
+  // What is waiting on a captain / athlete shows as a count on their Equipa tab.
+  const teamQueue = inTeam ? teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role }).queue : [];
+  const badges = inTeam ? { inicio: (readOnly ? readOnlyQueue(teamQueue) : teamQueue).length } : {};
 
   let body;
   if (entering) body = <LeagueEntry key={entryMode || "choose"} startAt={entryMode === "fan" ? "fan" : "choose"} onEnter={act.enter} />;
-  else if (inManage) body = <LeagueManage ctx={ctx} section={view.section} onSection={(sec) => setStack((s) => [...(s || []).filter((v) => v.kind !== "manage"), { kind: "manage", section: sec }])} />;
   else if (view?.kind === "match") body = <LeagueMatchPage key={view.id} ctx={ctx} matchId={view.id} />;
   else if (view?.kind === "team") body = <LeagueTeamPage key={view.id} ctx={ctx} teamId={view.id} />;
   else if (view?.kind === "player") body = <LeaguePlayerPage key={view.id} ctx={ctx} playerId={view.id} />;
   else if (view?.kind === "players") body = <LeaguePlayersDirectory ctx={ctx} />;
+  else if (view?.kind === "squad" && store?.saveSquad) body = <LeagueSquadEditor key="squad" ctx={ctx} />;
   else if (view?.kind === "compare") body = <LeagueCompare ctx={ctx} />;
+  else if (tab === "gerir") body = <LeagueManage ctx={ctx} section={manageSection} onSection={setManageSection} />;
+  else if (tab === "adjunto") body = <LeagueAdjunto ctx={ctx} />;
   else if (tab === "jogos") body = <LeagueMatches ctx={ctx} />;
-  else if (tab === "classificacao") body = <LeagueTable ctx={ctx} />;
+  else if (tab === "classificacao") body = competitionById[ctx.scope]?.kind === "cup" ? <LeagueCupPhase ctx={ctx} competition={competitionById[ctx.scope]} /> : <LeagueTable ctx={ctx} />;
+  else if (tab === "eu") body = acc.playerId ? <LeaguePlayerPage ctx={ctx} playerId={acc.playerId} embedded /> : store?.saveSquad ? <LeagueSquadEditor ctx={ctx} embedded /> : <LeagueHome ctx={ctx} />;
   else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;
   else if (tab === "mais") body = <LeagueMore ctx={ctx} />;
   else body = <LeagueHome ctx={ctx} />;
 
+  // A real account that has not finished the guided start lands there first.
+  if (live && !readOnly && !state.setup?.done) {
+    return (
+      <div style={{ fontFamily: FONT }}>
+        <LeagueOnboarding ctx={ctx} />
+        <LeagueToast toast={toast} onDone={() => setToast(null)} />
+      </div>
+    );
+  }
+
+  if (desktop) {
+    const title = tab === "adjunto" ? adjuntoName(lang) : tabTitle(role, tab);
+    const scopeLabel = ctx.scope === "all" ? t("Todas as competições") : t(competitionTitle(competitionById[ctx.scope]));
+    const deskBadges = manager ? { inicio: leagueToday(state, derived, { scope: ctx.scope }).items.length } : badges;
+    return (
+      <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT }}>
+        <div style={{ display: "grid", gridTemplateColumns: "264px minmax(0, 1fr)" }}>
+          <LeagueSideNav tab={tab} onSelect={goTab} scope={ctx.scope} onScope={setScope} role={role} onRole={changeRole} badges={deskBadges} live={live} sync={store?.sync} />
+          <main style={{ padding: `${S.xxl}px ${S.xxl + 8}px ${S.xxl}px`, boxSizing: "border-box", maxWidth: 1320, width: "100%" }}>
+            <LeagueHeader desktop title={t(title)} subtitle={manager ? `${LEAGUE.name} · ${scopeLabel}` : `${LEAGUE.name} · ${t(COMPETITION.short)}`} />
+            <LeagueSyncBanner store={store} />
+            <div style={{ maxWidth: !view && ["inicio", "jogos", "gerir", "eu"].includes(tab) ? undefined : 880 }}>{body}</div>
+          </main>
+        </div>
+        <LeagueToast toast={toast} onDone={() => setToast(null)} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, overflowX: "hidden" }}>
-      <div style={{ maxWidth: SHELL_W, margin: "0 auto", padding: `0 ${S.lg}px ${entering || inManage ? S.xxl : 104}px`, boxSizing: "border-box" }}>
-        <LeagueHeader ctx={ctx} contexts={contexts} role={role} onRole={changeRole} inManage={inManage} compact={entering} slim={pushed}
-          onManage={() => open({ kind: "manage", section: "overview" })}
-          onExitManage={() => setStack((s) => (s || []).filter((v) => v.kind !== "manage"))} />
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, overflowX: "hidden", fontFamily: FONT }}>
+      <div style={{ maxWidth: SHELL_W, margin: "0 auto", padding: `0 ${S.lg}px ${entering ? S.xxl : 104}px`, boxSizing: "border-box" }}>
+        <LeagueHeader role={role} onRole={changeRole} compact={entering} slim={pushed} scope={ctx.scope} onScope={setScope} onMore={() => goTab("mais")} live={live} sync={store?.sync} />
+        <LeagueSyncBanner store={store} />
         {body}
       </div>
-      {!entering && !inManage && <LeagueBottomNav tab={tab} onSelect={goTab} maxWidth={SHELL_W} />}
+      {!entering && <LeagueBottomNav tab={tab} role={role} onSelect={goTab} maxWidth={SHELL_W} badges={badges} />}
       <LeagueToast toast={toast} onDone={() => setToast(null)} />
     </div>
   );

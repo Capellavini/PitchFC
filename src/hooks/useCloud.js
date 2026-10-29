@@ -83,6 +83,8 @@ export function useCloud() {
   const maybeSendWelcome = (user) => {
     try {
       if (!user?.email_confirmed_at || welcomeRequestedRef.current === user.id) return;
+      // The welcome email is about the weekly-group product; a league account never gets it.
+      if (user.user_metadata?.pitch_product === "league") return;
       if (Date.now() - new Date(user.email_confirmed_at).getTime() > 7 * 864e5) return;
       welcomeRequestedRef.current = user.id;
       const joinToken = new URLSearchParams(window.location.search).get("join");

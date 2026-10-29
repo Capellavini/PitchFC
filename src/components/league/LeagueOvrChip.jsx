@@ -1,12 +1,13 @@
 import { C, R, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
-import { tierOf } from "../../lib/leagueDemo";
+import { tierOf, modOn } from "../../lib/leagueDemo";
 
 const TIER_COLOR = () => ({ LENDA: C.legend, OURO: C.gold, PRATA: C.silver, BRONZE: C.bronze });
 
 /** OVR pill in the FUT tier colour (same thresholds as FutCard:
  *  LENDA ≥86 · OURO ≥80 · PRATA ≥70 · BRONZE). */
 export default function LeagueOvrChip({ ovr, size = "md" }) {
+  if (!modOn("ovr")) return null;
   const tier = tierOf(ovr);
   const color = TIER_COLOR()[tier];
   const h = size === "sm" ? 22 : 26;

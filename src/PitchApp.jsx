@@ -66,8 +66,17 @@ import AdminDashboardPage from "./components/admin/AdminDashboardPage";
 import RoadmapPage from "./components/RoadmapPage";
 import PitchDeckPage from "./components/PitchDeckPage";
 import LeagueContextApp from "./components/league/LeagueContextApp";
+import LeagueOperationsDemo from './components/league/operations/LeagueOperationsDemo';
 import LeagueHub from "./components/league/LeagueHub";
+import LeagueAuth from "./components/league/LeagueAuth";
+import { isLeagueAccount, leagueAccountRedirect, leagueProfileForm, LEAGUE_ENTRY_PATH, LEAGUE_HOME_PATH } from "./lib/leagueAccount";
 import LeagueCloudPage from "./components/league/LeagueCloudPage";
+import LeagueWorkspaceApp from "./components/league/LeagueWorkspaceApp";
+import LeaguePublicPage from "./components/league/LeaguePublicPage";
+import LeagueInvitePage from "./components/league/LeagueInvitePage";
+import LeagueMemberApp from "./components/league/LeagueMemberApp";
+import LeagueMyLeagues from "./components/league/LeagueMyLeagues";
+import { inviteTokenFromPath, memberWorkspaceFromPath, MEMBER_HOME_PATH } from "./lib/leagueRoles";
 import LeagueCompetitionCloud from "./components/league/LeagueCompetitionCloud";
 import { useLeagues } from "./hooks/useLeagues";
 import { parseLeaguePath } from "./lib/leagueCloud";
@@ -81,6 +90,10 @@ import BottomNav from "./components/BottomNav";
 import TopBar from "./components/TopBar";
 import GroupSwitcher from "./components/GroupSwitcher";
 import HomeTab from "./components/HomeTab";
+import HomeContextSwitcher from "./components/HomeContextSwitcher";
+import RivalsHome from "./components/RivalsHome";
+import LeagueOrganizerHome from "./components/league/LeagueOrganizerHome";
+import {homeContexts, resolveHomeContext} from "./lib/homeContext";
 import JogarTab from "./components/JogarTab";
 import CompetirTab from "./components/CompetirTab";
 import JogoTab from "./components/JogoTab";
@@ -250,17 +263,45 @@ export default function PitchApp() {
   // trigger a single league query. /league/demo stays the separate,
   // local-only showcase (LeagueContextApp) and never goes through this hook.
   const [leagueRoute] = useState(() => parseLeaguePath(window.location.pathname));
-  const leaguesFlagOn = localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin });
-  const leaguesCloudActive = leaguesFlagOn && ["hub", "league", "competition"].includes(leagueRoute?.kind);
+  const leagueRouteActive = ["hub", "league", "competition"].includes(leagueRoute?.kind);
+  const discoverLeagues = window.location.pathname === "/" || leagueRouteActive;
   const leagues = useLeagues({
-    active: leaguesCloudActive, cloudStatus: cloud.status, myPlayer: cloud.myPlayer, isAdmin: Boolean(cloud.isAdmin),
+    active: discoverLeagues, cloudStatus: cloud.status, myPlayer: cloud.myPlayer, isAdmin: Boolean(cloud.isAdmin),
     demoMe: localMe ? { id: `demo-me-${localMe.id}`, nick: localMe.nick, name: localMe.name } : null,
     resolveTeam: async (teamId) => {
       const tm = (rivals.myTeams || []).find((x) => x.id === teamId);
       const r = await rivals.fetchTeam(teamId);
       return tm ? { id: tm.id, name: tm.name, role: tm.role, memberIds: (r.data?.members || []).map((m) => m.playerId) } : null;
     },
+    myTeams: (rivals.myTeams || []).map((tm) => ({ id: tm.id, role: tm.role })),
   });
+  // Membership discovery is read-only. It enables existing league staff,
+  // without enabling the public pilot or granting any backend permission.
+  // A league account (created on /league/entrar) always has the league product.
+  const leagueAccount = !localMode && isLeagueAccount(cloud.user);
+  const leaguesFlagOn = localMode || leagueAccount || isEnabled("leagues", { isAdmin: cloud.isAdmin }) || leagues.myLeagues.some(l => l.roles?.length);
+  // A league account has no weekly-group onboarding: it gets the minimal
+  // player row league RPCs need, and nothing else.
+  useEffect(() => {
+    if (leagueAccount && cloud.status === "needsProfile") cloud.createPlayerProfile(leagueProfileForm(cloud.user));
+  }, [leagueAccount, cloud.status, cloud.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const leaguesCloudActive = leaguesFlagOn && leagueRouteActive;
+  const [homePreferences, setHomePreferences] = usePersistentState("homeContexts", {});
+  const [contextMetadata, setContextMetadata] = useState({userId:null,data:{}});
+  const [leagueAccountOpen, setLeagueAccountOpen] = useState(false);
+  useEffect(() => {
+    let live=true;
+    if (!cloud.user?.id || localMode) { setContextMetadata({userId:null,data:{}}); return; }
+    // Presentation preferences only: real memberships still control access.
+    supabase.auth.getUser().then(({data}) => {if(live)setContextMetadata({userId:cloud.user.id,data:data.user?.user_metadata||cloud.user.user_metadata||{}});});
+    return () => {live=false;};
+  }, [cloud.user?.id,localMode]);
+  const contextUser = cloud.user?.id || "demo";
+  const contextMeta = contextMetadata.userId === cloud.user?.id ? contextMetadata.data : {};
+  const contextReady = localMode || !cloud.myPlayer?.id || (leagues.loaded && contextMetadata.userId === cloud.user?.id);
+  const homeInputs = {leagues:leagues.loaded?leagues.myLeagues:[],teams:rivals.myTeams,mode:contextMeta.pitch_context_mode,product:leagueAccount?'league':undefined};
+  const homeOptions = homeContexts(homeInputs);
+  const homeContext = resolveHomeContext({...homeInputs,preferred:new URLSearchParams(window.location.search).get("context") || homePreferences[contextUser] || contextMeta.pitch_home_context});
   const [teamSlug, setTeamSlug] = useState(rivalsParams.team);
   // { teamId? , slug?, n } — asks RivalsHub to show a team (bump n).
   const [rivalsFocus, setRivalsFocus] = useState(null);
@@ -389,7 +430,7 @@ export default function PitchApp() {
   // Logged-in player without a group who can still use the app: chose to
   // explore, is in a team, or carries a team invite (lib/rivals isNoGroup).
   const noGroup = isNoGroup({
-    needsGroup: cloud.status === "needsGroup", optIn: noGroupOptIn,
+    needsGroup: cloud.status === "needsGroup", optIn: noGroupOptIn || leagues.myLeagues.length > 0,
     teamCount: rivals.myTeams.length, hasIntent: Boolean(teamToken || challengeToken || createIntent),
   });
   const cloudAuthed = cloudMode || noGroup; // user-level cloud features
@@ -398,8 +439,8 @@ export default function PitchApp() {
   // full nav automatically (noGroup goes false). Local demo previews it via
   // the /rivals demo signup (session.teamOnly).
   const teamOnlyDemo = localMode && Boolean(session.teamOnly);
-  const teamMode = isTeamMode({ noGroup: noGroup || teamOnlyDemo, teamCount: rivals.myTeams.length });
-  const teamNextMatch = teamMode ? nextTeamMatch(rivals.matches, rivals.myTeams) : null;
+  const teamMode = homeContext === "rivals" || isTeamMode({ noGroup: noGroup || teamOnlyDemo, teamCount: rivals.myTeams.length });
+  const teamNextMatch = nextTeamMatch(rivals.matches, rivals.myTeams);
 
   // Resume a pending create-team intent once a player card exists.
   const createRunRef = useRef(null);
@@ -710,14 +751,14 @@ export default function PitchApp() {
   // effect then FREEZES it the first time the main app's data is ready
   // (local: onboarded session; cloud: status ready / no-group explore),
   // so a matchday going live later never yanks the user away.
-  const appDataReady = (localMode && Boolean(session.role && session.onboarded)) || (cloudMode && !rivals.loading) || (noGroup && !rivals.loading);
+  const appDataReady = contextReady && ((localMode && Boolean(session.role && session.onboarded)) || (cloudMode && !rivals.loading) || (noGroup && !rivals.loading));
   const hasGameThisWeek = !noGroup && !noGameScheduled
     && kickoffAt.getTime() - Date.now() < 7 * 24 * 3600 * 1000
     && kickoffAt.getTime() - Date.now() > -3 * 3600 * 1000;
   const awaitingMyAnswer = hasGameThisWeek && confWin.isOpen && me?.status === "pending";
   // lib/rivals openingTab: team-only → equipa (matchday on team match day); otherwise unchanged
   // (live matchday → my RSVP → home). PR7 adds team-match triggers.
-  const openingTab = pickOpeningTab({ noGroup: noGroup || teamOnlyDemo, teamCount: rivals.myTeams.length, teamMatchToday: Boolean(teamNextMatch?.isToday), matchdayLive: Boolean(matchday), awaitingMyAnswer });
+  const openingTab = homeContext !== "player" ? "home" : pickOpeningTab({ noGroup: noGroup || teamOnlyDemo, teamCount: rivals.myTeams.length, teamMatchToday: Boolean(teamNextMatch?.isToday), matchdayLive: Boolean(matchday), awaitingMyAnswer });
   // Team mode swaps Competir for Equipa (resolveTab maps one id to the other).
   const tab = resolveTab(tabState ?? openingTab, teamMode);
   // Home's "Votar MVP" on a game day lands in Competir with the ballot
@@ -1305,6 +1346,18 @@ export default function PitchApp() {
 
   // ── PITCH para Ligas (path /league) — full width, no shell ───
   const path = window.location.pathname.replace(/\/+$/, "");
+  // A league account (created on /league/entrar) only ever sees the league
+  // product: anywhere else it is sent to its league home.
+  const accountRedirect = !localMode ? leagueAccountRedirect(cloud.user, path) : null;
+  if (accountRedirect) { window.location.replace(accountRedirect); return null; }
+  // /l/<slug> — a league's public page (published by its Gestor). Public, read-only.
+  const publicLeague = path.match(/^\/l\/([a-z0-9-]{1,60})$/);
+  if (publicLeague && !localMode) return <LeaguePublicPage slug={publicLeague[1]} />;
+  // /l/convite/<token> — what a Gestor sends a captain or an athlete. Readable by anyone; accepting needs an account.
+  const inviteToken = inviteTokenFromPath(path);
+  if (inviteToken && !localMode) return <LeagueInvitePage token={inviteToken} signedIn={Boolean(cloud.user?.id)} authReady={cloud.status !== "loading"} />;
+  // /league/entrar — the one place a league account is created or signed into.
+  if (path === LEAGUE_ENTRY_PATH && !localMode) return <LeagueAuth cloud={cloud} lang={lang} onLang={changeLang} />;
   // ── Presentation launcher (/demo) — full width, public, no login ───
   if (path === "/demo" && presentationMode) return <PresentationHub />;
   // Leagues are a service for EXISTING amateur leagues (PITCH runs none).
@@ -1320,31 +1373,42 @@ export default function PitchApp() {
     onFan: () => { window.location.href = "/league/demo?entrada=adepto"; },
     onMyLeagues: () => { window.location.href = "/league/minhas"; },
   } : {};
+  if (path === '/league/demo' && leagueDemoOn && new URLSearchParams(window.location.search).get('central') === '1') return <LeagueOperationsDemo/>;
   if (path === "/league" || (path === "/league/demo" && !leagueDemoOn)) {
     return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }} {...leagueDemoProps} />;
   }
   if (path === "/league/demo") {
     const leagueEntry = new URLSearchParams(window.location.search).get("entrada") === "adepto" ? "fan" : null;
-    const leagueTeams = (rivals.myTeams || []).map((tm) => ({ id: tm.id, name: tm.name }));
-    const leagueContexts = localMode
-      ? { groups: session.onboarded && !session.teamOnly && groupSettings.groupName ? [{ id: "local", name: groupSettings.groupName }] : [], teams: leagueTeams }
-      : { groups: (cloud.myGroups || []).filter((m) => !m.banned).map((m) => ({ id: m.group_id, name: m.groups?.name || "—" })), teams: leagueTeams };
-    return shell(<LeagueContextApp contexts={leagueContexts} entry={leagueEntry} />);
+    // PITCH Ligas is a standalone product: no groups/teams contexts from the
+    // other apps and no phone-column app shell (the Gestor gets a full web layout).
+    return <LeagueContextApp entry={leagueEntry} />;
+  }
+  // The league workspace (PITCH Ligas on the account's own cloud copy). A league
+  // account lands here from /league/minhas; any other signed-in account (the
+  // PITCH admin) opens it on /league/minhas/painel and keeps the old hub.
+  if (!localMode && cloud.user?.id && path === "/league/minhas/painel") return <LeagueWorkspaceApp user={cloud.user} />;
+  // A league account's home: its own league as Gestor, or — when it also belongs to leagues as a
+  // captain or athlete — the list of them. Anyone signed in can open the member routes.
+  if (!localMode && cloud.user?.id && leagueAccount && path === LEAGUE_HOME_PATH) return <LeagueMyLeagues user={cloud.user} ownerFallback />;
+  const memberWorkspace = memberWorkspaceFromPath(path);
+  if (!localMode && (memberWorkspace || path === MEMBER_HOME_PATH)) {
+    if (cloud.user?.id) return memberWorkspace ? <LeagueMemberApp workspaceId={memberWorkspace} /> : <LeagueMyLeagues user={cloud.user} />;
+    if (cloud.status === "anon") { window.location.replace(LEAGUE_ENTRY_PATH); return null; }
   }
   // Real leagues (Fase 2): /league/minhas, /league/<slug>, /league/<slug>/<comp>.
   // Same gate as the demo: flag off → the public /league page, nothing else.
   if (leagueRoute && ["hub", "league", "competition"].includes(leagueRoute.kind)) {
     // Don't flash the public page while the session (and so isAdmin) is still resolving.
-    if (cloud.status === "loading") return <div style={{ minHeight: "100vh", background: C.bg }} />;
+    if (cloud.status === "loading" || (leagueAccount && cloud.status === "needsProfile") || (!localMode && cloud.myPlayer?.id && !contextReady)) return <div role="status" style={{ minHeight: "100vh", background: C.bg, color:C.text2, padding:24 }}>{t("A carregar a organização…")}</div>;
     if (!leaguesCloudActive) {
       return <LeaguePage lang={lang} onLang={changeLang} onEnterApp={() => { window.location.href = "/"; }} {...leagueDemoProps} />;
     }
     const viewKey = new URLSearchParams(window.location.search).get("k");
     if (leagueRoute.kind === "hub") {
-      return shell(<LeagueHub leagues={leagues} rivals={rivals} onSignIn={() => { window.location.href = "/"; }} />);
+      return shell(<LeagueHub contextOptions={homeOptions} leagues={leagues} rivals={rivals} onSignIn={() => { window.location.href = LEAGUE_ENTRY_PATH; }} />);
     }
-    if (leagueRoute.kind === "league") return shell(<LeagueCloudPage leagues={leagues} slug={leagueRoute.slug} viewKey={viewKey} />);
-    return shell(<LeagueCompetitionCloud leagues={leagues} slug={leagueRoute.slug} competitionSlug={leagueRoute.competitionSlug} viewKey={viewKey} />);
+    if (leagueRoute.kind === "league") return <LeagueCloudPage contextOptions={homeOptions} leagues={leagues} slug={leagueRoute.slug} viewKey={viewKey} />;
+    return shell(<LeagueCompetitionCloud contextOptions={homeOptions} leagues={leagues} slug={leagueRoute.slug} competitionSlug={leagueRoute.competitionSlug} viewKey={viewKey} />);
   }
 
   // ── PITCH Rivals (Teams & Challenges) early-access landing (path /rivals,
@@ -2200,6 +2264,13 @@ export default function PitchApp() {
     setTab(id);
     if (id === "perfil") { setViewPlayerId(null); setSettingsView(null); }
   };
+  const selectHomeContext = (id) => {
+    if (!homeOptions.includes(id)) return;
+    setHomePreferences(p => ({...p,[contextUser]:id}));
+    const u=new URL(window.location.href);u.searchParams.set('context',id);
+    window.history.replaceState({},'',u.pathname+u.search+u.hash);
+    setLeagueAccountOpen(false);setTabRaw('home');
+  };
   // PITCH Rivals entry points (Home items, no-group link, Perfil rows).
   const openTeamsTab = (teamId, invite = false) => { focusRivals(teamId ? { teamId, invite } : {}); selectTab("competir"); };
   // Home items about my teams: a result waiting for ME comes first, then team nudges, then recent results.
@@ -2219,6 +2290,12 @@ export default function PitchApp() {
   };
 
   // ── Main app ───────────────────────────────────────────
+  if (!contextReady) return shell(<div role="status" style={{padding:24,color:C.text2}}>{t("A carregar a organização…")}</div>);
+  if (homeContext === 'league') return shell(<>
+    <TopBar onLogoClick={()=>setLeagueAccountOpen(false)} right={<button type="button" onClick={()=>setLeagueAccountOpen(v=>!v)} style={{minHeight:44,background:C.surface,color:C.text1,border:`1px solid ${C.border}`,borderRadius:12,padding:'0 14px',fontWeight:700}}>{t('Conta')}</button>}/>
+    <HomeContextSwitcher options={homeOptions} value={homeContext} onChange={selectHomeContext}/>
+    {leagueAccountOpen?<div style={{padding:24}}><h1>{t('Organizador de Liga')}</h1><p style={{color:C.text2}}>{t('A tua conta de organização')}</p><p style={{overflowWrap:'anywhere'}}>{cloud.user?.email}</p><p>{(leagues.myLeagues||[]).map(l=>l.name).join(' · ')}</p><button type="button" onClick={logout} style={{minHeight:44,padding:'0 20px'}}>{t('Sair')}</button></div>:<LeagueOrganizerHome leagues={leagues}/>}
+  </>);
   return shell(
     <>
       {upgradePrompt}
@@ -2233,9 +2310,11 @@ export default function PitchApp() {
             <Avatar name={me.name || me.nick} photo={me.photo} color={playerColor(baseGroup, me)} size={32} isMe />
           </button>
         ) : null} />
+      <HomeContextSwitcher options={homeOptions} value={homeContext} onChange={selectHomeContext}/>
       <div style={{ paddingBottom: 96 }}>
         {tab === "home" && trialBanner && <div style={{ padding: "16px 16px 0" }}>{trialBanner}</div>}
-        {tab === "home" && (
+        {tab === "home" && homeContext === "rivals" && <RivalsHome teams={rivals} nextMatch={teamNextMatch} items={homeTeamItems} onOpenTeam={openTeamsTab} onOpenMatch={openMatch} onChallenges={()=>openRivalsView('challenges')}/>}
+        {tab === "home" && homeContext === "player" && (
           // Home (redesign v1): one next action + last-result recap + single
           // activity feed built from matchdays + social posts (SocialTab no
           // longer rendered here). resultPending = kickoff passed <36h ago,
@@ -2368,6 +2447,7 @@ export default function PitchApp() {
                 stats={<GroupRecords records={recordsView} canDelete={isOrganizer && cloudMode} onDeleteMatchday={deleteMatchdayRecord} />}
                 fantasy={cloud.canSeeFantasy ? (
                   <FantasyTab group={displayGroup} me={me} isOrganizer={isOrganizer} kickoffAt={game.kickoffAt}
+                    groupName={game.groupName} onOpenRecord={() => goToGroupView("stats")}
                     fantasyLeague={cloud.fantasyLeague} fantasySquads={cloud.fantasySquads} fantasyScores={cloud.fantasyScores}
                     fantasyTradeOffers={cloud.fantasyTradeOffers} fantasyRounds={cloud.fantasyRounds}
                     fantasyRoundPlayers={cloud.fantasyRoundPlayers} fantasySeasons={cloud.fantasySeasons} fantasyPrices={cloud.fantasyPrices}
@@ -2407,7 +2487,6 @@ export default function PitchApp() {
               // (e.g. attach an assist to an existing goal) — keeps its position/minute,
               // unlike remove + re-add. Same updateMatchday path as the other handlers.
               onUpdateEvent: (matchId, eventIndex, patch) =>
-                    groupName={game.groupName} onOpenRecord={() => goToGroupView("stats")}
                 updateMatchday((md) => ({ ...md, matches: md.matches.map((m) => (m.id === matchId ? { ...m, events: m.events.map((e, i) => (i === eventIndex ? { ...e, ...patch } : e)) } : m)) })) }}
             prompt={confirmAction ? <NextActionCard {...confirmAction} /> : null}
             coldView={matchdayCold ? <MatchdayCold game={game} lastMatchday={lastMatchdayView} /> : null}
@@ -2445,7 +2524,6 @@ export default function PitchApp() {
             ) : null}
             challengesBadge={rivals.pendingActions}
             leaguesDemo={localMode || isEnabled("leagues", { isAdmin: cloud.isAdmin })}
-            gateCompare={(fn) => fn()} /* players are never gated: compare stays free */
           />
         )}
         {tab === "perfil" && settingsView === "clube" && cloud.isAdmin && (

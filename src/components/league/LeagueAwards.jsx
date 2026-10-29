@@ -3,14 +3,14 @@ import { Award, Users } from "lucide-react";
 import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf, plural } from "../../lib/leagueCopy";
-import { playerById, teamById, fmtDateTime } from "../../lib/leagueDemo";
+import { playerById, teamById, fmtDateTime, modOn } from "../../lib/leagueDemo";
 import { fanVoteOpen, tallyFanVotes } from "../../lib/core/league";
 import BtnPrimary from "../BtnPrimary";
 import BtnGhost from "../BtnGhost";
 import Chip from "../Chip";
 
 /** Destaques: official MVP ("Craque oficial", chosen by the manager, with
- *  author) and the fans' vote ("Craque da torcida") — two separate
+ *  author) and the fans' vote ("Craque dos adeptos") — two separate
  *  structures, shown as two separate blocks. The partial tally never
  *  looks like a final result. */
 export default function LeagueAwards({ ctx, match }) {
@@ -45,7 +45,7 @@ export default function LeagueAwards({ ctx, match }) {
         )}
       </section>
 
-      <section style={cardStyle} aria-labelledby="lg-fans-mvp">
+      {modOn("fan_vote") && <section style={cardStyle} aria-labelledby="lg-fans-mvp">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: S.sm, flexWrap: "wrap", marginBottom: S.sm }}>
           <span id="lg-fans-mvp" style={{ display: "flex", alignItems: "center", gap: S.sm, fontSize: T.meta, fontWeight: 800, color: C.text2, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             <Users size={16} color={C.blue} aria-hidden /> {t(LG.fansMvp)}
@@ -82,9 +82,9 @@ export default function LeagueAwards({ ctx, match }) {
           </div>
         )}
         {open && role === "manager" && (
-          <BtnPrimary block onClick={() => act.closeVote(match.id)} style={{ marginTop: S.md }}>{t("Fechar votação da torcida")}</BtnPrimary>
+          <BtnPrimary block onClick={() => act.closeVote(match.id)} style={{ marginTop: S.md }}>{t("Fechar votação dos adeptos")}</BtnPrimary>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

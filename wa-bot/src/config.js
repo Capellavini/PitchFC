@@ -14,6 +14,12 @@ export const cfg = () => ({
   // ── Treinador Adjunto (private organizer DMs) — docs/ADJUNTO-PLAN.md ──
   // Master switch: false = DMs are ignored exactly as before (no routing at all).
   adjuntoEnabled: process.env.ADJUNTO_ENABLED === "true",
+  // ── PITCH Ligas on WhatsApp (league managers, same number) ──
+  // Master switch: false = league DMs are not looked at (the weekly-groups Adjunto is unaffected).
+  leagueWaEnabled: process.env.LEAGUE_WA_ENABLED === "true",
+  // Dry-run unless "true": replies are logged, not sent. The league itself is only changed after the manager says "sim".
+  leagueWaAutosend: process.env.LEAGUE_WA_AUTOSEND === "true",
+  leagueModel: process.env.LEAGUE_WA_MODEL || process.env.ADJUNTO_MODEL || "claude-sonnet-5-5",
   // Dry-run unless "true": log what would be sent/written, send nothing,
   // write nothing to shared app tables. Separate from BOT_AUTOSEND.
   adjuntoAutosend: process.env.ADJUNTO_AUTOSEND === "true",
