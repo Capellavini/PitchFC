@@ -73,6 +73,7 @@ import { isLeagueAccount, leagueAccountRedirect, leagueProfileForm, LEAGUE_ENTRY
 import LeagueCloudPage from "./components/league/LeagueCloudPage";
 import LeagueWorkspaceApp from "./components/league/LeagueWorkspaceApp";
 import LeaguePublicPage from "./components/league/LeaguePublicPage";
+import { landingRouteFromPath, legacyLandingSlug, leaguePagePath } from "./lib/leagueLanding";
 import LeagueInvitePage from "./components/league/LeagueInvitePage";
 import LeagueMemberApp from "./components/league/LeagueMemberApp";
 import LeagueMyLeagues from "./components/league/LeagueMyLeagues";
@@ -1350,9 +1351,12 @@ export default function PitchApp() {
   // product: anywhere else it is sent to its league home.
   const accountRedirect = !localMode ? leagueAccountRedirect(cloud.user, path) : null;
   if (accountRedirect) { window.location.replace(accountRedirect); return null; }
-  // /l/<slug> — a league's public page (published by its Gestor). Public, read-only.
-  const publicLeague = path.match(/^\/l\/([a-z0-9-]{1,60})$/);
-  if (publicLeague && !localMode) return <LeaguePublicPage slug={publicLeague[1]} />;
+  // /leagues/<slug> — the league's own page (published by its Gestor, by default once it has a name);
+  // /leagues/<slug>/app — the same league as the follower app. Public, read-only. The first address, /l/<slug>, lands here.
+  const leaguePage = landingRouteFromPath(path);
+  if (leaguePage && !localMode) return <LeaguePublicPage slug={leaguePage.slug} view={leaguePage.view} />;
+  const legacyLeague = legacyLandingSlug(path);
+  if (legacyLeague && !localMode) { window.location.replace(leaguePagePath(legacyLeague)); return null; }
   // /l/convite/<token> — what a Gestor sends a captain or an athlete. Readable by anyone; accepting needs an account.
   const inviteToken = inviteTokenFromPath(path);
   if (inviteToken && !localMode) return <LeagueInvitePage token={inviteToken} signedIn={Boolean(cloud.user?.id)} authReady={cloud.status !== "loading"} />;

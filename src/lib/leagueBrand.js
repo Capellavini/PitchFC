@@ -65,3 +65,19 @@ export async function logoFromFile(file) {
 
 /** Only the small PNG data URLs this module makes (or https) may be drawn as a logo. */
 export const safeLogo = (src) => (typeof src === "string" && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(src) && src.length <= MAX_LOGO_DATA_URL ? src : null);
+
+/** The league colour as a valid "#RRGGBB", else null (anything a Gestor typed or an old save carries is checked). */
+export const validColor = (c) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c.toUpperCase() : null);
+
+/** The league colour made readable as TEXT or an icon on the dark PITCH background: a dark colour
+ *  (navy, burgundy) is lightened towards white until it reads; a light one is kept. */
+export function onDarkText(hex, fallback = "#C8FF00") {
+  const c = validColor(hex);
+  if (!c) return fallback;
+  const n = parseInt(c.slice(1), 16);
+  const lum = (r, g, b) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  let r = n >> 16; let g = (n >> 8) & 255; let b = n & 255;
+  for (let i = 0; i < 12 && lum(r, g, b) < 0.55; i++) { r += (255 - r) * 0.18; g += (255 - g) * 0.18; b += (255 - b) * 0.18; }
+  const h = (v) => Math.round(v).toString(16).padStart(2, "0").toUpperCase();
+  return `#${h(r)}${h(g)}${h(b)}`;
+}

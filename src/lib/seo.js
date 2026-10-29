@@ -55,9 +55,24 @@ const ROUTES = {
 // opt-in) — reachable, never indexed.
 const TOKEN_PARAMS = ["join", "confirm", "rate", "admin", "tjoin", "desafio", "team", "rivals", "demo"];
 
+// A league's own page (/leagues/<slug>) and its follower app (/leagues/<slug>/app). The real title
+// and description are set once the league has loaded (setLeagueMeta); until then this is what a
+// crawler or a tab sees. Only the page is indexed, never the app view.
+const LEAGUE_PAGE = /^\/leagues\/([a-z0-9][a-z0-9-]{0,59})(\/app)?$/;
+const leagueDescription = (name, city) => `${name}${city ? ` (${city})` : ""}: jornadas, resultados, classificação, artilheiros e avisos da liga. Página oficial, com a tecnologia PITCH.`;
+
 /** Pure: what the head should say for this URL. */
 export function routeMeta(pathname, search = "") {
   const path = pathname.replace(/\/+$/, "") || "/";
+  const lp = path.match(LEAGUE_PAGE);
+  if (lp) {
+    return {
+      title: "Liga de futebol | PITCH",
+      description: leagueDescription("Liga de futebol amador", ""),
+      canonical: `${SITE}/leagues/${lp[1]}`,
+      noindex: Boolean(lp[2]),
+    };
+  }
   const known = ROUTES[path];
   const m = known ?? HOME;
   const hasToken = TOKEN_PARAMS.some((p) => new URLSearchParams(search).has(p));
@@ -78,6 +93,26 @@ function upsert(selector, create, attr, value) {
 /** Apply routeMeta() to the live document. Call once per page load — routes are full navigations. */
 export function applyRouteMeta(loc = window.location) {
   const m = routeMeta(loc.pathname, loc.search);
+  document.title = m.title;
+  upsert('meta[name="description"]', () => Object.assign(document.createElement("meta"), { name: "description" }), "content", m.description);
+  upsert('link[rel="canonical"]', () => Object.assign(document.createElement("link"), { rel: "canonical" }), "href", m.canonical);
+  upsert('meta[name="robots"]', () => Object.assign(document.createElement("meta"), { name: "robots" }), "content",
+    m.noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large");
+}
+
+/** Pure: the head of a league's own page once its name is known. */
+export function leagueMeta({ name, city = "", path, indexable = true }) {
+  return {
+    title: `${name} · PITCH`,
+    description: leagueDescription(name, city),
+    canonical: SITE + path,
+    noindex: !indexable,
+  };
+}
+
+/** Apply leagueMeta() to the live document (the league page, after its data arrived). */
+export function setLeagueMeta(args) {
+  const m = leagueMeta(args);
   document.title = m.title;
   upsert('meta[name="description"]', () => Object.assign(document.createElement("meta"), { name: "description" }), "content", m.description);
   upsert('link[rel="canonical"]', () => Object.assign(document.createElement("link"), { rel: "canonical" }), "href", m.canonical);

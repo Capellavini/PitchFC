@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createWorkspaceSync, SYNC_STATUS } from "../lib/leagueWorkspaceSync";
 import { rpc, rolesApi } from "../lib/leagueRolesApi";
+import { landingApi } from "../lib/leagueLandingApi";
 
 const api = {
   get: () => rpc("league_workspace_get", {}),
@@ -18,7 +19,9 @@ const REFRESH_MS = 15000;
  *   raw      the persisted league state (null = a brand-new account)
  *   setRaw   same contract as the setter of usePersistentState (value or updater)
  *   sync     "idle" | "saving" | "saved" | "error" | "conflict"
- *   slug / published / publish(on)   the public page
+ *   slug / published / publish(on)   the public page (/leagues/<slug>: published by itself the first
+ *                                    time the league has a name; the Gestor can hide it)
+ *   fans      the sign-ups for the league's Pitch Manager (list / remove)
  *   reload()  fetch the server copy again (also the way out of a conflict)
  *   retry()   try saving again after an error
  */
@@ -28,7 +31,7 @@ export function useLeagueWorkspace({ enabled = true, userId = null } = {}) {
   const [sync, setSync] = useState(SYNC_STATUS.IDLE);
   const [meta, setMeta] = useState({ slug: null, published: false });
   const rawRef = useRef(null);
-  const engine = useMemo(() => (enabled ? createWorkspaceSync({ api, onStatus: setSync }) : null), [enabled, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const engine = useMemo(() => (enabled ? createWorkspaceSync({ api, onStatus: setSync, onSaved: (m) => setMeta(m) }) : null), [enabled, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reload = useCallback(async () => {
     if (!engine) return;
@@ -100,5 +103,5 @@ export function useLeagueWorkspace({ enabled = true, userId = null } = {}) {
     unlink: () => rpc("league_wa_unlink", {}),
   }), []);
 
-  return { phase, raw, setRaw, sync, slug: meta.slug, published: meta.published, publish, wa, roles: rolesApi, reload, retry: () => engine?.retry() };
+  return { phase, raw, setRaw, sync, slug: meta.slug, published: meta.published, publish, wa, roles: rolesApi, fans: landingApi, reload, retry: () => engine?.retry() };
 }
