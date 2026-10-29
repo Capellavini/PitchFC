@@ -30,9 +30,9 @@ Os papéis assentam **no documento da liga que já existe**, com tabelas de pert
 
 | Fase | Entrega | Estado |
 |---|---|---|
-| **R1** | Servidor: tabelas de pertença e convites, criar/ver/aceitar/revogar convites, «as minhas ligas», estado visto por cada papel, capitão grava o plantel | **Em curso** |
-| **R2** | App: gestor cria convites por equipa e por atleta (Gerir → Equipas), página de convite `/l/convite/<token>`, a app deixa de ficar presa em «conflito» quando outro papel grava | A seguir |
-| **R3** | App: «As minhas ligas» com os papéis, vista do capitão (plantel editável) e do atleta (calendário e o seu registo) com o design atual | |
+| **R1** | Servidor: tabelas de pertença e convites, criar/ver/aceitar/revogar convites, «as minhas ligas», estado visto por cada papel, capitão grava o plantel, atleta escolhe quem é | **Feito** (PR #18) |
+| **R2** | App: gestor cria convites por equipa (Gerir → Acessos), página de convite `/l/convite/<token>`, a app do gestor deixa de ficar presa em «conflito» quando um capitão grava (confirma a versão de 15 em 15 s) | **Feito** (PR #18) |
+| **R3** | App: «As minhas ligas», vista do capitão (Equipa, jogos, classificação e plantel editável em «Eu») e do atleta (escolhe quem é, vê jogos e o seu registo), no design atual | **Feito, falta ver em produção** (PR #18). O capitão ainda não faz a convocatória nem contesta resultados: isso é R4 |
 | **R4** | Perfil do atleta: email, telefone, data de nascimento (privados), escalão, convocatória | |
 | **R5** | Adepto com conta: equipa que apoia, seguir, votos e notificações guardados por pessoa | |
 | **R6** | Co-gestor e mesa (marcador de lances) com permissões finas | |

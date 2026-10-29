@@ -1,20 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { leagueErrorCode } from "../lib/leagueCloud";
 import { createWorkspaceSync, SYNC_STATUS } from "../lib/leagueWorkspaceSync";
+import { rpc, rolesApi } from "../lib/leagueRolesApi";
 
-const rpc = async (name, args) => {
-  try {
-    const r = await supabase.rpc(name, args);
-    return r.error ? { error: leagueErrorCode(r.error) } : { data: r.data };
-  } catch (e) {
-    return { error: leagueErrorCode(e) };
-  }
-};
 const api = {
   get: () => rpc("league_workspace_get", {}),
   save: (state, expectedVersion) => rpc("league_workspace_save", { p_state: state, p_expected_version: expectedVersion }),
+  version: () => rpc("league_workspace_version", {}),
 };
+const REFRESH_MS = 15000;
 
 /**
  * PITCH Ligas workspace in the cloud (the bridge): the whole league as one
@@ -58,6 +51,24 @@ export function useLeagueWorkspace({ enabled = true, userId = null } = {}) {
     engine?.change(value);
   }, [engine]);
 
+  // A captain (or another device) may save the league while this tab is open: adopt their copy when we
+  // have nothing unsaved, so the next change here never lands in a "conflict".
+  useEffect(() => {
+    if (!engine) return undefined;
+    const tick = async () => {
+      if (document.visibilityState === "hidden") return;
+      const r = await engine.refresh();
+      if (!r?.state) return;
+      rawRef.current = r.state;
+      setRawState(r.state);
+      setMeta({ slug: r.slug, published: r.published });
+    };
+    const id = setInterval(tick, REFRESH_MS);
+    const onShow = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onShow);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", onShow); };
+  }, [engine]);
+
   // Don't lose the last change when the tab closes: save now and warn if it isn't confirmed yet.
   useEffect(() => {
     if (!engine) return undefined;
@@ -89,5 +100,5 @@ export function useLeagueWorkspace({ enabled = true, userId = null } = {}) {
     unlink: () => rpc("league_wa_unlink", {}),
   }), []);
 
-  return { phase, raw, setRaw, sync, slug: meta.slug, published: meta.published, publish, wa, reload, retry: () => engine?.retry() };
+  return { phase, raw, setRaw, sync, slug: meta.slug, published: meta.published, publish, wa, roles: rolesApi, reload, retry: () => engine?.retry() };
 }

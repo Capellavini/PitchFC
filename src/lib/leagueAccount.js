@@ -14,7 +14,7 @@ export const LEAGUE_ACCOUNT_META = Object.freeze({ pitch_product: "league", pitc
 export const isLeagueAccount = (user) => user?.user_metadata?.pitch_product === "league";
 
 // Paths a league account may stay on: the league product, public league pages (/l/<slug>) and the legal pages.
-const STAYS = [/^\/league(\/|$)/, /^\/l\/[a-z0-9-]+$/, /^\/privacidade$/, /^\/termos$/];
+const STAYS = [/^\/league(\/|$)/, /^\/l\/[a-z0-9-]+$/, /^\/l\/convite\/[a-f0-9]{40}$/, /^\/privacidade$/, /^\/termos$/];
 
 /** Where a league account must be sent from `pathname`, or null when it may stay. */
 export function leagueAccountRedirect(user, pathname) {

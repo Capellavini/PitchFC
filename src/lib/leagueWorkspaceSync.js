@@ -61,6 +61,21 @@ export function createWorkspaceSync({ api, debounceMs = 800, onStatus = () => {}
       setStatus(SYNC_STATUS.IDLE);
       return d ? { state: d.state, version, slug: d.slug || null, published: Boolean(d.published) } : { state: null, version: 0, slug: null, published: false };
     },
+    /** Someone else (a captain saving a squad, another device) changed the league: adopt their copy when
+     *  nothing of ours is waiting to be saved. → { state, version, slug, published } or null (nothing newer, or
+     *  we have unsaved changes: those are never replaced, the conflict flow deals with them). */
+    async refresh() {
+      if (stopped || pending !== null || inFlight || !api.version) return null;
+      const v = await api.version();
+      if (v?.error || typeof v?.data !== "number" || v.data <= version) return null;
+      const r = await api.get();
+      if (r.error || !r.data) return null;
+      if (stopped || pending !== null || inFlight) return null; // the user changed something while we fetched: keep theirs
+      version = r.data.version ?? version;
+      attempts = 0;
+      setStatus(SYNC_STATUS.IDLE);
+      return { state: r.data.state, version, slug: r.data.slug || null, published: Boolean(r.data.published) };
+    },
     /** A local change: save soon. */
     change(state) {
       if (stopped) return;

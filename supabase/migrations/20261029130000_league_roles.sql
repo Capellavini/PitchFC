@@ -15,6 +15,7 @@
 --   league_my_memberships                    as ligas em que sou capitão ou atleta
 --   league_member_state                      a liga vista por um membro (sem Fantasy, sem votos)
 --   league_captain_save_squad                o capitão grava o plantel da sua equipa
+--   league_athlete_claim                     o atleta escolhe quem é no plantel (uma vez)
 --   league_workspace_version                 versão da minha liga (a app do dono confirma-a)
 --
 -- Papéis disponíveis nesta fase: captain, athlete. 'manager' fica reservado
@@ -371,6 +372,32 @@ begin
   return jsonb_build_object('version', w.version, 'players', v_new);
 end $$;
 
+-- ── 5b. Athlete claims their own record in the squad ──────
+-- An athlete who came in through the team link picks who they are, once. A record can only be held
+-- by one person; to change it the Gestor removes the access and sends a new invite.
+create or replace function public.league_athlete_claim(p_workspace uuid, p_player_id text)
+returns jsonb language plpgsql volatile security definer set search_path = '' as $$
+declare
+  w public.league_workspaces%rowtype; m public.league_workspace_members%rowtype; v_player jsonb;
+begin
+  if auth.uid() is null then raise exception 'league:not_authenticated' using errcode = '42501'; end if;
+  select * into w from public.league_workspaces where id = p_workspace;
+  if not found then raise exception 'league:forbidden' using errcode = '42501'; end if;
+  select * into m from public.league_workspace_members
+   where workspace_id = w.id and user_id = auth.uid() and role = 'athlete' and status = 'active'
+   order by (player_id is null) desc, created_at limit 1 for update;
+  if not found then raise exception 'league:forbidden' using errcode = '42501'; end if;
+  if m.player_id is not null then raise exception 'league:already_claimed' using errcode = 'P0001'; end if;
+  v_player := public.league_ws_player(w.state, p_player_id);
+  if v_player is null or v_player ->> 'teamId' is distinct from m.team_id then raise exception 'league:player_not_found' using errcode = 'P0002'; end if;
+  if exists (select 1 from public.league_workspace_members x
+              where x.workspace_id = w.id and x.role = 'athlete' and x.player_id = p_player_id and x.status = 'active') then
+    raise exception 'league:player_taken' using errcode = 'P0001';
+  end if;
+  update public.league_workspace_members set player_id = p_player_id where id = m.id;
+  return jsonb_build_object('player_id', p_player_id, 'team_id', m.team_id);
+end $$;
+
 -- ── 6. Owner: cheap version check (the app reloads when someone else saved) ──
 create or replace function public.league_workspace_version()
 returns integer language plpgsql stable security definer set search_path = '' as $$
@@ -386,13 +413,13 @@ revoke all on function
   public.league_invite_create(text, text, text, integer), public.league_invites_list(), public.league_invite_revoke(uuid),
   public.league_invite_preview(text), public.league_invite_accept(text), public.league_members_list(),
   public.league_member_remove(uuid), public.league_my_memberships(), public.league_member_state(uuid),
-  public.league_captain_save_squad(uuid, text, jsonb), public.league_workspace_version()
+  public.league_captain_save_squad(uuid, text, jsonb), public.league_athlete_claim(uuid, text), public.league_workspace_version()
   from public, anon;
 grant execute on function
   public.league_invite_create(text, text, text, integer), public.league_invites_list(), public.league_invite_revoke(uuid),
   public.league_invite_accept(text), public.league_members_list(), public.league_member_remove(uuid),
   public.league_my_memberships(), public.league_member_state(uuid), public.league_captain_save_squad(uuid, text, jsonb),
-  public.league_workspace_version()
+  public.league_athlete_claim(uuid, text), public.league_workspace_version()
   to authenticated;
 grant execute on function public.league_invite_preview(text) to anon, authenticated;
 

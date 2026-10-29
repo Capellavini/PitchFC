@@ -87,3 +87,29 @@ test("stop() ignores later changes", async () => {
   assert.equal(m.queue.length, 0);
   assert.equal(api.saved.length, 0);
 });
+
+test("refresh adopts a newer server copy only when nothing is waiting to be saved", async () => {
+  let server = { version: 3, state: { n: "server" }, slug: "liga", published: true };
+  const api = { get: async () => ({ data: server }), save: async (s, v) => ({ data: { version: v + 1 } }), version: async () => ({ data: server.version }) };
+  const s = createWorkspaceSync({ api });
+  await s.load();
+  assert.equal(await s.refresh(), null, "same version: nothing to adopt");
+  server = { version: 4, state: { n: "captain saved" }, slug: "liga", published: true };
+  assert.deepEqual(await s.refresh(), { state: { n: "captain saved" }, version: 4, slug: "liga", published: true });
+  assert.equal(s.version(), 4);
+  server = { version: 5, state: { n: "again" }, slug: "liga", published: true };
+  s.change({ n: "mine" });
+  assert.equal(await s.refresh(), null, "unsaved local change is never replaced");
+  assert.equal(s.version(), 4);
+});
+
+test("refresh gives up when the user edits while it is fetching, and without a version check", async () => {
+  const m = manual();
+  let s;
+  const api = { get: async () => { s.change({ n: "typed meanwhile" }); return { data: { version: 9, state: { n: "x" } } }; }, save: async () => ({ data: { version: 10 } }), version: async () => ({ data: 9 }) };
+  s = createWorkspaceSync({ api, schedule: m.schedule, cancel: m.cancel });
+  assert.equal(await s.refresh(), null);
+  assert.equal(s.version(), 0);
+  const noApi = createWorkspaceSync({ api: { get: async () => ({ data: null }), save: async () => ({ data: { version: 1 } }) } });
+  assert.equal(await noApi.refresh(), null);
+});
