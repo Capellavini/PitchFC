@@ -43,7 +43,7 @@ export default function LeaguePlayerRequests({ ctx, compact = false }) {
       <div style={{ display: "grid", gap: S.sm }}>
         {pending.map((q) => (
           <div key={q.id} style={{ ...cardStyle, padding: S.md, borderColor: C.orange }}>
-            <div style={{ fontSize: T.body, fontWeight: 800 }}>{q.number != null ? `${q.number} · ` : ""}{q.name}{q.position ? ` · ${q.position}` : ""}</div>
+            <div style={{ fontSize: T.body, fontWeight: 800 }}>{q.number != null ? `${q.number} · ` : ""}{q.name}{q.position ? ` · ${q.position}` : ""}{q.reuseId ? ` · ${t("reinscrição")}` : ""}</div>
             <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{teamName(q.teamId)}</div>
             {refusing === q.id ? (
               <div style={{ display: "grid", gap: S.sm, marginTop: S.md }}>

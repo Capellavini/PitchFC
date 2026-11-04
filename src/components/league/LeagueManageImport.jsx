@@ -5,6 +5,7 @@ import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { importTeams, importRoster, importCalendar } from "../../lib/leagueImport";
 import { importResults } from "../../lib/leagueImportResults";
+import { importHistory } from "../../lib/leagueHistory";
 import SectionLabel from "../SectionLabel";
 import { Card, Actions, FilePick, Preview, rowsOf } from "./LeagueOnboarding";
 
@@ -89,6 +90,20 @@ export default function LeagueManageImport({ ctx }) {
           <div style={{ marginTop: S.md }}>
             <Preview title={tf(t("{n} resultados prontos a entrar"), { n: pending.added })} lines={pending.lines} skipped={pending.skipped} confirmLabel={t("Lançar resultados")}
               onCancel={done} onConfirm={() => { if (act.setup((s) => importResults(s, { competitionId: comp.id, rows: pending.rows }).state, tf(t("{n} resultados lançados — ficam por homologar."), { n: pending.added })).ok) done(); }} />
+          </div>
+        )}
+      </section>
+
+      <section>
+        <SectionLabel>{t("Histórico de épocas")}</SectionLabel>
+        <Card>
+          <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5 }}>{t("Épocas antigas para o arquivo e a página pública: uma linha por equipa, com Época, Competição, Posição, Equipa, J, V, E, D, GM, GS e Pts. O 1.º de cada competição fica como campeão.")}</div>
+          <Actions><FilePick accept={accept} Icon={FileSpreadsheet} label={t("Carregar histórico")} onFile={(f) => read("history", f, (rows) => { const r = importHistory(state, { rows }); return { added: r.added, skipped: r.skipped, lines: r.seasons }; })} /></Actions>
+        </Card>
+        {pending?.kind === "history" && (
+          <div style={{ marginTop: S.md }}>
+            <Preview title={tf(t("{n} épocas prontas a entrar"), { n: pending.added })} lines={pending.lines} skipped={pending.skipped} confirmLabel={t("Arquivar épocas")}
+              onCancel={done} onConfirm={() => { if (act.setup((s) => importHistory(s, { rows: pending.rows }).state, tf(t("{n} épocas arquivadas."), { n: pending.added })).ok) done(); }} />
           </div>
         )}
       </section>

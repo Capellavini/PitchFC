@@ -10,6 +10,8 @@ import * as S from "./leagueSetup.js";
 import { recordResult } from "./leagueResults.js";
 import { SETUP_ERROR } from "./leagueSetupCopy.js";
 import { MODULES, setModule, moduleOn } from "./leagueModules.js";
+import { saveRegulation, regulationOf } from "./leagueRegulation.js";
+import { leagueTable } from "./leagueSeason.js";
 
 export class ProposalError extends Error {
   constructor(code, detail = "") { super(detail ? `${code}: ${detail}` : code); this.code = code; this.detail = detail; }
@@ -296,6 +298,13 @@ export const PROPOSALS = Object.freeze({
       };
     },
   },
+  save_regulation: {
+    label: "Regulamento",
+    description: "Guarda o regulamento da liga para o Adjunto o consultar (campeão e desempates, subidas e descidas, castigos, faltas de comparência). Usa o texto do documento enviado, fiel e só dos artigos que importam; não resumas nem inventes. Substitui o regulamento anterior.",
+    schema: obj({ name: text(80, "Nome do documento"), text: { type: "string", maxLength: 9000, description: "Artigos relevantes, transcritos" } }, ["text"]),
+    clean: (a) => ({ name: str(a.name, 80), text: typeof a.text === "string" ? a.text.trim().slice(0, 9000) : "" }),
+    run: (s, a) => ({ state: saveRegulation(s, { name: a.name, text: a.text }), line: `Regulamento guardado (${a.text.length} caracteres)` }),
+  },
   post_announcement: {
     label: "Comunicado",
     description: "Publica um comunicado da organização, visível aos adeptos na página da liga. Texto curto, factual, sem contactos.",
@@ -360,6 +369,24 @@ export function prepareBatch(state, items) {
  * athlete names, contacts or licences.
  */
 export function adjuntoContext(state, { now = Date.now() } = {}) {
+  const base = adjuntoContextBase(state, { now });
+  // The regulation and the open tables help the Adjunto answer "who is the champion / who goes down"; the request has a hard size
+  // limit, so they only get what is left after everything else, and the regulation is the first thing to be trimmed.
+  const extra = {};
+  const reg = regulationOf(state);
+  const tables = (state.data.competitions || []).filter((c) => c.kind !== "cup" && !c.closedSeasonId).slice(0, 4).map((c) => ({
+    competition: c.name, rows: leagueTable(state, c).slice(0, 24).map((r, i) => [i + 1, r.name || state.data.teams.find((t) => t.id === r.id)?.name || r.id, r.j, r.pts, r.gd]),
+  })).filter((t) => t.rows.some((r) => r[2] > 0));
+  if (tables.length) extra.tables = { columns: ["pos", "equipa", "J", "pts", "dg"], items: tables };
+  let out = { ...base, ...extra };
+  if (reg) {
+    const room = 22_000 - JSON.stringify(out).length - 200;
+    if (room > 300) out = { ...out, regulation: { name: reg.name, text: reg.text.slice(0, Math.min(reg.text.length, room)), truncated: reg.text.length > room } };
+  }
+  return JSON.stringify(out).length > 23_500 ? base : out;
+}
+
+function adjuntoContextBase(state, { now = Date.now() } = {}) {
   const d = state.data;
   const team = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const comp = Object.fromEntries(d.competitions.map((c) => [c.id, c.name]));

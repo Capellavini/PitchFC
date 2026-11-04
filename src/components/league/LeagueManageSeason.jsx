@@ -9,6 +9,10 @@ import BtnPrimary from "../BtnPrimary";
 import BtnGhost from "../BtnGhost";
 import LeagueSeasonArchive from "./LeagueSeasonArchive";
 import LeagueReenroll from "./LeagueReenroll";
+import LeagueSeasonMovements from "./LeagueSeasonMovements";
+import LeagueRegulationCard from "./LeagueRegulationCard";
+import LeagueSupercupCard from "./LeagueSupercupCard";
+import { championQuestion } from "../../lib/leagueRegulation";
 
 const CONFIRM_WORD = "FECHAR";
 
@@ -29,15 +33,17 @@ export default function LeagueManageSeason({ ctx }) {
   const [word, setWord] = useState("");
   const [nextLabel, setNextLabel] = useState(() => nextSeasonLabel(comps[0]?.season || ""));
   const [note, setNote] = useState({}); // seasonId → text
+  const [moves, setMoves] = useState({ list: [], error: null }); // promotions / relegations the Gestor confirmed
 
   const overrides = Object.fromEntries(Object.entries(manual).filter(([, v]) => v.on && v.teamId).map(([id, v]) => [id, { teamId: v.teamId, note: v.note || "" }]));
   const manualOk = Object.entries(manual).every(([, v]) => !v.on || (v.teamId && String(v.note || "").trim().length >= 5));
-  const canSubmit = check.canClose && label.trim().length >= 2 && word.trim().toUpperCase() === CONFIRM_WORD && manualOk;
+  const canSubmit = check.canClose && label.trim().length >= 2 && word.trim().toUpperCase() === CONFIRM_WORD && manualOk && !moves.error;
   const compName = (id) => comps.find((c) => c.id === id)?.short || comps.find((c) => c.id === id)?.name || "";
   const allClosed = comps.length > 0 && open.length === 0;
 
   return (
     <div>
+      <LeagueRegulationCard ctx={ctx} />
       {open.length > 0 && (
         <section style={{ ...cardStyle, marginBottom: S.xl }}>
           <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginBottom: S.sm }}>
@@ -79,6 +85,7 @@ export default function LeagueManageSeason({ ctx }) {
                         <input type="checkbox" checked={m.on} onChange={(e) => setManual((x) => ({ ...x, [c.id]: { ...m, on: e.target.checked } }))} style={{ width: 20, height: 20, accentColor: C.accent }} />
                         {t("A direção decide outro campeão")}
                       </label>
+                      {ctx.act.askAdjunto && <BtnGhost tone="accent" compact onClick={() => ctx.act.askAdjunto(championQuestion(c.name, p ? teamName(p.teamId) : ""))}>{t("Verificar com o regulamento (Adjunto)")}</BtnGhost>}
                       {m.on && (
                         <div style={{ display: "grid", gap: S.sm }}>
                           <select value={m.teamId} onChange={(e) => setManual((x) => ({ ...x, [c.id]: { ...m, teamId: e.target.value } }))} aria-label={t("Campeão")} style={inputStyle()}>
@@ -93,11 +100,13 @@ export default function LeagueManageSeason({ ctx }) {
                 })}
               </div>
 
+              <LeagueSeasonMovements state={state} onChange={(list, error) => setMoves({ list, error })} onAsk={ctx.act.askAdjunto} />
+
               <label htmlFor="ep-label" style={{ display: "block", fontSize: T.meta, color: C.text2, fontWeight: 700, marginBottom: S.xs }}>{t("Nome da época")}</label>
               <input id="ep-label" value={label} onChange={(e) => setLabel(e.target.value.slice(0, 20))} style={{ ...inputStyle(), marginBottom: S.md }} />
               <label htmlFor="ep-word" style={{ display: "block", fontSize: T.meta, color: C.text2, fontWeight: 700, marginBottom: S.xs }}>{tf(t("Para confirmar escreve {w}"), { w: CONFIRM_WORD })}</label>
               <input id="ep-word" value={word} onChange={(e) => setWord(e.target.value)} autoComplete="off" style={{ ...inputStyle(), marginBottom: S.md }} />
-              <BtnPrimary disabled={!canSubmit} onClick={() => { if (act.closeSeason(label, overrides).ok) setWord(""); }}>{t("Fechar época")}</BtnPrimary>
+              <BtnPrimary disabled={!canSubmit} onClick={() => { if (act.closeSeason(label, overrides, moves.list).ok) setWord(""); }}>{t("Fechar época")}</BtnPrimary>
             </>
           )}
         </section>
@@ -115,6 +124,7 @@ export default function LeagueManageSeason({ ctx }) {
         </section>
       )}
 
+      <LeagueSupercupCard ctx={ctx} />
       <LeagueReenroll ctx={ctx} />
 
       <SectionLabel>{t("Épocas anteriores")}</SectionLabel>

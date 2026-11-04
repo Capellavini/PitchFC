@@ -6,6 +6,7 @@
 //   request = { id, teamId, name, number|null, position|null, status: "pending"|"approved"|"refused",
 //               requestedAt, decidedAt?, playerId?, reason? }
 import { SetupError, addPlayer } from "./leagueSetup.js";
+import { reenrollAthletes } from "./leagueSeason.js";
 
 const KEEP_DECIDED = 60; // the archive of decided requests is bounded: the state document has a size limit
 
@@ -36,6 +37,14 @@ const decide = (state, id, patch) => {
 export function approvePlayerRequest(state, id, { at = null } = {}) {
   const rq = list(state).find((r) => r.id === id && r.status === "pending");
   if (!rq) throw new SetupError("request_not_found", id);
+  if (rq.reuseId) {
+    // a former athlete asked back by the captain: the profile (same id) returns from the pool; if the Gestor already
+    // re-registered them, the request is simply closed
+    const there = state.data.players.some((p) => p.id === rq.reuseId);
+    const joined = there ? state : reenrollAthletes(state, [{ id: rq.reuseId, teamId: rq.teamId }]);
+    const { next } = decide(joined, id, { at, fields: { status: "approved", playerId: rq.reuseId } });
+    return withRequests(joined, next);
+  }
   const before = state.data.players.length;
   const joined = addPlayer(state, rq.teamId, { name: rq.name, number: rq.number, position: rq.position || "" });
   const player = joined.data.players[before];
