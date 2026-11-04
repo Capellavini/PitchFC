@@ -6,11 +6,12 @@ import { competitionTitle, teamById } from "../../lib/leagueDemo";
 import { cupBracket } from "../../lib/leagueSeason";
 import SectionLabel from "../SectionLabel";
 import LeagueMatchRow from "./LeagueMatchRow";
+import LeagueCupNextPhase from "./LeagueCupNextPhase";
 
 /** The cup has no table: its "classificação" is the bracket, phase by phase.
  *  The next phase is created once the ties of the current one are official. */
 export default function LeagueCupPhase({ ctx, competition }) {
-  const { state, derived, lang, open } = ctx;
+  const { state, derived, lang, open, role } = ctx;
   const [group] = competitionRounds(state.matches, competition.id);
   const phases = group?.rounds || [];
   const bracket = cupBracket(state, competition);
@@ -41,6 +42,7 @@ export default function LeagueCupPhase({ ctx, competition }) {
           </div>
         </section>
       ))}
+      {role === "manager" && !champion && !ctx.store?.readOnly && <LeagueCupNextPhase ctx={ctx} competition={competition} />}
       <section>
         <SectionLabel>{champion ? t("Campeão") : t("Final")}</SectionLabel>
         {champion ? (

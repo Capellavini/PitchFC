@@ -40,4 +40,10 @@ export const IMPORT_REASON = Object.freeze({
   invalid: "linha inválida",
   team_has_matches: "a equipa já tem jogos",
   has_matches: "já tem jogos",
+  results_columns: "faltam colunas (precisa de Casa, Fora e os golos)",
+  bad_score: "resultado inválido",
+  bad_shootout: "penáltis inválidos (só num empate e sem igualar)",
+  no_match: "este jogo não está no calendário",
+  match_played: "o jogo já tem resultado",
+  match_ambiguous: "há vários jogos: indica a jornada ou a data",
 });

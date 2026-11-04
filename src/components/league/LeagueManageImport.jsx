@@ -4,6 +4,7 @@ import { C, S, T, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { importTeams, importRoster, importCalendar } from "../../lib/leagueImport";
+import { importResults } from "../../lib/leagueImportResults";
 import SectionLabel from "../SectionLabel";
 import { Card, Actions, FilePick, Preview, rowsOf } from "./LeagueOnboarding";
 
@@ -74,6 +75,20 @@ export default function LeagueManageImport({ ctx }) {
           <div style={{ marginTop: S.md }}>
             <Preview title={tf(t("{n} jogos prontos a entrar"), { n: pending.added })} lines={pending.created.length ? [`${t("Equipas novas:")} ${pending.created.join(", ")}`] : []} skipped={pending.skipped} confirmLabel={t("Adicionar jogos")}
               onCancel={done} onConfirm={() => { if (act.setup((s) => importCalendar(s, { competitionId: comp.id, rows: pending.rows }).state, tf(t("{n} jogos adicionados."), { n: pending.added })).ok) done(); }} />
+          </div>
+        )}
+      </section>
+
+      <section>
+        <SectionLabel>{tf(t("Resultados · {c}"), { c: comp.short || comp.name })}</SectionLabel>
+        <Card>
+          <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5 }}>{t("Jogos já realizados: colunas Casa, Fora e os golos (Golos casa e Golos fora, ou Resultado «2-1»). Se houver, Jornada ou Data para distinguir jogos, e Penáltis «4-3» numa eliminatória empatada. Entram como provisórios, sem marcadores; tu homologas.")}</div>
+          <Actions><FilePick accept={accept} Icon={FileSpreadsheet} label={t("Carregar resultados")} onFile={(f) => read("results", f, (rows) => { const r = importResults(state, { competitionId: comp.id, rows }); return { added: r.added, skipped: r.skipped, lines: r.lines }; })} /></Actions>
+        </Card>
+        {pending?.kind === "results" && (
+          <div style={{ marginTop: S.md }}>
+            <Preview title={tf(t("{n} resultados prontos a entrar"), { n: pending.added })} lines={pending.lines} skipped={pending.skipped} confirmLabel={t("Lançar resultados")}
+              onCancel={done} onConfirm={() => { if (act.setup((s) => importResults(s, { competitionId: comp.id, rows: pending.rows }).state, tf(t("{n} resultados lançados — ficam por homologar."), { n: pending.added })).ok) done(); }} />
           </div>
         )}
       </section>

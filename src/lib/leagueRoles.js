@@ -12,6 +12,9 @@ export const inviteTokenFromPath = (path) => TOKEN_RE.exec(String(path || ""))?.
 
 export const invitePath = (token) => `/l/convite/${token}`;
 
+/** The invite token inside whatever a person pasted: the whole link, the path, or the bare 40-character code. */
+export const inviteTokenFromText = (text) => /(?:^|[^a-f0-9])([a-f0-9]{40})(?![a-f0-9])/i.exec(String(text || ""))?.[1]?.toLowerCase() ?? null;
+
 /** Where the sign-in page should send the person afterwards: only ever an invite page
  *  (?next=/l/convite/<token>), never an arbitrary address. */
 export const inviteNextFromSearch = (search) => {
