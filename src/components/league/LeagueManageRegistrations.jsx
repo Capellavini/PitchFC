@@ -84,7 +84,7 @@ function TeamCard({ tm, act }) {
   return (
     <details style={{ ...cardStyle, marginBottom: S.sm, padding: `0 ${S.md}px` }}>
       <summary style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: TOUCH.button + 4, cursor: "pointer", listStyle: "none" }}>
-        <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={26} />
+        <TeamCrest initials={tm.short} color={tm.color} size={26} />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontSize: T.body, fontWeight: 800 }}>{tm.name}</span>
           <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>

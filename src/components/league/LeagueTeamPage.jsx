@@ -40,7 +40,7 @@ export default function LeagueTeamPage({ ctx, teamId }) {
     <div>
       <BackHeader title={team.name} subtitle={`${comp.name} · ${t(comp.category)}`} onBack={back} />
       <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: S.lg, marginBottom: S.md }}>
-        <TeamCrest initials={team.short.slice(0, 2)} color={team.color} size={64} />
+        <TeamCrest initials={team.short} color={team.color} size={64} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ ...displayFont, fontSize: T.h + 2 }}>{team.name}</div>
           <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{[team.founded ? tf(t("Fundada em {y}"), { y: team.founded }) : "", team.venue].filter(Boolean).join(" · ")}</div>

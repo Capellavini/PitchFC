@@ -62,7 +62,7 @@ export default function LeagueTeamHome({ ctx }) {
   return (
     <div>
       <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: S.md, marginBottom: S.xl }}>
-        <TeamCrest initials={team.short.slice(0, 2)} color={team.color} size={56} />
+        <TeamCrest initials={team.short} color={team.color} size={56} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ ...displayFont, fontSize: T.h, lineHeight: 1.15, overflowWrap: "anywhere" }}>{team.name}</div>
           <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>
@@ -101,7 +101,7 @@ export default function LeagueTeamHome({ ctx }) {
       {nextMatch ? (
         <div style={{ ...cardStyle, marginBottom: S.lg }}>
           <div style={{ display: "flex", alignItems: "center", gap: S.md, marginBottom: S.md }}>
-            <TeamCrest initials={opponent.short.slice(0, 2)} color={opponent.color} size={40} />
+            <TeamCrest initials={opponent.short} color={opponent.color} size={40} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: T.cardTitle, fontWeight: 800, overflowWrap: "anywhere" }}>{t("vs")} {opponent.name}</div>
               <div style={{ fontSize: T.meta, color: C.text2, marginTop: 2 }}>{fmtKickoff(nextMatch.kickoff, lang)} · {nextMatch.venue}</div>

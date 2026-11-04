@@ -23,8 +23,11 @@ const int = (v) => Number.isInteger(v) && v >= 0 && v <= 99;
  * @param {Object<string,string[]>} [r.lineups] teamId → player ids that took part
  * @param {string} [r.by] who gets the credit in the log (e.g. "Adjunto · confirmado pelo Gestor")
  * @param {string} [r.at] ISO instant
+ * @param {{home:number, away:number}|null} [r.shootout] penalty shoot-out that decided a drawn knockout tie.
+ *        Only valid when the score is level and the two numbers differ; stored as shootout_goal events
+ *        (no scorers), exactly as the live súmula writes them.
  */
-export function recordResult(state, { matchId, score, goals = [], cards = [], lineups = null, by = "Gestor", at = null }) {
+export function recordResult(state, { matchId, score, goals = [], cards = [], lineups = null, shootout = null, by = "Gestor", at = null }) {
   const m = state.matches.find((x) => x.id === matchId);
   if (!m) throw new SetupError("not_found", matchId);
   if (!["scheduled", "live"].includes(m.state)) throw new SetupError("result_exists");
@@ -57,6 +60,15 @@ export function recordResult(state, { matchId, score, goals = [], cards = [], li
     const teamId = playerTeam[c.playerId];
     if (!sides.has(teamId)) throw new SetupError("not_in_match", c.playerId);
     for (const type of CARD[c.type]) add({ type, teamId, playerId: c.playerId });
+  }
+
+  if (shootout) {
+    const ok = Number.isInteger(shootout.home) && Number.isInteger(shootout.away) && shootout.home >= 0 && shootout.away >= 0 && shootout.home <= 30 && shootout.away <= 30;
+    if (!ok || shootout.home === shootout.away) throw new SetupError("invalid", "shootout_score");
+    if (score.home !== score.away) throw new SetupError("invalid", "shootout_needs_draw");
+    for (const [teamId, total] of [[m.homeId, shootout.home], [m.awayId, shootout.away]]) {
+      for (let i = 0; i < total; i += 1) add({ type: "shootout_goal", teamId, playerId: null });
+    }
   }
 
   let next = { ...m };

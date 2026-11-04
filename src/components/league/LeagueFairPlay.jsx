@@ -36,7 +36,7 @@ export default function LeagueFairPlay({ ctx, competition }) {
                   <td style={{ ...cell, textAlign: "left", paddingLeft: S.md, fontWeight: 800 }}>{i + 1}</td>
                   <td style={{ ...cell, textAlign: "left" }}>
                     <button type="button" onClick={() => open({ kind: "team", id: r.teamId })} style={{ display: "inline-flex", alignItems: "center", gap: S.sm, background: "none", border: "none", color: C.text1, cursor: "pointer", fontSize: T.body, fontWeight: 700, padding: 0, minHeight: 32 }}>
-                      <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={22} /> {tm.name}
+                      <TeamCrest initials={tm.short} color={tm.color} size={22} /> {tm.name}
                     </button>
                   </td>
                   <td style={cell}>{r.yellows}</td>

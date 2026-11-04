@@ -41,7 +41,11 @@ export const PROPOSAL_ERROR = Object.freeze({
 /** Human text for any error thrown while preparing a proposal. */
 export function errorText(e) {
   if (e instanceof S.SetupError) return SETUP_ERROR[e.code] || "Não foi possível aplicar.";
-  if (e instanceof ProposalError) return PROPOSAL_ERROR[e.code] || "Não foi possível aplicar.";
+  if (e instanceof ProposalError) {
+    const base = PROPOSAL_ERROR[e.code] || "Não foi possível aplicar.";
+    // Say WHICH name: «Há mais de um atleta com esse nome» alone does not tell a 40-row batch what to fix.
+    return e.detail && /^(player|team|competition)_(ambiguous|unknown)$/.test(e.code) ? `${base} («${e.detail}»)` : base;
+  }
   return "Não foi possível aplicar.";
 }
 
@@ -118,13 +122,15 @@ function playedMatchOf(s, a) {
 }
 
 /** A person named in a sentence or on a sheet → { player, team } within the two teams of the match. */
-function personIn(s, teams, ref, teamRef) {
+function personIn(s, teams, ref, teamRef, { deferTie = false } = {}) {
   const pool = teamRef ? [findTeam(s, teamRef)] : teams;
   const hits = [];
   for (const tm of pool) {
     try { hits.push({ player: findPlayer(s, tm.id, ref), team: tm }); } catch (e) { if (e.code === "player_ambiguous") throw e; }
   }
   if (hits.length === 1) return hits[0];
+  // Same name in BOTH squads and the sheet gives no team: the caller may settle it by the score.
+  if (hits.length > 1 && deferTie) return { tie: hits };
   throw new ProposalError(hits.length ? "player_ambiguous" : "player_unknown", ref);
 }
 
@@ -221,6 +227,8 @@ export const PROPOSALS = Object.freeze({
     schema: obj({
       home: text(80, "Primeira equipa nomeada"), away: text(80, "Segunda equipa nomeada"),
       home_goals: { type: "integer", minimum: 0, maximum: 99 }, away_goals: { type: "integer", minimum: 0, maximum: 99 },
+      shootout_home: { type: "integer", minimum: 0, maximum: 30, description: "Penáltis marcados pela equipa da casa, só numa eliminatória que acabou empatada" },
+      shootout_away: { type: "integer", minimum: 0, maximum: 30, description: "Penáltis marcados pela equipa visitante, só numa eliminatória que acabou empatada" },
       competition: text(80), round: { type: "integer", minimum: 1, maximum: 60 }, date: text(10, "AAAA-MM-DD, dia do jogo, se for dito"),
       scorers: { type: "array", maxItems: 40, items: obj({ player: text(80), team: text(80), goals: { type: "integer", minimum: 1, maximum: 20 }, own_goal: { type: "boolean", description: "Autogolo: o golo conta para a outra equipa" } }, ["player"]) },
       cards: { type: "array", maxItems: 40, items: obj({ player: text(80), team: text(80), type: { type: "string", enum: ["yellow", "red", "second_yellow"] } }, ["player", "type"]) },
@@ -230,6 +238,8 @@ export const PROPOSALS = Object.freeze({
       home: str(a.home, 80), away: str(a.away, 80),
       home_goals: Number.isInteger(a.home_goals) && a.home_goals >= 0 && a.home_goals <= 99 ? a.home_goals : null,
       away_goals: Number.isInteger(a.away_goals) && a.away_goals >= 0 && a.away_goals <= 99 ? a.away_goals : null,
+      shootout_home: Number.isInteger(a.shootout_home) && a.shootout_home >= 0 && a.shootout_home <= 30 ? a.shootout_home : null,
+      shootout_away: Number.isInteger(a.shootout_away) && a.shootout_away >= 0 && a.shootout_away <= 30 ? a.shootout_away : null,
       competition: str(a.competition, 80), round: Number.isInteger(a.round) && a.round > 0 ? Math.min(60, a.round) : 0, date: date(a.date),
       scorers: (Array.isArray(a.scorers) ? a.scorers : []).slice(0, 40).map((x) => ({ player: str(x?.player, 80), team: str(x?.team, 80), goals: Number.isInteger(x?.goals) ? Math.min(20, Math.max(1, x.goals)) : 1, own_goal: x?.own_goal === true })).filter((x) => x.player),
       cards: (Array.isArray(a.cards) ? a.cards : []).slice(0, 40).map((x) => ({ player: str(x?.player, 80), team: str(x?.team, 80), type: ["yellow", "red", "second_yellow"].includes(x?.type) ? x.type : "yellow" })).filter((x) => x.player),
@@ -242,9 +252,19 @@ export const PROPOSALS = Object.freeze({
       const teams = [x, y];
       const other = (id) => (id === x.id ? y : x);
       const goals = [];
+      const pushGoals = (sc, player, team) => { for (let i = 0; i < sc.goals; i += 1) goals.push(sc.own_goal ? { teamId: other(team.id).id, playerId: player.id, own: true } : { teamId: team.id, playerId: player.id }); };
+      const ties = [];
       for (const sc of a.scorers) {
-        const { player, team } = personIn(s, teams, sc.player, sc.team);
-        for (let i = 0; i < sc.goals; i += 1) goals.push(sc.own_goal ? { teamId: other(team.id).id, playerId: player.id, own: true } : { teamId: team.id, playerId: player.id });
+        const r = personIn(s, teams, sc.player, sc.team, { deferTie: true });
+        if (r.tie) ties.push({ sc, hits: r.tie }); else pushGoals(sc, r.player, r.team);
+      }
+      // A name shared by both squads with no team on the sheet: give the goals to the side whose score is
+      // still short of what the sheet says. If that does not point to exactly one side, ask — never guess.
+      for (const { sc, hits } of ties) {
+        const credited = (id) => goals.filter((g) => g.teamId === id).length;
+        const fits = hits.filter(({ team }) => { const credit = sc.own_goal ? other(team.id).id : team.id; return credited(credit) + sc.goals <= goalsOf[credit]; });
+        if (fits.length !== 1) throw new ProposalError("player_ambiguous", `${sc.player} · ${x.name} × ${y.name}`);
+        pushGoals(sc, fits[0].player, fits[0].team);
       }
       const cards = a.cards.map((c) => { const { player, team } = personIn(s, teams, c.player, c.team); return { teamId: team.id, playerId: player.id, type: c.type }; });
       const lineups = {}; const missing = [];
@@ -256,7 +276,9 @@ export const PROPOSALS = Object.freeze({
       }
       const next = recordResult(s, {
         matchId: match.id, score: { home: goalsOf[match.homeId], away: goalsOf[match.awayId] }, goals, cards,
-        lineups: Object.keys(lineups).length ? lineups : null, by: "Adjunto · confirmado pela direção", at: new Date().toISOString(),
+        lineups: Object.keys(lineups).length ? lineups : null,
+        shootout: a.shootout_home !== null && a.shootout_away !== null ? (match.homeId === x.id ? { home: a.shootout_home, away: a.shootout_away } : { home: a.shootout_away, away: a.shootout_home }) : null,
+        by: "Adjunto · confirmado pela direção", at: new Date().toISOString(),
       });
       const named = a.scorers.map((sc) => `${sc.own_goal ? "autogolo " : ""}${sc.player}${sc.goals > 1 ? ` (${sc.goals})` : ""}`).join(", ");
       const carded = a.cards.map((c) => `${c.player} (${c.type === "red" ? "vermelho" : c.type === "second_yellow" ? "2.º amarelo" : "amarelo"})`).join(", ");
@@ -320,7 +342,7 @@ export function prepareBatch(state, items) {
       cur = r.state;
       out.push({ kind: it.kind, ok: true, line: r.line });
     } catch (e) {
-      out.push({ kind: it.kind, ok: false, line: k.label + (args.name ? ` «${args.name}»` : args.team ? ` · ${args.team}` : ""), error: errorText(e) });
+      out.push({ kind: it.kind, ok: false, line: k.label + (args.name ? ` «${args.name}»` : args.team ? ` · ${args.team}` : args.home && args.away ? ` · ${args.home} × ${args.away}` : ""), error: errorText(e) });
     }
   }
   return { items: out, state: cur, applied: out.filter((x) => x.ok).length, failed: out.filter((x) => !x.ok).length };

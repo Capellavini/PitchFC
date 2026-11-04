@@ -30,7 +30,7 @@ export default function LeagueFanHome({ ctx }) {
   const hero = team ? (
     <div style={{ ...cardStyle, marginBottom: S.xl, borderLeft: `3px solid ${team.color}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: S.md, marginBottom: S.md }}>
-        <TeamCrest initials={team.short.slice(0, 2)} color={team.color} size={56} />
+        <TeamCrest initials={team.short} color={team.color} size={56} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: T.meta, color: C.text2, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("A tua equipa")}</div>
           <div style={{ ...displayFont, fontSize: T.h, lineHeight: 1.15, overflowWrap: "anywhere" }}>{team.name}</div>
@@ -42,7 +42,7 @@ export default function LeagueFanHome({ ctx }) {
         <>
           <div style={{ fontSize: T.meta, color: C.text2, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: S.xs }}>{t("Próximo jogo")}</div>
           <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginBottom: S.xs }}>
-            <TeamCrest initials={opponent.short.slice(0, 2)} color={opponent.color} size={28} />
+            <TeamCrest initials={opponent.short} color={opponent.color} size={28} />
             <span style={{ fontSize: T.cardTitle, fontWeight: 800, overflowWrap: "anywhere" }}>{t("vs")} {opponent.name}</span>
           </div>
           <div style={{ fontSize: T.meta, color: C.text2, marginBottom: S.md }}>{fmtKickoff(h.next.kickoff, lang)} · {h.next.venue}</div>
@@ -148,7 +148,7 @@ export default function LeagueFanHome({ ctx }) {
       <div style={{ display: "flex", flexWrap: "wrap", gap: S.xs }}>
         {more.map((tm) => (
           <button key={tm.id} type="button" onClick={() => act.setPrefs({ followTeamIds: [...h.followIds, tm.id] })} style={{ minHeight: TOUCH.min, display: "inline-flex", alignItems: "center", gap: S.xs, padding: `0 ${S.md}px`, borderRadius: R.pill, border: `1px solid ${C.border}`, background: "transparent", color: C.text1, cursor: "pointer", fontSize: T.meta, fontWeight: 700 }}>
-            <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={18} /> {tm.name}
+            <TeamCrest initials={tm.short} color={tm.color} size={18} /> {tm.name}
           </button>
         ))}
       </div>

@@ -19,7 +19,7 @@ export function dominantColor(pixels) {
     const max = Math.max(r, g, b); const min = Math.min(r, g, b);
     const l = (max + min) / 510;
     const s = max === min ? 0 : (max - min) / (255 - Math.abs(max + min - 255));
-    if (l > 0.93 || l < 0.1 || s < 0.28) continue; // backgrounds, outlines, greys
+    if (l > 0.93 || l < 0.18 || s < 0.28) continue; // backgrounds, outlines, greys, near-black navy (invisible on the dark UI)
     const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
     const cur = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0, w: 0 };
     cur.n += 1; cur.r += r; cur.g += g; cur.b += b; cur.w += 0.5 + s; // vivid shades win ties against muddy ones

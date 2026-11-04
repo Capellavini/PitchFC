@@ -10,7 +10,7 @@ import LeagueResultForm from "./LeagueResultForm";
 /** Gestor-only match operation, by state: start → register events →
  *  end (provisional) → homologate / send to review; reopen a homologated
  *  match for review; postpone; VAR on/off (state only). One primary CTA. */
-export default function LeagueLiveControls({ match, act, onAddEvent, onReason, hasEvents = false }) {
+export default function LeagueLiveControls({ match, act, onAddEvent, onReason, hasEvents = false, cup = false }) {
   const s = match.state;
   const [typing, setTyping] = useState(false);
   // A game that has not been played yet (or is open with nothing recorded) can get its result in one go.
@@ -33,7 +33,7 @@ export default function LeagueLiveControls({ match, act, onAddEvent, onReason, h
           </div>
         </>
       )}
-      {typing && canResult && <LeagueResultForm match={match} act={act} onClose={() => setTyping(false)} />}
+      {typing && canResult && <LeagueResultForm match={match} act={act} cup={cup} onClose={() => setTyping(false)} />}
       {s === "postponed" && (
         <div style={row}><BtnPrimary onClick={() => act.move(match.id, "scheduled", {}, t("Jogo reagendado."))} style={grow}>{t("Voltar a agendar")}</BtnPrimary></div>
       )}

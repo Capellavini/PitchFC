@@ -90,7 +90,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: S.sm }}>
           {[home, null, away].map((tm, i) => (tm ? (
             <button key={tm.id} type="button" onClick={() => open({ kind: "team", id: tm.id })} style={{ background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, minWidth: 0, minHeight: 44, padding: 0 }}>
-              <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={44} />
+              <TeamCrest initials={tm.short} color={tm.color} size={44} />
               <span style={{ fontSize: T.meta, fontWeight: 800, maxWidth: "100%", overflowWrap: "anywhere" }}>{tm.name}</span>
             </button>
           ) : (
@@ -107,7 +107,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
 
       {current === "resumo" && (
         <>
-          {role === "manager" && <LeagueLiveControls match={match} act={act} hasEvents={log.length > 0} onAddEvent={() => setSheet({ kind: "event" })} onReason={onReason} />}
+          {role === "manager" && <LeagueLiveControls match={match} act={act} cup={(state.data.competitions || []).find((c) => c.id === match.competitionId)?.kind === "cup"} hasEvents={log.length > 0} onAddEvent={() => setSheet({ kind: "event" })} onReason={onReason} />}
           {captainHere && <LeagueCaptainTools match={match} teamId={acc.teamId} onLineup={() => setSheet({ kind: "lineup" })} onContest={() => onReason("contest")} />}
 
           <div style={{ ...cardStyle, marginBottom: S.md, display: "grid", gap: S.sm, fontSize: T.body }}>

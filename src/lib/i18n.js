@@ -692,6 +692,7 @@ const EN = {
   // ── Live matchday, read-only for non-organizers ─────────
   "Aguarda o organizador começar o dia de jogo.": "Waiting for the organizer to start matchday.",
   "Empate — a aguardar o desempate por pénaltis.": "Tied — waiting for the penalty shootout result.",
+  "Desempate por penáltis": "Penalty shoot-out", "Penáltis marcados": "Penalties scored", "Os penáltis não podem acabar empatados.": "A shoot-out cannot end level.", "Só para eliminatórias empatadas. Deixa em branco se ainda não souberes.": "Only for drawn knockout ties. Leave blank if you do not know yet.", "Conta": "Account", "Terminar a sessão neste dispositivo": "End the session on this device",
   "A TUA EQUIPA": "YOUR TEAM",
   "Confirmar equipas": "Confirm teams", "Gerir equipas": "Manage teams", "Sorteio, nomes e trocas": "Draw, names and swaps",
   "As equipas foram confirmadas, mas não estás em nenhuma esta ronda.": "Teams were confirmed, but you're not on one this round.",

@@ -23,7 +23,9 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
   const dirty = isSquadDirty(draft, players);
   const set = (key, patch) => setDraft((d) => d.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const setCaptain = (key) => setDraft((d) => d.map((r) => ({ ...r, captain: r.key === key ? !r.captain : false })));
-  const add = () => setDraft((d) => [...d, { key: `new-${Date.now()}-${d.length}`, id: null, name: "", number: "", position: "", captain: false }]);
+  // New rows go to the TOP, next to the button that creates them: at the bottom they
+  // used to land under the sticky save bar.
+  const add = () => setDraft((d) => [{ key: `new-${Date.now()}-${d.length}`, id: null, name: "", number: "", position: "", captain: false }, ...d]);
   const remove = (key) => setDraft((d) => d.filter((r) => r.key !== key));
 
   const save = async () => {
@@ -48,6 +50,7 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
         {t("Acrescenta, corrige ou tira atletas da tua equipa. Só tu e o gestor da liga veem os dados completos. Atletas com jogos registados não podem ser removidos.")}
       </p>
       <SectionLabel>{`${t("Atletas")} · ${draft.length}`}</SectionLabel>
+      <div style={{ marginBottom: S.md }}><BtnGhost onClick={add} disabled={draft.length >= 40}><Plus size={16} aria-hidden /> {t("Acrescentar atleta")}</BtnGhost></div>
       <div style={{ display: "grid", gap: S.sm }}>
         {draft.map((r) => (
           <div key={r.key} style={{ ...cardStyle, display: "grid", gap: S.sm, padding: S.md }}>
@@ -68,9 +71,8 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
         <datalist id="squad-positions">{POSITIONS.map((p) => <option key={p} value={p} />)}</datalist>
       </div>
       {!draft.length && <div style={{ ...cardStyle, color: C.text2 }}>{t("O plantel ainda está vazio. Acrescenta o primeiro atleta.")}</div>}
-      <div style={{ marginTop: S.md }}><BtnGhost onClick={add} disabled={draft.length >= 40}><Plus size={16} aria-hidden /> {t("Acrescentar atleta")}</BtnGhost></div>
       {problems.length > 0 && <ul role="alert" style={{ margin: `${S.md}px 0 0`, paddingLeft: S.lg, color: C.orange, fontSize: T.meta, lineHeight: 1.6 }}>{problems.map((p) => <li key={p}>{t(p)}</li>)}</ul>}
-      <div style={{ position: "sticky", bottom: 88, marginTop: S.xl, display: "flex", gap: S.sm }}>
+      <div style={{ position: "sticky", bottom: 88, marginTop: S.xl, padding: `${S.sm}px 0`, display: "flex", gap: S.sm, background: C.bg }}>
         <BtnPrimary block disabled={busy || !dirty || problems.length > 0} onClick={save}>{busy ? t("A guardar…") : t("Guardar plantel")}</BtnPrimary>
       </div>
     </div>

@@ -201,7 +201,7 @@ export default function LeagueContextApp({ entry = null, store = null }) {
     // Pitch Manager squad (same shape the group demo persists): one write for the lineup AND its Conexão.
     setFantasySquad: (squad) => apply((s) => ({ ...s, fantasyV2: { ...(s.fantasyV2 || {}), [acc.accountId]: squad } }), t("Equipa guardada (só neste navegador).")),
     /** A played game: just the score (provisional, no scorers). */
-    recordResult: (matchId, score) => apply((s) => recordResult(s, { matchId, score, by: who, at: now() }), t("Resultado lançado — fica por homologar.")),
+    recordResult: (matchId, score, shootout = null) => apply((s) => recordResult(s, { matchId, score, shootout, by: who, at: now() }), t("Resultado lançado — fica por homologar.")),
     /** "Subir súmula": the Adjunto chat opens ready for the photo or PDF of this match. */
     sumula: (matchId) => {
       const m = state.matches.find((x) => x.id === matchId);

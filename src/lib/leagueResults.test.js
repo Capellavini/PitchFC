@@ -87,7 +87,9 @@ test("things that must be refused, each with a readable reason", () => {
   assert.match(batch(s, cleaned({ ...base, away: "Porto FC" }).args).items[0].error, /duas equipas diferentes/);
   assert.match(batch(s, cleaned({ ...base, away: "Equipa que não existe" }).args).items[0].error, /equipa/);
   // "Bruno" exists in both squads (Barto, Barbosa) and no team was said: never a guess.
-  assert.match(batch(s, cleaned({ ...base, scorers: [{ player: "Bruno" }] }).args).items[0].error, /mais de um atleta/);
+  assert.match(batch(s, cleaned({ ...base, home_goals: 1, away_goals: 1, scorers: [{ player: "Bruno" }] }).args).items[0].error, /mais de um atleta/);
+  // ...unless the score leaves room for one side only (1–0 with a Bruno in both squads: Corinthians cannot have scored).
+  assert.equal(batch(s, cleaned({ ...base, scorers: [{ player: "Bruno" }] }).args).failed, 0);
   // ...but with the team said it is resolved.
   assert.equal(batch(s, cleaned({ ...base, scorers: [{ player: "Bruno", team: "Porto FC" }] }).args).failed, 0);
 });
@@ -154,4 +156,27 @@ test("the Painel flags a game whose time has passed, then asks to homologate onc
   const after = leagueToday(s1, deriveLeague(s1), { now: later });
   assert.ok(!after.items.some((i) => i.kind === "result" && i.matchId === m.id));
   assert.ok(after.items.some((i) => i.kind === "homologate" && i.matchId === m.id));
+});
+
+// ---- penalty shoot-out in the quick result (found in the 20-team e2e test: a drawn cup tie had no way back) ----
+test("a drawn tie can carry its shoot-out, stored as shootout_goal events with no scorer", () => {
+  const state = league();
+  const m = find(state, teamId(state, "Porto FC"), teamId(state, "Vai.CO"));
+  const out = recordResult(state, { matchId: m.id, score: { home: 1, away: 1 }, shootout: { home: 3, away: 4 } });
+  const log = out.logs[m.id];
+  assert.equal(log.filter((e) => e.type === "shootout_goal").length, 7);
+  assert.deepEqual(matchScore(log, out.matches.find((x) => x.id === m.id)).shootout, { home: 3, away: 4 });
+  assert.throws(() => recordResult(state, { matchId: m.id, score: { home: 2, away: 1 }, shootout: { home: 3, away: 4 } }), /needs_draw|invalid/);
+  assert.throws(() => recordResult(state, { matchId: m.id, score: { home: 1, away: 1 }, shootout: { home: 4, away: 4 } }), /shootout_score|invalid/);
+});
+
+test("the Adjunto passes the shoot-out through, flipped to the match home/away order", () => {
+  const state = league();
+  const m = find(state, teamId(state, "Porto FC"), teamId(state, "Vai.CO"));
+  const homeName = state.data.teams.find((t) => t.id === m.homeId).name;
+  const awayName = state.data.teams.find((t) => t.id === m.awayId).name;
+  const r = batch(state, { home: awayName, away: homeName, home_goals: 0, away_goals: 0, shootout_home: 5, shootout_away: 3, date: day(m.kickoff) });
+  assert.equal(r.failed, 0, JSON.stringify(r.items));
+  const sh = matchScore(r.state.logs[m.id], r.state.matches.find((x) => x.id === m.id)).shootout;
+  assert.deepEqual(sh, { home: 3, away: 5 });
 });

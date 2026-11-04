@@ -107,3 +107,34 @@ test("private data is masked before anything leaves the browser", () => {
   assert.ok(removed >= 4);
   assert.equal(redactPrivate("camisola 7").removed, 0);
 });
+
+// ---- two squads share a first name and the sheet names no team (found in the 20-team e2e test) ----
+const TWO_TEAMS = [
+  { kind: "set_league_info", args: { name: "Liga Teste", city: "Espinho" } },
+  { kind: "add_competition", args: { name: "1.ª Divisão", kind: "league", legs: 1 } },
+  { kind: "add_team", args: { name: "Alfa FC" } },
+  { kind: "add_team", args: { name: "Beta Unidos" } },
+  { kind: "add_players", args: { team: "Alfa FC", players: [{ name: "Rui Silva" }, { name: "Tiago Pinto" }] } },
+  { kind: "add_players", args: { team: "Beta Unidos", players: [{ name: "Rui Costa" }, { name: "Nuno Lopes" }] } },
+  { kind: "generate_fixtures", args: { competition: "1.ª Divisão", start_date: "2026-01-10", times: ["15:00"] } },
+];
+const result = (scorers, home_goals, away_goals) => ({ kind: "record_result", args: { home: "Alfa FC", away: "Beta Unidos", home_goals, away_goals, scorers } });
+
+test("a first name present in both squads is settled by the score, never guessed", () => {
+  const base = batch(TWO_TEAMS).state;
+  // Alfa 1–0: Beta has no goal to credit, so the Rui of Alfa is the scorer
+  const ok = batch([result([{ player: "Rui" }], 1, 0)], base);
+  assert.equal(ok.failed, 0, JSON.stringify(ok.items));
+  // Alfa 1–1 and one "Rui": both sides could take it -> must ask
+  const tie = batch([result([{ player: "Rui", goals: 1 }], 1, 1)], base);
+  assert.equal(tie.failed, 1);
+  assert.match(tie.items[0].error, /Há mais de um atleta/);
+  assert.match(tie.items[0].error, /Rui/, "the message names the person");
+  assert.match(tie.items[0].error, /Alfa FC/, "and the match");
+});
+
+test("a team tag next to the scorer always settles it", () => {
+  const base = batch(TWO_TEAMS).state;
+  const r = batch([result([{ player: "Rui", team: "Beta Unidos" }, { player: "Rui", team: "Alfa FC" }], 1, 1)], base);
+  assert.equal(r.failed, 0, JSON.stringify(r.items));
+});
