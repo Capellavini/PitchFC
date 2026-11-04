@@ -12,7 +12,7 @@
 //                   scorers: [{ playerId, name, teamId, goals, assists, games }], discipline: [{ teamId, yellows, reds }],
 //                   matches: [{ id, round, roundName, kickoff, homeId, awayId, home, away, shootout, scorers: [[playerId, goals]] }] }
 import { activeEvents, countedMatches, matchScore, playerStats, standings } from "./core/league.js";
-import { SetupError } from "./leagueSetup.js";
+import { SetupError, addMatch } from "./leagueSetup.js";
 
 const OFFICIAL = new Set(["homologated", "walkover"]);
 const DONE = new Set(["homologated", "walkover", "cancelled"]);
@@ -55,6 +55,46 @@ export function cupBracket(state, competition) {
   const last = phases[phases.length - 1];
   const final = last && last.ties.length === 1 ? last.ties[0] : null;
   return { phases, champion: final?.winnerId ? { teamId: final.winnerId, matchId: final.matchId } : null };
+}
+
+const PHASE_NAME = { 1: "Final", 2: "Meias-finais", 4: "Quartos de final", 8: "Oitavos de final" };
+
+/** The next phase of a cup, proposed from the winners of the last one: tie 1's winner meets tie 2's, and so on.
+ *  Only when every tie of the last phase is official with a winner. null = nothing to propose (no games yet, a phase
+ *  still open, the final already played) and { reason: "odd" } when the winners cannot be paired (a bye is the Gestor's call). */
+export function nextPhaseProposal(state, competition) {
+  if (!competition || competition.kind !== "cup") return null;
+  const phases = cupBracket(state, competition).phases;
+  const last = phases[phases.length - 1];
+  if (!last || last.ties.length < 1) return null;
+  if (last.ties.some((x) => !x.winnerId)) return null;
+  const winners = last.ties.map((x) => x.winnerId);
+  if (winners.length < 2) return null; // the final: nothing comes after it
+  if (winners.length % 2) return { reason: "odd", round: last.round + 1, winners };
+  const pairs = [];
+  for (let i = 0; i < winners.length; i += 2) pairs.push({ homeId: winners[i], awayId: winners[i + 1] });
+  const games = pairs.length;
+  return { round: last.round + 1, name: PHASE_NAME[games] || `Fase ${last.round + 1}`, pairs };
+}
+
+const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+/** Creates the proposed phase: one game per pair on `date`, the first at `time`, the others `gapMinutes` apart
+ *  (the Gestor can still move each one in the calendar). */
+export function createNextPhase(state, { competitionId, date, time = "15:00", gapMinutes = 0, venue = "" }) {
+  const comp = (state.data.competitions || []).find((c) => c.id === competitionId);
+  const proposal = nextPhaseProposal(state, comp);
+  if (!proposal || proposal.reason) throw new SetupError("nothing_to_add");
+  const [h, m] = String(time).split(":").map(Number);
+  if (!Number.isInteger(h) || !Number.isInteger(m)) throw new SetupError("date_required");
+  const gap = Math.max(0, Math.min(600, Math.round(Number(gapMinutes) || 0)));
+  let next = state;
+  proposal.pairs.forEach((p, i) => {
+    const at = h * 60 + m + i * gap;
+    if (at > 23 * 60 + 59) throw new SetupError("date_required");
+    next = addMatch(next, { competitionId, homeId: p.homeId, awayId: p.awayId, date, time: hhmm(at), venue, round: proposal.round, roundName: proposal.name });
+  });
+  return next;
 }
 
 /** What is still in the way of closing: any game without an official result, a cup without a winner. */

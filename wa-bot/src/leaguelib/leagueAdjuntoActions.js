@@ -35,7 +35,7 @@ export const PROPOSAL_ERROR = Object.freeze({
   roster_empty: "Não há atletas para acrescentar.",
   score_missing: "Falta o resultado (golos de cada equipa).",
   same_team: "Escolhe duas equipas diferentes.",
-  match_played: "Esse jogo já tem resultado. Para o corrigir usa Lances, com motivo.",
+  match_played: "Esse jogo já tem resultado lançado (ou oficial), por isso não o volto a registar. Para o corrigir usa Lances, com motivo.",
   match_unplayed_unknown: "Não encontrei um jogo por jogar entre estas equipas. Se for um jogo novo, marca-o primeiro.",
 });
 
@@ -381,6 +381,11 @@ export function adjuntoContext(state, { now = Date.now() } = {}) {
     awaitingResult: state.matches.filter((m) => m.state === "scheduled" && m.kickoff && Date.parse(m.kickoff) < now)
       .sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff)).slice(0, 12)
       .map((m) => ({ competition: comp[m.competitionId], round: m.round, home: team[m.homeId], away: team[m.awayId], date: lisbonDay(m.kickoff) })),
+    // games that already have a result (provisional or official): so a súmula for one of them is recognised as
+    // "already recorded" instead of "not in the calendar"
+    withResult: state.matches.filter((m) => ["ended_provisional", "in_review", "homologated", "walkover"].includes(m.state) && m.kickoff)
+      .sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff)).slice(0, 12)
+      .map((m) => ({ competition: comp[m.competitionId], round: m.round, home: team[m.homeId], away: team[m.awayId], date: lisbonDay(m.kickoff), state: m.state === "homologated" || m.state === "walkover" ? "official" : "provisional" })),
     modulesOn: MODULES.filter((m) => moduleOn(state, m.id)).map((m) => m.id),
   };
 }

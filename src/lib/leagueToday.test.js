@@ -66,3 +66,14 @@ test("a finished round is done and the recap lists only official results of that
   // the cup semi-final is provisional → not in any recap yet
   assert.equal(roundRecapText({ round: 1, matches: state.matches, scores: derived.scores, teamById, leagueName: "Liga", competitionId: CUP.id }), "");
 });
+
+test("a missing call-up only counts in the days before kick-off, not weeks ahead", () => {
+  const { state } = seed();
+  const moved = { ...state, matches: state.matches.map((m) => (m.round === 3 || m.competitionId === CUP.id ? m : { ...m, state: "homologated" })) };
+  const derived = deriveLeague(moved);
+  const next = moved.matches.filter((m) => m.round === 3 && (m.competitionId || COMPETITION.id) === COMPETITION.id).map((m) => Date.parse(m.kickoff)).sort((a, b) => a - b)[0];
+  const day = 24 * 3600e3;
+  const lineups = (now) => leagueToday(moved, derived, { scope: COMPETITION.id, now }).items.filter((i) => i.kind === "lineup");
+  assert.ok(lineups(next - day).length > 0, "a day before: asks for the call-up");
+  assert.equal(lineups(next - 30 * day).length, 0, "a month before: nothing to do yet");
+});

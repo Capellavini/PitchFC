@@ -11,6 +11,10 @@ const compOf = (m) => m.competitionId || COMPETITION.id;
 /** Urgency order: contest → homologate → live → suspended → lineup → conflict. */
 const ORDER = ["contest", "homologate", "result", "live", "suspended", "lineup", "conflict"];
 
+/** A missing call-up only becomes work this close to kick-off (ms). Before that, a 380-game calendar would open the
+ *  queue with hundreds of "convocatória em falta" that nobody can act on yet. */
+export const LINEUP_WINDOW = 3 * 24 * 3600e3;
+
 /** A game with no result this long after kick-off is waiting for one (ms). */
 export const RESULT_GRACE = 2 * 3600e3;
 
@@ -47,7 +51,9 @@ export function leagueToday(state, derived, { duration = 60, scope = "all", now 
     }
     // Call-ups and suspended players are about the games still to be played in the current round.
     for (const m of roundMatches) {
-      if (m.state === "scheduled") {
+      // no kick-off date: nothing to measure, so it still counts; with one, only when it is near
+      const near = !m.kickoff || Date.parse(m.kickoff) - now <= LINEUP_WINDOW;
+      if (m.state === "scheduled" && near) {
         for (const teamId of [m.homeId, m.awayId]) {
           const lineup = m.lineups?.[teamId] || [];
           if (!lineup.length) items.push({ ...tag, kind: "lineup", key: `lineup-${m.id}-${teamId}`, matchId: m.id, teamId });

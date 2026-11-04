@@ -41,7 +41,8 @@ export default function LeagueAdjunto({ ctx, ask = askAdjunto }) {
   // "Subir súmula" from a match opens the chat with the first line written and the clip pointed at.
   useEffect(() => { if (prefill?.text) setText(prefill.text); }, [prefill?.n]); // eslint-disable-line react-hooks/exhaustive-deps
   const brief = adjuntoBrief(today);
-  const messages = adjuntoLog.length ? adjuntoLog : [{ role: "assistant", text: brief.text, actions: brief.actions }];
+  // The opening line is a live summary, not a saved sentence: it always shows what needs doing now.
+  const messages = adjuntoLog.length ? adjuntoLog.map((m) => (m.opening ? { ...m, text: brief.text, actions: brief.actions } : m)) : [{ role: "assistant", text: brief.text, actions: brief.actions }];
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [adjuntoLog.length, busy]);
 
   const firstOf = (kind) => today.items.find((i) => i.kind === kind);
@@ -67,7 +68,7 @@ export default function LeagueAdjunto({ ctx, ask = askAdjunto }) {
     return undefined;
   };
 
-  const append = (...entries) => setAdjuntoLog((log) => [...(log.length ? log : [messages[0]]), ...entries]);
+  const append = (...entries) => setAdjuntoLog((log) => [...(log.length ? log : [{ ...messages[0], opening: true }]), ...entries]);
 
   const pickFiles = async (list) => {
     for (const file of Array.from(list || [])) {
@@ -89,10 +90,18 @@ export default function LeagueAdjunto({ ctx, ask = askAdjunto }) {
   const send = async (value) => {
     const q = String(value ?? text).trim();
     if ((!q && !files.length) || busy) return;
-    const attachments = files.map((f) => f.attachment);
+    let attachments = files.map((f) => f.attachment);
     const question = q || t("Lê o documento e diz-me o que encontras.");
+    // No new file, but the Adjunto has just asked something (or answered) about one: the answer belongs to that file.
+    // After a proposal the thread is closed, so the old file is not dragged along.
+    if (!attachments.length) {
+      const last = adjuntoLog[adjuntoLog.length - 1];
+      let at = -1;
+      for (let i = adjuntoLog.length - 1; i >= 0 && at < 0; i -= 1) if (adjuntoLog[i].role === "user" && adjuntoLog[i].docs?.length) at = i;
+      if (at >= 0 && adjuntoLog.length - at <= 6 && last?.role === "assistant" && !last.proposal) attachments = adjuntoLog[at].docs;
+    }
     const names = attachments.map((a) => a.name);
-    append({ role: "user", text: question, files: names });
+    append({ role: "user", text: question, files: names, docs: attachments.length ? attachments : undefined });
     setText(""); setFiles([]);
     if (ai === "off") { guided(question, attachments.length ? t("Para ler documentos preciso da IA ativa.") : null); return; }
     setBusy(true);

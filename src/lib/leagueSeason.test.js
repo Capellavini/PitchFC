@@ -5,7 +5,7 @@ import { addCompetition, setLeagueInfo, generateFixtures, addMatch } from "./lea
 import { importTeams, importRoster } from "./leagueImport.js";
 import { recordResult } from "./leagueResults.js";
 import { transition } from "./core/league.js";
-import { closeSeason, newSeason, reenrollAthletes, seasonChecklist, proposedChampions, tieWinner, annotateSeason, nextSeasonLabel } from "./leagueSeason.js";
+import { closeSeason, newSeason, reenrollAthletes, nextPhaseProposal, createNextPhase, seasonChecklist, proposedChampions, tieWinner, annotateSeason, nextSeasonLabel } from "./leagueSeason.js";
 
 const setup = () => {
   let s = setLeagueInfo(emptyLeagueState(), { name: "Liga", city: "Porto" });
@@ -121,4 +121,33 @@ test("notes can be added to a closed season; the next label follows the pattern"
   const noted = annotateSeason(closed, closed.data.seasons[0].id, "Correção da direção: jogo 12 ficou 2–1", { at: "2026-12-10T00:00:00Z" });
   assert.equal(noted.data.seasons[0].notes.length, 1);
   assert.equal(nextSeasonLabel("2026/27"), "2027/28"); assert.equal(nextSeasonLabel("2026"), "2027"); assert.equal(nextSeasonLabel("Outono"), "");
+});
+
+test("the next cup phase is proposed from the winners and created with staggered times", () => {
+  const { s: s0, taca } = setup();
+  const [a, b, c] = ["Alfa", "Beta", "Gama"].map((n) => teamId(s0, n));
+  let s = s0;
+  const play = (home, away, hg, ag, round, name, date) => {
+    s = addMatch(s, { competitionId: taca, homeId: home, awayId: away, date, time: "15:00", round, roundName: name });
+    const m = s.matches[s.matches.length - 1];
+    s = homologate(recordResult(s, { matchId: m.id, score: { home: hg, away: ag } }), m.id);
+  };
+  const comp = () => s.data.competitions.find((x) => x.id === taca);
+  // two semi-finals not finished yet: nothing to propose
+  s = addMatch(s, { competitionId: taca, homeId: a, awayId: b, date: "2026-12-01", time: "15:00", round: 1, roundName: "Meias-finais" });
+  assert.equal(nextPhaseProposal(s, comp()), null);
+  s = { ...s, matches: s.matches.filter((m) => m.competitionId !== taca) };
+  play(a, b, 2, 0, 1, "Meias-finais", "2026-12-01");
+  play(c, b, 0, 1, 1, "Meias-finais", "2026-12-01");
+  // winners: Alfa, Beta → a final
+  const p = nextPhaseProposal(s, comp());
+  assert.equal(p.name, "Final");
+  assert.deepEqual(p.pairs, [{ homeId: a, awayId: b }]);
+  const made = createNextPhase(s, { competitionId: taca, date: "2026-12-10", time: "20:00" });
+  const fin = made.matches.filter((m) => m.competitionId === taca && m.round === 2);
+  assert.equal(fin.length, 1);
+  assert.equal(fin[0].roundName, "Final");
+  // once the final exists nothing more is proposed (its tie is not official yet)
+  assert.equal(nextPhaseProposal(made, made.data.competitions.find((x) => x.id === taca)), null);
+  assert.throws(() => createNextPhase(s0, { competitionId: taca, date: "2026-12-10" }), (e) => e.code === "nothing_to_add");
 });
