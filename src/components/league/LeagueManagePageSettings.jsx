@@ -9,6 +9,7 @@ import LeagueField from "./LeagueField";
 const SECTIONS = [
   { key: "scorers", label: "Artilheiros", hint: "Os melhores marcadores e assistentes da competição." },
   { key: "teams", label: "Equipas", hint: "Os emblemas e nomes das equipas inscritas." },
+  { key: "seasons", label: "Épocas anteriores", hint: "Os campeões, as classificações finais e os marcadores das épocas já fechadas." },
   { key: "signup", label: "Inscrição no Pitch Manager", hint: "Os adeptos deixam o nome e o email para serem avisados quando o Pitch Manager da liga abrir." },
 ];
 

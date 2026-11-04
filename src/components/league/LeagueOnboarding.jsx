@@ -85,11 +85,11 @@ function Say({ name, children }) {
     </div>
   );
 }
-const Card = ({ children, style }) => <div style={{ ...cardStyle, display: "grid", gap: S.md, ...style }}>{children}</div>;
-const Actions = ({ children }) => <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", alignItems: "center" }}>{children}</div>;
+export const Card = ({ children, style }) => <div style={{ ...cardStyle, display: "grid", gap: S.md, ...style }}>{children}</div>;
+export const Actions = ({ children }) => <div style={{ display: "flex", gap: S.sm, flexWrap: "wrap", alignItems: "center" }}>{children}</div>;
 
 /** A button that opens the file chooser; the chosen file goes to `onFile`. */
-function FilePick({ accept, label, Icon = Upload, onFile, ghost = true }) {
+export function FilePick({ accept, label, Icon = Upload, onFile, ghost = true }) {
   const ref = useRef(null);
   const Btn = ghost ? BtnGhost : BtnPrimary;
   return (
@@ -101,7 +101,7 @@ function FilePick({ accept, label, Icon = Upload, onFile, ghost = true }) {
 }
 
 /** What a spreadsheet import found, before anything is saved. */
-function Preview({ title, lines, skipped, onConfirm, onCancel, confirmLabel }) {
+export function Preview({ title, lines, skipped, onConfirm, onCancel, confirmLabel }) {
   return (
     <Card style={{ borderColor: C.accentBorder }}>
       <div style={{ fontWeight: 800 }}>{title}</div>
@@ -117,7 +117,7 @@ function Preview({ title, lines, skipped, onConfirm, onCancel, confirmLabel }) {
 }
 
 /** Reads a file into rows or tells the Gestor why not. */
-async function rowsOf(file, notify) {
+export async function rowsOf(file, notify) {
   const r = await readTableFile(file);
   if (r.error) { notify(t(TABLE_ERROR[r.error] || TABLE_ERROR.unreadable), "error"); return null; }
   if (!r.rows.length) { notify(t("O ficheiro está vazio."), "error"); return null; }

@@ -102,10 +102,10 @@ export default function LeagueMatchPage({ ctx, matchId }) {
         {score.shootout && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{tf(t("Desempate por penáltis: {h}–{a} (não conta no resultado)"), { h: score.shootout.home, a: score.shootout.away })}</div>}
         {score.shootout && (() => {
           const ks = shootoutKicks(log, match);
-          if (!ks.some((k) => k.playerId)) return null;
+          if (!ks.some((k) => k.playerId || k.saved)) return null;
           return (
             <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs, lineHeight: 1.6 }}>
-              {ks.map((k, i) => <span key={k.id || i} style={{ marginRight: S.sm, whiteSpace: "nowrap", color: k.scored ? C.text1 : C.red }}>{k.scored ? "✓" : "✗"} {(k.playerId && playerById?.[k.playerId]?.name) || teamById[k.teamId]?.short || "—"}</span>)}
+              {ks.map((k, i) => <span key={k.id || i} style={{ marginRight: S.sm, whiteSpace: "nowrap", color: k.scored ? C.text1 : k.saved ? C.orange : C.red }}>{k.scored ? "✓" : k.saved ? "🧤" : "✗"} {(k.playerId && playerById?.[k.playerId]?.name) || teamById[k.teamId]?.short || "—"}{k.saved && k.keeperId && playerById?.[k.keeperId] ? ` (${playerById[k.keeperId].name})` : ""}</span>)}
             </div>
           );
         })()}

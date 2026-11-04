@@ -24,8 +24,8 @@ const int = (v) => Number.isInteger(v) && v >= 0 && v <= 99;
  * @param {Object<string,string[]>} [r.lineups] teamId → player ids that took part
  * @param {string} [r.by] who gets the credit in the log (e.g. "Adjunto · confirmado pelo Gestor")
  * @param {string} [r.at] ISO instant
- * @param {{home:number, away:number}|{kicks:{teamId:string, playerId?:string|null, scored:boolean}[]}|null} [r.shootout]
- *        penalty shoot-out that decided a drawn knockout tie. Totals only, or every kick in order (taker, scored/missed).
+ * @param {{home:number, away:number}|{kicks:{teamId:string, playerId?:string|null, scored:boolean, saved?:boolean, keeperId?:string|null}[]}|null} [r.shootout]
+ *        penalty shoot-out that decided a drawn knockout tie. Totals only, or every kick in order (taker, scored / saved by the keeper / missed).
  *        Only valid when the score is level and the two numbers differ; stored as shootout_goal events
  *        (no scorers), exactly as the live súmula writes them.
  */
@@ -79,10 +79,13 @@ export function recordResult(state, { matchId, score, goals = [], cards = [], li
       if (!sides.has(k.teamId)) throw new SetupError("not_in_match", k.teamId);
       if (k.playerId && playerTeam[k.playerId] !== k.teamId) throw new SetupError("not_in_match", k.playerId);
       if (k.scored) made[k.teamId] += 1;
+      if (k.saved && k.scored) throw new SetupError("invalid", "shootout_kick");
+      // the keeper who saved it plays for the OTHER side
+      if (k.keeperId && (!k.saved || !sides.has(playerTeam[k.keeperId]) || playerTeam[k.keeperId] === k.teamId)) throw new SetupError("not_in_match", k.keeperId);
     }
     if (made[m.homeId] === made[m.awayId]) throw new SetupError("invalid", "shootout_score");
     if (score.home !== score.away) throw new SetupError("invalid", "shootout_needs_draw");
-    for (const k of kicks) add({ type: k.scored ? "shootout_goal" : "shootout_miss", teamId: k.teamId, playerId: k.playerId || null });
+    for (const k of kicks) add({ type: k.scored ? "shootout_goal" : "shootout_miss", teamId: k.teamId, playerId: k.playerId || null, ...(k.saved ? { saved: true, keeperId: k.keeperId || null } : {}) });
   }
 
   let next = { ...m };

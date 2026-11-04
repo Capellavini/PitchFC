@@ -29,14 +29,14 @@ test("the first address (/l/<slug>) is recognised, the invite page is not", () =
 });
 
 test("page settings: everything on by default, only what the Gestor changes changes", () => {
-  assert.deepEqual(pageSettings({}), { intro: "", signup: true, scorers: true, teams: true });
-  assert.deepEqual(pageSettings(undefined), { intro: "", signup: true, scorers: true, teams: true });
-  assert.deepEqual(pageSettings({ page: "lixo" }), { intro: "", signup: true, scorers: true, teams: true });
+  assert.deepEqual(pageSettings({}), { intro: "", signup: true, scorers: true, teams: true, seasons: true });
+  assert.deepEqual(pageSettings(undefined), { intro: "", signup: true, scorers: true, teams: true, seasons: true });
+  assert.deepEqual(pageSettings({ page: "lixo" }), { intro: "", signup: true, scorers: true, teams: true, seasons: true });
   const s0 = emptyLeagueState();
   const s1 = setPageSettings(s0, { intro: "  Bem-vindos à nossa liga.  ", signup: false });
-  assert.deepEqual(pageSettings(s1.data.league), { intro: "Bem-vindos à nossa liga.", signup: false, scorers: true, teams: true });
+  assert.deepEqual(pageSettings(s1.data.league), { intro: "Bem-vindos à nossa liga.", signup: false, scorers: true, teams: true, seasons: true });
   const s2 = setPageSettings(s1, { teams: false });
-  assert.deepEqual(pageSettings(s2.data.league), { intro: "Bem-vindos à nossa liga.", signup: false, scorers: true, teams: false });
+  assert.deepEqual(pageSettings(s2.data.league), { intro: "Bem-vindos à nossa liga.", signup: false, scorers: true, teams: false, seasons: true });
   assert.equal(s0.data.league.page, undefined, "the previous state is untouched");
   assert.equal(setPageSettings(s0, { intro: "x".repeat(INTRO_MAX + 50) }).data.league.page.intro.length, INTRO_MAX);
   assert.equal(s2.data.league.name, s0.data.league.name, "the rest of the league is kept");

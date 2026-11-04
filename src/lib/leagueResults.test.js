@@ -212,3 +212,25 @@ test("the Adjunto reads the kicks of a shoot-out from the súmula", () => {
   const sh = matchScore(r.state.logs[m.id], r.state.matches.find((x) => x.id === m.id)).shootout;
   assert.deepEqual(sh, { home: 1, away: 0 });
 });
+
+test("a kick saved by the keeper is kept, with the keeper credited; a keeper from the same side is refused", () => {
+  const state = league();
+  const m = find(state, teamId(state, "Porto FC"), teamId(state, "Vai.CO"));
+  const porto = state.data.players.find((p) => p.name === "Rui Silva");
+  const vai = state.data.players.find((p) => p.name === "Outro Jogador");
+  const homeP = m.homeId === porto.teamId ? porto : vai;
+  const awayP = m.homeId === porto.teamId ? vai : porto;
+  const kicks = [
+    { teamId: m.homeId, playerId: homeP.id, scored: true },
+    { teamId: m.awayId, playerId: awayP.id, scored: false, saved: true, keeperId: homeP.id },
+    { teamId: m.homeId, playerId: null, scored: false },
+  ];
+  const out = recordResult(state, { matchId: m.id, score: { home: 0, away: 0 }, shootout: { kicks } });
+  const mm = out.matches.find((x) => x.id === m.id);
+  assert.deepEqual(shootoutKicks(out.logs[m.id], mm).map((k) => [k.scored, k.saved]), [[true, false], [false, true], [false, false]]);
+  assert.equal(playerStats([{ ...mm, state: "homologated" }], out.logs)[homeP.id].shootoutSaves, 1);
+  // a save by a player of the kicking team, or a "saved" goal, makes no sense
+  const bad = (k) => () => recordResult(state, { matchId: m.id, score: { home: 0, away: 0 }, shootout: { kicks: [{ teamId: m.homeId, playerId: null, scored: true }, k] } });
+  assert.throws(bad({ teamId: m.awayId, playerId: null, scored: false, saved: true, keeperId: awayP.id }), /not_in_match/);
+  assert.throws(bad({ teamId: m.awayId, playerId: null, scored: true, saved: true }), /invalid/);
+});
