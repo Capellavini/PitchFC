@@ -24,7 +24,7 @@ export function legacyLandingSlug(pathname) {
 
 // ── What the Gestor controls on the page ────────────────────
 export const INTRO_MAX = 280;
-export const PAGE_DEFAULTS = Object.freeze({ intro: "", signup: true, scorers: true, teams: true });
+export const PAGE_DEFAULTS = Object.freeze({ intro: "", signup: true, scorers: true, teams: true, seasons: true });
 /** The page settings of a league, defaults filled in (everything is shown until the Gestor hides it). */
 export function pageSettings(league) {
   const p = league?.page && typeof league.page === "object" ? league.page : {};
@@ -33,6 +33,7 @@ export function pageSettings(league) {
     signup: p.signup !== false,
     scorers: p.scorers !== false,
     teams: p.teams !== false,
+    seasons: p.seasons !== false,
   };
 }
 /** Saves the page settings (only the keys passed change). */
@@ -40,7 +41,7 @@ export function setPageSettings(state, patch = {}) {
   const cur = pageSettings(state.data.league);
   const next = { ...cur };
   if (patch.intro !== undefined) next.intro = String(patch.intro ?? "").replace(/\r\n/g, "\n").trim().slice(0, INTRO_MAX);
-  for (const k of ["signup", "scorers", "teams"]) if (patch[k] !== undefined) next[k] = Boolean(patch[k]);
+  for (const k of ["signup", "scorers", "teams", "seasons"]) if (patch[k] !== undefined) next[k] = Boolean(patch[k]);
   return { ...state, data: { ...state.data, league: { ...state.data.league, page: next } } };
 }
 

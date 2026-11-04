@@ -13,6 +13,7 @@ import LandingScorers from "./LandingScorers";
 import LandingTeams from "./LandingTeams";
 import LandingSignup from "./LandingSignup";
 import LeagueStandingsTable from "../LeagueStandingsTable";
+import LeagueSeasonArchive from "../LeagueSeasonArchive";
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif"; // same as the league app
 
@@ -43,6 +44,7 @@ export default function LeagueLanding({ slug, raw, updatedAt }) {
     hasTable && ["classificacao", t("Classificação")],
     showScorers && ["artilheiros", t("Artilheiros")],
     settings.teams && model.teams.length > 0 && ["equipas", t("Equipas")],
+    settings.seasons && (state.data.seasons || []).length > 0 && ["epocas", t("Épocas anteriores")],
     settings.signup && ["pitch-manager", t("Pitch Manager")],
   ].filter(Boolean);
 
@@ -98,6 +100,12 @@ export default function LeagueLanding({ slug, raw, updatedAt }) {
         {settings.teams && model.teams.length > 0 && (
           <LandingSection id="equipas" title={t("Equipas")} brand={ink}>
             <LandingTeams teams={model.teams} />
+          </LandingSection>
+        )}
+
+        {settings.seasons && (state.data.seasons || []).length > 0 && (
+          <LandingSection id="epocas" title={t("Épocas anteriores")} hint={t("Campeões, classificações finais e marcadores.")} brand={ink}>
+            <LeagueSeasonArchive seasons={state.data.seasons} ink={ink} />
           </LandingSection>
         )}
 

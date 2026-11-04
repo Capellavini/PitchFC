@@ -10,6 +10,7 @@ import LeagueRegulation from "./LeagueRegulation";
 import LeagueManageSetup from "./LeagueManageSetup";
 import LeagueManageAccess from "./LeagueManageAccess";
 import LeagueManagePage from "./LeagueManagePage";
+import LeagueManageSeason from "./LeagueManageSeason";
 
 const SECTIONS = [
   { id: "setup", label: "Liga e módulos" },
@@ -21,6 +22,7 @@ const SECTIONS = [
   { id: "reports", label: "Fichas de jogo" },
   { id: "discipline", label: "Disciplina" },
   { id: "regulation", label: "Regulamento" },
+  { id: "season", label: "Época" },
 ];
 
 /** "Gerir liga" — the Gestor's operation area, separate from the follow
@@ -37,6 +39,7 @@ export default function LeagueManage({ ctx, section = "overview", onSection }) {
       <SegmentedControl options={sections} value={section} onChange={onSection} />
       {section === "page" && ctx.live && <LeagueManagePage ctx={ctx} />}
       {section === "access" && hasAccess && <LeagueManageAccess ctx={ctx} />}
+      {section === "season" && <LeagueManageSeason ctx={ctx} />}
       {section === "setup" && <LeagueManageSetup ctx={ctx} />}
       {section === "overview" && <LeagueManageOverview ctx={ctx} onSection={onSection} openMatch={openMatch} />}
       {section === "registrations" && <LeagueManageRegistrations ctx={ctx} />}
