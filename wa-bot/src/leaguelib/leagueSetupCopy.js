@@ -9,6 +9,7 @@ export const SETUP_ERROR = Object.freeze({
   invalid_line: "Uma das linhas do plantel não tem nome. Corrige e tenta outra vez.",
   nothing_to_add: "Cola pelo menos um atleta, um por linha.",
   duplicate_number: "Esse número já existe no plantel.",
+  request_not_found: "Este pedido já não existe ou já foi decidido. Atualiza a página.",
   player_has_history: "O atleta já aparece em convocatórias ou lances e não pode ser removido.",
   calendar_exists: "Esta competição já tem calendário.",
   need_two_teams: "Inscreve pelo menos duas equipas nesta competição.",

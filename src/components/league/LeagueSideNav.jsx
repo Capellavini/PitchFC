@@ -1,8 +1,9 @@
-import { FlaskConical } from "lucide-react";
+import { FlaskConical, LogOut } from "lucide-react";
 import { C, R, S, T, BRAND, displayFont } from "../../theme";
 import { t, getLang } from "../../lib/i18n";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { LG } from "../../lib/leagueCopy";
+import { signOutLeague } from "../../lib/leagueSignOut";
 import { LEAGUE } from "../../lib/leagueDemo";
 import { deskNavFor } from "../../lib/leagueNav";
 import Chip from "../Chip";
@@ -66,6 +67,18 @@ export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onR
       {!live && (
         <div style={{ marginTop: "auto" }}>
           <LeagueRoleSwitcher role={role} onRole={onRole} grid />
+        </div>
+      )}
+
+      {live && (
+        <div style={{ marginTop: "auto" }}>
+          <button type="button" onClick={signOutLeague} style={{
+            display: "flex", alignItems: "center", gap: S.md, width: "100%", minHeight: 44, padding: `0 ${S.md}px`, cursor: "pointer", textAlign: "left",
+            border: "none", borderRadius: R.control, background: "transparent", color: C.text2, fontSize: T.body, fontWeight: 600,
+          }}>
+            <LogOut size={19} strokeWidth={1.8} aria-hidden />
+            <span>{t("Sair")}</span>
+          </button>
         </div>
       )}
     </aside>

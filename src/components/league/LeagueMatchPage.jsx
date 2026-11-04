@@ -4,7 +4,7 @@ import { C, R, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById, modOn } from "../../lib/leagueDemo";
-import { canCorrect, DEMO_RULES } from "../../lib/core/league";
+import { canCorrect, DEMO_RULES, shootoutKicks } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SegmentedControl from "../SegmentedControl";
 import Chip from "../Chip";
@@ -90,7 +90,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: S.sm }}>
           {[home, null, away].map((tm, i) => (tm ? (
             <button key={tm.id} type="button" onClick={() => open({ kind: "team", id: tm.id })} style={{ background: "none", border: "none", color: C.text1, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: S.xs, minWidth: 0, minHeight: 44, padding: 0 }}>
-              <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={44} />
+              <TeamCrest initials={tm.short} color={tm.color} size={44} />
               <span style={{ fontSize: T.meta, fontWeight: 800, maxWidth: "100%", overflowWrap: "anywhere" }}>{tm.name}</span>
             </button>
           ) : (
@@ -100,6 +100,15 @@ export default function LeagueMatchPage({ ctx, matchId }) {
           )))}
         </div>
         {score.shootout && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{tf(t("Desempate por penáltis: {h}–{a} (não conta no resultado)"), { h: score.shootout.home, a: score.shootout.away })}</div>}
+        {score.shootout && (() => {
+          const ks = shootoutKicks(log, match);
+          if (!ks.some((k) => k.playerId)) return null;
+          return (
+            <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs, lineHeight: 1.6 }}>
+              {ks.map((k, i) => <span key={k.id || i} style={{ marginRight: S.sm, whiteSpace: "nowrap", color: k.scored ? C.text1 : C.red }}>{k.scored ? "✓" : "✗"} {(k.playerId && playerById?.[k.playerId]?.name) || teamById[k.teamId]?.short || "—"}</span>)}
+            </div>
+          );
+        })()}
         <div style={{ fontSize: T.meta, color: ["ended_provisional", "in_review", "live"].includes(match.state) ? C.orange : C.text2, marginTop: S.sm, lineHeight: 1.5 }}>{statusLine}</div>
       </div>
 
@@ -107,7 +116,7 @@ export default function LeagueMatchPage({ ctx, matchId }) {
 
       {current === "resumo" && (
         <>
-          {role === "manager" && <LeagueLiveControls match={match} act={act} hasEvents={log.length > 0} onAddEvent={() => setSheet({ kind: "event" })} onReason={onReason} />}
+          {role === "manager" && <LeagueLiveControls match={match} act={act} cup={(state.data.competitions || []).find((c) => c.id === match.competitionId)?.kind === "cup"} hasEvents={log.length > 0} onAddEvent={() => setSheet({ kind: "event" })} onReason={onReason} />}
           {captainHere && <LeagueCaptainTools match={match} teamId={acc.teamId} onLineup={() => setSheet({ kind: "lineup" })} onContest={() => onReason("contest")} />}
 
           <div style={{ ...cardStyle, marginBottom: S.md, display: "grid", gap: S.sm, fontSize: T.body }}>

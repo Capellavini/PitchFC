@@ -173,6 +173,27 @@ export function addPlayers(state, teamId, text) {
   return withData(state, { players: [...state.data.players, ...added] });
 }
 
+/** One athlete into a team's squad (approving a captain's request, or a single add by the Gestor). */
+export function addPlayer(state, teamId, { name, number = null, position = "" }) {
+  const team = state.data.teams.find((t) => t.id === teamId);
+  if (!team) throw new SetupError("not_found", teamId);
+  const nm = clean(name);
+  if (nm.length < 2) throw new SetupError("name_required");
+  const squad = state.data.players.filter((p) => p.teamId === teamId);
+  const num = number === null || number === undefined || number === "" ? null : Number(number);
+  if (num !== null && (!Number.isInteger(num) || num < 0 || num > 99)) throw new SetupError("invalid", "number");
+  if (num !== null && squad.some((p) => p.number === num)) throw new SetupError("duplicate_number", String(num));
+  const taken = new Set(state.data.players.map((p) => p.id));
+  const pos = clean(position) || "MED";
+  const first = nm.split(" ")[0];
+  const player = {
+    id: uniqueId(`${teamId}-p`, nm, taken), teamId, name: nm, nick: nm.split(" ").length > 1 ? `${first} ${nm.split(" ").slice(-1)[0][0]}.` : nm,
+    position: pos, number: num, captain: squad.length === 0, photo: null, attrs: attrsFor(pos),
+    foot: "Direito", nationality: "", age: null, price: 5,
+  };
+  return withData(state, { players: [...state.data.players, player] });
+}
+
 export function setCaptain(state, teamId, playerId) {
   if (!state.data.players.some((p) => p.id === playerId && p.teamId === teamId)) throw new SetupError("not_found", playerId);
   return withData(state, { players: state.data.players.map((p) => (p.teamId === teamId ? { ...p, captain: p.id === playerId } : p)) });

@@ -6,6 +6,8 @@ import { C, displayFont } from "../theme";
  * (hex). Decorative: callers describe the team in text next to it.
  */
 export default function TeamCrest({ initials, color, size = 56 }) {
+  // Up to 3 letters: a league sigla like MAR / MAT must not collapse to the same "MA".
+  const letters = String(initials ?? "").slice(0, 3);
   return (
     <div aria-hidden style={{
       width: size, height: size * 1.14, flexShrink: 0,
@@ -14,7 +16,7 @@ export default function TeamCrest({ initials, color, size = 56 }) {
       display: "flex", alignItems: "center", justifyContent: "center",
       paddingBottom: size * 0.12, boxSizing: "border-box",
     }}>
-      <span style={{ ...displayFont, fontSize: size * 0.36, color: C.bg, lineHeight: 1 }}>{initials}</span>
+      <span style={{ ...displayFont, fontSize: size * (letters.length > 2 ? 0.28 : 0.36), color: C.bg, lineHeight: 1 }}>{letters}</span>
     </div>
   );
 }

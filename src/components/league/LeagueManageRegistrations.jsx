@@ -10,6 +10,7 @@ import BtnGhost from "../BtnGhost";
 import Chip from "../Chip";
 import TeamCrest from "../TeamCrest";
 import LeagueField from "./LeagueField";
+import LeaguePlayerRequests from "./LeaguePlayerRequests";
 
 /** Inscrições: the league's teams and athletes. A team is the same identity
  *  from season to season; its squad is pasted one athlete per line. */
@@ -17,6 +18,7 @@ export default function LeagueManageRegistrations({ ctx }) {
   const { act } = ctx;
   return (
     <div>
+      <LeaguePlayerRequests ctx={ctx} />
       <NewTeam ctx={ctx} />
       {TEAMS.length === 0 && <div style={{ ...cardStyle, color: C.text2, fontSize: T.body }}>{t("Ainda não há equipas. Cria a primeira em «Nova equipa».")}</div>}
       {TEAMS.length > 0 && (
@@ -84,7 +86,7 @@ function TeamCard({ tm, act }) {
   return (
     <details style={{ ...cardStyle, marginBottom: S.sm, padding: `0 ${S.md}px` }}>
       <summary style={{ display: "flex", alignItems: "center", gap: S.md, minHeight: TOUCH.button + 4, cursor: "pointer", listStyle: "none" }}>
-        <TeamCrest initials={tm.short.slice(0, 2)} color={tm.color} size={26} />
+        <TeamCrest initials={tm.short} color={tm.color} size={26} />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontSize: T.body, fontWeight: 800 }}>{tm.name}</span>
           <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>
