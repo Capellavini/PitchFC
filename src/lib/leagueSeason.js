@@ -13,6 +13,7 @@
 //                   matches: [{ id, round, roundName, kickoff, homeId, awayId, home, away, shootout, scorers: [[playerId, goals]] }] }
 import { activeEvents, countedMatches, matchScore, playerStats, standings } from "./core/league.js";
 import { SetupError, addMatch } from "./leagueSetup.js";
+import { normalizeMovements } from "./leagueMovements.js";
 
 const OFFICIAL = new Set(["homologated", "walkover"]);
 const DONE = new Set(["homologated", "walkover", "cancelled"]);
@@ -126,7 +127,7 @@ export function proposedChampions(state) {
   return out;
 }
 
-function leagueTable(state, c) {
+export function leagueTable(state, c) {
   const ids = c.teamIds?.length ? c.teamIds : (state.data.teams || []).map((t) => t.id);
   const byId = Object.fromEntries((state.data.teams || []).map((t) => [t.id, t]));
   const comp = { ...c, teams: ids.map((id) => byId[id]).filter(Boolean) };
@@ -149,6 +150,9 @@ function archiveCompetition(state, c, override) {
     const row = (cards[tid] ||= { teamId: tid, yellows: 0, reds: 0 });
     row.yellows += s.yellows; row.reds += s.reds;
   }
+  // everyone who played or scored, compact: [playerId, games, goals, assists, yellows, reds, mvps]. This is what a career is built from.
+  const statRows = Object.values(stats).filter((s) => s.games || s.goals || s.assists || s.yellows || s.reds || s.mvps)
+    .map((s) => [s.playerId, s.games, s.goals, s.assists, s.yellows, s.reds, s.mvps]);
   const matches = counted.map((m) => {
     const log = state.logs?.[m.id] || [];
     const sc = matchScore(log, m);
@@ -175,11 +179,11 @@ function archiveCompetition(state, c, override) {
     if (!clean(override.note)) throw new SetupError("note_required");
     champion = named(override.teamId, "manual", override.note);
   }
-  return { ...entry, champion, scorers, discipline: Object.values(cards), matches };
+  return { ...entry, champion, scorers, discipline: Object.values(cards), matches, stats: statRows };
 }
 
 /** Freeze every open competition into a new entry of data.seasons. `overrides` = { [competitionId]: { teamId, note } }. */
-export function closeSeason(state, { label, at = null, by = "Gestor", overrides = {} } = {}) {
+export function closeSeason(state, { label, at = null, by = "Gestor", overrides = {}, movements = [] } = {}) {
   const lb = clean(label);
   if (lb.length < 2) throw new SetupError("name_required");
   const check = seasonChecklist(state);
@@ -189,11 +193,12 @@ export function closeSeason(state, { label, at = null, by = "Gestor", overrides 
   const open = (state.data.competitions || []).filter((c) => !c.closedSeasonId);
   const id = `ep-${slug(lb)}`;
   const comps = open.map((c) => archiveCompetition(state, c, overrides[c.id]));
+  const moved = normalizeMovements(state, movements); // promotions and relegations the Gestor confirmed (validated before anything is frozen)
   const teamIds = new Set(comps.flatMap((c) => [...(c.table || []).map((r) => r.teamId), ...(c.bracket || []).flatMap((p) => p.ties.flatMap((t) => [t.homeId, t.awayId])), ...c.matches.flatMap((m) => [m.homeId, m.awayId])]));
   const teams = (state.data.teams || []).filter((t) => teamIds.has(t.id)).map((t) => ({ id: t.id, name: t.name, short: t.short, color: t.color, venue: t.venue || "" }));
-  const ids = new Set([...comps.flatMap((c) => c.scorers.map((s) => s.playerId)), ...comps.flatMap((c) => c.matches.flatMap((m) => m.scorers.map(([p]) => p)))]);
+  const ids = new Set([...comps.flatMap((c) => c.scorers.map((s) => s.playerId)), ...comps.flatMap((c) => c.matches.flatMap((m) => m.scorers.map(([p]) => p))), ...comps.flatMap((c) => (c.stats || []).map((r) => r[0]))]);
   const players = (state.data.players || []).filter((p) => ids.has(p.id)).map((p) => ({ id: p.id, name: p.name, number: p.number ?? null, position: p.position || null, teamId: p.teamId }));
-  const season = { id, label: lb, closedAt: at || new Date().toISOString(), closedBy: by, competitions: comps, teams, players, notes: [] };
+  const season = { id, label: lb, closedAt: at || new Date().toISOString(), closedBy: by, competitions: comps, teams, players, notes: [], ...(moved.length ? { movements: moved } : {}) };
   const closed = new Set(open.map((c) => c.id));
   return {
     ...state,
@@ -244,13 +249,23 @@ export function newSeason(state, { label } = {}) {
     ...(state.data.players || []).filter((p) => !alreadyIn.has(p.id)).map((p) => ({ ...p, teamId: null, captain: false, pastTeamId: p.teamId, pastSeason: last })),
   ];
   const goneMatches = new Set((state.matches || []).filter((m) => gone.has(m.competitionId || first?.id)).map((m) => m.id));
+  const idMap = {};
   const fresh = closed.map((c) => {
     let id = `cp-${slug(c.name)}-${slug(lb)}`; let n = 2;
     while (taken.has(id)) id = `cp-${slug(c.name)}-${slug(lb)}-${n++}`;
     taken.add(id);
+    idMap[c.id] = id;
     const { closedSeasonId, ...rest } = c; // eslint-disable-line no-unused-vars
     return { ...rest, id, season: lb, rounds: 0 };
   });
+  // promoted / relegated teams change division for the new season (the list the Gestor confirmed when closing)
+  const lastSeason = (state.data.seasons || []).find((s) => s.id === closed[0].closedSeasonId);
+  for (const mv of lastSeason?.movements || []) {
+    const from = fresh.find((c) => c.id === idMap[mv.from]); const to = fresh.find((c) => c.id === idMap[mv.to]);
+    if (!from || !to) continue;
+    from.teamIds = (from.teamIds || []).filter((id) => id !== mv.teamId);
+    if (!(to.teamIds || []).includes(mv.teamId)) to.teamIds = [...(to.teamIds || []), mv.teamId];
+  }
   return {
     ...state,
     matches: (state.matches || []).filter((m) => !gone.has(m.competitionId || first?.id)),

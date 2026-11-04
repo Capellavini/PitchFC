@@ -40,6 +40,8 @@ export const IMPORT_REASON = Object.freeze({
   invalid: "linha inválida",
   team_has_matches: "a equipa já tem jogos",
   has_matches: "já tem jogos",
+  history_columns: "faltam colunas (precisa de Época, Competição, Equipa e Pontos)",
+  season_exists: "essa época já está arquivada",
   results_columns: "faltam colunas (precisa de Casa, Fora e os golos)",
   bad_score: "resultado inválido",
   bad_shootout: "penáltis inválidos (só num empate e sem igualar)",

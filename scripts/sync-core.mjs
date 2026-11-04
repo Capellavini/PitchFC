@@ -26,7 +26,7 @@ const isCoreModule = (f) => f.endsWith(".js") && !f.endsWith(".test.js");
 // of core/), so the one relative import into core is rewritten.
 const LIB = join(ROOT, "src", "lib");
 const LIB_DEST = join(ROOT, "wa-bot", "src", "leaguelib");
-export const LEAGUE_LIB = ["leagueAdjuntoActions", "leagueAdjuntoRequest", "leagueAdjuntoPrivacy", "leagueSetup", "leagueSetupCopy", "leagueResults", "leagueModules"];
+export const LEAGUE_LIB = ["leagueAdjuntoActions", "leagueAdjuntoRequest", "leagueAdjuntoPrivacy", "leagueSetup", "leagueSetupCopy", "leagueResults", "leagueModules", "leagueRegulation", "leagueSeason", "leagueMovements"];
 export const LIB_HEADER = "// GENERATED from src/lib — do not edit; run npm run sync:core\n";
 export function expectedLeagueFiles(libDir = LIB) {
   return Object.fromEntries(LEAGUE_LIB.map((n) => [`${n}.js`, LIB_HEADER + lf(readFileSync(join(libDir, `${n}.js`), "utf8")).replace(/from "\.\/core\//g, 'from "../core/')]));

@@ -19,6 +19,8 @@ import { SetupError } from "../../lib/leagueSetup";
 import { recordResult } from "../../lib/leagueResults";
 import { approvePlayerRequest, refusePlayerRequest } from "../../lib/leaguePlayerRequests";
 import { closeSeason, newSeason, annotateSeason, reenrollAthletes } from "../../lib/leagueSeason";
+import { saveRegulation } from "../../lib/leagueRegulation";
+import { createSupercup } from "../../lib/leagueSupercup";
 import { SETUP_ERROR } from "../../lib/leagueSetupCopy";
 import { setModule } from "../../lib/leagueModules";
 import LeagueHeader from "./LeagueHeader";
@@ -210,7 +212,11 @@ export default function LeagueContextApp({ entry = null, store = null }) {
     setFantasySquad: (squad) => apply((s) => ({ ...s, fantasyV2: { ...(s.fantasyV2 || {}), [acc.accountId]: squad } }), t("Equipa guardada (só neste navegador).")),
     approvePlayerRequest: (id) => apply((s) => approvePlayerRequest(s, id, { at: now() }), t("Atleta aprovado e inscrito no plantel.")),
     refusePlayerRequest: (id, reason = "") => apply((s) => refusePlayerRequest(s, id, { reason, at: now() }), t("Pedido recusado.")),
-    closeSeason: (label, overrides = {}) => apply((s) => closeSeason(s, { label, overrides, by: who, at: now() }), t("Época fechada. Os campeões ficam guardados em «Épocas anteriores».")),
+    closeSeason: (label, overrides = {}, movements = []) => apply((s) => closeSeason(s, { label, overrides, movements, by: who, at: now() }), t("Época fechada. Os campeões ficam guardados em «Épocas anteriores».")),
+    saveRegulation: (name, text) => apply((s) => saveRegulation(s, { name, text, at: now() }), String(text || "").trim() ? t("Regulamento guardado.") : t("Regulamento removido.")),
+    createSupercup: (date, time) => apply((s) => createSupercup(s, { date, time }), t("Supertaça criada. Ajusta o campo no calendário, se for preciso.")),
+    /** Opens the Adjunto chat with a question already written (the Gestor sends it). */
+    askAdjunto: (text) => { setAdjuntoPrefill({ text, n: Date.now() }); goTab("adjunto"); },
     newSeason: (label) => apply((s) => newSeason(s, { label }), t("Nova época criada. Em Gerir → Importar carrega o calendário para começar.")),
     reenrollAthletes: (entries) => apply((s) => reenrollAthletes(s, entries), t("Atletas reinscritos nos plantéis.")),
     annotateSeason: (id, text) => apply((s) => annotateSeason(s, id, text, { by: who, at: now() }), t("Nota guardada.")),
