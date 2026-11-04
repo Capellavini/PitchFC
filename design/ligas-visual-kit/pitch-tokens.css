@@ -1,0 +1,74 @@
+/* Opt-in only: not imported by any application. */
+.pitch-redesign {
+  --pitch-space-1: 4px;
+  --pitch-space-2: 8px;
+  --pitch-space-3: 12px;
+  --pitch-space-4: 16px;
+  --pitch-space-6: 24px;
+  --pitch-space-8: 32px;
+  --pitch-space-12: 48px;
+  --pitch-radius-control: 8px;
+  --pitch-radius-panel: 10px;
+  --pitch-radius-dialog: 14px;
+  --pitch-touch-min: 44px;
+  --pitch-type-caption: 12px;
+  --pitch-type-body: 14px;
+  --pitch-type-section: 24px;
+  --pitch-type-title: 40px;
+  --pitch-font-body: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --pitch-font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --pitch-motion-short: 160ms;
+}
+
+.pitch-redesign[data-surface="app"] {
+  --pitch-bg: #0a0f18;
+  --pitch-surface: #121a27;
+  --pitch-raised: #1a2433;
+  --pitch-border: #262e3d;
+  --pitch-text: #ffffff;
+  --pitch-muted: #a7b2c5;
+  --pitch-primary: #c8ff00;
+  --pitch-on-primary: #0a0f18;
+  --pitch-link: #c8ff00;
+  --pitch-success: #70d8ad;
+  --pitch-warning: #f3cb86;
+  --pitch-danger: #ff718b;
+  --pitch-field-line: rgb(200 255 0 / 8%);
+  --pitch-focus: #c8ff00;
+  --pitch-control-border: #607087;
+}
+
+.pitch-redesign[data-surface="public"] {
+  /* Override league variables with createLeaguePalette(), locally per league. */
+  --pitch-bg: #f6f7f9;
+  --pitch-surface: #ffffff;
+  --pitch-raised: #eef1f5;
+  --pitch-border: #dfe4ec;
+  --pitch-text: #151d2a;
+  --pitch-muted: #566376;
+  --pitch-primary: var(--pitch-league-primary, #355bc4);
+  --pitch-on-primary: var(--pitch-league-on-primary, #ffffff);
+  --pitch-link: var(--pitch-league-link, #355bc4);
+  --pitch-focus: var(--pitch-league-link, #355bc4);
+  --pitch-success: #17694c;
+  --pitch-warning: #855208;
+  --pitch-danger: #b92347;
+  --pitch-field-line: rgb(255 255 255 / 10%);
+  --pitch-control-border: #7c8b9f;
+  --pitch-strong-text: #ffffff;
+  --pitch-strong-muted: #cbd6e7;
+  --pitch-strong-success: #8de2be;
+  --pitch-strong-warning: #f3cb86;
+  --pitch-strong-border: rgb(255 255 255 / 24%);
+}
+
+@media (max-width: 640px) {
+  .pitch-redesign {
+    --pitch-type-body: 16px;
+    --pitch-type-title: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pitch-redesign { --pitch-motion-short: 0ms; }
+}

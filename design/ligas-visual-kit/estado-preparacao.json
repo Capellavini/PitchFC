@@ -1,0 +1,14 @@
+{
+  "repository": "Capellavini/PitchFC",
+  "base": "763e385",
+  "branch": "codex/pitch-ligas-redesign",
+  "components": 20,
+  "tests": {
+    "pass": 7,
+    "fail": 0
+  },
+  "previewBuild": "passed",
+  "appIntegrated": false,
+  "featureCodeChanged": false,
+  "browserVisualQA": "pending: Chrome control timeouts"
+}
