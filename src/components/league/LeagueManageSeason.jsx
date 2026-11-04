@@ -8,6 +8,7 @@ import SectionLabel from "../SectionLabel";
 import BtnPrimary from "../BtnPrimary";
 import BtnGhost from "../BtnGhost";
 import LeagueSeasonArchive from "./LeagueSeasonArchive";
+import LeagueReenroll from "./LeagueReenroll";
 
 const CONFIRM_WORD = "FECHAR";
 
@@ -106,13 +107,15 @@ export default function LeagueManageSeason({ ctx }) {
         <section style={{ ...cardStyle, marginBottom: S.xl, borderColor: C.accentBorder }}>
           <h2 style={{ margin: `0 0 ${S.sm}px`, fontSize: T.cardTitle }}>{t("Começar a próxima época")}</h2>
           <p style={{ margin: `0 0 ${S.md}px`, fontSize: T.meta, color: C.text2, lineHeight: 1.5 }}>
-            {t("Cria as mesmas competições, vazias, com as mesmas equipas e plantéis. Os jogos desta época saem do ecrã mas ficam guardados em «Épocas anteriores». Depois é só importar o novo calendário.")}
+            {t("Cria as mesmas competições, vazias, com as mesmas equipas mas sem plantéis: as inscrições dos atletas são decididas de novo. Os perfis ficam guardados e reinscreves quem a organização aceitar. Os jogos desta época saem do ecrã mas ficam em «Épocas anteriores».")}
           </p>
           <label htmlFor="ep-next" style={{ display: "block", fontSize: T.meta, color: C.text2, fontWeight: 700, marginBottom: S.xs }}>{t("Nome da nova época")}</label>
           <input id="ep-next" value={nextLabel} onChange={(e) => setNextLabel(e.target.value.slice(0, 20))} style={{ ...inputStyle(), marginBottom: S.md }} />
           <BtnPrimary disabled={nextLabel.trim().length < 2} onClick={() => act.newSeason(nextLabel)}>{t("Começar nova época")}</BtnPrimary>
         </section>
       )}
+
+      <LeagueReenroll ctx={ctx} />
 
       <SectionLabel>{t("Épocas anteriores")}</SectionLabel>
       {seasons.length === 0 ? <div style={{ ...cardStyle, color: C.text2, fontSize: T.body }}>{t("Ainda não fechaste nenhuma época.")}</div> : (

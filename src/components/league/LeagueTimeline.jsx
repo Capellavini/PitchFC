@@ -24,7 +24,7 @@ export default function LeagueTimeline({ match, log, onCorrect, dir = null }) {
         return (
           <li key={e.id} style={{ display: "flex", alignItems: "center", gap: S.sm, borderBottom: `1px solid ${C.border}`, padding: `${S.sm}px 0`, flexDirection: away ? "row-reverse" : "row", textAlign: away ? "right" : "left" }}>
             <span style={{ width: 34, flexShrink: 0, fontWeight: 800, fontSize: T.meta, color: C.text2, textAlign: "center" }}>{e.minute != null ? `${e.minute}'` : "—"}</span>
-            <span aria-hidden style={{ fontSize: 16, flexShrink: 0 }}>{ICON[e.type]}</span>
+            <span aria-hidden style={{ fontSize: 16, flexShrink: 0 }}>{e.type === "shootout_miss" && e.saved ? "🧤" : ICON[e.type]}</span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", fontSize: T.body, fontWeight: 700, overflowWrap: "anywhere" }}>{who}</span>
               <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>

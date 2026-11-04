@@ -18,7 +18,7 @@ import { tabTitle } from "../../lib/leagueNav";
 import { SetupError } from "../../lib/leagueSetup";
 import { recordResult } from "../../lib/leagueResults";
 import { approvePlayerRequest, refusePlayerRequest } from "../../lib/leaguePlayerRequests";
-import { closeSeason, newSeason, annotateSeason } from "../../lib/leagueSeason";
+import { closeSeason, newSeason, annotateSeason, reenrollAthletes } from "../../lib/leagueSeason";
 import { SETUP_ERROR } from "../../lib/leagueSetupCopy";
 import { setModule } from "../../lib/leagueModules";
 import LeagueHeader from "./LeagueHeader";
@@ -212,6 +212,7 @@ export default function LeagueContextApp({ entry = null, store = null }) {
     refusePlayerRequest: (id, reason = "") => apply((s) => refusePlayerRequest(s, id, { reason, at: now() }), t("Pedido recusado.")),
     closeSeason: (label, overrides = {}) => apply((s) => closeSeason(s, { label, overrides, by: who, at: now() }), t("Época fechada. Os campeões ficam guardados em «Épocas anteriores».")),
     newSeason: (label) => apply((s) => newSeason(s, { label }), t("Nova época criada. Em Gerir → Importar carrega o calendário para começar.")),
+    reenrollAthletes: (entries) => apply((s) => reenrollAthletes(s, entries), t("Atletas reinscritos nos plantéis.")),
     annotateSeason: (id, text) => apply((s) => annotateSeason(s, id, text, { by: who, at: now() }), t("Nota guardada.")),
     /** A played game: just the score (provisional, no scorers). */
     recordResult: (matchId, score, shootout = null) => apply((s) => recordResult(s, { matchId, score, shootout, by: who, at: now() }), t("Resultado lançado — fica por homologar.")),

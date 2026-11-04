@@ -5,7 +5,7 @@ import { addCompetition, setLeagueInfo, generateFixtures, addMatch } from "./lea
 import { importTeams, importRoster } from "./leagueImport.js";
 import { recordResult } from "./leagueResults.js";
 import { transition } from "./core/league.js";
-import { closeSeason, newSeason, seasonChecklist, proposedChampions, tieWinner, annotateSeason, nextSeasonLabel } from "./leagueSeason.js";
+import { closeSeason, newSeason, reenrollAthletes, seasonChecklist, proposedChampions, tieWinner, annotateSeason, nextSeasonLabel } from "./leagueSeason.js";
 
 const setup = () => {
   let s = setLeagueInfo(emptyLeagueState(), { name: "Liga", city: "Porto" });
@@ -97,7 +97,21 @@ test("a new season keeps teams and squads, starts the same competitions empty an
   assert.ok(n.data.competitions.every((c) => c.season === "2027/28" && !c.closedSeasonId && c.id !== liga && c.id !== taca));
   assert.equal(n.data.competitions.find((c) => c.kind === "cup").name, "Taça");
   assert.equal(n.data.competitions.find((c) => c.kind === "league").teamIds.length, 3);
-  assert.equal(n.data.players.length, closed.data.players.length);
+  // squads start empty; the profiles wait in the pool and come back, with the same id, when the organisation accepts them
+  assert.equal(n.data.players.length, 0);
+  assert.equal(n.data.athletePool.length, closed.data.players.length);
+  assert.equal(n.data.teams.length, closed.data.teams.length);
+  const rui = closed.data.players.find((p) => p.name === "Rui Silva");
+  const back = reenrollAthletes(n, [{ id: rui.id }]);
+  assert.equal(back.data.players.length, 1);
+  assert.deepEqual([back.data.players[0].id, back.data.players[0].teamId], [rui.id, rui.teamId]);
+  assert.equal(back.data.athletePool.length, closed.data.players.length - 1);
+  assert.throws(() => reenrollAthletes(n, [{ id: "nope" }]), (e) => e.code === "not_found");
+  // a second new season keeps the leftovers and does not duplicate anyone
+  const closedAgain = { ...back, data: { ...back.data, competitions: back.data.competitions.map((c) => ({ ...c, closedSeasonId: "ep-2027-28" })) } };
+  const again = newSeason(closedAgain, { label: "2028/29" });
+  assert.equal(again.data.athletePool.length, closed.data.players.length);
+  assert.equal(new Set(again.data.athletePool.map((p) => p.id)).size, again.data.athletePool.length);
   assert.equal(n.data.seasons.length, 1, "the archive survives");
 });
 

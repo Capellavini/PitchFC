@@ -182,8 +182,11 @@ export function nextSeasonLabel(label) {
 }
 
 /** Start the next season: new competitions (same name, format, rules, sponsor and teams), no matches, no events.
- *  Teams and squads stay — they are the same identity from season to season. The closed competitions leave the live
- *  document (they live on in data.seasons), which is what keeps it small. */
+ *  Teams stay — they are the same identity from season to season — but SQUADS DO NOT: registering athletes usually
+ *  involves fees and paperwork, so every squad starts empty. Each athlete's profile (same id, so the account and the
+ *  history stay linked) moves to data.athletePool, and the Gestor re-registers whoever the organisation accepts back
+ *  (reenrollAthletes). The closed competitions leave the live document (they live on in data.seasons), which is
+ *  what keeps it small. */
 export function newSeason(state, { label } = {}) {
   const lb = clean(label);
   if (lb.length < 2) throw new SetupError("name_required");
@@ -194,6 +197,12 @@ export function newSeason(state, { label } = {}) {
   const gone = new Set(closed.map((c) => c.id));
   const first = comps.find((c) => c.kind !== "cup") || comps[0];
   const taken = new Set(comps.map((c) => c.id));
+  const last = closed[closed.length - 1]?.season || "";
+  const alreadyIn = new Set((state.data.athletePool || []).map((x) => x.id));
+  const pool = [
+    ...(state.data.athletePool || []),
+    ...(state.data.players || []).filter((p) => !alreadyIn.has(p.id)).map((p) => ({ ...p, teamId: null, captain: false, pastTeamId: p.teamId, pastSeason: last })),
+  ];
   const goneMatches = new Set((state.matches || []).filter((m) => gone.has(m.competitionId || first?.id)).map((m) => m.id));
   const fresh = closed.map((c) => {
     let id = `cp-${slug(c.name)}-${slug(lb)}`; let n = 2;
@@ -207,6 +216,32 @@ export function newSeason(state, { label } = {}) {
     matches: (state.matches || []).filter((m) => !gone.has(m.competitionId || first?.id)),
     logs: Object.fromEntries(Object.entries(state.logs || {}).filter(([id]) => !goneMatches.has(id))),
     fanVotes: {},
-    data: { ...state.data, competitions: fresh },
+    data: { ...state.data, competitions: fresh, players: [], athletePool: pool },
   };
+}
+
+/** Athlete profiles waiting to be registered again, newest team first: [{ ...player, pastTeamId }]. */
+export const athletePool = (state) => (Array.isArray(state?.data?.athletePool) ? state.data.athletePool : []);
+
+/** The organisation accepts athletes back: each entry { id, teamId? } returns from the pool into a squad
+ *  (teamId defaults to the team they played for). Profile and id are kept, so the athlete's account and history
+ *  link up again. A shirt number already taken in that squad is left blank for the Gestor to set. */
+export function reenrollAthletes(state, entries) {
+  const pool = athletePool(state);
+  const picked = new Map();
+  for (const e of entries || []) {
+    const p = pool.find((x) => x.id === e.id);
+    if (!p) throw new SetupError("not_found", String(e.id));
+    const teamId = e.teamId || p.pastTeamId;
+    if (!(state.data.teams || []).some((t) => t.id === teamId)) throw new SetupError("not_found", String(teamId));
+    picked.set(p.id, { p, teamId });
+  }
+  if (!picked.size) throw new SetupError("nothing_to_add");
+  const players = [...state.data.players];
+  for (const { p, teamId } of picked.values()) {
+    const taken = players.some((x) => x.teamId === teamId && p.number != null && x.number === p.number);
+    const { pastTeamId, pastSeason, ...profile } = p; // eslint-disable-line no-unused-vars
+    players.push({ ...profile, teamId, number: taken ? null : p.number ?? null, captain: false });
+  }
+  return { ...state, data: { ...state.data, players, athletePool: pool.filter((x) => !picked.has(x.id)) } };
 }

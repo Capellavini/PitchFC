@@ -30,6 +30,8 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
   const [teamId, setTeamId] = useState(original?.teamId || match.homeId);
   const [playerId, setPlayerId] = useState(original ? (original.playerId || UNKNOWN) : UNKNOWN);
   const [assistId, setAssistId] = useState(original?.assistId || "");
+  const [keeperId, setKeeperId] = useState(original?.keeperId || ""); // shoot-out miss: the keeper who saved it, if it was saved
+  const [saved, setSaved] = useState(original?.saved === true);
   const [minute, setMinute] = useState(original?.minute ?? "");
   const [reason, setReason] = useState("");
   const [voidOnly, setVoidOnly] = useState(false);
@@ -58,6 +60,7 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
         id, type, teamId,
         playerId: playerId === UNKNOWN ? null : playerId,
         assistId: type === "goal" && assistId ? assistId : null,
+        ...(type === "shootout_miss" && saved ? { saved: true, keeperId: keeperId || null } : {}),
         minute: Number.isFinite(min) ? min : null,
         ...(correcting ? { supersedes: original.id, voidReason: reason.trim() } : askReason ? { voidReason: reason.trim() } : {}),
       };
@@ -93,7 +96,7 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
           <span style={label}>{t("Tipo")}</span>
           <div role="radiogroup" aria-label={t("Tipo")} style={{ display: "flex", gap: S.xs, flexWrap: "wrap" }}>
             {TYPES.map((k) => (
-              <button key={k} type="button" role="radio" aria-checked={type === k} onClick={() => { setType(k); setPlayerId(UNKNOWN); setAssistId(""); }} style={pill(type === k)}>{t(EVENT_LABEL[k])}</button>
+              <button key={k} type="button" role="radio" aria-checked={type === k} onClick={() => { setType(k); setPlayerId(UNKNOWN); setAssistId(""); setSaved(false); setKeeperId(""); }} style={pill(type === k)}>{t(EVENT_LABEL[k])}</button>
             ))}
           </div>
           {(type === "shootout_goal" || type === "shootout_miss") && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{t("Penáltis de desempate ficam separados: não entram no resultado nem na lista de marcadores.")}</div>}
@@ -101,7 +104,7 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
           <span style={label}>{type === "own_goal" ? t("Equipa beneficiada") : isCard ? t("Equipa do atleta") : t("Equipa")}</span>
           <div role="radiogroup" aria-label={t("Equipa")} style={{ display: "flex", gap: S.xs, flexWrap: "wrap" }}>
             {[match.homeId, match.awayId].map((tid) => (
-              <button key={tid} type="button" role="radio" aria-checked={teamId === tid} onClick={() => { setTeamId(tid); setPlayerId(UNKNOWN); setAssistId(""); }} style={{ ...pill(teamId === tid), flex: "1 1 120px" }}>{teamById[tid]?.name}</button>
+              <button key={tid} type="button" role="radio" aria-checked={teamId === tid} onClick={() => { setTeamId(tid); setPlayerId(UNKNOWN); setAssistId(""); setKeeperId(""); }} style={{ ...pill(teamId === tid), flex: "1 1 120px" }}>{teamById[tid]?.name}</button>
             ))}
           </div>
 
@@ -119,6 +122,21 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
                 <option value="">{t("Sem assistência")}</option>
                 {options.filter((p) => p.id !== playerId).map((p) => <option key={p.id} value={p.id}>{p.number != null ? `${p.number} · ` : ""}{p.name}</option>)}
               </select>
+            </>
+          )}
+
+          {type === "shootout_miss" && (
+            <>
+              <label style={{ display: "flex", alignItems: "center", gap: S.sm, minHeight: TOUCH.min, fontSize: T.body, cursor: "pointer", marginTop: S.sm }}>
+                <input type="checkbox" checked={saved} onChange={(e) => { setSaved(e.target.checked); setKeeperId(""); }} style={{ width: 20, height: 20, accentColor: C.accent }} />
+                {t("Foi defendido pelo guarda-redes")}
+              </label>
+              {saved && (
+                <select value={keeperId} onChange={(e) => setKeeperId(e.target.value)} aria-label={t("Guarda-redes que defendeu")} style={inputStyle()}>
+                  <option value="">{t("Guarda-redes por identificar")}</option>
+                  {[...squadOf(other)].sort((a, b) => Number(/^(GR|Guarda)/i.test(b.position || "")) - Number(/^(GR|Guarda)/i.test(a.position || ""))).map((p) => <option key={p.id} value={p.id}>{p.number != null ? `${p.number} · ` : ""}{p.name}</option>)}
+                </select>
+              )}
             </>
           )}
 

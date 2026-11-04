@@ -101,6 +101,8 @@ export function appendEvent(log, event) {
     playerId: event.playerId ?? null, assistId: event.assistId ?? null, minute: event.minute ?? null,
     recordedBy: event.recordedBy ?? null, recordedAt: event.recordedAt ?? null,
     supersedes: event.supersedes ?? null, voidReason: event.voidReason ? String(event.voidReason).trim() : null,
+    // a shoot-out kick that did not go in: saved by the keeper (named, when known) or simply missed
+    ...(event.type === "shootout_miss" && event.saved ? { saved: true, keeperId: event.keeperId ?? null } : {}),
   };
   return [...list, clean];
 }
@@ -129,11 +131,12 @@ export function corrections(log) {
 const SHOOTOUT_KICK = new Set(["shootout_goal", "shootout_miss"]);
 
 /** The shoot-out kicks of a match in the order they were taken:
- *  [{ teamId, playerId|null, scored }]. Voided/corrected kicks are already gone (active events). */
+ *  [{ teamId, playerId|null, scored, saved, keeperId|null }]. A kick that did not score was either saved by the
+ *  keeper (saved: true, keeperId when known) or missed. Voided/corrected kicks are already gone (active events). */
 export function shootoutKicks(log, match) {
   return activeEvents(log)
     .filter((e) => e.matchId === match.id && SHOOTOUT_KICK.has(e.type))
-    .map((e) => ({ id: e.id, teamId: e.teamId, playerId: e.playerId ?? null, scored: e.type === "shootout_goal" }));
+    .map((e) => ({ id: e.id, teamId: e.teamId, playerId: e.playerId ?? null, scored: e.type === "shootout_goal", saved: e.type === "shootout_miss" && e.saved === true, keeperId: e.keeperId ?? null }));
 }
 
 const logFor = (logs, matchId) => (Array.isArray(logs) ? logs.filter((e) => e.matchId === matchId) : (logs?.[matchId] || []));
@@ -255,7 +258,7 @@ export function standings(competition, matches, logs, { includeProvisional = fal
   });
 }
 
-const blankStats = (playerId) => ({ playerId, games: 0, goals: 0, assists: 0, ownGoals: 0, yellows: 0, reds: 0, shootoutGoals: 0, shootoutMisses: 0, mvps: 0 });
+const blankStats = (playerId) => ({ playerId, games: 0, goals: 0, assists: 0, ownGoals: 0, yellows: 0, reds: 0, shootoutGoals: 0, shootoutMisses: 0, shootoutSaves: 0, mvps: 0 });
 
 /** Per-player stats from counted matches. Goals exclude own goals and
  *  shootout goals; assists only when recorded; an unknown scorer adds to
@@ -273,6 +276,7 @@ export function playerStats(matches, logs, { includeProvisional = false } = {}) 
       if (e.type === "own_goal" && e.playerId) get(e.playerId).ownGoals++;
       if (e.type === "shootout_goal" && e.playerId) get(e.playerId).shootoutGoals++;
       if (e.type === "shootout_miss" && e.playerId) get(e.playerId).shootoutMisses++;
+      if (e.type === "shootout_miss" && e.saved && e.keeperId) get(e.keeperId).shootoutSaves++;
       if (e.type === "card_yellow") get(e.playerId).yellows++;
       if (e.type === "card_red") get(e.playerId).reds++;
     }
