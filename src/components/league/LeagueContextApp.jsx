@@ -189,6 +189,12 @@ export default function LeagueContextApp({ entry = null, store = null }) {
         : PLAYERS.filter((p) => p.teamId === tid && !(derived.discipline[p.id]?.pending > 0)).map((p) => p.id));
       return { ...next, lineups: { ...next.lineups, [m.homeId]: auto(m.homeId), [m.awayId]: auto(m.awayId) } };
     }), okMsg),
+    /** Several provisional results at once ("homologar a jornada"). Only ended_provisional games; a contested one is skipped. */
+    homologateMany: (ids) => apply((s) => {
+      const want = new Set(ids);
+      const matches = s.matches.map((m) => (want.has(m.id) && m.state === "ended_provisional" ? transition(m, "homologated", { role, by: who, at: now(), teamId: acc.teamId }) : m));
+      return matches.some((m, i) => m !== s.matches[i]) ? { ...s, matches } : s;
+    }, t("Resultados homologados.")),
     setMvp: (matchId, playerId) => apply((s) => setMatch(s, matchId, (m) => setOfficialMvp(m, playerId, { role, by: who, at: now() })), t("Craque oficial definido.")),
     closeVote: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, fanVoteClosed: true })), t("Votação dos adeptos fechada.")),
     vote: (matchId, playerId) => apply((s) => ({
@@ -205,7 +211,7 @@ export default function LeagueContextApp({ entry = null, store = null }) {
     approvePlayerRequest: (id) => apply((s) => approvePlayerRequest(s, id, { at: now() }), t("Atleta aprovado e inscrito no plantel.")),
     refusePlayerRequest: (id, reason = "") => apply((s) => refusePlayerRequest(s, id, { reason, at: now() }), t("Pedido recusado.")),
     closeSeason: (label, overrides = {}) => apply((s) => closeSeason(s, { label, overrides, by: who, at: now() }), t("Época fechada. Os campeões ficam guardados em «Épocas anteriores».")),
-    newSeason: (label) => apply((s) => newSeason(s, { label }), t("Nova época criada. Importa o calendário para começar.")),
+    newSeason: (label) => apply((s) => newSeason(s, { label }), t("Nova época criada. Em Gerir → Importar carrega o calendário para começar.")),
     annotateSeason: (id, text) => apply((s) => annotateSeason(s, id, text, { by: who, at: now() }), t("Nota guardada.")),
     /** A played game: just the score (provisional, no scorers). */
     recordResult: (matchId, score, shootout = null) => apply((s) => recordResult(s, { matchId, score, shootout, by: who, at: now() }), t("Resultado lançado — fica por homologar.")),

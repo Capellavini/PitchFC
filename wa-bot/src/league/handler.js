@@ -35,8 +35,23 @@ export function mediaOf(m) {
 
 const sumLines = (items) => items.map((i) => (i.ok ? `✅ ${i.line}` : `❌ ${i.line} — ${i.error}`)).join("\n");
 
+// What was said a moment ago. Each message used to reach the model alone, so when the Adjunto asked something
+// ("em que data foi o jogo?") the answer arrived with no question and no súmula behind it. The last few turns
+// (and the last document) are kept per account for a few minutes, in memory: it is a conversation, not a record.
+const MEMORY_MS = 15 * 60 * 1000;
+const MEMORY_TURNS = 6;
+
 export function makeLeagueHandler(env) {
   const locks = new Map();
+  const memory = new Map(); // userId → { at, turns: [{role, text}], media }
+  const recall = (userId) => {
+    const m = memory.get(userId);
+    if (!m) return null;
+    if (env.now().getTime() - m.at > MEMORY_MS) { memory.delete(userId); return null; }
+    return m;
+  };
+  const remember = (userId, turns, media) => memory.set(userId, { at: env.now().getTime(), turns: turns.slice(-MEMORY_TURNS), media: media || null });
+  const forget = (userId) => memory.delete(userId);
   const withLock = (key, fn) => {
     const prev = locks.get(key) ?? Promise.resolve();
     const next = prev.catch(() => {}).then(fn);
@@ -57,6 +72,7 @@ export function makeLeagueHandler(env) {
   async function decide(lk, id, yn) {
     const pend = await env.store.pendingFor(lk.user_id);
     if (!pend) return env.send(id.chatJid, T.nothingPending);
+    forget(lk.user_id);
     if (Date.parse(pend.expires_at) < env.now().getTime()) { await env.store.settlePending(pend.id, "expired"); return env.send(id.chatJid, T.expired); }
     if (yn === "no") { await env.store.settlePending(pend.id, "cancelled"); return env.send(id.chatJid, T.cancelled); }
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -81,11 +97,15 @@ export function makeLeagueHandler(env) {
     if (!ws) return env.send(id.chatJid, T.noLeague);
     const state = ws.state;
     if (!state?.data || !Array.isArray(state.matches) || !state.logs) return env.send(id.chatJid, T.badState);
+    const prev = recall(lk.user_id);
+    const said = (text || "Lê o documento e diz-me o que encontras.").slice(0, 1500);
+    // a new document replaces the old one; without one, the previous document stays part of the conversation
+    const doc = media ? { kind: "media", name: media.name || "sumula", media_type: media.media_type, data: media.data } : prev?.media || null;
     let input;
     try {
       input = validateAdjuntoRequest({
-        messages: [{ role: "user", text: (text || "Lê o documento e diz-me o que encontras.").slice(0, 1500) }],
-        attachments: media ? [{ kind: "media", name: media.name || "sumula", media_type: media.media_type, data: media.data }] : [],
+        messages: [...(prev?.turns || []), { role: "user", text: said }],
+        attachments: doc ? [doc] : [],
         context: adjuntoContext(state, { now: env.now().getTime() }),
       });
     } catch { return env.send(id.chatJid, T.invalidMedia); }
@@ -99,9 +119,18 @@ export function makeLeagueHandler(env) {
     } catch (e) { env.log("league wa: model error:", e?.message); return env.send(id.chatJid, T.modelDown); }
     if (result.stop_reason === "refusal") return env.send(id.chatJid, T.notUnderstood);
     const reply = parseAdjuntoReply(result.content);
-    if (!reply.proposals.length) return env.send(id.chatJid, reply.text || T.notUnderstood);
+    const turns = [...(prev?.turns || []), { role: "user", text: said }];
+    if (!reply.proposals.length) {
+      // a question back (or a plain answer): keep the thread so the next message is read as its reply
+      if (reply.text) remember(lk.user_id, [...turns, { role: "assistant", text: reply.text.slice(0, 1500) }], doc);
+      return env.send(id.chatJid, reply.text || T.notUnderstood);
+    }
     const batch = prepareBatch(state, reply.proposals);
-    if (!batch.applied) return env.send(id.chatJid, `${reply.text ? `${reply.text}\n\n` : ""}${T.nothingApplicable(sumLines(batch.items))}`);
+    if (!batch.applied) {
+      remember(lk.user_id, [...turns, { role: "assistant", text: `${reply.text ? `${reply.text} ` : ""}Não consegui aplicar: ${sumLines(batch.items)}`.slice(0, 1500) }], doc);
+      return env.send(id.chatJid, `${reply.text ? `${reply.text}\n\n` : ""}${T.nothingApplicable(sumLines(batch.items))}`);
+    }
+    forget(lk.user_id); // a proposal is waiting for "sim": that is where the thread continues
     // Only what works is kept for the "sim"; what doesn't is shown, with the reason, so it can be said again.
     const keep = reply.proposals.filter((_, i) => batch.items[i]?.ok);
     const summary = sumLines(batch.items);
@@ -112,7 +141,11 @@ export function makeLeagueHandler(env) {
   async function handleLinked(lk, id, text, m) {
     await env.store.touchLink(lk.user_id).catch(() => {});
     const yn = parseYesNo(text);
-    if (yn) return decide(lk, id, yn);
+    // "sim" with nothing to confirm but a question still open is the ANSWER to that question, not a confirmation
+    if (yn) {
+      const pend = await env.store.pendingFor(lk.user_id);
+      if (pend || !recall(lk.user_id)) return decide(lk, id, yn);
+    }
     const n = text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z ]/g, "").trim();
     if (["ajuda", "help", "menu"].includes(n)) return env.send(id.chatJid, T.help);
     if (n === "desligar") { await env.store.deleteLink(lk.user_id); return env.send(id.chatJid, T.unlinked); }

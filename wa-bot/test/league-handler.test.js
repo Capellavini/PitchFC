@@ -206,3 +206,28 @@ test("the model is given today's pending results and never athlete names", async
   assert.match(ctx, /awaitingResult/);
   assert.doesNotMatch(ctx, /Vinicius|Barto|Nuno/);
 });
+
+test("a question the Adjunto asked is remembered: 'sim, está certo' answers it instead of meeting an empty league", async () => {
+  let n = 0;
+  const t = setup({ model: () => (++n === 1
+    ? { stop_reason: "end_turn", content: [{ type: "text", text: "Li a súmula. Em que data foi o jogo?" }] }
+    : tool("propose_record_result", sentenceInput)) });
+  await t.h.onDirectMessage(imageMsg("súmula do Porto"));
+  assert.match(t.sent[0], /Em que data foi o jogo/);
+  // the answer comes with no question and no document of its own
+  await t.h.onDirectMessage(msg("sim, foi a 27 de outubro"));
+  assert.equal(t.calls.model.length, 2, "the answer reached the model, not the 'nothing to confirm' reply");
+  const second = t.calls.model[1].messages;
+  assert.ok(second.some((m) => typeof m.content === "string" && /Em que data foi o jogo/.test(m.content)), "the question is part of the conversation");
+  assert.ok(second.at(-1).content.some((b) => b.type === "image"), "and so is the súmula");
+  assert.match(t.sent[1], /Entendi:/);
+  // the proposal is waiting: now 'sim' is a confirmation
+  await t.h.onDirectMessage(msg("sim"));
+  assert.match(t.sent[2], /aplicad|Feito|✅/i);
+});
+
+test("a 'sim' with no open question and nothing pending is still harmless", async () => {
+  const t = setup({ model: tool("propose_record_result", sentenceInput) });
+  await t.h.onDirectMessage(msg("sim"));
+  assert.equal(t.calls.model.length, 0);
+});

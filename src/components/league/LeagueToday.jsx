@@ -15,6 +15,7 @@ import LeagueMatchRow from "./LeagueMatchRow";
 import AdjuntoText from "./AdjuntoText";
 import LeagueSetupChecklist from "./LeagueSetupChecklist";
 import LeaguePlayerRequests from "./LeaguePlayerRequests";
+import LeagueBulkHomologate from "./LeagueBulkHomologate";
 
 // One entry per kind of work: icon, tone (a C token) and the call to action.
 const KINDS = {
@@ -35,7 +36,7 @@ const sectionTitle = (s) => (s.roundName ? t(s.roundName) : tf(t("Jornada {n}"),
  *  nothing here writes. On a computer it is two columns: what needs you on
  *  the left, where each competition stands on the right. */
 export default function LeagueToday({ ctx }) {
-  const { state, derived, lang, open, notify, scope, setScope, wide, goTab } = ctx;
+  const { state, derived, lang, open, notify, scope, setScope, wide, goTab, act } = ctx;
   const today = leagueToday(state, derived, { scope });
   const byId = Object.fromEntries(state.matches.map((m) => [m.id, m]));
   const openMatch = (id) => open({ kind: "match", id });
@@ -87,6 +88,7 @@ export default function LeagueToday({ ctx }) {
           </div>
         </div>
       )}
+      {!ctx.store?.readOnly && <LeagueBulkHomologate ids={today.items.filter((i) => i.kind === "homologate").map((i) => i.matchId)} act={act} />}
       {today.items.map((it) => {
         const k = KINDS[it.kind];
         const d = describe(it);
