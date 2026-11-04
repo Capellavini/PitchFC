@@ -37,8 +37,8 @@ jobs:
         run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
       - name: Baseline already-applied migrations
         run: |
-          supabase migration repair --remote --status applied \
+          supabase migration repair --remote --yes --status applied \
             20260101000000 20260101000100 20260101000200 \
             20260101000300 20260101000400 20260101000500
       - name: Push new migrations
-        run: supabase db push --remote
+        run: supabase db push --remote --yes
