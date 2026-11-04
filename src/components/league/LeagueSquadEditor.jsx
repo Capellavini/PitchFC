@@ -4,6 +4,7 @@ import { C, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
 import { t } from "../../lib/i18n";
 import { roleErrorText } from "../../lib/leagueRoles";
 import { draftFromPlayers, squadProblems, squadPayload, isSquadDirty } from "../../lib/leagueSquad";
+import { teamPlayerRequests } from "../../lib/leaguePlayerRequests";
 import BackHeader from "../BackHeader";
 import SectionLabel from "../SectionLabel";
 import BtnPrimary from "../BtnPrimary";
@@ -19,6 +20,7 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
   const players = useMemo(() => (state.data.players || []).filter((p) => p.teamId === acc.teamId), [state.data.players, acc.teamId]);
   const [draft, setDraft] = useState(() => draftFromPlayers(players));
   const [busy, setBusy] = useState(false);
+  const requests = teamPlayerRequests(state, acc.teamId);
   const problems = squadProblems(draft);
   const dirty = isSquadDirty(draft, players);
   const set = (key, patch) => setDraft((d) => d.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -33,7 +35,7 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
     const r = await store.saveSquad(acc.teamId, squadPayload(draft));
     setBusy(false);
     if (r.error) { notify(t(roleErrorText(r.error)), "error"); return; }
-    notify(t("Plantel guardado."));
+    notify(r.requested > 0 ? t("Pedido enviado ao gestor. O atleta só entra no plantel depois de aprovado.") : t("Plantel guardado."));
     setDraft(draftFromPlayers(r.players || []));
   };
 
@@ -47,13 +49,14 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
         </div>
       )}
       <p style={{ margin: `0 0 ${S.lg}px`, fontSize: T.meta, color: C.text2, lineHeight: 1.5 }}>
-        {t("Acrescenta, corrige ou tira atletas da tua equipa. Só tu e o gestor da liga veem os dados completos. Atletas com jogos registados não podem ser removidos.")}
+        {t("Corrige os dados dos teus atletas ou tira quem saiu. Um atleta novo é um pedido: só entra no plantel depois de o gestor da liga aprovar. Atletas com jogos registados não podem ser removidos.")}
       </p>
       <SectionLabel>{`${t("Atletas")} · ${draft.length}`}</SectionLabel>
-      <div style={{ marginBottom: S.md }}><BtnGhost onClick={add} disabled={draft.length >= 40}><Plus size={16} aria-hidden /> {t("Acrescentar atleta")}</BtnGhost></div>
+      <div style={{ marginBottom: S.md }}><BtnGhost onClick={add} disabled={draft.length >= 40}><Plus size={16} aria-hidden /> {t("Pedir novo atleta")}</BtnGhost></div>
       <div style={{ display: "grid", gap: S.sm }}>
         {draft.map((r) => (
-          <div key={r.key} style={{ ...cardStyle, display: "grid", gap: S.sm, padding: S.md }}>
+          <div key={r.key} style={{ ...cardStyle, display: "grid", gap: S.sm, padding: S.md, ...(r.id ? {} : { borderColor: C.orange }) }}>
+            {!r.id && <div style={{ fontSize: T.min, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: C.orange }}>{t("Pedido · espera pela aprovação do gestor")}</div>}
             <div style={{ display: "grid", gridTemplateColumns: "64px minmax(0, 1fr)", gap: S.sm }}>
               <input aria-label={t("Número")} inputMode="numeric" value={r.number} onChange={(e) => set(r.key, { number: e.target.value.replace(/\D/g, "").slice(0, 2) })} placeholder="Nº" style={{ ...inputStyle(), textAlign: "center", fontWeight: 900 }} />
               <input aria-label={t("Nome")} value={r.name} onChange={(e) => set(r.key, { name: e.target.value })} maxLength={80} placeholder={t("Nome do atleta")} style={inputStyle()} autoComplete="off" />
@@ -70,6 +73,24 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
         ))}
         <datalist id="squad-positions">{POSITIONS.map((p) => <option key={p} value={p} />)}</datalist>
       </div>
+      {requests.length > 0 && (
+        <div style={{ marginTop: S.xl }}>
+          <SectionLabel>{t("Pedidos de novos atletas")}</SectionLabel>
+          <div style={{ display: "grid", gap: S.xs }}>
+            {requests.slice(0, 12).map((q) => (
+              <div key={q.id} style={{ ...cardStyle, padding: S.md, display: "flex", alignItems: "center", gap: S.md, flexWrap: "wrap" }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontWeight: 800, fontSize: T.body }}>{q.number != null ? `${q.number} · ` : ""}{q.name}</span>
+                  {q.status === "refused" && q.reason && <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>{q.reason}</span>}
+                </span>
+                <span style={{ fontSize: T.meta, fontWeight: 800, color: q.status === "approved" ? C.green : q.status === "refused" ? C.red : C.orange }}>
+                  {q.status === "approved" ? t("Aprovado") : q.status === "refused" ? t("Recusado") : t("À espera do gestor")}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {!draft.length && <div style={{ ...cardStyle, color: C.text2 }}>{t("O plantel ainda está vazio. Acrescenta o primeiro atleta.")}</div>}
       {problems.length > 0 && <ul role="alert" style={{ margin: `${S.md}px 0 0`, paddingLeft: S.lg, color: C.orange, fontSize: T.meta, lineHeight: 1.6 }}>{problems.map((p) => <li key={p}>{t(p)}</li>)}</ul>}
       <div style={{ position: "sticky", bottom: 88, marginTop: S.xl, padding: `${S.sm}px 0`, display: "flex", gap: S.sm, background: C.bg }}>

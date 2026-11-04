@@ -14,6 +14,7 @@ import Chip from "../Chip";
 import LeagueMatchRow from "./LeagueMatchRow";
 import AdjuntoText from "./AdjuntoText";
 import LeagueSetupChecklist from "./LeagueSetupChecklist";
+import LeaguePlayerRequests from "./LeaguePlayerRequests";
 
 // One entry per kind of work: icon, tone (a C token) and the call to action.
 const KINDS = {
@@ -75,6 +76,7 @@ export default function LeagueToday({ ctx }) {
         <BtnGhost tone="accent" onClick={() => goTab("adjunto")}>{tf(t("Falar com o {name}"), { name })}</BtnGhost>
       </div>}
 
+      <LeaguePlayerRequests ctx={ctx} compact />
       <SectionLabel>{today.items.length ? tf(t("Precisa de ti · {n}"), { n: today.items.length }) : t("Precisa de ti")}</SectionLabel>
       {today.items.length === 0 && state.matches.length > 0 && (
         <div style={{ ...cardStyle, display: "flex", gap: S.md, alignItems: "flex-start", marginBottom: S.lg }}>

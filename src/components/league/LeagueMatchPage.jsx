@@ -4,7 +4,7 @@ import { C, R, S, T, cardStyle, displayFont } from "../../theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById, modOn } from "../../lib/leagueDemo";
-import { canCorrect, DEMO_RULES } from "../../lib/core/league";
+import { canCorrect, DEMO_RULES, shootoutKicks } from "../../lib/core/league";
 import BackHeader from "../BackHeader";
 import SegmentedControl from "../SegmentedControl";
 import Chip from "../Chip";
@@ -100,6 +100,15 @@ export default function LeagueMatchPage({ ctx, matchId }) {
           )))}
         </div>
         {score.shootout && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{tf(t("Desempate por penáltis: {h}–{a} (não conta no resultado)"), { h: score.shootout.home, a: score.shootout.away })}</div>}
+        {score.shootout && (() => {
+          const ks = shootoutKicks(log, match);
+          if (!ks.some((k) => k.playerId)) return null;
+          return (
+            <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs, lineHeight: 1.6 }}>
+              {ks.map((k, i) => <span key={k.id || i} style={{ marginRight: S.sm, whiteSpace: "nowrap", color: k.scored ? C.text1 : C.red }}>{k.scored ? "✓" : "✗"} {(k.playerId && playerById?.[k.playerId]?.name) || teamById[k.teamId]?.short || "—"}</span>)}
+            </div>
+          );
+        })()}
         <div style={{ fontSize: T.meta, color: ["ended_provisional", "in_review", "live"].includes(match.state) ? C.orange : C.text2, marginTop: S.sm, lineHeight: 1.5 }}>{statusLine}</div>
       </div>
 

@@ -23,7 +23,8 @@ const int = (v) => Number.isInteger(v) && v >= 0 && v <= 99;
  * @param {Object<string,string[]>} [r.lineups] teamId → player ids that took part
  * @param {string} [r.by] who gets the credit in the log (e.g. "Adjunto · confirmado pelo Gestor")
  * @param {string} [r.at] ISO instant
- * @param {{home:number, away:number}|null} [r.shootout] penalty shoot-out that decided a drawn knockout tie.
+ * @param {{home:number, away:number}|{kicks:{teamId:string, playerId?:string|null, scored:boolean}[]}|null} [r.shootout]
+ *        penalty shoot-out that decided a drawn knockout tie. Totals only, or every kick in order (taker, scored/missed).
  *        Only valid when the score is level and the two numbers differ; stored as shootout_goal events
  *        (no scorers), exactly as the live súmula writes them.
  */
@@ -63,12 +64,24 @@ export function recordResult(state, { matchId, score, goals = [], cards = [], li
   }
 
   if (shootout) {
-    const ok = Number.isInteger(shootout.home) && Number.isInteger(shootout.away) && shootout.home >= 0 && shootout.away >= 0 && shootout.home <= 30 && shootout.away <= 30;
-    if (!ok || shootout.home === shootout.away) throw new SetupError("invalid", "shootout_score");
-    if (score.home !== score.away) throw new SetupError("invalid", "shootout_needs_draw");
-    for (const [teamId, total] of [[m.homeId, shootout.home], [m.awayId, shootout.away]]) {
-      for (let i = 0; i < total; i += 1) add({ type: "shootout_goal", teamId, playerId: null });
+    // Either the kicks one by one (who took them, scored or missed, in order) or just the totals.
+    let kicks = Array.isArray(shootout.kicks) ? shootout.kicks : null;
+    if (!kicks) {
+      const okN = (n) => Number.isInteger(n) && n >= 0 && n <= 30;
+      if (!okN(shootout.home) || !okN(shootout.away)) throw new SetupError("invalid", "shootout_score");
+      kicks = [];
+      for (const [teamId, total] of [[m.homeId, shootout.home], [m.awayId, shootout.away]]) for (let k = 0; k < total; k += 1) kicks.push({ teamId, playerId: null, scored: true });
     }
+    if (kicks.length > 60) throw new SetupError("invalid", "shootout_score");
+    const made = { [m.homeId]: 0, [m.awayId]: 0 };
+    for (const k of kicks) {
+      if (!sides.has(k.teamId)) throw new SetupError("not_in_match", k.teamId);
+      if (k.playerId && playerTeam[k.playerId] !== k.teamId) throw new SetupError("not_in_match", k.playerId);
+      if (k.scored) made[k.teamId] += 1;
+    }
+    if (made[m.homeId] === made[m.awayId]) throw new SetupError("invalid", "shootout_score");
+    if (score.home !== score.away) throw new SetupError("invalid", "shootout_needs_draw");
+    for (const k of kicks) add({ type: k.scored ? "shootout_goal" : "shootout_miss", teamId: k.teamId, playerId: k.playerId || null });
   }
 
   let next = { ...m };

@@ -44,7 +44,7 @@ export default function LeagueMemberApp({ workspaceId }) {
         const r = await rolesApi.saveSquad(workspaceId, teamId, players);
         if (r.error) return { error: r.error };
         await load({ silent: true });
-        return { players: r.data?.players || [] };
+        return { players: r.data?.players || [], requested: r.data?.requested || 0 };
       },
     };
   }, [data, workspaceId, load]);

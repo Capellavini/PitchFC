@@ -4,7 +4,7 @@ import { EVENT_LABEL } from "../../lib/leagueCopy";
 import { playerById as DEMO_PLAYERS, teamById as DEMO_TEAMS } from "../../lib/leagueDemo";
 import { activeEvents } from "../../lib/core/league";
 
-const ICON = { goal: "⚽", own_goal: "⚽", card_yellow: "🟨", card_second_yellow: "🟨🟥", card_red: "🟥", sub: "🔁", shootout_goal: "🎯" };
+const ICON = { goal: "⚽", own_goal: "⚽", card_yellow: "🟨", card_second_yellow: "🟨🟥", card_red: "🟥", sub: "🔁", shootout_goal: "🎯", shootout_miss: "❌" };
 
 /** Lances: the ACTIVE events (corrections applied), home on the left,
  *  away on the right. With `onCorrect` (Gestor, correctable state) each

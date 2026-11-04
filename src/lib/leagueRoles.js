@@ -68,6 +68,7 @@ export const ROLE_ERROR = Object.freeze({
   invalid_player: "Este atleta não pertence à tua equipa.",
   invalid_squad: "Não foi possível ler o plantel.",
   squad_too_large: "O plantel pode ter no máximo 40 atletas.",
+  too_many_requests: "Já tens muitos pedidos de atletas à espera do gestor. Aguarda a decisão.",
   player_has_history: "Este atleta tem jogos ou lances registados e não pode ser removido. Fala com o gestor.",
   already_claimed: "Já escolheste quem és no plantel. Para mudar, fala com o gestor.",
 });

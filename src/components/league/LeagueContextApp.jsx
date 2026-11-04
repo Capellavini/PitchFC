@@ -17,6 +17,7 @@ import { competitionById, LEAGUE, COMPETITION, teamById } from "../../lib/league
 import { tabTitle } from "../../lib/leagueNav";
 import { SetupError } from "../../lib/leagueSetup";
 import { recordResult } from "../../lib/leagueResults";
+import { approvePlayerRequest, refusePlayerRequest } from "../../lib/leaguePlayerRequests";
 import { SETUP_ERROR } from "../../lib/leagueSetupCopy";
 import { setModule } from "../../lib/leagueModules";
 import LeagueHeader from "./LeagueHeader";
@@ -200,6 +201,8 @@ export default function LeagueContextApp({ entry = null, store = null }) {
     toggleVar: (matchId) => apply((s) => setMatch(s, matchId, (m) => ({ ...m, var: { enabled: !m.var?.enabled } }))),
     // Pitch Manager squad (same shape the group demo persists): one write for the lineup AND its Conexão.
     setFantasySquad: (squad) => apply((s) => ({ ...s, fantasyV2: { ...(s.fantasyV2 || {}), [acc.accountId]: squad } }), t("Equipa guardada (só neste navegador).")),
+    approvePlayerRequest: (id) => apply((s) => approvePlayerRequest(s, id, { at: now() }), t("Atleta aprovado e inscrito no plantel.")),
+    refusePlayerRequest: (id, reason = "") => apply((s) => refusePlayerRequest(s, id, { reason, at: now() }), t("Pedido recusado.")),
     /** A played game: just the score (provisional, no scorers). */
     recordResult: (matchId, score, shootout = null) => apply((s) => recordResult(s, { matchId, score, shootout, by: who, at: now() }), t("Resultado lançado — fica por homologar.")),
     /** "Subir súmula": the Adjunto chat opens ready for the photo or PDF of this match. */
@@ -220,7 +223,7 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   const manager = role === "manager";
   const desktop = wide && !entering; // computer layout for every role: sidebar + wide content
   // Only the Gestor looks across competitions; followers see the primary one.
-  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, adjuntoPrefill, welcomeSeen, markWelcome, live, store };
+  const ctx = { state, derived, role, acc, lang, open, back, act, notify, goTab, scope: manager ? scopeNow : "all", setScope, wide: desktop, adjuntoLog, setAdjuntoLog, adjuntoPrefill, welcomeSeen, markWelcome, live, store, goManage: (section) => { setManageSection(section); goTab("gerir"); } };
   const pushed = !entering && Boolean(view);
   // What is waiting on a captain / athlete shows as a count on their Equipa tab.
   const teamQueue = inTeam ? teamHome(state, derived, { teamId: acc.teamId, playerId: acc.playerId, accountId: acc.accountId, role }).queue : [];

@@ -91,6 +91,7 @@ export const EVENT_LABEL = {
   card_second_yellow: L("2.º amarelo", "Second yellow", "2º amarelo"),
   sub: L("Substituição", "Substitution", "Substituição"),
   shootout_goal: L("Penálti (desempate)", "Shoot-out penalty", "Pênalti (disputa)"),
+  shootout_miss: L("Penálti falhado (desempate)", "Shoot-out miss", "Pênalti perdido (disputa)"),
   void: L("Anulado", "Voided", "Anulado"),
 };
 

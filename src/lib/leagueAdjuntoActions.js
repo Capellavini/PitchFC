@@ -227,6 +227,7 @@ export const PROPOSALS = Object.freeze({
     schema: obj({
       home: text(80, "Primeira equipa nomeada"), away: text(80, "Segunda equipa nomeada"),
       home_goals: { type: "integer", minimum: 0, maximum: 99 }, away_goals: { type: "integer", minimum: 0, maximum: 99 },
+      shootout_kicks: { type: "array", maxItems: 40, description: "Cobranças do desempate por penáltis, por ordem, só se a súmula as listar (quem bateu e se marcou ou falhou)", items: obj({ player: text(80), team: text(80), scored: { type: "boolean" } }, ["scored"]) },
       shootout_home: { type: "integer", minimum: 0, maximum: 30, description: "Penáltis marcados pela equipa da casa, só numa eliminatória que acabou empatada" },
       shootout_away: { type: "integer", minimum: 0, maximum: 30, description: "Penáltis marcados pela equipa visitante, só numa eliminatória que acabou empatada" },
       competition: text(80), round: { type: "integer", minimum: 1, maximum: 60 }, date: text(10, "AAAA-MM-DD, dia do jogo, se for dito"),
@@ -238,6 +239,7 @@ export const PROPOSALS = Object.freeze({
       home: str(a.home, 80), away: str(a.away, 80),
       home_goals: Number.isInteger(a.home_goals) && a.home_goals >= 0 && a.home_goals <= 99 ? a.home_goals : null,
       away_goals: Number.isInteger(a.away_goals) && a.away_goals >= 0 && a.away_goals <= 99 ? a.away_goals : null,
+      shootout_kicks: (Array.isArray(a.shootout_kicks) ? a.shootout_kicks : []).slice(0, 40).map((k) => ({ player: str(k?.player, 80), team: str(k?.team, 80), scored: k?.scored === true })),
       shootout_home: Number.isInteger(a.shootout_home) && a.shootout_home >= 0 && a.shootout_home <= 30 ? a.shootout_home : null,
       shootout_away: Number.isInteger(a.shootout_away) && a.shootout_away >= 0 && a.shootout_away <= 30 ? a.shootout_away : null,
       competition: str(a.competition, 80), round: Number.isInteger(a.round) && a.round > 0 ? Math.min(60, a.round) : 0, date: date(a.date),
@@ -277,7 +279,11 @@ export const PROPOSALS = Object.freeze({
       const next = recordResult(s, {
         matchId: match.id, score: { home: goalsOf[match.homeId], away: goalsOf[match.awayId] }, goals, cards,
         lineups: Object.keys(lineups).length ? lineups : null,
-        shootout: a.shootout_home !== null && a.shootout_away !== null ? (match.homeId === x.id ? { home: a.shootout_home, away: a.shootout_away } : { home: a.shootout_away, away: a.shootout_home }) : null,
+        shootout: a.shootout_kicks.length ? { kicks: a.shootout_kicks.map((k) => {
+          const who = k.player ? personIn(s, teams, k.player, k.team) : { player: null, team: k.team ? findTeam(s, k.team) : null };
+          if (!who.team) throw new ProposalError("team_missing");
+          return { teamId: who.team.id, playerId: who.player ? who.player.id : null, scored: k.scored };
+        }) } : a.shootout_home !== null && a.shootout_away !== null ? (match.homeId === x.id ? { home: a.shootout_home, away: a.shootout_away } : { home: a.shootout_away, away: a.shootout_home }) : null,
         by: "Adjunto · confirmado pela direção", at: new Date().toISOString(),
       });
       const named = a.scorers.map((sc) => `${sc.own_goal ? "autogolo " : ""}${sc.player}${sc.goals > 1 ? ` (${sc.goals})` : ""}`).join(", ");

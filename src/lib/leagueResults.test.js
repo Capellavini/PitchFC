@@ -4,7 +4,7 @@ import { emptyLeagueState } from "./leagueDemo.js";
 import { addCompetition, setLeagueInfo, generateFixtures } from "./leagueSetup.js";
 import { importTeams, importRoster } from "./leagueImport.js";
 import { recordResult } from "./leagueResults.js";
-import { matchScore, discipline, playerStats } from "./core/league.js";
+import { matchScore, discipline, playerStats, shootoutKicks } from "./core/league.js";
 import { prepareBatch, cleanProposal, PROPOSALS } from "./leagueAdjuntoActions.js";
 
 const league = () => {
@@ -179,4 +179,36 @@ test("the Adjunto passes the shoot-out through, flipped to the match home/away o
   assert.equal(r.failed, 0, JSON.stringify(r.items));
   const sh = matchScore(r.state.logs[m.id], r.state.matches.find((x) => x.id === m.id)).shootout;
   assert.deepEqual(sh, { home: 3, away: 5 });
+});
+
+test("a shoot-out with every kick: who took it, scored or missed, in order; misses never count", () => {
+  const state = league();
+  const m = find(state, teamId(state, "Porto FC"), teamId(state, "Vai.CO"));
+  const porto = state.data.players.find((p) => p.name === "Rui Silva");
+  const vai = state.data.players.find((p) => p.name === "Outro Jogador");
+  const kicks = [
+    { teamId: m.homeId, playerId: m.homeId === porto.teamId ? porto.id : vai.id, scored: true },
+    { teamId: m.awayId, playerId: m.awayId === porto.teamId ? porto.id : vai.id, scored: false },
+    { teamId: m.homeId, playerId: null, scored: true },
+  ];
+  const out = recordResult(state, { matchId: m.id, score: { home: 0, away: 0 }, shootout: { kicks } });
+  const mm = out.matches.find((x) => x.id === m.id);
+  assert.deepEqual(matchScore(out.logs[m.id], mm).shootout, { home: 2, away: 0 });
+  assert.deepEqual(shootoutKicks(out.logs[m.id], mm).map((k) => k.scored), [true, false, true]);
+  const st = playerStats([{ ...mm, state: "homologated" }], out.logs);
+  assert.equal(Object.values(st).reduce((n, x) => n + x.shootoutMisses, 0), 1);
+  // level on kicks made, or a taker from the wrong team: refused
+  assert.throws(() => recordResult(state, { matchId: m.id, score: { home: 0, away: 0 }, shootout: { kicks: [{ teamId: m.homeId, scored: true }, { teamId: m.awayId, scored: true }] } }), /invalid/);
+  assert.throws(() => recordResult(state, { matchId: m.id, score: { home: 0, away: 0 }, shootout: { kicks: [{ teamId: m.homeId, playerId: m.homeId === porto.teamId ? vai.id : porto.id, scored: true }] } }), /not_in_match|Equipa|invalid/i);
+});
+
+test("the Adjunto reads the kicks of a shoot-out from the súmula", () => {
+  const state = league();
+  const m = find(state, teamId(state, "Porto FC"), teamId(state, "Vai.CO"));
+  const home = state.data.teams.find((t) => t.id === m.homeId).name;
+  const away = state.data.teams.find((t) => t.id === m.awayId).name;
+  const r = batch(state, { home, away, home_goals: 1, away_goals: 1, date: day(m.kickoff), shootout_kicks: [{ team: home, scored: true }, { team: away, scored: false }] });
+  assert.equal(r.failed, 0, JSON.stringify(r.items));
+  const sh = matchScore(r.state.logs[m.id], r.state.matches.find((x) => x.id === m.id)).shootout;
+  assert.deepEqual(sh, { home: 1, away: 0 });
 });

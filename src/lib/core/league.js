@@ -10,7 +10,7 @@
 // Event shape:
 //   { id, matchId, type, teamId, playerId|null, assistId|null, minute|null,
 //     recordedBy, recordedAt, supersedes|null, voidReason|null }
-//   type: goal | own_goal | card_yellow | card_red | sub | shootout_goal | void
+//   type: goal | own_goal | card_yellow | card_red | sub | shootout_goal | shootout_miss | void
 //   - goal / own_goal / shootout_goal: `teamId` is the team that BENEFITS
 //     (an own goal by an away player has teamId = home). `playerId` may be
 //     null (scorer unknown — never invent one).
@@ -57,7 +57,7 @@ export const FANTASY_DEMO_RULES = Object.freeze({
   // Fans' vote ("Craque da torcida") never scores — by design.
 });
 
-export const EVENT_TYPES = ["goal", "own_goal", "card_yellow", "card_red", "sub", "shootout_goal", "void"];
+export const EVENT_TYPES = ["goal", "own_goal", "card_yellow", "card_red", "sub", "shootout_goal", "shootout_miss", "void"];
 export const MATCH_STATES = ["scheduled", "live", "ended_provisional", "in_review", "homologated", "postponed", "cancelled", "walkover"];
 export const ROLES = ["fan", "athlete", "captain", "manager"];
 
@@ -125,6 +125,16 @@ export function corrections(log) {
   }));
 }
 
+const SHOOTOUT_KICK = new Set(["shootout_goal", "shootout_miss"]);
+
+/** The shoot-out kicks of a match in the order they were taken:
+ *  [{ teamId, playerId|null, scored }]. Voided/corrected kicks are already gone (active events). */
+export function shootoutKicks(log, match) {
+  return activeEvents(log)
+    .filter((e) => e.matchId === match.id && SHOOTOUT_KICK.has(e.type))
+    .map((e) => ({ id: e.id, teamId: e.teamId, playerId: e.playerId ?? null, scored: e.type === "shootout_goal" }));
+}
+
 const logFor = (logs, matchId) => (Array.isArray(logs) ? logs.filter((e) => e.matchId === matchId) : (logs?.[matchId] || []));
 
 /** { home, away, shootout: {home, away} | null } from the active log.
@@ -139,9 +149,11 @@ export function matchScore(log, match, rules = DEMO_RULES) {
   const count = (teamId, types) => evs.filter((e) => e.teamId === teamId && types.has(e.type)).length;
   const sh = new Set(["shootout_goal"]);
   const shHome = count(match.homeId, sh), shAway = count(match.awayId, sh);
+  const kicks = count(match.homeId, SHOOTOUT_KICK) + count(match.awayId, SHOOTOUT_KICK);
   return {
     home: count(match.homeId, SCORING), away: count(match.awayId, SCORING),
-    shootout: shHome + shAway > 0 ? { home: shHome, away: shAway } : null,
+    // A shoot-out exists as soon as one kick (scored OR missed) is recorded; the numbers are the goals only.
+    shootout: kicks > 0 ? { home: shHome, away: shAway } : null,
     walkover: false,
   };
 }
@@ -242,7 +254,7 @@ export function standings(competition, matches, logs, { includeProvisional = fal
   });
 }
 
-const blankStats = (playerId) => ({ playerId, games: 0, goals: 0, assists: 0, ownGoals: 0, yellows: 0, reds: 0, shootoutGoals: 0, mvps: 0 });
+const blankStats = (playerId) => ({ playerId, games: 0, goals: 0, assists: 0, ownGoals: 0, yellows: 0, reds: 0, shootoutGoals: 0, shootoutMisses: 0, mvps: 0 });
 
 /** Per-player stats from counted matches. Goals exclude own goals and
  *  shootout goals; assists only when recorded; an unknown scorer adds to
@@ -259,6 +271,7 @@ export function playerStats(matches, logs, { includeProvisional = false } = {}) 
       if (e.type === "goal" && e.assistId) get(e.assistId).assists++;
       if (e.type === "own_goal" && e.playerId) get(e.playerId).ownGoals++;
       if (e.type === "shootout_goal" && e.playerId) get(e.playerId).shootoutGoals++;
+      if (e.type === "shootout_miss" && e.playerId) get(e.playerId).shootoutMisses++;
       if (e.type === "card_yellow") get(e.playerId).yellows++;
       if (e.type === "card_red") get(e.playerId).reds++;
     }

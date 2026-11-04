@@ -6,7 +6,7 @@ import { PLAYERS as DEMO_PLAYERS, teamById as DEMO_TEAMS, playerById as DEMO_BY_
 import Sheet from "../Sheet";
 import BtnPrimary from "../BtnPrimary";
 
-const DEMO_TYPES = ["goal", "own_goal", "card_yellow", "card_red", "shootout_goal"];
+const DEMO_TYPES = ["goal", "own_goal", "card_yellow", "card_red", "shootout_goal", "shootout_miss"];
 const UNKNOWN = "__unknown__";
 
 /**
@@ -96,7 +96,7 @@ export default function LeagueEventSheet({ match, mode = "new", original = null,
               <button key={k} type="button" role="radio" aria-checked={type === k} onClick={() => { setType(k); setPlayerId(UNKNOWN); setAssistId(""); }} style={pill(type === k)}>{t(EVENT_LABEL[k])}</button>
             ))}
           </div>
-          {type === "shootout_goal" && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{t("Penáltis de desempate ficam separados: não entram no resultado nem na lista de marcadores.")}</div>}
+          {(type === "shootout_goal" || type === "shootout_miss") && <div style={{ fontSize: T.meta, color: C.text2, marginTop: S.xs }}>{t("Penáltis de desempate ficam separados: não entram no resultado nem na lista de marcadores.")}</div>}
 
           <span style={label}>{type === "own_goal" ? t("Equipa beneficiada") : isCard ? t("Equipa do atleta") : t("Equipa")}</span>
           <div role="radiogroup" aria-label={t("Equipa")} style={{ display: "flex", gap: S.xs, flexWrap: "wrap" }}>
