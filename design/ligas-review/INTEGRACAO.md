@@ -19,3 +19,11 @@ Validação em 5 de novembro de 2026:
 A prévia é uma entrada separada que importa os componentes reais. Dados e alterações são fictícios/locais; ações remotas da autenticação, publicação e convites estão desligadas. A versão HTML autónoma não depende da instalação do repositório.
 
 Próximos passos antes de publicar: avaliação visual pelo utilizador, concluir a inspeção das telas restantes e verificar os fluxos autenticados numa conta de teste. Login do adepto para Fantasy e blog com artigos próprios são novas funcionalidades separadas desta migração visual; os avisos e inscrição de interesse existentes estão incluídos.
+
+## Integração para publicação — 5 de novembro de 2026
+
+A branch passou a incluir origin/main em 31e8d75, com as últimas features do Claude. Foram conciliados três conflitos de importação, mantendo todos os contratos e as ações novas. Os componentes de carreira, regulamento, subidas/descidas, Supertaça e próxima fase da taça usam o tema local do redesign.
+
+Validação final: 510 testes da aplicação, 209 do bot, 9 testes dos componentes; sincronização dos 11 ficheiros core e 10 ficheiros leaguelib do bot confirmada; compilação Vite aprovada. Não há diferenças relativamente a origin/main em API, bot, migrações, workflows, PitchApp ou tema global.
+
+O utilizador aprovou a prévia e autorizou a integração/publicação em 5 de novembro de 2026. A entrega segue pelo GitHub e pela integração Vercel existente.

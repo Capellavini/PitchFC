@@ -10,6 +10,8 @@ import * as S from "./leagueSetup.js";
 import { recordResult } from "./leagueResults.js";
 import { SETUP_ERROR } from "./leagueSetupCopy.js";
 import { MODULES, setModule, moduleOn } from "./leagueModules.js";
+import { saveRegulation, regulationOf } from "./leagueRegulation.js";
+import { leagueTable } from "./leagueSeason.js";
 
 export class ProposalError extends Error {
   constructor(code, detail = "") { super(detail ? `${code}: ${detail}` : code); this.code = code; this.detail = detail; }
@@ -34,7 +36,7 @@ export const PROPOSAL_ERROR = Object.freeze({
   roster_empty: "Não há atletas para acrescentar.",
   score_missing: "Falta o resultado (golos de cada equipa).",
   same_team: "Escolhe duas equipas diferentes.",
-  match_played: "Esse jogo já tem resultado. Para o corrigir usa Lances, com motivo.",
+  match_played: "Esse jogo já tem resultado lançado (ou oficial), por isso não o volto a registar. Para o corrigir usa Lances, com motivo.",
   match_unplayed_unknown: "Não encontrei um jogo por jogar entre estas equipas. Se for um jogo novo, marca-o primeiro.",
 });
 
@@ -63,7 +65,8 @@ function pick(list, ref, keys, code) {
   const exact = list.filter((x) => keys(x).some((k) => norm(k) === q));
   if (exact.length === 1) return exact[0];
   if (exact.length > 1) throw new ProposalError(`${code}_ambiguous`, ref);
-  const loose = list.filter((x) => keys(x).some((k) => { const n = norm(k); return n.length >= 3 && (n.includes(q) || (n.length >= 4 && q.includes(n))); }));
+  // Partial matches only on whole words: «Telmo Raposo» must not match the alcunha «Telmo R.» of a Telmo Reis.
+  const loose = list.filter((x) => keys(x).some((k) => { const n = norm(k); return n.length >= 3 && (n.includes(q) || (n.length >= 4 && ` ${q} `.includes(` ${n} `))); }));
   if (loose.length === 1) return loose[0];
   throw new ProposalError(loose.length ? `${code}_ambiguous` : `${code}_unknown`, ref);
 }
@@ -128,10 +131,14 @@ function personIn(s, teams, ref, teamRef, { deferTie = false } = {}) {
   for (const tm of pool) {
     try { hits.push({ player: findPlayer(s, tm.id, ref), team: tm }); } catch (e) { if (e.code === "player_ambiguous") throw e; }
   }
-  if (hits.length === 1) return hits[0];
+  // An exact name in one squad beats a partial match in the other («Telmo Raposo» vs «Telmo R.»).
+  const q = norm(ref);
+  const exact = hits.filter(({ player }) => [player.id, player.name, player.nick].some((k) => norm(k) === q));
+  const best = exact.length ? exact : hits;
+  if (best.length === 1) return best[0];
   // Same name in BOTH squads and the sheet gives no team: the caller may settle it by the score.
-  if (hits.length > 1 && deferTie) return { tie: hits };
-  throw new ProposalError(hits.length ? "player_ambiguous" : "player_unknown", ref);
+  if (best.length > 1 && deferTie) return { tie: best };
+  throw new ProposalError(best.length ? "player_ambiguous" : "player_unknown", ref);
 }
 
 const obj = (properties, required = []) => ({ type: "object", additionalProperties: false, required, properties });
@@ -296,6 +303,13 @@ export const PROPOSALS = Object.freeze({
       };
     },
   },
+  save_regulation: {
+    label: "Regulamento",
+    description: "Guarda o regulamento da liga para o Adjunto o consultar (campeão e desempates, subidas e descidas, castigos, faltas de comparência). Usa o texto do documento enviado, fiel e só dos artigos que importam; não resumas nem inventes. Substitui o regulamento anterior.",
+    schema: obj({ name: text(80, "Nome do documento"), text: { type: "string", maxLength: 9000, description: "Artigos relevantes, transcritos" } }, ["text"]),
+    clean: (a) => ({ name: str(a.name, 80), text: typeof a.text === "string" ? a.text.trim().slice(0, 9000) : "" }),
+    run: (s, a) => ({ state: saveRegulation(s, { name: a.name, text: a.text }), line: `Regulamento guardado (${a.text.length} caracteres)` }),
+  },
   post_announcement: {
     label: "Comunicado",
     description: "Publica um comunicado da organização, visível aos adeptos na página da liga. Texto curto, factual, sem contactos.",
@@ -360,6 +374,24 @@ export function prepareBatch(state, items) {
  * athlete names, contacts or licences.
  */
 export function adjuntoContext(state, { now = Date.now() } = {}) {
+  const base = adjuntoContextBase(state, { now });
+  // The regulation and the open tables help the Adjunto answer "who is the champion / who goes down"; the request has a hard size
+  // limit, so they only get what is left after everything else, and the regulation is the first thing to be trimmed.
+  const extra = {};
+  const reg = regulationOf(state);
+  const tables = (state.data.competitions || []).filter((c) => c.kind !== "cup" && !c.closedSeasonId).slice(0, 4).map((c) => ({
+    competition: c.name, rows: leagueTable(state, c).slice(0, 24).map((r, i) => [i + 1, r.name || state.data.teams.find((t) => t.id === r.id)?.name || r.id, r.j, r.pts, r.gd]),
+  })).filter((t) => t.rows.some((r) => r[2] > 0));
+  if (tables.length) extra.tables = { columns: ["pos", "equipa", "J", "pts", "dg"], items: tables };
+  let out = { ...base, ...extra };
+  if (reg) {
+    const room = 22_000 - JSON.stringify(out).length - 200;
+    if (room > 300) out = { ...out, regulation: { name: reg.name, text: reg.text.slice(0, Math.min(reg.text.length, room)), truncated: reg.text.length > room } };
+  }
+  return JSON.stringify(out).length > 23_500 ? base : out;
+}
+
+function adjuntoContextBase(state, { now = Date.now() } = {}) {
   const d = state.data;
   const team = Object.fromEntries(d.teams.map((t) => [t.id, t.name]));
   const comp = Object.fromEntries(d.competitions.map((c) => [c.id, c.name]));
@@ -380,6 +412,11 @@ export function adjuntoContext(state, { now = Date.now() } = {}) {
     awaitingResult: state.matches.filter((m) => m.state === "scheduled" && m.kickoff && Date.parse(m.kickoff) < now)
       .sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff)).slice(0, 12)
       .map((m) => ({ competition: comp[m.competitionId], round: m.round, home: team[m.homeId], away: team[m.awayId], date: lisbonDay(m.kickoff) })),
+    // games that already have a result (provisional or official): so a súmula for one of them is recognised as
+    // "already recorded" instead of "not in the calendar"
+    withResult: state.matches.filter((m) => ["ended_provisional", "in_review", "homologated", "walkover"].includes(m.state) && m.kickoff)
+      .sort((a, b) => Date.parse(b.kickoff) - Date.parse(a.kickoff)).slice(0, 12)
+      .map((m) => ({ competition: comp[m.competitionId], round: m.round, home: team[m.homeId], away: team[m.awayId], date: lisbonDay(m.kickoff), state: m.state === "homologated" || m.state === "walkover" ? "official" : "provisional" })),
     modulesOn: MODULES.filter((m) => moduleOn(state, m.id)).map((m) => m.id),
   };
 }

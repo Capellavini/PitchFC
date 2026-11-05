@@ -5,10 +5,12 @@ import { t } from "../../lib/i18n";
 import { roleErrorText } from "../../lib/leagueRoles";
 import { draftFromPlayers, squadProblems, squadPayload, isSquadDirty } from "../../lib/leagueSquad";
 import { teamPlayerRequests } from "../../lib/leaguePlayerRequests";
+import { tf } from "../../lib/leagueCopy";
 import BackHeader from "./visual/BackHeader";
 import SectionLabel from "./visual/SectionLabel";
 import BtnPrimary from "./visual/BtnPrimary";
 import BtnGhost from "./visual/BtnGhost";
+
 
 const POSITIONS = ["GR", "DEF", "MED", "AVA"];
 
@@ -29,6 +31,20 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
   // used to land under the sticky save bar.
   const add = () => setDraft((d) => [{ key: `new-${Date.now()}-${d.length}`, id: null, name: "", number: "", position: "", captain: false }, ...d]);
   const remove = (key) => setDraft((d) => d.filter((r) => r.key !== key));
+
+  // last season's athletes of this team who are not registered now and not already asked for
+  const pool = (state.data.athletePool || []).filter((p) => p.pastTeamId === acc.teamId && !requests.some((q) => q.status === "pending" && q.reuseId === p.id));
+  const [back2, setBack2] = useState(() => new Set());
+  const toggleBack = (id) => setBack2((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const askBack = async () => {
+    setBusy(true);
+    const r = await store.saveSquad(acc.teamId, [...squadPayload(draft), ...[...back2].map((id) => ({ reuse: id }))]);
+    setBusy(false);
+    if (r.error) { notify(t(roleErrorText(r.error)), "error"); return; }
+    notify(t("Pedido enviado ao gestor. O atleta só entra no plantel depois de aprovado."));
+    setBack2(new Set());
+    setDraft(draftFromPlayers(r.players || []));
+  };
 
   const save = async () => {
     setBusy(true);
@@ -73,6 +89,21 @@ export default function LeagueSquadEditor({ ctx, embedded = false }) {
         ))}
         <datalist id="squad-positions">{POSITIONS.map((p) => <option key={p} value={p} />)}</datalist>
       </div>
+      {pool.length > 0 && (
+        <div style={{ marginTop: S.xl }}>
+          <SectionLabel>{t("Atletas da época anterior")}</SectionLabel>
+          <p style={{ margin: `0 0 ${S.sm}px`, fontSize: T.meta, color: C.text2, lineHeight: 1.5 }}>{t("Marca quem queres de volta e pede ao gestor. O perfil e o histórico mantêm-se; só entram no plantel depois de aprovados.")}</p>
+          <div style={{ ...cardStyle, padding: S.md }}>
+            {pool.map((p) => (
+              <label key={p.id} style={{ display: "flex", alignItems: "center", gap: S.sm, minHeight: 44, fontSize: T.body, cursor: "pointer" }}>
+                <input type="checkbox" checked={back2.has(p.id)} onChange={() => toggleBack(p.id)} style={{ width: 20, height: 20, accentColor: C.accent }} />
+                <span>{p.number != null ? `${p.number} · ` : ""}{p.name}</span>
+              </label>
+            ))}
+            <div style={{ marginTop: S.sm }}><BtnGhost disabled={busy || !back2.size || problems.length > 0} onClick={askBack}>{tf(t("Pedir reinscrição de {n}"), { n: back2.size })}</BtnGhost></div>
+          </div>
+        </div>
+      )}
       {requests.length > 0 && (
         <div style={{ marginTop: S.xl }}>
           <SectionLabel>{t("Pedidos de novos atletas")}</SectionLabel>

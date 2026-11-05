@@ -14,6 +14,7 @@ import FutCard from "../FutCard";
 import FormPills from "../FormPills";
 import Chip from "./visual/Chip";
 import TeamCrest from "../TeamCrest";
+import LeaguePlayerCareer from "./LeaguePlayerCareer";
 
 /** Athlete page — the PITCH identity (FUT card with OVR/tier, photo or
  *  initials) plus stats for THIS competition only, recent form, and the
@@ -98,6 +99,8 @@ export default function LeaguePlayerPage({ ctx, playerId, embedded = false }) {
       )}
 
       {modOn("compare") && <BtnGhost block onClick={() => open({ kind: "compare" })} style={{ marginBottom: S.xl }}><GitCompare size={16} aria-hidden /> {t("Comparar atletas")}</BtnGhost>}
+
+      <LeaguePlayerCareer state={state} playerId={playerId} />
 
       <SectionLabel>{t("Origem dos números")}</SectionLabel>
       {trace.length === 0 && <div style={{ fontSize: T.body, color: C.text2 }}>{t("Ainda sem golos, assistências ou cartões registados.")}</div>}

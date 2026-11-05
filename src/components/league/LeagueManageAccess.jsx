@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, MessageCircle, UserPlus } from "lucide-react";
 import { C, S, T, cardStyle } from "./visual/theme";
-import { t } from "../../lib/i18n";
+import { t, getLang } from "../../lib/i18n";
+
 import { accessByTeam, inviteMessage, inviteUsage, inviteUrl, roleErrorText, whatsappShareUrl } from "../../lib/leagueRoles";
 import SectionLabel from "./visual/SectionLabel";
 import BtnGhost from "./visual/BtnGhost";
@@ -33,8 +34,12 @@ function InviteLine({ invite, leagueName, teamName, onCopy, onRevoke, busy }) {
 function PersonLine({ member, onRemove, busy }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: S.sm, padding: `${S.xs}px 0` }}>
-      <span style={{ fontSize: T.body, minWidth: 0, overflowWrap: "anywhere" }}>{member.player_name ? `${member.player_name} · ` : ""}{member.email}</span>
-      <BtnGhost tone="danger" disabled={busy} onClick={() => onRemove(member.id)}>{t("Remover")}</BtnGhost>
+      <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+        <span style={{ display: "block", fontSize: T.body }}>{member.player_name ? `${member.player_name} · ` : ""}{member.email}</span>
+        {/* who chose whom, and when: an athlete picks their own name with the team link, so the Gestor can check it here */}
+        {member.created_at && <span style={{ display: "block", fontSize: T.meta, color: C.text2 }}>{member.team_name ? `${member.team_name} · ` : ""}{t("ligou-se a")} {new Date(member.created_at).toLocaleDateString(getLang() === "en" ? "en-GB" : "pt-PT", { day: "numeric", month: "short" })}</span>}
+      </span>
+      <BtnGhost tone="danger" disabled={busy} onClick={() => onRemove(member.id)}>{member.player_name ? t("Desligar") : t("Remover")}</BtnGhost>
     </div>
   );
 }

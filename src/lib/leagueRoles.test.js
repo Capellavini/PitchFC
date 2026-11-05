@@ -82,3 +82,13 @@ test("the member home lists the own league first, then each membership", async (
   assert.equal(list[2].detail, "Atleta");
   assert.deepEqual(homeEntries({}), []);
 });
+
+test("the invite token is found in a pasted link, a path or the bare code", async () => {
+  const { inviteTokenFromText } = await import("./leagueRoles.js");
+  const tok = "ab12".repeat(10);
+  assert.equal(inviteTokenFromText(`https://pitch-fc.com/l/convite/${tok}`), tok);
+  assert.equal(inviteTokenFromText(`  ${tok.toUpperCase()}  `), tok);
+  assert.equal(inviteTokenFromText(`olá, abre isto: /l/convite/${tok}?x=1`), tok);
+  assert.equal(inviteTokenFromText("convite/curto"), null);
+  assert.equal(inviteTokenFromText(`${tok}ff`), null);
+});

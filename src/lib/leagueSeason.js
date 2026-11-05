@@ -12,7 +12,8 @@
 //                   scorers: [{ playerId, name, teamId, goals, assists, games }], discipline: [{ teamId, yellows, reds }],
 //                   matches: [{ id, round, roundName, kickoff, homeId, awayId, home, away, shootout, scorers: [[playerId, goals]] }] }
 import { activeEvents, countedMatches, matchScore, playerStats, standings } from "./core/league.js";
-import { SetupError } from "./leagueSetup.js";
+import { SetupError, addMatch } from "./leagueSetup.js";
+import { normalizeMovements } from "./leagueMovements.js";
 
 const OFFICIAL = new Set(["homologated", "walkover"]);
 const DONE = new Set(["homologated", "walkover", "cancelled"]);
@@ -57,6 +58,46 @@ export function cupBracket(state, competition) {
   return { phases, champion: final?.winnerId ? { teamId: final.winnerId, matchId: final.matchId } : null };
 }
 
+const PHASE_NAME = { 1: "Final", 2: "Meias-finais", 4: "Quartos de final", 8: "Oitavos de final" };
+
+/** The next phase of a cup, proposed from the winners of the last one: tie 1's winner meets tie 2's, and so on.
+ *  Only when every tie of the last phase is official with a winner. null = nothing to propose (no games yet, a phase
+ *  still open, the final already played) and { reason: "odd" } when the winners cannot be paired (a bye is the Gestor's call). */
+export function nextPhaseProposal(state, competition) {
+  if (!competition || competition.kind !== "cup") return null;
+  const phases = cupBracket(state, competition).phases;
+  const last = phases[phases.length - 1];
+  if (!last || last.ties.length < 1) return null;
+  if (last.ties.some((x) => !x.winnerId)) return null;
+  const winners = last.ties.map((x) => x.winnerId);
+  if (winners.length < 2) return null; // the final: nothing comes after it
+  if (winners.length % 2) return { reason: "odd", round: last.round + 1, winners };
+  const pairs = [];
+  for (let i = 0; i < winners.length; i += 2) pairs.push({ homeId: winners[i], awayId: winners[i + 1] });
+  const games = pairs.length;
+  return { round: last.round + 1, name: PHASE_NAME[games] || `Fase ${last.round + 1}`, pairs };
+}
+
+const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+/** Creates the proposed phase: one game per pair on `date`, the first at `time`, the others `gapMinutes` apart
+ *  (the Gestor can still move each one in the calendar). */
+export function createNextPhase(state, { competitionId, date, time = "15:00", gapMinutes = 0, venue = "" }) {
+  const comp = (state.data.competitions || []).find((c) => c.id === competitionId);
+  const proposal = nextPhaseProposal(state, comp);
+  if (!proposal || proposal.reason) throw new SetupError("nothing_to_add");
+  const [h, m] = String(time).split(":").map(Number);
+  if (!Number.isInteger(h) || !Number.isInteger(m)) throw new SetupError("date_required");
+  const gap = Math.max(0, Math.min(600, Math.round(Number(gapMinutes) || 0)));
+  let next = state;
+  proposal.pairs.forEach((p, i) => {
+    const at = h * 60 + m + i * gap;
+    if (at > 23 * 60 + 59) throw new SetupError("date_required");
+    next = addMatch(next, { competitionId, homeId: p.homeId, awayId: p.awayId, date, time: hhmm(at), venue, round: proposal.round, roundName: proposal.name });
+  });
+  return next;
+}
+
 /** What is still in the way of closing: any game without an official result, a cup without a winner. */
 export function seasonChecklist(state) {
   const comps = (state.data.competitions || []).filter((c) => !c.closedSeasonId);
@@ -86,7 +127,7 @@ export function proposedChampions(state) {
   return out;
 }
 
-function leagueTable(state, c) {
+export function leagueTable(state, c) {
   const ids = c.teamIds?.length ? c.teamIds : (state.data.teams || []).map((t) => t.id);
   const byId = Object.fromEntries((state.data.teams || []).map((t) => [t.id, t]));
   const comp = { ...c, teams: ids.map((id) => byId[id]).filter(Boolean) };
@@ -109,6 +150,9 @@ function archiveCompetition(state, c, override) {
     const row = (cards[tid] ||= { teamId: tid, yellows: 0, reds: 0 });
     row.yellows += s.yellows; row.reds += s.reds;
   }
+  // everyone who played or scored, compact: [playerId, games, goals, assists, yellows, reds, mvps]. This is what a career is built from.
+  const statRows = Object.values(stats).filter((s) => s.games || s.goals || s.assists || s.yellows || s.reds || s.mvps)
+    .map((s) => [s.playerId, s.games, s.goals, s.assists, s.yellows, s.reds, s.mvps]);
   const matches = counted.map((m) => {
     const log = state.logs?.[m.id] || [];
     const sc = matchScore(log, m);
@@ -135,11 +179,11 @@ function archiveCompetition(state, c, override) {
     if (!clean(override.note)) throw new SetupError("note_required");
     champion = named(override.teamId, "manual", override.note);
   }
-  return { ...entry, champion, scorers, discipline: Object.values(cards), matches };
+  return { ...entry, champion, scorers, discipline: Object.values(cards), matches, stats: statRows };
 }
 
 /** Freeze every open competition into a new entry of data.seasons. `overrides` = { [competitionId]: { teamId, note } }. */
-export function closeSeason(state, { label, at = null, by = "Gestor", overrides = {} } = {}) {
+export function closeSeason(state, { label, at = null, by = "Gestor", overrides = {}, movements = [] } = {}) {
   const lb = clean(label);
   if (lb.length < 2) throw new SetupError("name_required");
   const check = seasonChecklist(state);
@@ -149,11 +193,12 @@ export function closeSeason(state, { label, at = null, by = "Gestor", overrides 
   const open = (state.data.competitions || []).filter((c) => !c.closedSeasonId);
   const id = `ep-${slug(lb)}`;
   const comps = open.map((c) => archiveCompetition(state, c, overrides[c.id]));
+  const moved = normalizeMovements(state, movements); // promotions and relegations the Gestor confirmed (validated before anything is frozen)
   const teamIds = new Set(comps.flatMap((c) => [...(c.table || []).map((r) => r.teamId), ...(c.bracket || []).flatMap((p) => p.ties.flatMap((t) => [t.homeId, t.awayId])), ...c.matches.flatMap((m) => [m.homeId, m.awayId])]));
   const teams = (state.data.teams || []).filter((t) => teamIds.has(t.id)).map((t) => ({ id: t.id, name: t.name, short: t.short, color: t.color, venue: t.venue || "" }));
-  const ids = new Set([...comps.flatMap((c) => c.scorers.map((s) => s.playerId)), ...comps.flatMap((c) => c.matches.flatMap((m) => m.scorers.map(([p]) => p)))]);
+  const ids = new Set([...comps.flatMap((c) => c.scorers.map((s) => s.playerId)), ...comps.flatMap((c) => c.matches.flatMap((m) => m.scorers.map(([p]) => p))), ...comps.flatMap((c) => (c.stats || []).map((r) => r[0]))]);
   const players = (state.data.players || []).filter((p) => ids.has(p.id)).map((p) => ({ id: p.id, name: p.name, number: p.number ?? null, position: p.position || null, teamId: p.teamId }));
-  const season = { id, label: lb, closedAt: at || new Date().toISOString(), closedBy: by, competitions: comps, teams, players, notes: [] };
+  const season = { id, label: lb, closedAt: at || new Date().toISOString(), closedBy: by, competitions: comps, teams, players, notes: [], ...(moved.length ? { movements: moved } : {}) };
   const closed = new Set(open.map((c) => c.id));
   return {
     ...state,
@@ -204,13 +249,23 @@ export function newSeason(state, { label } = {}) {
     ...(state.data.players || []).filter((p) => !alreadyIn.has(p.id)).map((p) => ({ ...p, teamId: null, captain: false, pastTeamId: p.teamId, pastSeason: last })),
   ];
   const goneMatches = new Set((state.matches || []).filter((m) => gone.has(m.competitionId || first?.id)).map((m) => m.id));
+  const idMap = {};
   const fresh = closed.map((c) => {
     let id = `cp-${slug(c.name)}-${slug(lb)}`; let n = 2;
     while (taken.has(id)) id = `cp-${slug(c.name)}-${slug(lb)}-${n++}`;
     taken.add(id);
+    idMap[c.id] = id;
     const { closedSeasonId, ...rest } = c; // eslint-disable-line no-unused-vars
     return { ...rest, id, season: lb, rounds: 0 };
   });
+  // promoted / relegated teams change division for the new season (the list the Gestor confirmed when closing)
+  const lastSeason = (state.data.seasons || []).find((s) => s.id === closed[0].closedSeasonId);
+  for (const mv of lastSeason?.movements || []) {
+    const from = fresh.find((c) => c.id === idMap[mv.from]); const to = fresh.find((c) => c.id === idMap[mv.to]);
+    if (!from || !to) continue;
+    from.teamIds = (from.teamIds || []).filter((id) => id !== mv.teamId);
+    if (!(to.teamIds || []).includes(mv.teamId)) to.teamIds = [...(to.teamIds || []), mv.teamId];
+  }
   return {
     ...state,
     matches: (state.matches || []).filter((m) => !gone.has(m.competitionId || first?.id)),

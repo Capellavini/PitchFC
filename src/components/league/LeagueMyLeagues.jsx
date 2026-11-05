@@ -3,7 +3,9 @@ import { ChevronRight, Shield, Trophy } from "lucide-react";
 import { C, S, T, BRAND, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { rolesApi } from "../../lib/leagueRolesApi";
-import { homeEntries } from "../../lib/leagueRoles";
+import { homeEntries, inviteTokenFromText, invitePath } from "../../lib/leagueRoles";
+import BtnPrimary from "../BtnPrimary";
+import BtnGhost from "../BtnGhost";
 import KeepyUppyLoader from "../KeepyUppyLoader";
 import LeagueWorkspaceApp from "./LeagueWorkspaceApp";
 
@@ -29,7 +31,12 @@ export default function LeagueMyLeagues({ user, ownerFallback = false }) {
   const single = res.phase === "ready" && entries.length === 1 ? entries[0] : null;
   useEffect(() => { if (single) window.location.replace(single.href); }, [single]);
 
-  if (res.phase === "ready" && ownerFallback && !res.memberships.length) return <LeagueWorkspaceApp user={user} />;
+  const [mode, setMode] = useState("choose"); // an account with no league yet: create one, or open an invite
+  const [pasted, setPasted] = useState("");
+  const pastedToken = inviteTokenFromText(pasted);
+  // Only an account that already runs a league goes straight to it. A brand-new one (a captain or an athlete
+  // who has not opened the invite yet looks exactly the same) is asked first, so nobody lands on "montar a tua liga" by accident.
+  if (res.phase === "ready" && ownerFallback && !res.memberships.length && (res.owner || mode === "create")) return <LeagueWorkspaceApp user={user} />;
   if (res.phase === "loading" || single) {
     return <div role="status" style={{ minHeight: "100vh", background: C.bg, display: "grid", placeItems: "center" }}><KeepyUppyLoader /></div>;
   }
@@ -42,6 +49,17 @@ export default function LeagueMyLeagues({ user, ownerFallback = false }) {
         {!entries.length && (
           <div style={{ ...cardStyle, color: C.text2, lineHeight: 1.5 }}>
             {t("Ainda não pertences a nenhuma liga. Quando o gestor da tua liga te enviar um convite, abre a ligação que ele te mandar.")}
+          </div>
+        )}
+        {!entries.length && ownerFallback && (
+          <div style={{ ...cardStyle, marginTop: S.md, display: "grid", gap: S.sm }}>
+            <label htmlFor="lg-invite-paste" style={{ fontSize: T.meta, fontWeight: 800, color: C.text1 }}>{t("Tenho um convite")}</label>
+            <input id="lg-invite-paste" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={t("Cola aqui a ligação do convite")} autoComplete="off"
+              style={{ minHeight: 44, borderRadius: 12, border: `1px solid ${C.border}`, background: C.bg, color: C.text1, padding: `0 ${S.md}px`, fontSize: T.body, boxSizing: "border-box", width: "100%" }} />
+            <BtnPrimary disabled={!pastedToken} onClick={() => window.location.assign(invitePath(pastedToken))}>{t("Abrir convite")}</BtnPrimary>
+            <div style={{ borderTop: `1px solid ${C.border}`, margin: `${S.sm}px 0` }} />
+            <div style={{ fontSize: T.meta, color: C.text2 }}>{t("Vais organizar uma liga?")}</div>
+            <BtnGhost onClick={() => setMode("create")}>{t("Criar a minha liga")}</BtnGhost>
           </div>
         )}
         <div style={{ display: "grid", gap: S.sm }}>

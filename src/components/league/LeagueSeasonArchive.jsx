@@ -21,6 +21,12 @@ export default function LeagueSeasonArchive({ seasons = [], ink = APP_C.accent, 
         return (
           <section key={s.id} style={{ ...cardStyle, background: C.card, color: C.text1, borderColor: C.border, padding: S.lg }} aria-label={`${t("Época")} ${s.label}`}>
             <h3 style={{ margin: `0 0 ${S.md}px`, fontSize: T.cardTitle }}>{t("Época")} {s.label}</h3>
+            {(s.movements || []).length > 0 && (
+              <div style={{ margin: `-${S.xs}px 0 ${S.md}px`, fontSize: T.meta, color: C.text2, lineHeight: 1.6 }}>
+                {s.movements.filter((m) => m.kind === "promoted").length > 0 && <div>⬆ {t("Sobem")}: {s.movements.filter((m) => m.kind === "promoted").map((m) => `${m.name} (${m.toName})`).join(", ")}</div>}
+                {s.movements.filter((m) => m.kind === "relegated").length > 0 && <div>⬇ {t("Descem")}: {s.movements.filter((m) => m.kind === "relegated").map((m) => `${m.name} (${m.toName})`).join(", ")}</div>}
+              </div>
+            )}
             <div style={{ display: "grid", gap: S.sm }}>
               {(s.competitions || []).map((c) => (
                 <details key={c.id} open={i === 0 && (s.competitions || []).length === 1} style={{ border: `1px solid ${C.border}`, borderRadius: R.control, padding: `0 ${S.md}px` }}>
