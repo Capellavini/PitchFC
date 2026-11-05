@@ -34,7 +34,7 @@ export const deskNavFor = (role) => (role === "manager" ? gated(MANAGER_NAV) : n
 /** Page title of a tab for a role (computer header). */
 export const tabTitle = (role, tab) => {
   if (tab === "inicio") return role === "manager" ? "Painel" : role === "captain" || role === "athlete" ? "Equipa" : "Início";
-  return { jogos: "Jogos", classificacao: "Classificação", gerir: "Gerir", mais: "Mais", fantasy: "Fantasy", eu: "Eu" }[tab] || "Painel";
+  return { jogos: "Jogos", classificacao: "Classificação", gerir: "Gerir", mais: "Mais", fantasy: "Pitch Manager", eu: "Eu" }[tab] || "Painel";
 };
 
 // The Gestor works the league. Fantasy is a follower module (switched on per

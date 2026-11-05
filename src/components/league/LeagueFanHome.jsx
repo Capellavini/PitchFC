@@ -4,6 +4,7 @@ import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { teamById, playerById, TEAMS, fmtKickoff, fmtDateTime, competitionById, COMPETITION, modOn } from "../../lib/leagueDemo";
 import { fanHome } from "../../lib/leagueFanHome";
+import "../../lib/leagueFantasyCopy";
 import SectionLabel from "../SectionLabel";
 import BtnPrimary from "../BtnPrimary";
 import BtnGhost from "../BtnGhost";
@@ -119,8 +120,10 @@ export default function LeagueFanHome({ ctx }) {
     <div style={{ ...cardStyle, marginBottom: S.xl, display: "flex", alignItems: "center", gap: S.md }}>
       <Gamepad2 size={22} color={C.accent} aria-hidden style={{ flexShrink: 0 }} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: T.body, fontWeight: 800 }}>{t("Fantasy da liga")}</div>
-        <div style={{ fontSize: T.meta, color: C.text2 }}>{h.fantasy.picked ? tf(t("A tua equipa tem {n} pontos"), { n: h.fantasy.points }) : t("Escolhe 5 atletas e soma pontos com os jogos oficiais.")}</div>
+        <div style={{ fontSize: T.body, fontWeight: 800 }}>{t("Pitch Manager da liga")}</div>
+        <div style={{ fontSize: T.meta, color: C.text2 }}>{h.fantasy.picked
+          ? (h.fantasy.rank ? tf(t("A tua equipa tem {n} pontos · {r}.º de {m}"), { n: h.fantasy.points, r: h.fantasy.rank, m: h.fantasy.of }) : tf(t("A tua equipa tem {n} pontos"), { n: h.fantasy.points }))
+          : t("Monta a tua equipa e soma pontos com os jogos oficiais.")}</div>
       </div>
       <BtnGhost tone="accent" onClick={() => goTab("fantasy")}>{h.fantasy.picked ? t("Ver") : t("Montar")}</BtnGhost>
     </div>

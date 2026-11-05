@@ -3,6 +3,10 @@
 import { registerStrings } from "./i18n";
 
 const EN = {
+  "Pitch Manager da liga": "The league's Pitch Manager",
+  "A tua equipa tem {n} pontos · {r}.º de {m}": "Your squad has {n} points · #{r} of {m}",
+  "A tua equipa tem {n} pontos": "Your squad has {n} points",
+  "Monta a tua equipa e soma pontos com os jogos oficiais.": "Build your squad and earn points from the official matches.",
   "Pitch Manager · demonstração": "Pitch Manager · demo",
   "O mesmo jogo e as mesmas regras dos grupos, com os atletas desta liga. Só pontuam rondas com todos os jogos homologados; corrigir uma súmula recalcula os pontos. Sem dinheiro nem prémios.":
     "The same game and rules as the groups, with this league's athletes. Only rounds with every match homologated score; correcting a match sheet recalculates the points. No money, no prizes.",
@@ -15,6 +19,9 @@ const EN = {
 };
 
 const PT_BR = {
+  "Pitch Manager da liga": "Pitch Manager do campeonato",
+  "A tua equipa tem {n} pontos · {r}.º de {m}": "O seu time tem {n} pontos · {r}º de {m}",
+  "Monta a tua equipa e soma pontos com os jogos oficiais.": "Monte o seu time e some pontos com os jogos oficiais.",
   "O mesmo jogo e as mesmas regras dos grupos, com os atletas desta liga. Só pontuam rondas com todos os jogos homologados; corrigir uma súmula recalcula os pontos. Sem dinheiro nem prémios.":
     "O mesmo jogo e as mesmas regras dos grupos, com os atletas deste campeonato. Só pontuam rodadas com todos os jogos homologados; corrigir uma súmula recalcula os pontos. Sem dinheiro nem prêmios.",
   "Equipa guardada (só neste navegador).": "Time salvo (só neste navegador).",

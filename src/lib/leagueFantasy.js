@@ -18,6 +18,7 @@
 //    isn't a round podium, so no MVP points yet (documented gap).
 import { activeEvents, matchScore, OFFICIAL_STATES } from "./core/league.js";
 import { POSITION_FULL } from "./leagueDemo.js";
+import { buildDemoFantasy } from "./fantasyDemo.js";
 
 const kickoffOrder = (a, b) => String(a.kickoff || "").localeCompare(String(b.kickoff || "")) || String(a.id).localeCompare(String(b.id));
 
@@ -110,4 +111,40 @@ export function leagueFantasySeed(players) {
   const have = new Set((players || []).map((p) => p.id));
   const ids = [LEAGUE_FANTASY.mySquad.player_ids, ...LEAGUE_FANTASY.managers.map((m) => m.player_ids)].flat();
   return ids.every((id) => have.has(id)) ? LEAGUE_FANTASY : { ...LEAGUE_FANTASY, mySquad: NO_SQUAD, managers: [], connection: null };
+}
+
+/** The league's whole Pitch Manager for ONE account, built the same way for the Pitch Manager tab and for the
+ *  fan's Início card, so both always show the same numbers.
+ *  state: the league state (matches, logs, fantasyV2); stats: derived.stats. */
+export function buildLeagueFantasy({ state, accountId, label = "", players, teams, stats, competitionId }) {
+  const seed = leagueFantasySeed(players);
+  const rounds = leagueRounds({ matches: state.matches, logs: state.logs, players, teams, competitionId });
+  const athletes = fantasyAthletes(players, teams, stats);
+  const me = { uuid: accountId, name: label, nick: label, isMe: true, photo: null };
+  const mySquad = state.fantasyV2?.[accountId] || seed.mySquad;
+  const demo = buildDemoFantasy({
+    group: athletes, meParticipant: me,
+    localDays: rounds.filter((r) => r.official).map((r) => ({ id: r.id, playedOn: r.playedOn, kickoffAt: r.kickoffAt, summary: r.summary, mvpKey: null })),
+    mySquad, lockedSquad: seed.mySquad,
+    rivals: seed.managers.map((m) => ({ participant: m.uuid, player_ids: m.player_ids, captain_id: m.captain_id })),
+    budget: seed.budget, squadSize: seed.squadSize, startsWeeksAgo: seed.startsWeeksAgo,
+    connectionConfig: seed.connection,
+  });
+  const participants = [me, ...seed.managers.map((m) => ({ uuid: m.uuid, name: m.name, nick: m.nick, photo: null }))];
+  return { seed, rounds, athletes, me, mySquad, demo, participants };
+}
+
+/** What a card needs: has a full squad, official points so far (Conexão included — the scores already carry it),
+ *  and the position among the managers. */
+export function leagueFantasyStanding(built) {
+  const totals = {};
+  for (const s of built.demo.fantasyScores) totals[s.participant_id] = (totals[s.participant_id] || 0) + Number(s.points || 0);
+  const mine = totals[String(built.me.uuid)] ?? 0;
+  const ids = Object.keys(totals);
+  return {
+    picked: (built.mySquad?.player_ids?.length || 0) >= built.seed.squadSize,
+    points: Math.round(mine),
+    rank: ids.length ? 1 + ids.filter((id) => totals[id] > mine).length : null,
+    of: ids.length,
+  };
 }

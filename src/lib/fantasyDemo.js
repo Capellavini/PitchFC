@@ -6,8 +6,8 @@
 import {
   FANTASY_V2, FANTASY_CONNECTION, nightFacts, playerNightPoints, scoreLineup, scoreLineupWithConnection, connectionDraftIssue,
   priceFromForm, seasonWindow, seasonStandings, ownershipCap,
-} from "./core/fantasyRules";
-import { squadCostBasis, nextPricesPaid } from "./fantasy";
+} from "./core/fantasyRules.js";
+import { squadCostBasis, nextPricesPaid } from "./fantasy.js";
 
 const fk = (id) => String(id);
 const iso = (d) => new Date(d).toISOString();
