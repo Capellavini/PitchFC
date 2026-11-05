@@ -1,3 +1,4 @@
+import LeagueNewsPreview from '../LeagueNewsPreview';
 import { useMemo, useState } from "react";
 import { C, S, T } from "./theme";
 import { getLang, t } from "../../../lib/i18n";
@@ -42,6 +43,7 @@ export default function LeagueLanding({ slug, raw, updatedAt }) {
   const hasTable = comp && comp.kind === "league" && comp.table.length > 0;
   const showScorers = settings.scorers && comp && comp.kind === "league";
   const nav = [
+    ["noticias", t("Notícias")],
     model.notices.length > 0 && ["avisos", t("Avisos")],
     comp && ["jornadas", t("Jornadas")],
     hasTable && ["classificacao", t("Classificação")],
@@ -69,6 +71,8 @@ export default function LeagueLanding({ slug, raw, updatedAt }) {
             {t("A liga está a preparar a época. Volta em breve para veres o calendário, os resultados e a classificação.")}
           </div>
         )}
+
+        <LeagueNewsPreview slug={slug} />
 
         {model.notices.length > 0 && (
           <LandingSection id="avisos" title={t("Da vida da liga")} brand={ink}>
@@ -115,7 +119,7 @@ export default function LeagueLanding({ slug, raw, updatedAt }) {
         {settings.signup && (
           <LandingSection id="pitch-manager" title={t("Pitch Manager da liga")} hint={t("O jogo de adeptos com os atletas reais desta liga.")} brand={ink}>
             <div style={{ maxWidth: 560 }}>
-              <LandingSignup slug={slug} leagueName={league.name} teams={model.teams} brand={brand} ink={ink} />
+              <LandingSignup enabled={state.modules.fantasy!==false} slug={slug} leagueName={league.name} teams={model.teams} brand={brand} ink={ink} />
             </div>
           </LandingSection>
         )}

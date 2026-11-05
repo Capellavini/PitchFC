@@ -1,3 +1,4 @@
+import LeagueBlogManager from './LeagueBlogManager';
 import { C, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 
@@ -18,6 +19,7 @@ const SECTIONS = [
   { id: "overview", label: "Competições" },
   { id: "registrations", label: "Inscrições" },
   { id: "page", label: "Página" },
+  { id: "blog", label: "Blog da liga" },
   { id: "access", label: "Acessos" },
   { id: "calendar", label: "Calendário" },
   { id: "import", label: "Importar" },
@@ -35,10 +37,11 @@ export default function LeagueManage({ ctx, section = "overview", onSection }) {
   // Accesses (captain / athlete invites) exist only on a real account's league, not in the demo.
   const hasAccess = Boolean(ctx.live && ctx.store?.roles);
   // The league's own page (avisos, what it shows, sign-ups) exists only on a real account's league.
-  const sections = SECTIONS.filter((s) => (s.id === "access" ? hasAccess : s.id === "page" ? Boolean(ctx.live) : true));
+  const sections = SECTIONS.filter((s) => (s.id === "access" ? hasAccess : ["page", "blog"].includes(s.id) ? Boolean(ctx.live) : true));
   return (
     <div>
       <nav className="pl-manage-nav" aria-label={t("Secções de gestão")}>{sections.map((item) => <button type="button" key={item.id} aria-current={section === item.id ? "page" : undefined} onClick={() => onSection(item.id)}>{t(item.label)}</button>)}</nav>
+      {section === "blog" && ctx.live && <LeagueBlogManager ctx={ctx} />}
       {section === "page" && ctx.live && <LeagueManagePage ctx={ctx} />}
       {section === "access" && hasAccess && <LeagueManageAccess ctx={ctx} />}
       {section === "season" && <LeagueManageSeason ctx={ctx} />}
