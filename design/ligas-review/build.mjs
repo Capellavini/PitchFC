@@ -13,5 +13,5 @@ let code = await fs.readFile(dir+'/review.js','utf8');
 const data = async (p,type) => 'data:'+type+';base64,'+(await fs.readFile(p)).toString('base64');
 for(const [url,type] of [['/brand/logo.png','image/png'],['/brand/field.jpg','image/jpeg']]){try{code=code.replaceAll(url,await data('public'+url,type));}catch{}}
 const embeddedCss=css.replaceAll('/apresentacao/assets/heading.ttf',await data('public/apresentacao/assets/heading.ttf','font/ttf'));
-const standalone=html.replace('<script type="module" src="./main.jsx"></script>',`<style>${embeddedCss}</style><script type="module">${code.replaceAll('</script','<\\/script')}</script>`);
+const standalone=html.replace('<script type="module" src="./main.jsx"></script>',()=>`<style>${embeddedCss}</style><script type="module">${code.replaceAll('</script','<\\/script')}</script>`);
 await fs.writeFile(dir+'/pitch-ligas-previa.html',standalone);
