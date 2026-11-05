@@ -119,7 +119,7 @@ export default function LeagueLanding({ slug, raw, updatedAt }) {
         {settings.signup && (
           <LandingSection id="pitch-manager" title={t("Pitch Manager da liga")} hint={t("O jogo de adeptos com os atletas reais desta liga.")} brand={ink}>
             <div style={{ maxWidth: 560 }}>
-              <LandingSignup enabled={state.modules.fantasy!==false} slug={slug} leagueName={league.name} teams={model.teams} brand={brand} ink={ink} />
+              <LandingSignup enabled={state.modules?.fantasy===true} slug={slug} leagueName={league.name} teams={model.teams} brand={brand} ink={ink} />
             </div>
           </LandingSection>
         )}
