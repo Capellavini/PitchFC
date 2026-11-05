@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { FileText } from "lucide-react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { regulationOf, REGULATION_MAX } from "../../lib/leagueRegulation";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 /** The league's regulation, kept as text so the Adjunto can check the champion and the promotions against it.
  *  Paste the articles that matter, or send the PDF to the Adjunto and confirm what it proposes to keep. */

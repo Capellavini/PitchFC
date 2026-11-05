@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { S, cardStyle, inputStyle } from "../../theme";
+import { S, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { setLeagueInfo } from "../../lib/leagueSetup";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
 import LeagueField from "./LeagueField";
 import LeagueManageModules from "./LeagueManageModules";
 import LeagueManageBrand from "./LeagueManageBrand";

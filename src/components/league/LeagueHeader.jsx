@@ -1,9 +1,9 @@
 import { FlaskConical, Menu } from "lucide-react";
-import { C, S, T, TOUCH, BRAND, displayFont } from "../../theme";
+import { C, S, T, TOUCH, BRAND, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG } from "../../lib/leagueCopy";
 import { LEAGUE, COMPETITION } from "../../lib/leagueDemo";
-import Chip from "../Chip";
+import Chip from "./visual/Chip";
 import LeagueRoleSwitcher from "./LeagueRoleSwitcher";
 import LeagueScopeBar from "./LeagueScopeBar";
 import LeagueMark from "./LeagueMark";
@@ -21,7 +21,7 @@ import { LeagueSyncChip } from "./LeagueSyncStatus";
 export default function LeagueHeader({ role, onRole, compact, slim, desktop = false, title, subtitle, scope, onScope, onMore, live = false, sync }) {
   if (desktop) {
     return (
-      <header style={{ marginBottom: S.xl }}>
+      <header className="pl-header" style={{ marginBottom: S.xl }}>
         <h1 style={{ ...displayFont, fontSize: T.title, lineHeight: 1.1, margin: 0, color: C.text1 }}>{title}</h1>
         {subtitle && <div style={{ fontSize: T.body, color: C.text2, marginTop: S.xs }}>{subtitle}</div>}
       </header>

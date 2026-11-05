@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { C, S, T, cardStyle, inputStyle } from '../../theme';
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from '../../lib/i18n';
 import '../../lib/leaguePresentationCopy';
 import { leagueIdentityFields } from '../../lib/leaguePresentation';
 import { leagueCloudError } from '../../lib/leagueCloudCopy';
-import BtnPrimary from '../BtnPrimary';
-import SectionLabel from '../SectionLabel';
+import BtnPrimary from "./visual/BtnPrimary";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueIdentity from './LeagueIdentity';
 
 const messages = {

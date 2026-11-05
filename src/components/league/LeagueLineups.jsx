@@ -1,9 +1,9 @@
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { PLAYERS, playerById, teamById, captainOf, ovrOfPlayer, modOn } from "../../lib/leagueDemo";
 import { canEditTactics } from "../../lib/core/league";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueSquadGrid from "./LeagueSquadGrid";
 import LeagueTacticsPanel from "./LeagueTacticsPanel";
 

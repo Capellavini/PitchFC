@@ -1,9 +1,9 @@
 import { Check, Circle, ChevronRight } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { setupSteps } from "../../lib/leagueSetup";
 import { SETUP_STEP } from "../../lib/leagueSetupCopy";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 
 /** "Montar a liga": the first steps of a league, computed from what exists.
  *  Shows on the Gestor's Painel until everything is done, then disappears. */

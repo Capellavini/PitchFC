@@ -1,5 +1,5 @@
 import { AlertTriangle, PenLine, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, Gavel, Radio, ShieldAlert, Share2, Sparkles, Users } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, displayFont } from "./visual/theme";
 import { t, getLang } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { LEAGUE, teamById, playerById, competitionById, modOn, fmtKickoff } from "../../lib/leagueDemo";
@@ -7,10 +7,10 @@ import { leagueToday, roundRecapText } from "../../lib/leagueToday";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { adjuntoBrief } from "../../lib/leagueAdjuntoGuide";
 import { recapShareUrl } from "../../lib/leagueShare";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
 import LeagueMatchRow from "./LeagueMatchRow";
 import AdjuntoText from "./AdjuntoText";
 import LeagueSetupChecklist from "./LeagueSetupChecklist";
@@ -38,6 +38,13 @@ const sectionTitle = (s) => (s.roundName ? t(s.roundName) : tf(t("Jornada {n}"),
 export default function LeagueToday({ ctx }) {
   const { state, derived, lang, open, notify, scope, setScope, wide, goTab, act } = ctx;
   const today = leagueToday(state, derived, { scope });
+  // One call-up task per fixture: both teams share the same match screen.
+  const queueItems = today.items.reduce((items, item) => {
+    const existing = item.kind === 'lineup' && items.find(x => x.kind === 'lineup' && x.matchId === item.matchId);
+    if (existing) existing.teamIds.push(item.teamId);
+    else items.push(item.kind === 'lineup' ? { ...item, teamIds: [item.teamId] } : item);
+    return items;
+  }, []);
   const byId = Object.fromEntries(state.matches.map((m) => [m.id, m]));
   const openMatch = (id) => open({ kind: "match", id });
   const multi = today.sections.length > 1;
@@ -55,7 +62,7 @@ export default function LeagueToday({ ctx }) {
       case "result": return { title: t("Resultado em falta"), sub: `${matchName(m)} · ${fmtKickoff(m.kickoff, lang)}`, go: () => openMatch(m.id) };
       case "live": return { title: t("Jogo a decorrer"), sub: matchName(m), go: () => openMatch(m.id) };
       case "suspended": return { title: t("Atleta suspenso na convocatória"), sub: `${playerById[it.playerId].name} · ${teamById[it.teamId].name}`, go: () => openMatch(m.id) };
-      case "lineup": return { title: t("Convocatória em falta"), sub: `${teamById[it.teamId].name} · ${matchName(m)}`, go: () => openMatch(m.id) };
+      case "lineup": return { title: t("Convocatória em falta"), sub: `${(it.teamIds || [it.teamId]).map(id => teamById[id].name).join(" / ")} · ${matchName(m)}`, go: () => openMatch(m.id) };
       default: return { title: t("Conflito de calendário"), sub: [it.text, it.matchIds.map((id) => matchName(byId[id])).join(" / ")].join(" · "), go: () => open({ kind: "manage", section: "calendar" }) };
     }
   };
@@ -89,7 +96,7 @@ export default function LeagueToday({ ctx }) {
         </div>
       )}
       {!ctx.store?.readOnly && <LeagueBulkHomologate ids={today.items.filter((i) => i.kind === "homologate").map((i) => i.matchId)} act={act} />}
-      {today.items.map((it) => {
+      {queueItems.map((it) => {
         const k = KINDS[it.kind];
         const d = describe(it);
         return (
@@ -146,9 +153,10 @@ export default function LeagueToday({ ctx }) {
     </div>
   );
 
+  const summary = <div className="pl-dashboard-intro"><div><span className="pl-eyebrow">{t("CENTRO DA LIGA")}</span><h2>{t("O jogo começa aqui.")}</h2><p>{t("Acompanha a época. Resolve o que falta. Dá palco à tua liga.")}</p></div><div className="pl-dashboard-numbers"><span><b>{state.data.teams.length}</b>{t("Equipas")}</span><span><b>{state.matches.length}</b>{t("Jogos")}</span><span><b>{today.items.length}</b>{t("Pendentes")}</span></div></div>;
   return wide ? (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)", gap: S.xxl, alignItems: "start" }}>{queue}{standing}</div>
+    <>{summary}<div className="pl-dashboard-columns" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)", gap: S.xxl, alignItems: "start" }}>{queue}{standing}</div></>
   ) : (
-    <div>{queue}<div style={{ marginTop: S.xl }}>{standing}</div></div>
+    <div>{summary}{queue}<div style={{ marginTop: S.xl }}>{standing}</div></div>
   );
 }

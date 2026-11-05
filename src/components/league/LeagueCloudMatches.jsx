@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { C, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { getLang, t } from "../../lib/i18n";
 import { STATE_LABEL, tf } from "../../lib/leagueCopy";
 import { LM } from "../../lib/leagueMatchCopy";
-import BtnPrimary from "../BtnPrimary";
-import Chip from "../Chip";
-import SectionLabel from "../SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import Chip from "./visual/Chip";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueMatchRow from "./LeagueMatchRow";
-import BtnGhost from '../BtnGhost';
+import BtnGhost from "./visual/BtnGhost";
 import LeagueFixturesPreview from './LeagueFixturesPreview';
 
 /** Jogos (cloud): the calendar by jornada, reusing the demo's

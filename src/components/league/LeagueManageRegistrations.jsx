@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { C, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf, POSITION_LABEL } from "../../lib/leagueCopy";
 import { COMPETITIONS, TEAMS, PLAYERS, captainOf } from "../../lib/leagueDemo";
 import { addTeam, addPlayers, setTeamCompetitions, setCaptain, removePlayer, removeTeam } from "../../lib/leagueSetup";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
 import TeamCrest from "../TeamCrest";
 import LeagueField from "./LeagueField";
 import LeaguePlayerRequests from "./LeaguePlayerRequests";

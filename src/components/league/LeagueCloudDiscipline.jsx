@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { plural, tf } from "../../lib/leagueCopy";
 import { LM } from "../../lib/leagueMatchCopy";
 import { disciplineRows } from "../../lib/leagueMatches";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
-import SectionLabel from "../SectionLabel";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueDiscipline from "./LeagueDiscipline";
 
 const TRIGGER = { red: "Vermelho direto", second_yellow: "Segundo amarelo", yellow_accumulation: "Acumulação de amarelos", manual: "Decisão manual" };

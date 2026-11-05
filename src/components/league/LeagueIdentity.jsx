@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { C, S, T, R } from '../../theme';
+import { C, S, T, R } from "./visual/theme";
 import { t } from '../../lib/i18n';
 import '../../lib/leaguePresentationCopy';
 import { leagueMonogram, safeLeagueLogo } from '../../lib/leaguePresentation';

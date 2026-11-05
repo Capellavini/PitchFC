@@ -1,8 +1,8 @@
 import { Cloud, CloudOff, Loader2, TriangleAlert } from "lucide-react";
-import { C, R, S, T } from "../../theme";
+import { C, R, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
-import Chip from "../Chip";
-import BtnGhost from "../BtnGhost";
+import Chip from "./visual/Chip";
+import BtnGhost from "./visual/BtnGhost";
 
 const CHIP = {
   idle: { variant: "green", Icon: Cloud, label: "Guardado" },

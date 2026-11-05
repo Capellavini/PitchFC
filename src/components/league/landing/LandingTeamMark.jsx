@@ -1,4 +1,4 @@
-import { R } from "../../../theme";
+import { R } from "./theme";
 import { safeLogo } from "../../../lib/leagueBrand";
 import TeamCrest from "../../TeamCrest";
 

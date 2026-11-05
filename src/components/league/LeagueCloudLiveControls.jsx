@@ -1,10 +1,10 @@
 import { Play, Square, CheckCircle2, Plus, Repeat, CalendarClock, Send, Ban, Flag, ShieldAlert, Users } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LM } from "../../lib/leagueMatchCopy";
 import { roleLabel } from "../../lib/leagueCloudCopy";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 /**
  * Operation of a REAL league match — same box and order as the demo's

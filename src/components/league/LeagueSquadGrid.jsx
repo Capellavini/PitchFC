@@ -1,5 +1,5 @@
 import { Ban } from "lucide-react";
-import { C, R, S, T, TOUCH } from "../../theme";
+import { C, R, S, T, TOUCH } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { POSITION_LABEL } from "../../lib/leagueCopy";
 import { teamById, ovrOfPlayer } from "../../lib/leagueDemo";
@@ -22,7 +22,7 @@ export default function LeagueSquadGrid({ players, onPlayer, suspended = new Set
             <span style={{ position: "absolute", top: S.sm, right: S.sm }}><LeagueOvrChip ovr={ovrOfPlayer(p)} size="sm" /></span>
             <span style={{ position: "absolute", top: S.sm, left: S.sm, fontSize: T.meta, fontWeight: 800, color: C.text2 }}>{p.number}</span>
             <Avatar name={p.name} photo={p.photo} color={teamById[p.teamId].color} size={48} isMe={p.id === meId} />
-            <span style={{ fontSize: T.body, fontWeight: 800, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick}{p.id === captainId ? " (C)" : ""}</span>
+            <span style={{ fontSize: T.body, fontWeight: 800, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nick || p.name}{p.id === captainId ? " (C)" : ""}</span>
             <span style={{ fontSize: T.meta, color: ban ? C.red : C.text2, display: "inline-flex", alignItems: "center", gap: 4 }}>
               {ban && <Ban size={12} aria-hidden />}{ban ? t("Suspenso") : t(POSITION_LABEL[p.position])}
             </span>

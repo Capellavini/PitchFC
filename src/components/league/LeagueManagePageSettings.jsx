@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { INTRO_MAX, pageSettings, setPageSettings } from "../../lib/leagueLanding";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
 import LeagueField from "./LeagueField";
 
 const SECTIONS = [

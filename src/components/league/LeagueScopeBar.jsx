@@ -1,4 +1,4 @@
-import { C, R, S, T, TOUCH } from "../../theme";
+import { C, R, S, T, TOUCH } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { COMPETITIONS } from "../../lib/leagueDemo";
 

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC, leagueCloudError } from "../../lib/leagueCloudCopy";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 import {supabase} from '../../lib/supabase';
 import OperationsOnboarding from './operations/OperationsOnboarding';
-import BtnGhost from "../BtnGhost";
+import BtnGhost from "./visual/BtnGhost";
 
 /** Pilot gate (brief §5): request → admin review → create ONE league from the approval.
  *  The page never says "aprovado" until the admin actually approved. */

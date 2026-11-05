@@ -1,0 +1,8 @@
+{
+  "name": "pitch-ligas-visual-kit",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "peerDependencies": { "react": "^18.3.1", "react-dom": "^18.3.1" },
+  "exports": { ".": "./index.jsx", "./styles.css": "./styles.css" }
+}

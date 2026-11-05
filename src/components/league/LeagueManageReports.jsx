@@ -1,10 +1,10 @@
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { plural } from "../../lib/leagueCopy";
 import { teamById } from "../../lib/leagueDemo";
 import { corrections } from "../../lib/core/league";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 import LeagueStateChip from "./LeagueStateChip";
 
 const ORDER = { in_review: 0, ended_provisional: 1, live: 2, homologated: 3 };

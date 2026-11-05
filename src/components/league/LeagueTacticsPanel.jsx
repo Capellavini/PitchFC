@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { LayoutGrid } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { PLAYERS as DEMO_PLAYERS, teamById as DEMO_TEAMS, playerById as DEMO_BY_ID, fmtDateTime } from "../../lib/leagueDemo";
 import TacticsBoard from "../TacticsBoard";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 const OUTFIELD_F7 = 6; // Futebol 7 = GR + 6
 

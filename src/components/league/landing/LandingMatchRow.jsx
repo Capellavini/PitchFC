@@ -1,4 +1,4 @@
-import { C, R, S, T, displayFont } from "../../../theme";
+import { C, R, S, T, displayFont } from "./theme";
 import { t } from "../../../lib/i18n";
 import { fmtKickoff } from "../../../lib/leagueDemo";
 import LeagueStateChip from "../LeagueStateChip";
@@ -20,7 +20,7 @@ export default function LandingMatchRow({ match, lang }) {
         <span style={{ fontSize: T.meta, color: C.text2, fontWeight: 600 }}>
           {match.kickoff ? fmtKickoff(match.kickoff, lang) : t("Data por definir")}{match.venue ? ` · ${match.venue}` : ""}
         </span>
-        <LeagueStateChip state={match.state} />
+        <LeagueStateChip state={match.state} light />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: S.sm }}>
         {side(match.home, "left")}
@@ -29,6 +29,7 @@ export default function LandingMatchRow({ match, lang }) {
         </div>
         {side(match.away, "right")}
       </div>
+      {match.shootout && <div className="pl-shootout">{t("Penáltis")} {match.shootout.home}–{match.shootout.away}{match.official && match.score?.home === match.score?.away && match.shootout.home !== match.shootout.away && <strong style={{display:"block"}}>{t("Vence nos penáltis")}: {match.shootout.home > match.shootout.away ? match.home?.name : match.away?.name}</strong>}</div>}
     </div>
   );
 }

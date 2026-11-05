@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { athletePool } from "../../lib/leagueSeason";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 /** After "Nova época" the squads are empty (registrations usually involve fees). The athletes' profiles wait here:
  *  the Gestor ticks whoever the organisation accepts back and they return to the team they played for. */

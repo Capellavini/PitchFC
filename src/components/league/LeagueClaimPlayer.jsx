@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { C, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { roleErrorText } from "../../lib/leagueRoles";
 import Avatar from "../Avatar";
@@ -18,7 +18,7 @@ export default function LeagueClaimPlayer({ team, players, onClaim }) {
     if (r?.error) setError(roleErrorText(r.error));
   };
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT, padding: `${S.xl}px ${S.lg}px` }}>
+    <div className="pitch-ligas" style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT, padding: `${S.xl}px ${S.lg}px` }}>
       <div style={{ maxWidth: 430, margin: "0 auto" }}>
         <div style={{ ...displayFont, fontSize: 16, letterSpacing: "0.14em", color: C.accent }}>LIGAS</div>
         <h1 style={{ margin: `${S.sm}px 0`, fontSize: T.title, fontWeight: 900, lineHeight: 1.15 }}>{t("Quem és tu?")}</h1>

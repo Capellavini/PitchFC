@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {LayoutDashboard,ClipboardCheck,CalendarDays,Users,Sparkles,Megaphone,Globe,Settings2,Trophy,ShieldCheck,RefreshCw,Check,X,Radio} from 'lucide-react';
 import {t} from '../../../lib/i18n';
 import '../../../lib/leagueAdjuntoCopy';
-import {C,BRAND} from '../../../theme';
+import {C,BRAND} from "../visual/theme";
 import {OPERATIONS_TABS,operationSummary,needsReview,matchLabel,matchDate,isOfficial} from '../../../lib/leagueOperations';
 import {leagueUrl} from '../../../lib/leagueCloud';
 import OperationsOverview,{Action,Tag,MatchList} from './OperationsOverview';

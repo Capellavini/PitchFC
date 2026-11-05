@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { C, S, T, cardStyle, displayFont } from "../../../theme";
+import { C, S, T, cardStyle, displayFont } from "./theme";
 import { t } from "../../../lib/i18n";
-import SegmentedControl from "../../SegmentedControl";
+import SegmentedControl from "../visual/SegmentedControl";
 import Avatar from "../../Avatar";
 import { teamById } from "../../../lib/leagueDemo";
 

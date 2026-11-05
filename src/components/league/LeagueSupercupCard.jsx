@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Trophy } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { supercupProposal } from "../../lib/leagueSupercup";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 
 /** The Supertaça: last season's league champion against the cup winner, proposed from the archive. The Gestor picks the day. */
 export default function LeagueSupercupCard({ ctx }) {

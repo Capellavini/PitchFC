@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronRight, Shield, Trophy } from "lucide-react";
-import { C, S, T, BRAND, cardStyle, displayFont } from "../../theme";
+import { C, S, T, BRAND, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { rolesApi } from "../../lib/leagueRolesApi";
 import { homeEntries, inviteTokenFromText, invitePath } from "../../lib/leagueRoles";
@@ -41,7 +41,7 @@ export default function LeagueMyLeagues({ user, ownerFallback = false }) {
     return <div role="status" style={{ minHeight: "100vh", background: C.bg, display: "grid", placeItems: "center" }}><KeepyUppyLoader /></div>;
   }
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT, padding: `${S.xl}px ${S.lg}px`, boxSizing: "border-box" }}>
+    <div className="pitch-ligas" style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT, padding: `${S.xl}px ${S.lg}px`, boxSizing: "border-box" }}>
       <div style={{ maxWidth: 430, margin: "0 auto" }}>
         <img src={BRAND.logo} alt="PITCH" style={{ height: 28, display: "block", marginBottom: S.sm }} />
         <div style={{ ...displayFont, fontSize: 16, letterSpacing: "0.14em", color: C.accent }}>LIGAS</div>

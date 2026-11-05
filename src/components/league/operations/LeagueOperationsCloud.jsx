@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {C} from '../../../theme';
+import {C} from "../visual/theme";
 import {leagueUrl,isLeagueManagerRole} from '../../../lib/leagueCloud';
 import {supabase} from '../../../lib/supabase';
 import LeagueOperations from './LeagueOperations';

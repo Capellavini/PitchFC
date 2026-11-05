@@ -1,4 +1,4 @@
-import { C, S, T, TOUCH, displayFont } from "../../theme";
+import { C, S, T, TOUCH, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { teamById as DEMO_TEAMS } from "../../lib/leagueDemo";
 import Avatar from "../Avatar";

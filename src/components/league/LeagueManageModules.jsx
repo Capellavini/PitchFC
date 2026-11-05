@@ -1,8 +1,8 @@
 import { Check } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { MODULES, MODULE_GROUPS, CORE_FEATURES, moduleOn, moduleById } from "../../lib/leagueModules";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueSwitch from "./LeagueSwitch";
 
 /** Módulos da liga: what the league switches on. The core is always there;

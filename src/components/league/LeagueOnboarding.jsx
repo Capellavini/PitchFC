@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, FileSpreadsheet, Sparkles, Upload } from "lucide-react";
-import { C, R, S, T, TOUCH, BRAND, cardStyle, displayFont, inputStyle } from "../../theme";
+import { C, R, S, T, TOUCH, BRAND, cardStyle, displayFont, inputStyle } from "./visual/theme";
 import { t, getLang } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { adjuntoName } from "../../lib/leagueAdjunto";
@@ -11,8 +11,8 @@ import { importTeams, importCalendar, importRoster } from "../../lib/leagueImpor
 import { readTableFile } from "../../lib/leagueTable";
 import { logoFromFile, onColor } from "../../lib/leagueBrand";
 import { seasonLabel, parseCompetitionLines, parseTeamLines, IMPORT_REASON } from "../../lib/leagueGuidedStart";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 import LeagueField from "./LeagueField";
 
 const ORDER = ["league", "logo", "competitions", "teams", "players", "calendar", "done"];
@@ -42,7 +42,7 @@ export default function LeagueOnboarding({ ctx }) {
   const props = { ctx, state, act, notify, next, name };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text1 }}>
+    <div className="pitch-ligas" style={{ minHeight: "100vh", background: C.bg, color: C.text1 }}>
       <div ref={top} style={{ maxWidth: 680, margin: "0 auto", padding: `${S.lg}px ${S.lg}px ${S.xxl * 2}px`, boxSizing: "border-box" }}>
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: S.md, minHeight: 44, marginBottom: S.lg }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: S.sm }}>

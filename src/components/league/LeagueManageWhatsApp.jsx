@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { linkUrl, LINK_ERROR } from "../../lib/leagueWhatsApp";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 const WA_GREEN = "#25D366"; // WhatsApp actions always use this green
 

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { S, cardStyle, inputStyle } from "../../theme";
+import { S, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { modOn } from "../../lib/leagueDemo";
 import { addCompetition } from "../../lib/leagueSetup";
-import SegmentedControl from "../SegmentedControl";
-import BtnPrimary from "../BtnPrimary";
+import SegmentedControl from "./visual/SegmentedControl";
+import BtnPrimary from "./visual/BtnPrimary";
 import LeagueField from "./LeagueField";
 
 const KINDS = [{ id: "league", label: "Campeonato" }, { id: "cup", label: "Taça" }];

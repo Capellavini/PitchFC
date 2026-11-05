@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Paperclip, Send, Sparkles, X, TriangleAlert } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { t, getLang } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { LEAGUE, teamById } from "../../lib/leagueDemo";
@@ -11,9 +11,9 @@ import { prepareBatch, adjuntoContext, OPEN_SCREENS } from "../../lib/leagueAdju
 import { chatHistory } from "../../lib/leagueAdjuntoFiles";
 import { askAdjunto, readAttachment } from "../../lib/leagueAdjuntoClient";
 import { recapShareUrl } from "../../lib/leagueShare";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
 import AdjuntoText from "./AdjuntoText";
 
 const CONSENT_KEY = "pitch.v2.adjuntoConsent";

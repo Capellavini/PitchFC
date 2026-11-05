@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Sparkles, X } from "lucide-react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { leagueTiers, proposeMovements, normalizeMovements, movementsQuestion } from "../../lib/leagueMovements";
-import SectionLabel from "../SectionLabel";
-import BtnGhost from "../BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnGhost from "./visual/BtnGhost";
 
 /** Promotion and relegation, proposed from the final tables. The Gestor homologates the list: untick a move, add one by hand
  *  (always with the reason), and optionally ask the Adjunto whether the regulation says the same. `onChange(list, error)`

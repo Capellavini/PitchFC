@@ -1,4 +1,4 @@
-import { C, R, displayFont } from "../../theme";
+import { C, R, displayFont } from "./visual/theme";
 import { LEAGUE } from "../../lib/leagueDemo";
 import { safeLogo, onColor } from "../../lib/leagueBrand";
 

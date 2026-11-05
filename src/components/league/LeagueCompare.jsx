@@ -1,4 +1,4 @@
-import { S } from "../../theme";
+import { S } from "./visual/theme";
 import { PLAYERS, futPlayer } from "../../lib/leagueDemo";
 import ComparePlayers from "../ComparePlayers";
 

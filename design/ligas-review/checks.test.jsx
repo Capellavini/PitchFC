@@ -1,0 +1,34 @@
+import React from 'react';
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {renderToStaticMarkup as render} from 'react-dom/server';
+import {buildExampleState} from '../../src/lib/leagueExample.js';
+import {normalizeLeagueState,deriveLeague,emptyLeagueState} from '../../src/lib/leagueDemo.js';
+import {landingModel} from '../../src/lib/leagueLanding.js';
+import {setLang} from '../../src/lib/i18n.js';
+import {C as globalPalette,applyPalette} from '../../src/theme.js';
+import {C as leaguePalette,inputStyle} from '../../src/components/league/visual/theme.js';
+import {createLeaguePalette,contrastRatio} from '../../src/components/league/visual/palette.mjs';
+import LeagueMatchRow from '../../src/components/league/LeagueMatchRow.jsx';
+import LeagueStandingsTable from '../../src/components/league/LeagueStandingsTable.jsx';
+import LeagueManage from '../../src/components/league/LeagueManage.jsx';
+import LeagueLanding from '../../src/components/league/landing/LeagueLanding.jsx';
+import LandingMatchRow from '../../src/components/league/landing/LandingMatchRow.jsx';
+import LeagueAuth from '../../src/components/league/LeagueAuth.jsx';
+import LeagueOnboarding from '../../src/components/league/LeagueOnboarding.jsx';
+import LeagueTable from '../../src/components/league/LeagueTable.jsx';
+import LeagueMatches from '../../src/components/league/LeagueMatches.jsx';
+import LeagueToday from '../../src/components/league/LeagueToday.jsx';
+setLang('pt');
+globalThis.window = { location: { origin: 'http://preview.invalid' } };
+function context(){const state=normalizeLeagueState(buildExampleState());return {state,derived:deriveLeague(state),role:'manager',acc:{},lang:'pt',scope:'all',wide:true,open(){},notify(){},goTab(){},goManage(){},setScope(){},act:{},live:true,store:{slug:'teste',roles:{},published:false}};}
+test('league palette and inputs remain isolated from the other app themes',()=>{const original={...globalPalette};applyPalette('light');assert.equal(leaguePalette.accent,'#C8FF00');assert.equal(inputStyle().background,leaguePalette.card);assert.notEqual(globalPalette.bg,leaguePalette.bg);applyPalette('dark');Object.assign(globalPalette,original);});
+test('match cards keep zero scores and show shootouts separately',()=>{const ctx=context(), match={...ctx.state.matches[0],state:'homologated'};const html=render(<LeagueMatchRow match={match} score={{home:0,away:0,shootout:{home:4,away:3}}} lang="pt" onOpen={()=>{}}/>);assert.match(html,/0–0/);assert.match(html,/Penáltis.*4.*3/);});
+test('public projection and public match card keep the shootout',()=>{const ctx=context();ctx.derived.scores[ctx.state.matches[0].id]={home:1,away:1,shootout:{home:3,away:4}};const model=landingModel(ctx.state,ctx.derived);const match=model.competitions.flatMap(c=>c.rounds.flatMap(r=>r.matches)).find(m=>m.id===ctx.state.matches[0].id);assert.deepEqual(match.shootout,{home:3,away:4});const html=render(<LandingMatchRow match={match} lang="pt"/>);assert.match(html,/1–1/);assert.match(html,/Penáltis.*3.*4/);});
+test('standings expose full team names and semantic row headers',()=>{const ctx=context();const html=render(<LeagueStandingsTable rows={ctx.derived.table}/>);assert.match(html,/scope="row"/);assert.match(html,/Real Senhora da Hora/);assert.match(html,/<caption/);});
+test('all management sections render and preserve season, import and athlete request entry points',()=>{const ctx=context();for(const section of ['overview','setup','registrations','page','access','calendar','reports','discipline','regulation','season','import']){const html=render(<LeagueManage ctx={ctx} section={section} onSection={()=>{}}/>);assert.match(html,/Época/);assert.match(html,/Importar/);assert.match(html,/Acessos/);assert.doesNotMatch(html,/NaN/);}});
+test('panel, matches and standings render against the real league model',()=>{for(const Component of [LeagueToday,LeagueMatches,LeagueTable]){const html=render(<Component ctx={context()}/>);assert.ok(html.length>300);assert.doesNotMatch(html,/NaN/);}});
+test('public page, account entry and empty onboarding render without backend calls',()=>{const ctx=context();assert.match(render(<LeagueLanding slug="teste" raw={ctx.state}/>),/pl-public-hero/);assert.match(render(<LeagueAuth cloud={{status:'anon'}} lang="pt" onLang={()=>{}}/>),/pl-auth-layout/);assert.ok(render(<LeagueOnboarding ctx={{...ctx,state:emptyLeagueState()}}/>).length>300);});
+test('tenant palette preserves accessible links and a distinct PITCH app accent',()=>{for(const color of ['#FFFFFF','#000000','#C8FF00','#355BC4','#777777','#8B1E3F']){const p=createLeaguePalette(color);assert.ok(contrastRatio(p['--pitch-league-link'],'#FFFFFF')>=4.5);assert.ok(contrastRatio(p['--pitch-league-deep'],'#CBD6E7')>=4.5);}assert.equal(leaguePalette.accent,'#C8FF00');});
+
+test('mobile standings retain full names with five readable columns',()=>{window.matchMedia=()=>({matches:true});try{const html=render(<LeagueStandingsTable rows={context().derived.table}/>);assert.equal((html.match(/scope="col"/g)||[]).length,5);assert.match(html,/Real Senhora da Hora/);}finally{delete window.matchMedia;}});

@@ -1,9 +1,9 @@
 import { Sparkles } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { welcomeFor, welcomeLines, isWelcomed } from "../../lib/leagueWelcome";
 import { modOn } from "../../lib/leagueDemo";
-import BtnGhost from "../BtnGhost";
+import BtnGhost from "./visual/BtnGhost";
 
 /** First-visit card on a role's home: three lines on what the screen is for,
  *  dismissed for good (per role, per browser). */
