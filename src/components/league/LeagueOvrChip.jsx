@@ -1,4 +1,4 @@
-import { C, R, displayFont } from "../../theme";
+import { C, R, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tierOf, modOn } from "../../lib/leagueDemo";
 

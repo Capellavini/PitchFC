@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { Plus, Shield } from "lucide-react";
-import { C, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { roleErrorText } from "../../lib/leagueRoles";
 import { draftFromPlayers, squadProblems, squadPayload, isSquadDirty } from "../../lib/leagueSquad";
 import { teamPlayerRequests } from "../../lib/leaguePlayerRequests";
 import { tf } from "../../lib/leagueCopy";
-import BackHeader from "../BackHeader";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BackHeader from "./visual/BackHeader";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+
 
 const POSITIONS = ["GR", "DEF", "MED", "AVA"];
 

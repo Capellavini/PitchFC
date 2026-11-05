@@ -1,12 +1,12 @@
 import { FlaskConical, LogOut } from "lucide-react";
-import { C, R, S, T, BRAND, displayFont } from "../../theme";
+import { C, R, S, T, BRAND, displayFont } from "./visual/theme";
 import { t, getLang } from "../../lib/i18n";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { LG } from "../../lib/leagueCopy";
 import { signOutLeague } from "../../lib/leagueSignOut";
 import { LEAGUE } from "../../lib/leagueDemo";
 import { deskNavFor } from "../../lib/leagueNav";
-import Chip from "../Chip";
+import Chip from "./visual/Chip";
 import LeagueScopeBar from "./LeagueScopeBar";
 import LeagueMark from "./LeagueMark";
 import LeagueRoleSwitcher from "./LeagueRoleSwitcher";
@@ -20,7 +20,7 @@ import { LeagueSyncChip } from "./LeagueSyncStatus";
 export default function LeagueSideNav({ tab, onSelect, scope, onScope, role, onRole, badges = {}, live = false, sync }) {
   const NAV = deskNavFor(role).map((n) => ({ ...n, label: n.label || adjuntoName(getLang()) }));
   return (
-    <aside style={{
+    <aside className="pl-sidebar" style={{
       position: "sticky", top: 0, alignSelf: "start", height: "100vh", boxSizing: "border-box", overflowY: "auto",
       background: C.surface, borderRight: `1px solid ${C.border}`, padding: `${S.xl}px ${S.lg}px`, display: "flex", flexDirection: "column", gap: S.xl,
     }}>

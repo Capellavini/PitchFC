@@ -1,4 +1,4 @@
-import { C, S, T, displayFont } from "../../../theme";
+import { C, S, T, displayFont } from "./theme";
 
 /** A block of the league page: a title with the league colour as its tick, then the content.
  *  `id` is the anchor the page menu jumps to. */

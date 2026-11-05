@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Copy, MessageCircle } from "lucide-react";
-import { C, R, S, T } from "../../theme";
+import { C, R, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC } from "../../lib/leagueCloudCopy";
 import { openWhatsApp } from "../../lib/whatsapp";
-import BtnGhost from "../BtnGhost";
+import BtnGhost from "./visual/BtnGhost";
 
 /** A generated link (collaborator invite / registration link): shown, copyable, sendable by WhatsApp. */
 export default function LeagueShareLink({ url, message }) {

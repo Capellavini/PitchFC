@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { C, S, T, TOUCH, cardStyle } from "../../theme";
+import { C, S, T, TOUCH, cardStyle } from "./visual/theme";
 
 /** A tappable list row (league, competition, followed entity) → href. */
 export default function LeagueLinkRow({ href, title, meta, right }) {

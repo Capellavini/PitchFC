@@ -1,7 +1,7 @@
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { athleteCareer } from "../../lib/leagueCareer";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 
 const th = { textAlign: "right", padding: "4px 6px", fontSize: T.min, color: C.text2, fontWeight: 800 };
 const td = { textAlign: "right", padding: "6px", fontSize: T.meta, fontVariantNumeric: "tabular-nums" };

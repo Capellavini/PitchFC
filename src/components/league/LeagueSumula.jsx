@@ -1,10 +1,10 @@
 import { History, FileText } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { EVENT_LABEL, STATE_LABEL, ROLE_LABEL } from "../../lib/leagueCopy";
 import { playerById, teamById, fmtDateTime } from "../../lib/leagueDemo";
 import { corrections, activeEvents } from "../../lib/core/league";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 
 const describe = (e) => {
   if (!e) return "—";

@@ -1,6 +1,6 @@
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
-import SegmentedControl from "../SegmentedControl";
+
 import LeagueManageOverview from "./LeagueManageOverview";
 import LeagueManageRegistrations from "./LeagueManageRegistrations";
 import LeagueManageCalendar from "./LeagueManageCalendar";
@@ -38,7 +38,7 @@ export default function LeagueManage({ ctx, section = "overview", onSection }) {
   const sections = SECTIONS.filter((s) => (s.id === "access" ? hasAccess : s.id === "page" ? Boolean(ctx.live) : true));
   return (
     <div>
-      <SegmentedControl options={sections} value={section} onChange={onSection} />
+      <nav className="pl-manage-nav" aria-label={t("Secções de gestão")}>{sections.map((item) => <button type="button" key={item.id} aria-current={section === item.id ? "page" : undefined} onClick={() => onSection(item.id)}>{t(item.label)}</button>)}</nav>
       {section === "page" && ctx.live && <LeagueManagePage ctx={ctx} />}
       {section === "access" && hasAccess && <LeagueManageAccess ctx={ctx} />}
       {section === "season" && <LeagueManageSeason ctx={ctx} />}

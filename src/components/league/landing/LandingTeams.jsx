@@ -1,4 +1,4 @@
-import { C, R, S, T } from "../../../theme";
+import { C, R, S, T } from "./theme";
 import { t } from "../../../lib/i18n";
 import { tf } from "../../../lib/leagueCopy";
 import LandingTeamMark from "./LandingTeamMark";

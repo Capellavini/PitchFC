@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC, leagueCloudError } from "../../lib/leagueCloudCopy";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import SectionLabel from "../SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
 
 /** App admin only: pending pilot requests with the requester's contact → approve / reject. */
 export default function LeagueAdminRequests({ leagues }) {

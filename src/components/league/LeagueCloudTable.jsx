@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { LM } from "../../lib/leagueMatchCopy";
 import { PENDING_STATES, cardRows, provisionalStandings, rankingRows } from "../../lib/leagueMatches";
-import BtnGhost from "../BtnGhost";
-import SectionLabel from "../SectionLabel";
-import SegmentedControl from "../SegmentedControl";
+import BtnGhost from "./visual/BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import SegmentedControl from "./visual/SegmentedControl";
 import LeagueStandingsTable from "./LeagueStandingsTable";
 import LeagueRankingList from "./LeagueRankingList";
 

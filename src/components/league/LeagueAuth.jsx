@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { C, BRAND, displayFont } from "../../theme";
+import { C, BRAND, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LEAGUE_HOME_PATH, leagueSignUpMeta } from "../../lib/leagueAccount";
 import { inviteNextFromSearch } from "../../lib/leagueRoles";
@@ -12,7 +12,7 @@ const APP_FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui
  *  account is marked as a league account at sign-up, so it only ever sees the
  *  league product (see lib/leagueAccount.js). Signing in here with any
  *  existing account just opens the league home. */
-export default function LeagueAuth({ cloud, lang, onLang }) {
+export default function LeagueAuth({ cloud, lang, onLang, onBack }) {
   const signedIn = cloud.status !== "loading" && cloud.status !== "anon" && Boolean(cloud.user);
   // A league account with no player row yet gets its minimal profile from the
   // app root; once the session is ready (profile or not) go to the league home.
@@ -28,8 +28,8 @@ export default function LeagueAuth({ cloud, lang, onLang }) {
     );
   }
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", color: C.text1, fontFamily: APP_FONT }}>
-      <AuthForm
+    <div className="pitch-ligas" style={{ background: C.bg, minHeight: "100vh", margin: "0 auto", color: C.text1, fontFamily: APP_FONT }}>
+      <div className="pl-auth-layout"><section className="pl-auth-story"><span className="pl-eyebrow">PITCH LIGAS</span><h1>{t("A tua liga.")}<br/><em>{t("Noutro nível.")}</em></h1><p>{t("Dos plantéis ao apito final. Organiza a competição e aproxima quem faz parte dela.")}</p><div className="pl-auth-field" aria-hidden><span /></div></section><div className="pl-auth-form"><AuthForm
         subtitle={(
           <div style={{ marginTop: 10 }}>
             <div style={{ ...displayFont, fontSize: 16, letterSpacing: "0.14em", color: C.accent }}>LIGAS</div>
@@ -39,9 +39,9 @@ export default function LeagueAuth({ cloud, lang, onLang }) {
         onSignUp={(email, password, meta) => cloud.signUp(email, password, leagueSignUpMeta(meta))}
         onSignIn={cloud.signIn}
         onResetPassword={cloud.resetPassword}
-        onBack={() => { window.location.href = "/league"; }}
+        onBack={() => { if (onBack) onBack(); else window.location.href = "/league"; }}
         lang={lang} onLang={onLang}
-      />
+      /></div></div>
     </div>
   );
 }

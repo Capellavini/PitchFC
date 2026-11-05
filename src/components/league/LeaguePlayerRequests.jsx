@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { UserPlus, Check, X } from "lucide-react";
-import { C, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { pendingPlayerRequests } from "../../lib/leaguePlayerRequests";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import SectionLabel from "../SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
 
 /** Athletes a captain asked to add. The league registers its athletes, so each one waits here for the Gestor:
  *  approve (joins the squad) or refuse (with a reason the captain sees). `compact` = the Início card with a

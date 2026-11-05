@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC, leagueCloudError, roleLabel } from "../../lib/leagueCloudCopy";
 import { tf } from "../../lib/leagueCopy";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 
 /** ?convite=<token>: the invite says destination + role BEFORE accepting (never grants owner). */
 export default function LeagueInviteAccept({ leagues, token, onAccepted }) {

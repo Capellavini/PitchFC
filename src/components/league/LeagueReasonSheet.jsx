@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { C, S, T, inputStyle } from "../../theme";
+import { C, S, T, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import Sheet from "../Sheet";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 
 /** A state change that needs a written reason (contest, send back to
  *  review, reopen, postpone). The reason is mandatory — the domain

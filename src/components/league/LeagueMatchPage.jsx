@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Video, MapPin, Clock, Shield, AlertTriangle } from "lucide-react";
-import { C, R, S, T, cardStyle, displayFont } from "../../theme";
+import { C, R, S, T, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { teamById, playerById, fmtKickoff, fmtDateTime, LEAGUE, COMPETITION, competitionById, modOn } from "../../lib/leagueDemo";
 import { canCorrect, DEMO_RULES, shootoutKicks } from "../../lib/core/league";
-import BackHeader from "../BackHeader";
-import SegmentedControl from "../SegmentedControl";
-import Chip from "../Chip";
+import BackHeader from "./visual/BackHeader";
+import SegmentedControl from "./visual/SegmentedControl";
+import Chip from "./visual/Chip";
 import TeamCrest from "../TeamCrest";
 import LeagueStateChip from "./LeagueStateChip";
 import LeagueTimeline from "./LeagueTimeline";

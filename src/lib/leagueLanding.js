@@ -102,6 +102,7 @@ export function landingModel(state, derived) {
     id: m.id, round: Number(m.round) || 0, kickoff: m.kickoff || null, venue: m.venue || "", state: m.state,
     home: teamOf[m.homeId] || null, away: teamOf[m.awayId] || null,
     score: SHOWS_SCORE.has(m.state) && derived.scores?.[m.id] ? { home: derived.scores[m.id].home, away: derived.scores[m.id].away } : null,
+    shootout: SHOWS_SCORE.has(m.state) ? derived.scores?.[m.id]?.shootout || null : null,
     official: m.state === "homologated" || m.state === "walkover",
   });
   const competitions = (d.competitions || []).map((c) => {

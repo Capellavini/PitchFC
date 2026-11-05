@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+const html=fs.readFileSync('design/ligas-review/dist/pitch-ligas-previa.html','utf8');
+const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)];
+assert.equal(scripts.length,1,'A prévia deve ter apenas um script incorporado');
+const rest=html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi,'').replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi,'').replace(/<[^>]+>/g,'').trim();
+assert.equal(rest,'PITCH Ligas · Prévia do redesign','Não pode haver código fora do script');
+fs.writeFileSync('design/ligas-review/dist/inline-check.mjs',scripts[0][1]);
+const r=spawnSync(process.execPath,['--check','design/ligas-review/dist/inline-check.mjs'],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);
+console.log(JSON.stringify({html:'validado',script:scripts[0][1].length,textoExterno:rest}));

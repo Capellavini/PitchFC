@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { ClipboardCheck } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 /** "Homologar a jornada": when several results are waiting, the Gestor can confirm them all at once, after saying
  *  they were checked. Contested games (in review) are never part of it — those are decisions, not confirmations. */

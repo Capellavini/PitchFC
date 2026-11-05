@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { C, R, S, T, TOUCH, inputStyle } from "../../theme";
+import { C, R, S, T, TOUCH, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { PLAYERS, teamById } from "../../lib/leagueDemo";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 const two = (v) => /^[0-9]{1,2}$/.test(v);
 

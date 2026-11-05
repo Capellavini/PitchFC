@@ -1,13 +1,13 @@
 import { Gamepad2, Megaphone, Radio, Star, Target, Vote } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { teamById, playerById, TEAMS, fmtKickoff, fmtDateTime, competitionById, COMPETITION, modOn } from "../../lib/leagueDemo";
 import { fanHome } from "../../lib/leagueFanHome";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
 import FormPills from "../FormPills";
 import TeamCrest from "../TeamCrest";
 import LeagueMatchRow from "./LeagueMatchRow";

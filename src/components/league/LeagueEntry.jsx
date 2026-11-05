@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Heart, Shirt, Flag, ClipboardCheck, ChevronRight, Trophy } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { LEAGUE, COMPETITION, TEAMS, ROLE_ACCOUNTS, teamById } from "../../lib/leagueDemo";
-import BackHeader from "../BackHeader";
+import BackHeader from "./visual/BackHeader";
 import TeamCrest from "../TeamCrest";
 
 /**

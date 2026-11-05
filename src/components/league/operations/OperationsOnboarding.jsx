@@ -1,5 +1,5 @@
 import {useRef,useState,useEffect} from 'react';
-import {C} from '../../../theme';
+import {C} from "../visual/theme";
 import {FORMAT_PRESETS} from '../../../lib/leagueFormat';
 import {leagueCloudError} from '../../../lib/leagueCloudCopy';
 import {downloadText,} from '../../../lib/leagueOperations';

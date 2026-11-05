@@ -1,5 +1,5 @@
 import { BookOpen } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { DEMO_RULES } from "../../lib/core/league";

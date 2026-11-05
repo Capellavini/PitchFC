@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { COMPETITIONS, TEAMS, teamById, competitionTitle } from "../../lib/leagueDemo";
 import { generateFixtures, addMatch } from "../../lib/leagueSetup";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 import LeagueField from "./LeagueField";
 
 /** Calendar tools of the Gestor: generate a whole league calendar, or add a
@@ -47,7 +47,7 @@ function Generate({ ctx, competition }) {
 
 function OneMatch({ ctx }) {
   const { act } = ctx;
-  const [competitionId, setCompetitionId] = useState(COMPETITIONS[0]?.id || "");
+  const [competitionId, setCompetitionId] = useState(COMPETITIONS.find(c => c.id === ctx.scope)?.id || COMPETITIONS[0]?.id || "");
   const [homeId, setHomeId] = useState("");
   const [awayId, setAwayId] = useState("");
   const [date, setDate] = useState("");

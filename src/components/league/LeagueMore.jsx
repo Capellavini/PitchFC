@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { ChevronRight, Users, BookOpen, Gavel, SlidersHorizontal, FlaskConical, Star, Gamepad2, LogOut } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG } from "../../lib/leagueCopy";
 import { signOutLeague } from "../../lib/leagueSignOut";
 import { TEAMS, playerById, teamById, PHASE2_DECISIONS, modOn } from "../../lib/leagueDemo";
-import BackHeader from "../BackHeader";
-import BtnGhost from "../BtnGhost";
+import BackHeader from "./visual/BackHeader";
+import BtnGhost from "./visual/BtnGhost";
 import TeamCrest from "../TeamCrest";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueRegulation from "./LeagueRegulation";
 import LeagueDiscipline from "./LeagueDiscipline";
 

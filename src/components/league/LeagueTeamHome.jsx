@@ -1,13 +1,13 @@
 import { Ban, ChevronRight, ClipboardList, Gavel, Vote } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { teamById, playerById, PLAYERS, captainOf, competitionById, COMPETITION, fmtKickoff } from "../../lib/leagueDemo";
 import { teamHome, readOnlyQueue } from "../../lib/leagueTeamHome";
-import BtnGhost from "../BtnGhost";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import Chip from "../Chip";
+import BtnGhost from "./visual/BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import Chip from "./visual/Chip";
 import FormPills from "../FormPills";
 import TeamCrest from "../TeamCrest";
 import LeagueMatchRow from "./LeagueMatchRow";

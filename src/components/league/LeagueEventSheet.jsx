@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { C, R, S, T, TOUCH, inputStyle } from "../../theme";
+import { C, R, S, T, TOUCH, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { EVENT_LABEL } from "../../lib/leagueCopy";
 import { PLAYERS as DEMO_PLAYERS, teamById as DEMO_TEAMS, playerById as DEMO_BY_ID, newEventId } from "../../lib/leagueDemo";
 import Sheet from "../Sheet";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 
 const DEMO_TYPES = ["goal", "own_goal", "card_yellow", "card_red", "shootout_goal", "shootout_miss"];
 const UNKNOWN = "__unknown__";

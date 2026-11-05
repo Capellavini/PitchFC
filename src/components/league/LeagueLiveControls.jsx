@@ -1,10 +1,10 @@
 import { modOn } from "../../lib/leagueDemo";
 import { useState } from "react";
 import { Play, Square, CheckCircle2, RotateCcw, Plus, Repeat, Video, CalendarClock, PenLine, FileUp } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 import LeagueResultForm from "./LeagueResultForm";
 
 /** Gestor-only match operation, by state: start → register events →

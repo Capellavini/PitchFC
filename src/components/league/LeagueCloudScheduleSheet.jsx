@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { C, S, T, inputStyle } from "../../theme";
+import { C, S, T, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LM } from "../../lib/leagueMatchCopy";
 import Sheet from "../Sheet";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 
 const pad = (n) => String(n).padStart(2, "0");
 /** ISO → value for <input type="datetime-local"> in the device's time zone. */

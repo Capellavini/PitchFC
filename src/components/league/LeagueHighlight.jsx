@@ -1,4 +1,4 @@
-import { C, S, T, cardStyle, displayFont } from "../../theme";
+import { C, S, T, cardStyle, displayFont } from "./visual/theme";
 
 /** Small highlight tile (top scorer, official MVP…) — tappable when it
  *  leads somewhere. */

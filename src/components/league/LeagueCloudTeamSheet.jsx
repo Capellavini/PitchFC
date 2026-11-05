@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { ClipboardList } from "lucide-react";
-import { C, S, T, TOUCH, cardStyle } from "../../theme";
+import { C, S, T, TOUCH, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { LM } from "../../lib/leagueMatchCopy";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 /**
  * Ficha da equipa (set_league_lineup): who is on the team sheet — starters

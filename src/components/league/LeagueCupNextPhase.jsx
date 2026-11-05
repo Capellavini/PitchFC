@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { teamById } from "../../lib/leagueDemo";
 import { nextPhaseProposal, createNextPhase } from "../../lib/leagueSeason";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
 
 /** Once every tie of a cup phase is official, the next phase is proposed from the winners (tie 1's winner meets tie 2's…).
  *  The Gestor only picks the day and the time; each game can still be moved in the calendar. */

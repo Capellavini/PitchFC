@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Gamepad2, Check } from "lucide-react";
-import { C, R, S, T, TOUCH, inputStyle } from "../../../theme";
+import { C, R, S, T, TOUCH, inputStyle } from "./theme";
 import { t } from "../../../lib/i18n";
 import { onColor } from "../../../lib/leagueBrand";
 import { landingApi, signupErrorText } from "../../../lib/leagueLandingApi";

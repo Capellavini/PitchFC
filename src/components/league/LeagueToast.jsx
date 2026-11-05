@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { C, R, S, T } from "../../theme";
+import { C, R, S, T } from "./visual/theme";
 
 /** Transient status line (aria-live) for local demo writes: success in
  *  green, LeagueError messages in red. */

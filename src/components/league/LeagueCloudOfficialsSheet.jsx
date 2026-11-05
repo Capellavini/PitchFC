@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { C, R, S, T, TOUCH } from "../../theme";
+import { C, R, S, T, TOUCH } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LM } from "../../lib/leagueMatchCopy";
 import { leagueCloudError, roleLabel } from "../../lib/leagueCloudCopy";
