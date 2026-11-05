@@ -1,8 +1,8 @@
+import {fanLoginPath} from '../../../lib/leagueCommunity';
 import { MapPin, ArrowUpRight, Radio, Goal } from 'lucide-react';
 import { BRAND } from './theme';
 import { t, getLang } from '../../../lib/i18n';
 import { fmtKickoff } from '../../../lib/leagueDemo';
-import { leagueAppPath } from '../../../lib/leagueLanding';
 import LeagueMark from '../LeagueMark';
 import LandingTeamMark from './LandingTeamMark';
 
@@ -12,7 +12,7 @@ export default function LandingHero({ slug, league, settings, model }) {
   const fixture = model.live[0] || games.filter(m => m.state === 'scheduled').sort((a,b) => String(a.kickoff || 'z').localeCompare(String(b.kickoff || 'z')))[0] || games.slice().reverse().find(m => m.score);
   const played = model.competitions.reduce((n,c) => n+c.played,0);
   return <header className="pl-public-header">
-    <div className="pl-platform-bar"><a href="/league"><img src={BRAND.logo} alt="PITCH"/> <span>LIGAS</span></a><a href={leagueAppPath(slug)}>{t('Entrar na liga')} <ArrowUpRight size={14}/></a></div>
+    <div className="pl-platform-bar"><a href="/league"><img src={BRAND.logo} alt="PITCH"/> <span>LIGAS</span></a><a href={fanLoginPath(slug)}>{t('Área do adepto')} <ArrowUpRight size={14}/></a></div>
     <div className="pl-league-masthead"><div className="pl-league-identity"><LeagueMark size={52}/><div><strong>{league.name}</strong>{league.city && <span><MapPin size={13}/>{league.city}</span>}</div></div><a className="pl-public-link" href="#jornadas">{t('Calendário e resultados')} <ArrowUpRight size={16}/></a></div>
     <div className="pl-public-hero">
       <div className="pl-editorial-intro"><span className="pl-eyebrow">{t('DENTRO E FORA DAS QUATRO LINHAS')}</span><h1>{t('A tua liga.')}<br/><em>{t('Todo o jogo.')}</em></h1><p>{settings.intro || t('As equipas, os protagonistas e as histórias que fazem esta liga. Acompanha cada jornada de perto.')}</p><div className="pl-public-stats"><span><b>{model.teams.length}</b>{t('Equipas')}</span><span><b>{played}</b>{t('Jogos disputados')}</span><span><b>{model.competitions.length}</b>{t('Competições')}</span></div></div>

@@ -1,0 +1,37 @@
+import {useEffect,useState,useRef} from 'react';
+import {inputStyle} from './visual/theme';
+import {communityApi} from '../../lib/leagueCommunityApi';
+import {communityError,fanLoginPath} from '../../lib/leagueCommunity';
+import {normalizeLeagueState} from '../../lib/leagueDemo';
+import {fantasyAthletes} from '../../lib/leagueFantasy';
+import {seasonWindow} from '../../lib/core/fantasyRules';
+import FantasyTab from '../FantasyTab';
+import LeagueFanSquadConfirm from './LeagueFanSquadConfirm';
+import {prepareFanSquad} from '../../lib/leagueFanFantasy';
+import LeagueFanAuth from './LeagueFanAuth';
+import BtnPrimary from './visual/BtnPrimary';
+import BtnGhost from './visual/BtnGhost';
+import {signOutLeague} from '../../lib/leagueSignOut';
+export default function LeagueFanFantasy({slug,cloud}){
+ const [data,setData]=useState(null),[phase,setPhase]=useState('loading'),[error,setError]=useState(''),[name,setName]=useState(cloud.user?.user_metadata?.name||''),[team,setTeam]=useState(''),[support,setSupport]=useState(''),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[publicData,setPublicData]=useState(null);
+ const [pending,setPending]=useState(null),[confirmError,setConfirmError]=useState('');const pendingResolve=useRef(null);
+ const load=async()=>{const r=await communityApi.fantasy(slug);if(r.error){setError(r.error);setPhase(r.error==='join_required'?'join':'error');}else{setData(r.data);setPhase('ready');}return r;};
+ useEffect(()=>{let active=true;if(!cloud.user||cloud.status==='loading')return;setPhase('loading');communityApi.fantasy(slug).then(r=>{if(!active)return;if(r.error){setError(r.error);setPhase(r.error==='join_required'?'join':'error');}else{setData(r.data);setPhase('ready');}});communityApi.league(slug).then(r=>active&&setPublicData(r.data));return()=>{active=false}},[slug,cloud.user?.id,cloud.status==='loading']);
+ if(!cloud.user||cloud.status==='loading')return <LeagueFanAuth slug={slug} cloud={cloud}/>;
+ const join=async e=>{e.preventDefault();if(busy)return;setBusy(true);const r=await communityApi.join(slug,name.trim(),team.trim(),support,consent);if(r.error)setError(r.error);else await load();setBusy(false);};
+ const persist=async sq=>{const r=await communityApi.saveSquad(slug,sq,data.squad.version,data.nextRound?.round);if(r.error)return {error:communityError(r.error)};setData(r.data);return {};};
+ const save=async(_id,ids,cap,bench,vice,connection)=>{if(!data.nextRound)return {error:'Não há jornadas abertas para alterações.'};const sq=prepareFanSquad({playerIds:ids,reserveIds:bench,captainId:cap,viceId:vice,connection:connection===undefined?data.squad.connection:connection?{creator_id:connection.creatorId,finisher_id:connection.finisherId}:null});if(!sq.captain_id||!sq.vice_captain_id){setConfirmError('');setPending(sq);return new Promise(resolve=>{pendingResolve.current=resolve});}return persist(sq);};
+ const cancelConfirm=()=>{pendingResolve.current?.({error:'A equipa ainda não foi guardada.'});pendingResolve.current=null;setPending(null);};
+ const confirm=async(cap,vice)=>{setBusy(true);const r=await persist({...pending,captain_id:cap,vice_captain_id:vice});setBusy(false);if(r.error){setConfirmError(r.error);return;}pendingResolve.current?.({});pendingResolve.current=null;setPending(null);};
+ let body;
+ if(phase==='loading')body=<p role="status">A abrir o teu Fantasy…</p>;
+ else if(phase==='join')body=<section className="lf-account"><h1>Como se chama a tua equipa?</h1><p>O teu nome e o da equipa aparecem na classificação. O email fica privado.</p><form className="lf-form" onSubmit={join}><label>Nome público<input style={inputStyle()} value={name} required minLength={2} maxLength={60} onChange={e=>setName(e.target.value)}/></label><label>Nome da equipa Fantasy<input style={inputStyle()} value={team} required minLength={2} maxLength={60} onChange={e=>setTeam(e.target.value)}/></label><label>Equipa que apoias (opcional)<select style={inputStyle()} value={support} onChange={e=>setSupport(e.target.value)}><option value="">Ainda não escolhi</option>{(publicData?.state?.data?.teams||[]).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><label className="lf-consent"><input type="checkbox" required checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>Aceito participar com estes nomes na classificação pública do Fantasy e li a <a href="/privacidade" target="_blank" rel="noreferrer">política de privacidade</a>.</span></label>{error&&error!=='join_required'&&<p role="alert">{communityError(error)}</p>}<BtnPrimary type="submit" disabled={busy}>{busy?'A entrar…':'Criar a minha equipa'}</BtnPrimary></form></section>;
+ else if(phase==='error')body=<div role="alert"><p>{communityError(error)}</p><BtnGhost onClick={load}>Tentar novamente</BtnGhost></div>;
+ else{
+ const state=normalizeLeagueState(data.state),athletes=fantasyAthletes(state.data.players.filter(p=>!data.competition.teamIds?.length||data.competition.teamIds.includes(p.teamId)),state.data.teams),me={uuid:data.member.id,name:data.member.name,nick:data.member.team_name,isMe:true};
+ const league={id:data.workspace_id,name:'Pitch Manager',budget:120,squad_size:5,mode:'classic',rules_version:2,v2_started_at:data.rounds[0]?.kickoff_at||new Date().toISOString(),starts_at:data.rounds[0]?.kickoff_at||new Date().toISOString(),created_at:data.rounds[0]?.kickoff_at||new Date().toISOString(),scoring_weights:{priceBase:20},connection_rules:{enabled:true,version:1,bonus_per_event:3,max_events:2}};
+ const seasons=['month','season'].map(kind=>{const w=seasonWindow(kind,new Date());return {id:kind,kind,status:'open',label:kind==='month'?new Date().toISOString().slice(0,7):data.competition.season,starts_at:new Date(w.starts_at).toISOString(),ends_at:new Date(w.ends_at).toISOString()}});
+ body=<><div className="pl-dashboard-intro"><div><span className="pl-eyebrow">{state.data.league.name} · {data.competition.name} · FANTASY</span><h1>{data.member.team_name}</h1><p>{data.nextRound?`Prepara a jornada ${data.nextRound.round} · prazo ${new Date(data.nextRound.kickoff_at).toLocaleString('pt-PT',{timeZone:state.data.league.timeZone||'Europe/Lisbon',timeZoneName:'short'})}`:'Sem jornadas abertas para alterações. Acompanha a classificação.'}</p></div><BtnGhost onClick={load}>Atualizar</BtnGhost></div><FantasyTab key={data.squad.version+':'+data.nextRound?.round} group={athletes} participants={data.participants} me={me} isOrganizer={false} rsvp={false} embedded groupName={state.data.league.name} kickoffAt={data.nextRound?.kickoff_at||null} fantasyLeague={league} fantasySquads={[data.squad]} fantasyScores={data.scores} fantasyRounds={data.rounds.filter(r=>r.status!=='open')} nextRoundNumber={data.nextRound?.round} ownershipSummary={data.ownership} fantasyRoundPlayers={data.roundPlayers} fantasyPrices={data.prices} fantasySeasons={seasons} fantasyTradeOffers={[]} onSaveSquad={save} onCreateLeague={null} onSyncFantasy={null}/></>;
+ }
+ return <div className="pitch-ligas lf-page"><header className="lf-header"><a href={`/leagues/${slug}`}>← Página da liga</a><strong>PITCH <span>LIGAS</span></strong><button type="button" onClick={()=>signOutLeague(fanLoginPath(slug))}>Sair</button></header><main className="lf-fantasy">{body}</main>{pending&&<LeagueFanSquadConfirm squad={pending} players={data.state.data.players} busy={busy} error={confirmError} onConfirm={confirm} onCancel={cancelConfirm}/>}</div>;
+}

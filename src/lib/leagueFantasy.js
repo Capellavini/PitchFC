@@ -80,7 +80,7 @@ export function leagueRounds({ matches, logs, players, teams, competitionId = nu
 export function fantasyAthletes(players, teams, stats = {}) {
   const team = Object.fromEntries(teams.map((t) => [t.id, t]));
   return players.map((p) => ({
-    ...p, uuid: p.id, position: POSITION_FULL[p.position] || p.position, club: team[p.teamId]?.name || "", teamShort: team[p.teamId]?.short || "",
+    ...p, nick: p.nick || p.name?.split(/\s+/)[0] || "Atleta", uuid: p.id, position: POSITION_FULL[p.position] || p.position || "Médio", club: team[p.teamId]?.name || "", teamShort: team[p.teamId]?.short || "",
     goals: stats[p.id]?.goals || 0, assists: stats[p.id]?.assists || 0, mvps: stats[p.id]?.mvps || 0, gamesPlayed: stats[p.id]?.games || 0,
   }));
 }

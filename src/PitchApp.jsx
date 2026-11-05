@@ -72,6 +72,10 @@ import LeagueAuth from "./components/league/LeagueAuth";
 import { isLeagueAccount, leagueAccountRedirect, leagueProfileForm, LEAGUE_ENTRY_PATH, LEAGUE_HOME_PATH } from "./lib/leagueAccount";
 import LeagueCloudPage from "./components/league/LeagueCloudPage";
 import LeagueWorkspaceApp from "./components/league/LeagueWorkspaceApp";
+import LeagueFanAuth from './components/league/LeagueFanAuth';
+import LeagueFanFantasy from './components/league/LeagueFanFantasy';
+import LeagueBlog from './components/league/LeagueBlog';
+import {communityRoute} from './lib/leagueCommunity';
 import LeaguePublicPage from "./components/league/LeaguePublicPage";
 import { landingRouteFromPath, legacyLandingSlug, leaguePagePath } from "./lib/leagueLanding";
 import LeagueInvitePage from "./components/league/LeagueInvitePage";
@@ -1353,6 +1357,12 @@ export default function PitchApp() {
   if (accountRedirect) { window.location.replace(accountRedirect); return null; }
   // /leagues/<slug> — the league's own page (published by its Gestor, by default once it has a name);
   // /leagues/<slug>/app — the same league as the follower app. Public, read-only. The first address, /l/<slug>, lands here.
+  const community = communityRoute(path);
+  if (community) {
+    if (community.view === 'noticias') return <LeagueBlog slug={community.slug} articleId={community.articleId} />;
+    if (community.view === 'entrar') return <LeagueFanAuth slug={community.slug} cloud={cloud} />;
+    return <LeagueFanFantasy slug={community.slug} cloud={cloud} />;
+  }
   const leaguePage = landingRouteFromPath(path);
   if (leaguePage && !localMode) return <LeaguePublicPage slug={leaguePage.slug} view={leaguePage.view} />;
   const legacyLeague = legacyLandingSlug(path);

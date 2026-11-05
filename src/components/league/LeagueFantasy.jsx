@@ -1,3 +1,4 @@
+import LeagueFantasyAccess from './LeagueFantasyAccess';
 import { useMemo } from "react";
 import { FlaskConical } from "lucide-react";
 import { C, R, S, T, cardStyle } from "./visual/theme";
@@ -14,7 +15,11 @@ import FantasyTab from "../FantasyTab";
  *  homologated rounds (lib/leagueFantasy.js). Managers are accounts, so the
  *  roster of the Fantasy is the league's athletes and the table is the managers.
  *  Demo: squads live in this browser only (state.fantasyV2). */
-export default function LeagueFantasy({ ctx }) {
+export default function LeagueFantasy({ctx}) {
+  return ctx.live ? <LeagueFantasyAccess ctx={ctx}/> : <LeagueFantasyDemo ctx={ctx}/>;
+}
+
+function LeagueFantasyDemo({ ctx }) {
   const { state, acc, act, derived } = ctx;
   // The registry (PLAYERS, TEAMS, COMPETITION) mirrors the league last installed; `state` changes whenever it does.
   const built = useMemo(() => buildLeagueFantasy({ state, accountId: acc.accountId, label: t(acc.label), players: PLAYERS, teams: TEAMS, stats: derived.stats, competitionId: COMPETITION.id }),

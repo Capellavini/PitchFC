@@ -1,3 +1,4 @@
+import './community.css';
 import './redesign.css';
 // League-only tokens. The shared app palette remains untouched.
 import { C as shared } from '../../../theme';
