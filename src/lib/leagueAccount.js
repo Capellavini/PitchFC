@@ -1,3 +1,4 @@
+import {communityRoute,fanAccountPath} from './leagueCommunity.js';
 // PITCH Ligas accounts. An account created from the league entry
 // (/league/entrar) carries `pitch_product: "league"` in its Supabase
 // user_metadata and only ever sees the league product: weekly groups, Rivals
@@ -20,7 +21,9 @@ const STAYS = [/^\/league(\/|$)/, /^\/leagues\/[a-z0-9-]+(\/app)?$/, /^\/l\/[a-z
 export function leagueAccountRedirect(user, pathname) {
   if (!isLeagueAccount(user)) return null;
   const path = String(pathname || "/").replace(/\/+$/, "") || "/";
-  return STAYS.some((re) => re.test(path)) ? null : LEAGUE_HOME_PATH;
+  const fanHome = fanAccountPath(user);
+  if (fanHome && path === LEAGUE_HOME_PATH) return fanHome;
+  return communityRoute(path) || STAYS.some((re) => re.test(path)) ? null : fanHome || LEAGUE_HOME_PATH;
 }
 
 /** Sign-up metadata for the league entry: the marker, the display name and

@@ -52,10 +52,10 @@ export default function LeagueManageSignups({ ctx }) {
   const shown = all ? items : items.slice(0, SHOWN);
   return (
     <div style={{ marginBottom: S.xl, maxWidth: 640 }}>
-      <SectionLabel>{t("Inscrições dos adeptos")}{rows ? ` · ${rows.count}` : ""}</SectionLabel>
+      <SectionLabel>{t("Lista de interesse anterior")}{rows ? ` · ${rows.count}` : ""}</SectionLabel>
       <div style={{ ...cardStyle, display: "grid", gap: S.md }}>
         <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5 }}>
-          {t("Adeptos que se inscreveram na página para jogar o Pitch Manager da liga. Usa estes contactos só para os avisar disso. Se alguém pedir para ser apagado, remove-o aqui.")}
+          {t("Registos de interesse recolhidos antes das contas de adeptos. Esta lista não inclui as novas equipas Fantasy. Usa estes contactos só para o fim que foi autorizado; remove-os se alguém o pedir.")}
         </div>
         {failed && <div role="alert">{t("Não foi possível abrir as inscrições.")} <BtnGhost compact onClick={load}>{t("Tentar outra vez")}</BtnGhost></div>}
         {!failed && !rows && <div role="status" style={{ color: C.text2 }}>{t("A abrir as inscrições…")}</div>}

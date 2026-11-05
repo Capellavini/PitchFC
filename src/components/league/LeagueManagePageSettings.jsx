@@ -10,7 +10,7 @@ const SECTIONS = [
   { key: "scorers", label: "Artilheiros", hint: "Os melhores marcadores e assistentes da competição." },
   { key: "teams", label: "Equipas", hint: "Os emblemas e nomes das equipas inscritas." },
   { key: "seasons", label: "Épocas anteriores", hint: "Os campeões, as classificações finais e os marcadores das épocas já fechadas." },
-  { key: "signup", label: "Inscrição no Pitch Manager", hint: "Os adeptos deixam o nome e o email para serem avisados quando o Pitch Manager da liga abrir." },
+  { key: "signup", label: "Inscrição no Pitch Manager", hint: "Mostra o acesso ao Fantasy e permite novas participações. As equipas já inscritas continuam a ter acesso quando desligas esta opção." },
 ];
 
 /** What the league's page says about itself: a welcome text, and which sections are shown.

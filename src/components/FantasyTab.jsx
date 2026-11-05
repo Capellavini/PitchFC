@@ -54,14 +54,14 @@ export default function FantasyTab({
   groupName = "", onOpenRecord = null,
   // Ligas: managers are accounts, not athletes (`participants`), there is no "next game" RSVP, and the
   // tab sits inside an already padded column (`embedded`). Defaults = the group app.
-  participants = null, rsvp = true, embedded = false,
+  participants = null, rsvp = true, embedded = false, nextRoundNumber = null, ownershipSummary = null,
   onCreateLeague, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy,
 }) {
   if (!fantasyLeague) return <FantasyCreateLeague isOrganizer={isOrganizer} onCreateLeague={onCreateLeague} />;
   return (
     <FantasyLeagueView
       group={group} me={me} isOrganizer={isOrganizer} league={fantasyLeague} kickoffAt={kickoffAt} groupName={groupName} onOpenRecord={onOpenRecord}
-      participants={participants || group} rsvp={rsvp} embedded={embedded}
+      participants={participants || group} rsvp={rsvp} embedded={embedded} nextRoundNumber={nextRoundNumber} ownershipSummary={ownershipSummary}
       squads={fantasySquads} scores={fantasyScores} offers={fantasyTradeOffers}
       rounds={fantasyRounds} roundPlayers={fantasyRoundPlayers} seasons={fantasySeasons} priceMap={fantasyPrices}
       onSaveSquad={onSaveSquad} onCreateTradeOffer={onCreateTradeOffer}
@@ -70,7 +70,7 @@ export default function FantasyTab({
   );
 }
 
-function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupName, onOpenRecord, participants, rsvp: showRsvp, embedded, squads, scores, offers, rounds, roundPlayers, seasons, priceMap, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
+function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupName, onOpenRecord, participants, rsvp: showRsvp, embedded, nextRoundNumber, ownershipSummary, squads, scores, offers, rounds, roundPlayers, seasons, priceMap, onSaveSquad, onCreateTradeOffer, onCancelTradeOffer, onRespondTradeOffer, onSyncFantasy }) {
   const base = Number(league.scoring_weights?.priceBase) || FANTASY_V2.priceBase;
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
@@ -116,7 +116,7 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
   // Round numbers: chronological order of ALL rounds of the league; the one being edited is the next.
   const roundNumbers = useMemo(() => Object.fromEntries([...rounds].sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at)).map((r, i) => [r.id, i + 1])), [rounds]);
   const roundNoOf = (id) => roundNumbers[id] ?? 0;
-  const editingRoundNo = rounds.length + 1;
+  const editingRoundNo = nextRoundNumber ?? rounds.length + 1;
   const connRules = league.connection_rules?.enabled ? league.connection_rules : null;
   const shownRound = scoredRounds.find((r) => r.id === roundId) || lastRound;
   const inProgress = rounds.some((r) => r.status === "locked" && !r.matchday_id && new Date(r.kickoff_at).getTime() <= now);
@@ -137,11 +137,12 @@ function FantasyLeagueView({ group, me, isOrganizer, league, kickoffAt, groupNam
   }, [rounds, roundPlayers, campeonato]);
 
   const ownership = useMemo(() => {
+    if (ownershipSummary) return ownershipSummary.counts;
     const counts = {};
     squads.forEach((s) => { if (s.participant_id !== me?.uuid) (s.player_ids || []).forEach((id) => { counts[id] = (counts[id] || 0) + 1; }); });
     return counts;
-  }, [squads, me?.uuid]);
-  const managerCount = squads.filter((s) => s.participant_id !== me?.uuid && s.player_ids?.length).length + 1;
+  }, [squads, me?.uuid, ownershipSummary]);
+  const managerCount = ownershipSummary?.participants ?? squads.filter((s) => s.participant_id !== me?.uuid && s.player_ids?.length).length + 1;
   const cap = ownershipCap(managerCount);
   const ownersOf = (uuid) => squads.filter((s) => s.player_ids?.includes(uuid));
 
