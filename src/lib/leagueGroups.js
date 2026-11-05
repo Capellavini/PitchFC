@@ -16,3 +16,13 @@ export function competitionRounds(matches, scope = "all") {
     })
     .filter((g) => g.rounds.length);
 }
+
+const SETTLED = new Set(["homologated", "walkover"]);
+/** Rounds drawn open by default in a long Calendário. Up to `all` rounds everything is open; beyond
+ *  that only the first round that still has something to settle (or the last one, when the season
+ *  is done) is. Returns the set of round numbers. */
+export function openRounds(rounds, all = 6) {
+  if (rounds.length <= all) return new Set(rounds.map((r) => r.round));
+  const next = rounds.find((r) => r.matches.some((m) => !SETTLED.has(m.state))) || rounds[rounds.length - 1];
+  return new Set([next.round]);
+}
