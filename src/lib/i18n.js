@@ -140,7 +140,7 @@ const EN = {
 
   // ── Jogar tab (redesign v1): Jogos, Game Detail, Group page ──
   "jogar:Jogos": "Games", "group:Grupo": "Group",
-  "OUTROS JOGOS": "OTHER GAMES", "Ver tudo": "See all", "JOGOS ANTERIORES": "PAST GAMES",
+  "OUTROS JOGOS": "OTHER GAMES", "Ver tudo": "See all", "Esconder": "Hide", "Ver {n} jogos": "Show {n} games", "JOGOS ANTERIORES": "PAST GAMES",
   "Escolhe a data e a hora do primeiro jogo do grupo.": "Pick the date and time of the group's first game.",
   "Afinal vou!": "I'm in after all!", "Sair da lista": "Leave list", "Semanal": "Weekly", "Partilhar jogo": "Share game",
   " — e as próximas semanas também, nesse dia da semana.": " — and the following weeks too, on that weekday.",

@@ -191,8 +191,15 @@ export function newEventId(matchId) {
 }
 
 /** Kickoff label in the league's time zone and the UI language. */
+const KICKOFF_FORMATTERS = new Map();
 export function fmtKickoff(iso, lang = "pt", opts = { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) {
   const locale = lang === "en" ? "en-GB" : lang === "pt-br" ? "pt-BR" : "pt-PT";
-  try { return new Intl.DateTimeFormat(locale, { timeZone: LEAGUE.timeZone, ...opts }).format(new Date(iso)); } catch { return iso; }
+  try {
+    // Building an Intl.DateTimeFormat costs ~1–2 ms; a 380-match calendar asked for 400 of them per render.
+    const key = `${locale}|${LEAGUE.timeZone}|${JSON.stringify(opts)}`;
+    let fmt = KICKOFF_FORMATTERS.get(key);
+    if (!fmt) { fmt = new Intl.DateTimeFormat(locale, { timeZone: LEAGUE.timeZone, ...opts }); KICKOFF_FORMATTERS.set(key, fmt); }
+    return fmt.format(new Date(iso));
+  } catch { return iso; }
 }
 export const fmtDateTime = (iso, lang) => fmtKickoff(iso, lang, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
