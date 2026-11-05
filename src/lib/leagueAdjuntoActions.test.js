@@ -133,6 +133,27 @@ test("a first name present in both squads is settled by the score, never guessed
   assert.match(tie.items[0].error, /Alfa FC/, "and the match");
 });
 
+test("a full name in one squad beats a partial match in the other, and an alcunha initial never matches a different surname", () => {
+  const base = batch([
+    ...TWO_TEAMS.slice(0, 4),
+    { kind: "add_players", args: { team: "Alfa FC", players: [{ name: "Telmo Raposo", nick: "Telmo R." }, { name: "Tiago Pinto" }] } },
+    { kind: "add_players", args: { team: "Beta Unidos", players: [{ name: "Telmo Reis", nick: "Telmo R." }, { name: "Nuno Lopes" }] } },
+    TWO_TEAMS[6],
+  ]).state;
+  const card = (player) => ({ kind: "record_result", args: { home: "Alfa FC", away: "Beta Unidos", home_goals: 0, away_goals: 0, cards: [{ player, type: "yellow" }] } });
+  const ok = batch([card("Telmo Raposo")], base);
+  assert.equal(ok.failed, 0, JSON.stringify(ok.items));
+  // «Telmo Raposo» is not on Beta (only a Telmo Reis, alcunha «Telmo R.»): it must be Alfa's, never Beta's
+  const only = batch([card("Telmo Raposo")], batch([
+    ...TWO_TEAMS.slice(0, 4),
+    { kind: "add_players", args: { team: "Alfa FC", players: [{ name: "Tiago Pinto" }] } },
+    { kind: "add_players", args: { team: "Beta Unidos", players: [{ name: "Telmo Reis", nick: "Telmo R." }] } },
+    TWO_TEAMS[6],
+  ]).state);
+  assert.equal(only.failed, 1, "no Telmo Raposo in either squad: ask, do not give the card to Telmo Reis");
+  assert.match(only.items[0].error, /Não encontrei/);
+});
+
 test("a team tag next to the scorer always settles it", () => {
   const base = batch(TWO_TEAMS).state;
   const r = batch([result([{ player: "Rui", team: "Beta Unidos" }, { player: "Rui", team: "Alfa FC" }], 1, 1)], base);

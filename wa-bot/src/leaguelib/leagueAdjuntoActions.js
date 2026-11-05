@@ -66,7 +66,8 @@ function pick(list, ref, keys, code) {
   const exact = list.filter((x) => keys(x).some((k) => norm(k) === q));
   if (exact.length === 1) return exact[0];
   if (exact.length > 1) throw new ProposalError(`${code}_ambiguous`, ref);
-  const loose = list.filter((x) => keys(x).some((k) => { const n = norm(k); return n.length >= 3 && (n.includes(q) || (n.length >= 4 && q.includes(n))); }));
+  // Partial matches only on whole words: «Telmo Raposo» must not match the alcunha «Telmo R.» of a Telmo Reis.
+  const loose = list.filter((x) => keys(x).some((k) => { const n = norm(k); return n.length >= 3 && (n.includes(q) || (n.length >= 4 && ` ${q} `.includes(` ${n} `))); }));
   if (loose.length === 1) return loose[0];
   throw new ProposalError(loose.length ? `${code}_ambiguous` : `${code}_unknown`, ref);
 }
@@ -131,10 +132,14 @@ function personIn(s, teams, ref, teamRef, { deferTie = false } = {}) {
   for (const tm of pool) {
     try { hits.push({ player: findPlayer(s, tm.id, ref), team: tm }); } catch (e) { if (e.code === "player_ambiguous") throw e; }
   }
-  if (hits.length === 1) return hits[0];
+  // An exact name in one squad beats a partial match in the other («Telmo Raposo» vs «Telmo R.»).
+  const q = norm(ref);
+  const exact = hits.filter(({ player }) => [player.id, player.name, player.nick].some((k) => norm(k) === q));
+  const best = exact.length ? exact : hits;
+  if (best.length === 1) return best[0];
   // Same name in BOTH squads and the sheet gives no team: the caller may settle it by the score.
-  if (hits.length > 1 && deferTie) return { tie: hits };
-  throw new ProposalError(hits.length ? "player_ambiguous" : "player_unknown", ref);
+  if (best.length > 1 && deferTie) return { tie: best };
+  throw new ProposalError(best.length ? "player_ambiguous" : "player_unknown", ref);
 }
 
 const obj = (properties, required = []) => ({ type: "object", additionalProperties: false, required, properties });
