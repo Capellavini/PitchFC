@@ -1,8 +1,8 @@
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { competitionRounds } from "../../lib/leagueGroups";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueMatchRow from "./LeagueMatchRow";
 import LeagueFixturesForm from "./LeagueFixturesForm";
 
@@ -24,7 +24,7 @@ export default function LeagueManageCalendar({ ctx, openMatch }) {
           {rounds.map(({ round, name, matches }) => (
             <section key={round} style={{ marginBottom: S.lg }}>
               <SectionLabel>{name ? t(name) : tf(LG.round, { n: round })}</SectionLabel>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", columnGap: S.md }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 340px), 1fr))", columnGap: S.md }}>
                 {matches.map((m) => <LeagueMatchRow key={m.id} match={m} score={derived.scores[m.id]} lang={lang} onOpen={openMatch} />)}
               </div>
             </section>

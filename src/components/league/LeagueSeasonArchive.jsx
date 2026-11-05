@@ -1,24 +1,25 @@
 import { Trophy } from "lucide-react";
-import { C, R, S, T, cardStyle } from "../../theme";
+import { C as APP_C, R, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 
-const th = { textAlign: "right", padding: "4px 6px", fontSize: T.min, color: C.text2, fontWeight: 800 };
+const th = { textAlign: "right", padding: "4px 6px", fontSize: T.min, color: APP_C.text2, fontWeight: 800 };
 const td = { textAlign: "right", padding: "6px", fontSize: T.meta, fontVariantNumeric: "tabular-nums" };
 
 /** Closed seasons, read-only: who won each competition, the final table or the cup's path, and the top scorers.
  *  Used by the Gestor (Gerir > Época) and by the league's public page, from the same archive. A champion named by
  *  hand shows its reason: that is what people will ask about. */
-export default function LeagueSeasonArchive({ seasons = [], ink = C.accent }) {
+export default function LeagueSeasonArchive({ seasons = [], ink = APP_C.accent, palette = null }) {
+  const C = palette || APP_C;
   if (!seasons.length) return null;
   const list = seasons.slice().sort((a, b) => String(b.closedAt).localeCompare(String(a.closedAt)));
   return (
-    <div style={{ display: "grid", gap: S.md }}>
+    <div className="pl-season-archive" style={{ display: "grid", gap: S.md }}>
       {list.map((s, i) => {
         const teams = Object.fromEntries((s.teams || []).map((x) => [x.id, x]));
         const nm = (id) => teams[id]?.name || "—";
         return (
-          <section key={s.id} style={{ ...cardStyle, padding: S.lg }} aria-label={`${t("Época")} ${s.label}`}>
+          <section key={s.id} style={{ ...cardStyle, background: C.card, color: C.text1, borderColor: C.border, padding: S.lg }} aria-label={`${t("Época")} ${s.label}`}>
             <h3 style={{ margin: `0 0 ${S.md}px`, fontSize: T.cardTitle }}>{t("Época")} {s.label}</h3>
             <div style={{ display: "grid", gap: S.sm }}>
               {(s.competitions || []).map((c) => (

@@ -1,10 +1,10 @@
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC, roleLabel } from "../../lib/leagueCloudCopy";
 import { leagueUrl } from "../../lib/leagueCloud";
-import BtnPrimary from "../BtnPrimary";
-import SectionLabel from "../SectionLabel";
-import Chip from "../Chip";
+import BtnPrimary from "./visual/BtnPrimary";
+import SectionLabel from "./visual/SectionLabel";
+import Chip from "./visual/Chip";
 import LeagueCloudShell from "./LeagueCloudShell";
 import Row from "./LeagueLinkRow";
 import LeaguePilotCard from "./LeaguePilotCard";

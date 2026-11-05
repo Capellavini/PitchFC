@@ -1,4 +1,4 @@
-import { C, R, S, T, TOUCH } from "../../theme";
+import { C, R, S, T, TOUCH } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { EVENT_LABEL } from "../../lib/leagueCopy";
 import { playerById as DEMO_PLAYERS, teamById as DEMO_TEAMS } from "../../lib/leagueDemo";

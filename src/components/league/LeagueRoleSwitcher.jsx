@@ -1,8 +1,8 @@
-import { C, R, S, T } from "../../theme";
+import { C, R, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG, ROLE_LABEL } from "../../lib/leagueCopy";
 import { ROLE_ACCOUNTS, modOn } from "../../lib/leagueDemo";
-import SegmentedControl from "../SegmentedControl";
+import SegmentedControl from "./visual/SegmentedControl";
 
 // Only the views that have someone to look through (a team with athletes) and, for the fan, the module.
 const availableRoles = () => ["fan", "athlete", "captain", "manager"].filter((r) => (r === "fan" ? modOn("fans") : r === "manager" || Boolean(ROLE_ACCOUNTS[r])));

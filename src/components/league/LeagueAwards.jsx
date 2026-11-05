@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Award, Users } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG, tf, plural } from "../../lib/leagueCopy";
 import { playerById, teamById, fmtDateTime, modOn } from "../../lib/leagueDemo";
 import { fanVoteOpen, tallyFanVotes } from "../../lib/core/league";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
 
 /** Destaques: official MVP ("Craque oficial", chosen by the manager, with
  *  author) and the fans' vote ("Craque dos adeptos") — two separate

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Megaphone, Pin, PinOff } from "lucide-react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { fmtDateTime } from "../../lib/leagueDemo";
 import { notices, postNotice, editNotice, removeNotice } from "../../lib/leagueLanding";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 import LeagueField from "./LeagueField";
 
 const BODY_MAX = 1200;

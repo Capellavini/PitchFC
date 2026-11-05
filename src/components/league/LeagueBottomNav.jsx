@@ -1,4 +1,4 @@
-import { C, S, T, TOUCH } from "../../theme";
+import { C, S, T, TOUCH } from "./visual/theme";
 import { t, getLang } from "../../lib/i18n";
 import { adjuntoName } from "../../lib/leagueAdjunto";
 import { navFor } from "../../lib/leagueNav";

@@ -1,12 +1,12 @@
 import { Heart, Star } from "lucide-react";
-import { C, S, T, cardStyle, displayFont } from "../../theme";
+import { C, S, T, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { teamById, PLAYERS, matchesOfTeam, COMPETITION, competitionById, tableOfTeam, captainOf, ovrOfPlayer, modOn } from "../../lib/leagueDemo";
-import BackHeader from "../BackHeader";
-import SectionLabel from "../SectionLabel";
-import BtnGhost from "../BtnGhost";
-import BtnPrimary from "../BtnPrimary";
+import BackHeader from "./visual/BackHeader";
+import SectionLabel from "./visual/SectionLabel";
+import BtnGhost from "./visual/BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
 import FormPills from "../FormPills";
 import TeamCrest from "../TeamCrest";
 import StatTile from "../StatTile";

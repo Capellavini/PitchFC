@@ -1,4 +1,4 @@
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 import { parseAdjuntoText } from "../../lib/adjuntoText";
 
 /** Renders an Adjunto reply: short paragraphs, bullet lists and bold, all as

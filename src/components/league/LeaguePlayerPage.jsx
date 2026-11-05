@@ -1,18 +1,18 @@
 import { Star, GitCompare } from "lucide-react";
-import { C, S, T, TOUCH, cardStyle, displayFont } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, displayFont } from "./visual/theme";
 import Avatar from "../Avatar";
 import { t } from "../../lib/i18n";
 import { tf, plural, EVENT_LABEL, POSITION_LABEL } from "../../lib/leagueCopy";
 import { playerById, teamById, COMPETITION, futPlayer, ovrOfPlayer, tierOf, modOn } from "../../lib/leagueDemo";
 import { activeEvents, countedMatches } from "../../lib/core/league";
-import BackHeader from "../BackHeader";
-import SectionLabel from "../SectionLabel";
+import BackHeader from "./visual/BackHeader";
+import SectionLabel from "./visual/SectionLabel";
 import StatTile from "../StatTile";
-import BtnGhost from "../BtnGhost";
-import BtnPrimary from "../BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
 import FutCard from "../FutCard";
 import FormPills from "../FormPills";
-import Chip from "../Chip";
+import Chip from "./visual/Chip";
 import TeamCrest from "../TeamCrest";
 
 /** Athlete page — the PITCH identity (FUT card with OVR/tier, photo or

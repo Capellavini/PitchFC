@@ -1,11 +1,11 @@
 import { CalendarDays, ListOrdered, Trophy } from "lucide-react";
-import { C, S, T, cardStyle, displayFont } from "../../theme";
+import { C, S, T, cardStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { COMPETITIONS, COMPETITION, TEAMS, PLAYERS, competitionTitle } from "../../lib/leagueDemo";
 import LeagueCompetitionForm from "./LeagueCompetitionForm";
-import SectionLabel from "../SectionLabel";
-import BtnGhost from "../BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnGhost from "./visual/BtnGhost";
 import StatTile from "../StatTile";
 
 const OFFICIAL = new Set(["homologated", "walkover"]);
@@ -28,7 +28,7 @@ export default function LeagueManageOverview({ ctx, onSection }) {
       <LeagueCompetitionForm ctx={ctx} />
       <SectionLabel>{t("Competições")}</SectionLabel>
       {COMPETITIONS.length === 0 && <div style={{ ...cardStyle, color: C.text2, fontSize: T.body }}>{t("Ainda não há competições. Cria a primeira acima.")}</div>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: S.md }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: S.md }}>
         {COMPETITIONS.map((c) => {
           const ms = own(c);
           const done = ms.filter((m) => OFFICIAL.has(m.state)).length;

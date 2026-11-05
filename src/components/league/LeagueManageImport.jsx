@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { FileSpreadsheet } from "lucide-react";
-import { C, S, T, inputStyle } from "../../theme";
+import { C, S, T, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { importTeams, importRoster, importCalendar } from "../../lib/leagueImport";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 import { Card, Actions, FilePick, Preview, rowsOf } from "./LeagueOnboarding";
 
 /** Gerir > Importar — the same spreadsheet imports as the guided start, available at any time: a second division

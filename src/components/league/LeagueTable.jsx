@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LG, tf } from "../../lib/leagueCopy";
 import { PLAYERS, TEAMS, COMPETITIONS, competitionById, tableOfTeam, competitionTitle, modOn } from "../../lib/leagueDemo";
 import { ranking } from "../../lib/core/league";
-import SectionLabel from "../SectionLabel";
-import SegmentedControl from "../SegmentedControl";
+import SectionLabel from "./visual/SectionLabel";
+import SegmentedControl from "./visual/SegmentedControl";
 import LeagueStandingsTable from "./LeagueStandingsTable";
 import LeagueRankingList from "./LeagueRankingList";
 import LeagueFairPlay from "./LeagueFairPlay";
-import BtnGhost from "../BtnGhost";
+import BtnGhost from "./visual/BtnGhost";
 
 const TB_LABEL = { pts: "pontos", gd: "diferença de golos", gf: "golos marcados", h2h: "confronto direto", wins: "vitórias", ga_fewest: "menos golos sofridos", lots: "sorteio" };
 
@@ -59,12 +59,14 @@ export default function LeagueTable({ ctx }) {
         </div>
       )}
 
+      <div className="pl-table-layout"><section>
       <SectionLabel>{prov ? t("Classificação provisória") : t("Classificação oficial · só jogos homologados")}</SectionLabel>
       <LeagueStandingsTable rows={rows} followId={followId} provisional={prov} onTeam={(id) => open({ kind: "team", id })} />
       <div style={{ fontSize: T.meta, color: C.text2, lineHeight: 1.5, margin: `${S.sm}px 0 ${S.xl}px` }}>
         {tf(t("Vitória {w} · empate {d} · derrota {l}. Desempate:"), { w: comp.points.win, d: comp.points.draw, l: comp.points.loss })} {comp.tiebreakers.map((k) => t(TB_LABEL[k])).join(" → ")}. {t("Empate absoluto: mantém a ordem de inscrição (sorteio ainda não configurado). Jogos adiados ou cancelados não contam.")}
       </div>
 
+      </section><aside>
       <SectionLabel>{t("Rankings de atletas")}{prov ? ` · ${t(LG.provisional)}` : ""}</SectionLabel>
       <SegmentedControl value={rank} onChange={setRank} options={[{ id: "goals", label: "Golos" }, { id: "assists", label: "Assistências" }, { id: "cards", label: "Cartões" }]} />
       <div style={{ ...cardStyle, paddingTop: 0, paddingBottom: 0 }}>
@@ -76,6 +78,7 @@ export default function LeagueTable({ ctx }) {
         <BtnGhost block onClick={() => open({ kind: "players" })} style={{ margin: `${S.sm}px 0` }}>{modOn("ovr") ? t("Ver todos os atletas (cartões e OVR)") : t("Ver todos os atletas")}</BtnGhost>
         {t("Golos não incluem autogolos nem penáltis de desempate. Assistências só contam quando registadas na ficha de jogo. Golos de autor por identificar contam no resultado, não no ranking.")}
       </div>
+      </aside></div>
       {modOn("fairplay") && <LeagueFairPlay ctx={ctx} competition={comp} />}
     </div>
   );

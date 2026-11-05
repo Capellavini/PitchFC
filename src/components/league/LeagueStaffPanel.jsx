@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC, leagueCloudError, roleLabel } from "../../lib/leagueCloudCopy";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
-import SectionLabel from "../SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueShareLink from "./LeagueShareLink";
 import { FORMAT_PRESETS } from "../../lib/leagueFormat";
 

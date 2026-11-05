@@ -1,4 +1,4 @@
-import { C, TOUCH } from "../../theme";
+import { C, TOUCH } from "./visual/theme";
 
 /** On/off switch (role="switch"), 44px touch target. */
 export default function LeagueSwitch({ on, onChange, label }) {

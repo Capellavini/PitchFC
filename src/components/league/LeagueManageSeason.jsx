@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, AlertTriangle, Flag } from "lucide-react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { seasonChecklist, proposedChampions, nextSeasonLabel } from "../../lib/leagueSeason";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 import LeagueSeasonArchive from "./LeagueSeasonArchive";
 import LeagueReenroll from "./LeagueReenroll";
 

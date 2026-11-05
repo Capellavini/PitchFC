@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, Download } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { fmtDateTime } from "../../lib/leagueDemo";
 import { signupsCsv } from "../../lib/leagueLanding";
-import SectionLabel from "../SectionLabel";
-import BtnGhost from "../BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnGhost from "./visual/BtnGhost";
 
 const SHOWN = 20;
 

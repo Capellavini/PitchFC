@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Award, Users } from "lucide-react";
-import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, R, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { getLang, t } from "../../lib/i18n";
 import { plural, tf } from "../../lib/leagueCopy";
 import { LM } from "../../lib/leagueMatchCopy";
 import { roleLabel } from "../../lib/leagueCloudCopy";
 import { fmtDateTime } from "../../lib/leagueDemo";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
 
 /** Destaques of a REAL league match — the same two separate blocks as
  *  the demo's LeagueAwards: "Craque oficial" (award_official_mvp, the

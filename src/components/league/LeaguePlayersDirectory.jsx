@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { GitCompare } from "lucide-react";
-import { C, S, T, TOUCH, cardStyle, inputStyle, displayFont } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, inputStyle, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { POSITION_LABEL, tf } from "../../lib/leagueCopy";
 import { PLAYERS, TEAMS, teamById, ovrOfPlayer, modOn } from "../../lib/leagueDemo";
-import BackHeader from "../BackHeader";
-import SegmentedControl from "../SegmentedControl";
-import BtnGhost from "../BtnGhost";
+import BackHeader from "./visual/BackHeader";
+import SegmentedControl from "./visual/SegmentedControl";
+import BtnGhost from "./visual/BtnGhost";
 import Avatar from "../Avatar";
 import LeagueOvrChip from "./LeagueOvrChip";
 

@@ -1,7 +1,7 @@
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { useLeagueWorkspace } from "../../hooks/useLeagueWorkspace";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 import LeagueContextApp from "./LeagueContextApp";
 
 const page = { minHeight: "100vh", background: C.bg, color: C.text2, padding: S.xl, display: "grid", placeItems: "center", textAlign: "center", fontSize: T.body };

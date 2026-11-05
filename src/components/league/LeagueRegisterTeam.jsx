@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { C, S, T, TOUCH, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, TOUCH, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC, leagueCloudError } from "../../lib/leagueCloudCopy";
 import { tf } from "../../lib/leagueCopy";
 import { DEFAULT_RULES } from "../../lib/leagueCloud";
-import BtnPrimary from "../BtnPrimary";
-import Chip from "../Chip";
+import BtnPrimary from "./visual/BtnPrimary";
+import Chip from "./visual/Chip";
 
 /** ?inscricao=<token>: a captain/vice registers their EXISTING PITCH team
  *  (never re-created per season) and submits the squad snapshot that the

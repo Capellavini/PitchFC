@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, MessageCircle, UserPlus } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { accessByTeam, inviteMessage, inviteUsage, inviteUrl, roleErrorText, whatsappShareUrl } from "../../lib/leagueRoles";
-import SectionLabel from "../SectionLabel";
-import BtnGhost from "../BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnGhost from "./visual/BtnGhost";
 
 const WA_GREEN = "#25D366"; // WhatsApp actions always use this green
 

@@ -1,10 +1,10 @@
 import { Trophy } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { competitionRounds } from "../../lib/leagueGroups";
 import { competitionTitle, teamById } from "../../lib/leagueDemo";
 import { cupBracket } from "../../lib/leagueSeason";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueMatchRow from "./LeagueMatchRow";
 
 /** The cup has no table: its "classificação" is the bracket, phase by phase.
@@ -26,7 +26,7 @@ export default function LeagueCupPhase({ ctx, competition }) {
       {phases.map((p) => (
         <section key={p.round} style={{ marginBottom: S.xl }}>
           <SectionLabel>{t(p.name || `Fase ${p.round}`)}</SectionLabel>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", columnGap: S.md }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 340px), 1fr))", columnGap: S.md }}>
             {p.matches.map((m) => (
               <div key={m.id}>
                 <LeagueMatchRow match={m} score={derived.scores[m.id]} lang={lang} onOpen={(id) => open({ kind: "match", id })} />

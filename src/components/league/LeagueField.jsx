@@ -1,4 +1,4 @@
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 
 /** A labelled form field for the league set-up screens. The input goes in
  *  `children`; `hint` is the small print under it. */

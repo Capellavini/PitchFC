@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC, leagueCloudError, roleLabel, statusLabel } from "../../lib/leagueCloudCopy";
 import { isLeagueManagerRole, leagueUrl } from "../../lib/leagueCloud";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
-import SectionLabel from "../SectionLabel";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueCloudShell from "./LeagueCloudShell";
 import LeagueLinkRow from "./LeagueLinkRow";
 import LeagueStaffPanel from "./LeagueStaffPanel";

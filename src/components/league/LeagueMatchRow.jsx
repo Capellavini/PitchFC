@@ -1,5 +1,5 @@
 import { Video } from "lucide-react";
-import { C, R, S, T, TOUCH, displayFont } from "../../theme";
+import { C, R, S, T, TOUCH, displayFont } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { teamById as DEMO_TEAMS, fmtKickoff } from "../../lib/leagueDemo";
 import { LG } from "../../lib/leagueCopy";
@@ -26,7 +26,7 @@ export default function LeagueMatchRow({ match, score, lang, onOpen, highlightTe
   const showScore = SHOWS_SCORE.has(match.state);
   const mine = highlightTeamId && (match.homeId === highlightTeamId || match.awayId === highlightTeamId);
   return (
-    <button type="button" onClick={() => onOpen(match.id)}
+    <button className="pl-match-card" type="button" onClick={() => onOpen(match.id)}
       aria-label={`${home.name} – ${away.name}`}
       style={{
         width: "100%", textAlign: "left", cursor: "pointer", display: "block", boxSizing: "border-box",
@@ -49,6 +49,7 @@ export default function LeagueMatchRow({ match, score, lang, onOpen, highlightTe
         </div>
         {side(away, "right")}
       </div>
+      {showScore && score?.shootout && <div className="pl-shootout">{t("Penáltis")} {score.shootout.home}–{score.shootout.away}</div>}
     </button>
   );
 }

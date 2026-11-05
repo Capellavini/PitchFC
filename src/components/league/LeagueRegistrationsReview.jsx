@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { C, S, T, cardStyle, inputStyle } from "../../theme";
+import { C, S, T, cardStyle, inputStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC, leagueCloudError } from "../../lib/leagueCloudCopy";
 import { tf } from "../../lib/leagueCopy";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
-import Chip from "../Chip";
-import SectionLabel from "../SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
+import Chip from "./visual/Chip";
+import SectionLabel from "./visual/SectionLabel";
 
 const REG_VARIANT = { homologated: "green", submitted: "orange", rejected: "red", withdrawn: "neutral", draft: "neutral" };
 

@@ -1,8 +1,8 @@
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { PLAYERS, TEAMS, teamById } from "../../lib/leagueDemo";
 import { fairPlayTable } from "../../lib/leagueFairPlay";
-import SectionLabel from "../SectionLabel";
+import SectionLabel from "./visual/SectionLabel";
 import TeamCrest from "../TeamCrest";
 
 const cell = { padding: `${S.sm}px ${S.xs}px`, textAlign: "right", fontVariantNumeric: "tabular-nums" };

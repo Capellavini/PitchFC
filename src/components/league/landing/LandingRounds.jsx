@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { C, R, S, T, TOUCH, displayFont } from "../../../theme";
+import { C, R, S, T, TOUCH, displayFont } from "./theme";
 import { t } from "../../../lib/i18n";
 import { tf } from "../../../lib/leagueCopy";
 import LandingMatchRow from "./LandingMatchRow";

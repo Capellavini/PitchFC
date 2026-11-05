@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { C, S } from "../../theme";
+import { C, S } from "./visual/theme";
 import { getLang, t } from "../../lib/i18n";
 import { usePersistentState } from "../../lib/storage";
 import {
@@ -260,7 +260,7 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   // A real account that has not finished the guided start lands there first.
   if (live && !readOnly && !state.setup?.done) {
     return (
-      <div style={{ fontFamily: FONT }}>
+      <div className="pitch-ligas" style={{ fontFamily: FONT }}>
         <LeagueOnboarding ctx={ctx} />
         <LeagueToast toast={toast} onDone={() => setToast(null)} />
       </div>
@@ -272,13 +272,13 @@ export default function LeagueContextApp({ entry = null, store = null }) {
     const scopeLabel = ctx.scope === "all" ? t("Todas as competições") : t(competitionTitle(competitionById[ctx.scope]));
     const deskBadges = manager ? { inicio: leagueToday(state, derived, { scope: ctx.scope }).items.length } : badges;
     return (
-      <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT }}>
-        <div style={{ display: "grid", gridTemplateColumns: "264px minmax(0, 1fr)" }}>
+      <div className="pitch-ligas" style={{ background: C.bg, minHeight: "100vh", color: C.text1, fontFamily: FONT }}>
+        <div style={{ display: "grid", gridTemplateColumns: "236px minmax(0, 1fr)" }}>
           <LeagueSideNav tab={tab} onSelect={goTab} scope={ctx.scope} onScope={setScope} role={role} onRole={changeRole} badges={deskBadges} live={live} sync={store?.sync} />
-          <main style={{ padding: `${S.xxl}px ${S.xxl + 8}px ${S.xxl}px`, boxSizing: "border-box", maxWidth: 1320, width: "100%" }}>
+          <main className="pl-main" style={{ padding: `${S.xxl}px ${S.xxl + 8}px ${S.xxl}px`, boxSizing: "border-box", maxWidth: 1680, width: "100%" }}>
             <LeagueHeader desktop title={t(title)} subtitle={manager ? `${LEAGUE.name} · ${scopeLabel}` : `${LEAGUE.name} · ${t(COMPETITION.short)}`} />
             <LeagueSyncBanner store={store} />
-            <div style={{ maxWidth: !view && ["inicio", "jogos", "gerir", "eu"].includes(tab) ? undefined : 880 }}>{body}</div>
+            <div style={{ minWidth: 0 }}>{body}</div>
           </main>
         </div>
         <LeagueToast toast={toast} onDone={() => setToast(null)} />
@@ -287,8 +287,8 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   }
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", color: C.text1, overflowX: "hidden", fontFamily: FONT }}>
-      <div style={{ maxWidth: SHELL_W, margin: "0 auto", padding: `0 ${S.lg}px ${entering ? S.xxl : 104}px`, boxSizing: "border-box" }}>
+    <div className="pitch-ligas" style={{ background: C.bg, minHeight: "100vh", color: C.text1, overflowX: "hidden", fontFamily: FONT }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: `0 ${S.lg}px ${entering ? S.xxl : 104}px`, boxSizing: "border-box" }}>
         <LeagueHeader role={role} onRole={changeRole} compact={entering} slim={pushed} scope={ctx.scope} onScope={setScope} onMore={() => goTab("mais")} live={live} sync={store?.sync} />
         <LeagueSyncBanner store={store} />
         {body}

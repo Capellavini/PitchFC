@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { FlaskConical } from "lucide-react";
-import { C, R, S, T, cardStyle } from "../../theme";
+import { C, R, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import "../../lib/leagueFantasyCopy";
 import { fantasyErrorText } from "../../lib/fantasyCopy";

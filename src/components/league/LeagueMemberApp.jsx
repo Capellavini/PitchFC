@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { C, S, T } from "../../theme";
+import { C, S, T } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { rolesApi } from "../../lib/leagueRolesApi";
 import { MEMBER_HOME_PATH } from "../../lib/leagueRoles";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 import LeagueContextApp from "./LeagueContextApp";
 import LeagueClaimPlayer from "./LeagueClaimPlayer";
 

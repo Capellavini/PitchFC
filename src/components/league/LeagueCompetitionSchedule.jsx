@@ -1,9 +1,9 @@
 import {useEffect,useState} from 'react';
-import {C,S,T,cardStyle} from '../../theme';
+import {C,S,T,cardStyle} from "./visual/theme";
 import {t,getLang} from '../../lib/i18n';
 import '../../lib/homeContextCopy';
 import {competitionTable} from '../../lib/homeContext';
-import SectionLabel from '../SectionLabel';
+import SectionLabel from "./visual/SectionLabel";
 export default function LeagueCompetitionSchedule({leagues,competition,teams,viewKey}) {
   const [state,setState]=useState({loading:true,items:[],error:false});
   const {fetchCompetitionMatches}=leagues;

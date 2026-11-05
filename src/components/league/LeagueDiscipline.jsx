@@ -1,4 +1,4 @@
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf, plural } from "../../lib/leagueCopy";
 import { playerById as DEMO_PLAYERS, teamById as DEMO_TEAMS } from "../../lib/leagueDemo";

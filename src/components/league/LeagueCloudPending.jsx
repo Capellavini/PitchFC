@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { getLang, t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { LM } from "../../lib/leagueMatchCopy";
 import { pendingWork } from "../../lib/leagueMatches";
-import Chip from "../Chip";
-import SectionLabel from "../SectionLabel";
+import Chip from "./visual/Chip";
+import SectionLabel from "./visual/SectionLabel";
 import LeagueMatchRow from "./LeagueMatchRow";
 
 /** Gestão → "À espera da organização": fichas de jogo to validate

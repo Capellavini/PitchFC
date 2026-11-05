@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Megaphone } from "lucide-react";
-import { C, R, S, T } from "../../../theme";
+import { C, R, S, T } from "./theme";
 import { t } from "../../../lib/i18n";
 import { fmtDateTime } from "../../../lib/leagueDemo";
-import BtnGhost from "../../BtnGhost";
+import BtnGhost from "../visual/BtnGhost";
 
 const SHOWN = 3;
 
@@ -12,7 +12,7 @@ export default function LandingNotices({ notices, brand, ink, lang }) {
   const [all, setAll] = useState(false);
   const list = all ? notices : notices.slice(0, SHOWN);
   return (
-    <div>
+    <div><div className="pl-news-grid">
       {list.map((n) => (
         <article key={n.id} style={{ display: "flex", gap: S.md, background: C.card, border: `1px solid ${n.pinned ? `${brand}88` : C.border}`, borderRadius: R.card, padding: S.md, marginBottom: S.sm }}>
           <Megaphone size={18} color={ink} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
@@ -23,7 +23,7 @@ export default function LandingNotices({ notices, brand, ink, lang }) {
           </div>
         </article>
       ))}
-      {notices.length > SHOWN && <BtnGhost compact onClick={() => setAll(!all)}>{all ? t("Mostrar menos") : `${t("Ver todos os avisos")} (${notices.length})`}</BtnGhost>}
+      </div>{notices.length > SHOWN && <BtnGhost compact style={{ color: C.text1, borderColor: C.border }} onClick={() => setAll(!all)}>{all ? t("Mostrar menos") : `${t("Ver todos os avisos")} (${notices.length})`}</BtnGhost>}
     </div>
   );
 }

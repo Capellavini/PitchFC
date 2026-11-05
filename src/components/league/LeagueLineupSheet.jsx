@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Check, Ban } from "lucide-react";
-import { C, S, T, TOUCH } from "../../theme";
+import { C, S, T, TOUCH } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf, POSITION_LABEL } from "../../lib/leagueCopy";
 import { PLAYERS, teamById } from "../../lib/leagueDemo";
 import Sheet from "../Sheet";
-import BtnPrimary from "../BtnPrimary";
+import BtnPrimary from "./visual/BtnPrimary";
 
 /** Captain's call-up for ONE match (own team only). Players with a
  *  pending suspension (DEMO_RULES) can't be called up. */

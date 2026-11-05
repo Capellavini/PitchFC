@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
-import { C, R, S, T, cardStyle } from "../../theme";
+import { C, R, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { setLeagueBrand } from "../../lib/leagueSetup";
 import { logoFromFile, onColor, safeLogo } from "../../lib/leagueBrand";
-import SectionLabel from "../SectionLabel";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import SectionLabel from "./visual/SectionLabel";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 /** The league's logo and colour. The colour is taken from the logo when it is
  *  uploaded, and can be changed by hand. */

@@ -1,8 +1,8 @@
 import { ArrowLeft } from "lucide-react";
-import { C, S, T, TOUCH } from "../../theme";
+import { C, S, T, TOUCH } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { LC } from "../../lib/leagueCloudCopy";
-import Chip from "../Chip";
+import Chip from "./visual/Chip";
 import HomeContextSwitcher from '../HomeContextSwitcher';
 import { supabase } from "../../lib/supabase";
 
@@ -15,8 +15,8 @@ export default function LeagueCloudShell({ title, subtitle, backHref = "/league/
   const leagueOnly = contextOptions.length === 1 && contextOptions[0] === "league";
   const signOut = async () => { try { await supabase?.auth.signOut(); } catch { /* ignore */ } window.location.replace("/league"); };
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text1 }}>
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: `${S.lg}px ${S.lg}px ${S.xxl * 2}px` }}>
+    <div className="pitch-ligas" style={{ minHeight: "100vh", background: C.bg, color: C.text1 }}>
+      <div className="pl-cloud-content" style={{ maxWidth: 1200, margin: "0 auto", padding: `${S.lg}px ${S.lg}px ${S.xxl * 2}px` }}>
         <div style={{ display: "flex", alignItems: "center", gap: S.sm, marginBottom: S.md }}>
           <a href={backHref} aria-label={t(LC.back)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
             minWidth: TOUCH.min, minHeight: TOUCH.min, color: C.text2, textDecoration: "none" }}>

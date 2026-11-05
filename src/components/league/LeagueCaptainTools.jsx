@@ -1,10 +1,10 @@
 import { ClipboardList, Flag } from "lucide-react";
-import { C, S, T, cardStyle } from "../../theme";
+import { C, S, T, cardStyle } from "./visual/theme";
 import { t } from "../../lib/i18n";
 import { tf } from "../../lib/leagueCopy";
 import { teamById } from "../../lib/leagueDemo";
-import BtnPrimary from "../BtnPrimary";
-import BtnGhost from "../BtnGhost";
+import BtnPrimary from "./visual/BtnPrimary";
+import BtnGhost from "./visual/BtnGhost";
 
 /** Capitão (own team's match only): call-up before/while the match is
  *  open; "Contestar resultado" (with mandatory reason) on a provisional
