@@ -78,7 +78,7 @@ export default function LeagueMore({ ctx }) {
       {row(Gavel, t("Disciplina"), () => setSub("disciplina"), ctx.live ? t("Cartões e suspensões") : t("Cartões e suspensões (regras demo)"))}
       {row(SlidersHorizontal, t("Preferências"), () => setSub("prefs"), t("Equipa do coração e avisos"))}
       {row(Users, t("Atletas"), () => open({ kind: "players" }), modOn("ovr") || modOn("compare") ? t("Cartões, OVR e comparação") : t("Golos, assistências e cartões"))}
-      {modOn("fantasy") && (ctx.role === "captain" || ctx.role === "athlete") && row(Gamepad2, t("Pitch Manager"), () => ctx.goTab("fantasy"), t("Monta a tua equipa de adepto"))}
+      {modOn("fantasy") && (ctx.role === "captain" || ctx.role === "athlete" || (ctx.role === "manager" && ctx.live)) && row(Gamepad2, t("Pitch Manager"), () => ctx.goTab("fantasy"), t("Monta a tua equipa de adepto"))}
 
       {ctx.live && (
         <>

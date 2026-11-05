@@ -49,3 +49,23 @@ mesmo `FantasyTab` e o mesmo motor (`core/fantasyRules.js`) do app de grupos; a 
 
 Lacunas assumidas: sem pontos de MVP (o "craque oficial" é por jogo, não pódio da ronda); sem jornadas provisórias (jogo em revisão mantém a jornada aberta);
 sem cloud (as ligas reais não têm tabelas de Pitch Manager — migração + RPC como na fase 2 do grupo); sem trocas entre gestores (indisponível no demo, como nos grupos).
+
+## Pitch Manager nas Ligas REAIS (fase 2 — fatia 1, 2026-11-05)
+
+Estado: código + migração num PR; **a migração só chega à produção pelo CI ao fundir** (nunca à mão).
+
+- **Quem joga:** o Gestor (Mais → Pitch Manager) e os membros com conta (capitães e atletas, pelo convite). Adeptos com conta na página pública:
+  fatia seguinte (precisa de login dentro da página pública). A página pública continua sem Pitch Manager.
+- **Servidor** (`20261105150000_league_pitch_manager.sql`): `league_pm_squads` (uma equipa atual por conta e liga), `league_pm_locks`
+  (uma fotografia por ronda: todas as equipas no primeiro pontapé de saída da ronda), `league_pm_board()`, `league_pm_save_squad()`.
+  As rondas e os pontapés de saída leem-se do estado da liga (primeira competição que não é taça; sem fuso = Lisboa).
+  O bloqueio é **preguiçoso e serializado**: corre antes de toda a leitura e escrita, por isso uma edição depois do pontapé nunca entra nessa ronda
+  (a seguir conta para a próxima), mesmo sem agendador.
+- **Pontuação:** no cliente, com o mesmo motor puro, sobre as fotografias (`buildLeagueFantasyLive` em `src/lib/leagueFantasy.js`; `buildDemoFantasy`
+  aceita `roundLineups` e `ownership`). A Conexão fica ligada desde a primeira ronda e a dupla vai dentro da fotografia.
+  Os rivais só mostram a última equipa **bloqueada**; o teto de posse usa contagens (nunca de quem é a equipa).
+- **Limites assumidos:** o servidor valida a estrutura (atletas existem, sem duplicados, capitão/vice/Conexão são titulares, tamanhos) mas **não o orçamento**
+  (o preço por forma é calculado pelo motor no cliente) — sem dinheiro nem prémios. Não há pontos de MVP nem rondas provisórias. Sem trocas entre gestores.
+  A pontuação não tem espelho em SQL: um cliente adulterado só consegue ver pontos errados para si, não alterar a equipa bloqueada de ninguém.
+- **Testes:** `src/lib/leagueFantasyLive.test.js` (motor + fotografias) e `supabase/tests/league_pitch_manager_pglite.mjs` (a migração num Postgres em memória, fora do CI).
+- **Falta:** adeptos com conta na página pública; Pitch Manager de grupos com Conexão em cloud (IDs estáveis de lance no Matchday + SQL); espelho SQL da pontuação.

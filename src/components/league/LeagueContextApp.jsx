@@ -33,6 +33,7 @@ import LeagueHome from "./LeagueHome";
 import LeagueMatches from "./LeagueMatches";
 import LeagueTable from "./LeagueTable";
 import LeagueFantasy from "./LeagueFantasy";
+import LeagueFantasyLive from "./LeagueFantasyLive";
 import LeagueMore from "./LeagueMore";
 import LeagueMatchPage from "./LeagueMatchPage";
 import LeagueTeamPage from "./LeagueTeamPage";
@@ -259,7 +260,8 @@ export default function LeagueContextApp({ entry = null, store = null }) {
   else if (tab === "jogos") body = <LeagueMatches ctx={ctx} />;
   else if (tab === "classificacao") body = competitionById[ctx.scope]?.kind === "cup" ? <LeagueCupPhase ctx={ctx} competition={competitionById[ctx.scope]} /> : <LeagueTable ctx={ctx} />;
   else if (tab === "eu") body = acc.playerId ? <LeaguePlayerPage ctx={ctx} playerId={acc.playerId} embedded /> : store?.saveSquad ? <LeagueSquadEditor ctx={ctx} embedded /> : <LeagueHome ctx={ctx} />;
-  else if (tab === "fantasy") body = <LeagueFantasy ctx={ctx} />;
+  // A real league (the Gestor's own, or one a member belongs to) plays on the server; the demo and the public copy keep the local one.
+  else if (tab === "fantasy") body = live && (!readOnly || store.workspaceId) ? <LeagueFantasyLive ctx={ctx} workspaceId={store.workspaceId ?? null} /> : <LeagueFantasy ctx={ctx} />;
   else if (tab === "mais") body = <LeagueMore ctx={ctx} />;
   else body = <LeagueHome ctx={ctx} />;
 

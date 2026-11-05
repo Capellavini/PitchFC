@@ -8,8 +8,9 @@ import LeagueContextApp from "./LeagueContextApp";
 import LeagueClaimPlayer from "./LeagueClaimPlayer";
 
 const page = { minHeight: "100vh", background: C.bg, color: C.text2, padding: S.xl, display: "grid", placeItems: "center", textAlign: "center", fontSize: T.body };
-// A member follows the league and looks after their own team: no Fantasy, no fan vote (those need per-person data).
-const MEMBER_OFF = { fantasy: false, fan_vote: false };
+// A member follows the league and looks after their own team. The fans' vote needs per-person data they don't have here;
+// the Pitch Manager is theirs to play (server-side squads, see LeagueFantasyLive) whenever the Gestor switched it on.
+const MEMBER_OFF = { fan_vote: false };
 const REFRESH_MS = 30000;
 
 /** One league as a captain or an athlete sees it (/league/minhas/acesso/<id>): the same screens as the

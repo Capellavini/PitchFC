@@ -32,11 +32,16 @@ export const connectionRow = (c) => (c?.creatorId != null && c?.finisherId != nu
 /** connectionConfig (demo seed): { fromDayId, locked: { [dayId]: { creator, finisher } } } — the pairs "I"
  *  froze for past rounds, and the first round the rule applies to. Older
  *  rounds never get a bonus retroactively. */
-/** `group` = the athletes (the pool a manager buys from). In the group app they
+/** Real leagues (server snapshots) pass `roundLineups` = { [dayId]: { [participantUuid]: { squad, connection } } }: the
+ *  lineup each manager had LOCKED at that round's first kick-off. A round is then scored from that snapshot only (a
+ *  manager with no entry in a round has no score there) and each Conexão pair is the one frozen with that snapshot.
+ *  `ownership` = { counts: { [athleteId]: managersOwningIt }, managers } stands in for the squads of the others,
+ *  which a real league never reveals before they lock, in the ownership cap.
+ *  `group` = the athletes (the pool a manager buys from). In the group app they
  *  are also the managers, so `me` = the athlete flagged isMe; in Ligas the
  *  managers are accounts, so the caller passes `meParticipant` ({ uuid, … }).
  *  `localDays` = the rounds ({ id, playedOn, kickoffAt?, summary, mvpKey? }). */
-export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null, rivals, budget, squadSize, startsWeeksAgo, connectionConfig = null, meParticipant = null, now = Date.now() }) {
+export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null, rivals, budget, squadSize, startsWeeksAgo, connectionConfig = null, meParticipant = null, roundLineups = null, ownership = null, now = Date.now() }) {
   const fGroup = group.map((p) => ({ ...p, uuid: fk(p.id) }));
   const me = meParticipant ? { ...meParticipant, uuid: fk(meParticipant.uuid) } : fGroup.find((p) => p.isMe);
   const positions = Object.fromEntries(fGroup.map((p) => [p.uuid, p.position]));
@@ -59,7 +64,7 @@ export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null
       locked_player_ids: (mySquad.locked_player_ids || mySquad.player_ids || []).map(fk), free_transfers: mySquad.free_transfers ?? 1,
       connection: connectionConfig ? (mySquad.connection ?? null) : null },
     ...rivals.filter((r) => fk(r.participant) !== me?.uuid).map((r) => {
-      const n = normalizeSquad({ playerIds: r.player_ids, reserveIds: r.player_ids.slice(squadSize), captainId: r.captain_id, viceId: r.player_ids[1] }, squadSize);
+      const n = normalizeSquad({ playerIds: r.player_ids, reserveIds: r.reserve_ids ?? r.player_ids.slice(squadSize), captainId: r.captain_id, viceId: r.vice_captain_id ?? r.player_ids[1] }, squadSize);
       return { participant_id: fk(r.participant), ...n, prices_paid: basePaid(n.player_ids), budget_adjustment: 0, locked_player_ids: n.player_ids, free_transfers: 1 };
     }),
   ];
@@ -72,10 +77,12 @@ export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null
     ? normalizeSquad({ playerIds: lockedSquad.player_ids, reserveIds: lockedSquad.reserve_ids, captainId: lockedSquad.captain_id, viceId: lockedSquad.vice_captain_id }, squadSize)
     : mine;
   const lockedOf = (s) => (s.participant_id === me?.uuid ? { ...s, ...myLocked } : s);
-  const lineupOf = (s0) => {
-    const s = lockedOf(s0);
-    return { starters: s.player_ids.filter((x) => !s.reserve_ids.includes(x)), bench: s.reserve_ids, captain: s.captain_id, vice: s.vice_captain_id, transferCost: 0 };
+  const lineupFromSquad = (s) => {
+    const ids = (s.player_ids || []).map(fk);
+    const bench = (s.reserve_ids || []).map(fk);
+    return { starters: ids.filter((x) => !bench.includes(x)), bench, captain: s.captain_id != null ? fk(s.captain_id) : null, vice: s.vice_captain_id != null ? fk(s.vice_captain_id) : null, transferCost: 0 };
   };
+  const lineupOf = (s0) => lineupFromSquad(lockedOf(s0));
   const scores = [];
   const roundPlayers = [];
   // The rule is versioned per league and starts at a round: before it,
@@ -86,13 +93,18 @@ export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null
     const podium = { mvp: d.mvpKey ?? null };
     const connectionOn = connStart >= 0 && i >= connStart;
     squads.forEach((s) => {
-      // Round frozen with the pair I chose for THAT round (rivals pick none in the demo).
-      const frozen = connectionOn && s.participant_id === me?.uuid ? connectionConfig.locked?.[d.id] : null;
-      const lineup = { ...lineupOf(s), connection: frozen ? { creator: fk(frozen.creator), finisher: fk(frozen.finisher) } : null };
+      // Real league: the snapshot of THAT round (no entry = this manager wasn't in the round).
+      const snap = roundLineups ? roundLineups[d.id]?.[s.participant_id] : null;
+      if (roundLineups && !snap) return;
+      // Round frozen with the pair chosen for THAT round (the demo's rivals pick none; real managers carry theirs in the snapshot).
+      const frozen = !connectionOn ? null
+        : snap ? (snap.connection ? { creator: snap.connection.creator_id, finisher: snap.connection.finisher_id } : null)
+          : s.participant_id === me?.uuid ? connectionConfig.locked?.[d.id] : null;
+      const lineup = { ...(snap ? lineupFromSquad(snap.squad) : lineupOf(s)), connection: frozen ? { creator: fk(frozen.creator), finisher: fk(frozen.finisher) } : null };
       const b = connectionOn ? scoreLineupWithConnection(lineup, d.summary, positions, podium) : scoreLineup(lineup, d.summary, positions, podium);
       scores.push({ id: `${r.id}-${s.participant_id}`, league_id: "demo-league", round_id: r.id, matchday_id: d.id, participant_id: s.participant_id,
         points: b.total, breakdown: connectionOn ? { ...b, connectionPair: frozen ? { creator_id: fk(frozen.creator), finisher_id: fk(frozen.finisher) } : null } : b,
-        captain_id: lockedOf(s).captain_id, vice_captain_id: lockedOf(s).vice_captain_id, transfer_cost: 0 });
+        captain_id: (snap ? snap.squad : lockedOf(s)).captain_id ?? null, vice_captain_id: (snap ? snap.squad : lockedOf(s)).vice_captain_id ?? null, transfer_cost: 0 });
     });
     const f = nightFacts(d.summary);
     [...new Set([...f.appeared, ...f.noShows])].forEach((id) => {
@@ -159,8 +171,9 @@ export function buildDemoFantasy({ group, localDays, mySquad, lockedSquad = null
     const added = next.player_ids.filter((id) => !prev.has(id));
     if (added.some((id) => fGroup.find((p) => p.uuid === id)?.injured)) return "fantasy:injured";
     const others = squads.slice(1).filter((s) => s.player_ids.length);
-    const cap = ownershipCap(others.length + 1);
-    if (added.some((id) => others.filter((s) => s.player_ids.includes(id)).length >= cap)) return "fantasy:ownership_cap";
+    const cap = ownershipCap((ownership ? ownership.managers : others.length) + 1);
+    const owners = (id) => (ownership ? ownership.counts[id] || 0 : others.filter((s) => s.player_ids.includes(id)).length);
+    if (added.some((id) => owners(id) >= cap)) return "fantasy:ownership_cap";
     const paid = nextPricesPaid(squads[0].prices_paid, next.player_ids, priceOf);
     if (squadCostBasis(paid) > budget + squads[0].budget_adjustment) return "fantasy:over_budget";
     return { prices_paid: paid };

@@ -134,17 +134,66 @@ export function buildLeagueFantasy({ state, accountId, label = "", players, team
   return { seed, rounds, athletes, me, mySquad, demo, participants };
 }
 
+/** The Pitch Manager of a REAL league, from what the server returned (league_pm_board): my current squad, and for
+ *  each round the lineup every manager had LOCKED at its first kick-off. Scoring uses those snapshots only — an edit
+ *  after a kick-off counts for the next round — with the same engine as the demo. Rivals' current squads are never
+ *  sent: the table shows each manager's latest LOCKED squad, and the ownership cap uses counts.
+ *  board: { me, name, mine, locks: [{ round, lineups: { [userId]: { name, squad } } }], ownership, managers }. */
+export function buildLeagueFantasyLive({ board, state, label = "", players, teams, stats, competitionId }) {
+  const rounds = leagueRounds({ matches: state.matches, logs: state.logs, players, teams, competitionId });
+  const athletes = fantasyAthletes(players, teams, stats);
+  const meId = String(board.me);
+  const roundLineups = {};
+  const latest = {};
+  const names = {};
+  for (const l of board.locks || []) {
+    const dayId = `round-${l.round}`;
+    roundLineups[dayId] = {};
+    for (const [uid, e] of Object.entries(l.lineups || {})) {
+      if (!e?.squad) continue;
+      roundLineups[dayId][uid] = { squad: e.squad, connection: e.squad.connection ?? null };
+      latest[uid] = e.squad; // locks arrive ascending, so the last one wins
+      names[uid] = e.name || names[uid];
+    }
+  }
+  for (const m of board.managers || []) names[m.uuid] = names[m.uuid] || m.name;
+  const myName = board.name || label;
+  const me = { uuid: meId, name: myName, nick: myName, isMe: true, photo: null };
+  const mySquad = {
+    ...(board.mine ? { ...NO_SQUAD, ...board.mine } : NO_SQUAD),
+    // what was locked last decides how many transfers I've made since
+    locked_player_ids: latest[meId]?.player_ids ?? board.mine?.player_ids ?? [],
+  };
+  const others = Object.keys(names).filter((uid) => uid !== meId);
+  const demo = buildDemoFantasy({
+    group: athletes, meParticipant: me,
+    localDays: rounds.filter((r) => r.official).map((r) => ({ id: r.id, playedOn: r.playedOn, kickoffAt: r.kickoffAt, summary: r.summary, mvpKey: null })),
+    mySquad,
+    rivals: others.map((uid) => ({ participant: uid, ...(latest[uid] || NO_SQUAD), player_ids: latest[uid]?.player_ids || [] })),
+    budget: LEAGUE_FANTASY.budget, squadSize: LEAGUE_FANTASY.squadSize, startsWeeksAgo: 520,
+    // the rule applies from the first round: a real league has nothing retroactive to protect
+    connectionConfig: { fromDayId: rounds.find((r) => r.official)?.id ?? "round-1", locked: {} },
+    roundLineups,
+    ownership: { counts: board.ownership || {}, managers: (board.managers || []).filter((m) => String(m.uuid) !== meId).length },
+  });
+  const participants = [me, ...others.map((uid) => ({ uuid: uid, name: names[uid], nick: names[uid], photo: null }))];
+  const seed = { ...LEAGUE_FANTASY, mySquad, managers: [], connection: null };
+  return { seed, rounds, athletes, me, mySquad, demo, participants, roundLineups };
+}
+
 /** What a card needs: has a full squad, official points so far (Conexão included — the scores already carry it),
  *  and the position among the managers. */
 export function leagueFantasyStanding(built) {
   const totals = {};
   for (const s of built.demo.fantasyScores) totals[s.participant_id] = (totals[s.participant_id] || 0) + Number(s.points || 0);
   const mine = totals[String(built.me.uuid)] ?? 0;
-  const ids = Object.keys(totals);
+  const scored = Object.keys(totals);
+  // I'm in the field even with no points yet (joined after the lock): "2.º de 2", never "2.º de 1"
+  const field = new Set([...scored, String(built.me.uuid)]);
   return {
     picked: (built.mySquad?.player_ids?.length || 0) >= built.seed.squadSize,
     points: Math.round(mine),
-    rank: ids.length ? 1 + ids.filter((id) => totals[id] > mine).length : null,
-    of: ids.length,
+    rank: scored.length ? 1 + scored.filter((id) => totals[id] > mine).length : null,
+    of: field.size,
   };
 }
