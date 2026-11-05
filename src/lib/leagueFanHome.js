@@ -1,8 +1,9 @@
 // "Início" do adepto — what a fan of the league sees first: their team, a game
 // happening now, the vote, the round and the highlights. Pure: derives it from
 // the league state; no I/O, no writes.
-import { COMPETITION, PLAYERS, currentRound, matchesOfTeam, tableOfTeam, modOn } from "./leagueDemo.js";
-import { fanVoteOpen, ranking, fantasyTeamPoints } from "./core/league.js";
+import { COMPETITION, PLAYERS, TEAMS, currentRound, matchesOfTeam, tableOfTeam, modOn } from "./leagueDemo.js";
+import { fanVoteOpen, ranking } from "./core/league.js";
+import { buildLeagueFantasy, leagueFantasyStanding } from "./leagueFantasy.js";
 
 const PLAYED = new Set(["ended_provisional", "in_review", "homologated", "walkover"]);
 const compOf = (m) => m.competitionId || COMPETITION.id;
@@ -34,8 +35,10 @@ export function fanHome(state, derived, { accountId }) {
   const round = currentRound(league);
   const topScorer = ranking(derived.stats, PLAYERS, "goals", 1)[0] || null;
   const lastMvpMatch = league.filter((m) => m.officialMvp && m.state === "homologated").sort((a, b) => byKickoff(b, a))[0] || null;
-  const picks = state.fantasy?.[accountId] || [];
-  const fantasy = { picked: picks.length > 0, points: picks.length ? fantasyTeamPoints(picks, PLAYERS, state.matches, state.logs).total : 0 };
+  // Pitch Manager (module): the same numbers as the Pitch Manager tab — official rounds only, Conexão included.
+  const fantasy = modOn("fantasy")
+    ? leagueFantasyStanding(buildLeagueFantasy({ state, accountId, players: PLAYERS, teams: TEAMS, stats: derived.stats, competitionId: COMPETITION.id }))
+    : { picked: false, points: 0, rank: null, of: 0 };
 
   return {
     supportId, followIds, next, position, row, competitionId: focusId, form,

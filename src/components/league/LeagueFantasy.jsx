@@ -5,8 +5,8 @@ import { t } from "../../lib/i18n";
 import "../../lib/leagueFantasyCopy";
 import { fantasyErrorText } from "../../lib/fantasyCopy";
 import { PLAYERS, TEAMS, LEAGUE, COMPETITION, currentRound } from "../../lib/leagueDemo";
-import { leagueRounds, fantasyAthletes, leagueFantasySeed } from "../../lib/leagueFantasy";
-import { buildDemoFantasy, normalizeSquad, connectionRow } from "../../lib/fantasyDemo";
+import { buildLeagueFantasy } from "../../lib/leagueFantasy";
+import { normalizeSquad, connectionRow } from "../../lib/fantasyDemo";
 import FantasyTab from "../FantasyTab";
 
 /** Pitch Manager of the league: the SAME game and engine as the group app
@@ -17,21 +17,9 @@ import FantasyTab from "../FantasyTab";
 export default function LeagueFantasy({ ctx }) {
   const { state, acc, act, derived } = ctx;
   // The registry (PLAYERS, TEAMS, COMPETITION) mirrors the league last installed; `state` changes whenever it does.
-  const seed = useMemo(() => leagueFantasySeed(PLAYERS), [state]); // eslint-disable-line react-hooks/exhaustive-deps
-  const rounds = useMemo(() => leagueRounds({ matches: state.matches, logs: state.logs, players: PLAYERS, teams: TEAMS, competitionId: COMPETITION.id }), [state.matches, state.logs]); // eslint-disable-line react-hooks/exhaustive-deps
-  const athletes = useMemo(() => fantasyAthletes(PLAYERS, TEAMS, derived.stats), [derived.stats, state]); // eslint-disable-line react-hooks/exhaustive-deps
-  const me = useMemo(() => ({ uuid: acc.accountId, name: t(acc.label), nick: t(acc.label), isMe: true, photo: null }), [acc.accountId, acc.label]);
-  const mySquad = state.fantasyV2?.[acc.accountId] || seed.mySquad;
-
-  const demo = useMemo(() => buildDemoFantasy({
-    group: athletes, meParticipant: me,
-    localDays: rounds.filter((r) => r.official).map((r) => ({ id: r.id, playedOn: r.playedOn, kickoffAt: r.kickoffAt, summary: r.summary, mvpKey: null })),
-    mySquad, lockedSquad: seed.mySquad,
-    rivals: seed.managers.map((m) => ({ participant: m.uuid, player_ids: m.player_ids, captain_id: m.captain_id })),
-    budget: seed.budget, squadSize: seed.squadSize, startsWeeksAgo: seed.startsWeeksAgo,
-    connectionConfig: seed.connection,
-  }), [athletes, me, rounds, mySquad]);
-  const participants = useMemo(() => [me, ...seed.managers.map((m) => ({ uuid: m.uuid, name: m.name, nick: m.nick, photo: null }))], [me, seed]);
+  const built = useMemo(() => buildLeagueFantasy({ state, accountId: acc.accountId, label: t(acc.label), players: PLAYERS, teams: TEAMS, stats: derived.stats, competitionId: COMPETITION.id }),
+    [state, derived.stats, acc.accountId, acc.label]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { seed, rounds, athletes, mySquad, demo, participants } = built;
 
   const next = rounds.find((r) => r.round === currentRound(state.matches));
   const unavailable = async () => ({ error: t("Indisponível na demonstração.") });
