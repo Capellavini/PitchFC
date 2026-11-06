@@ -2,6 +2,9 @@ export const ARTICLE_CATEGORIES = Object.freeze({news:'Notícias',notice:'Avisos
 const SLUG='[a-z0-9][a-z0-9-]{0,59}';
 const UUID='[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}';
 export const fanPath=slug=>`/leagues/${slug}/fantasy`;
+/** Where a captain or athlete finds the league's Pitch Manager: the fan page, only when the league switched the
+ *  module on explicitly (same rule as the server) and the member payload carries a valid slug. */
+export const memberFantasyHref=data=>data?.state?.modules?.fantasy===true&&/^[a-z0-9][a-z0-9-]{0,59}$/.test(data?.slug||'')?fanPath(data.slug):null;
 export const fanLoginPath=slug=>`/leagues/${slug}/entrar`;
 export const blogPath=slug=>`/leagues/${slug}/noticias`;
 export const articlePath=(slug,id)=>`${blogPath(slug)}/${id}`;
