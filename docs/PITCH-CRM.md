@@ -8,7 +8,11 @@ A página usa o mesmo Supabase Auth e a mesma sessão do Pitch. O acesso não de
 
 O CRM conserva o mapa, fichas, histórico, próximas ações, métricas, lista, funil, agenda e backups da versão local. A demonstração utiliza seis registros fictícios, somente em memória. Ao sair desse modo, a base compartilhada volta a ser exibida. Alterações da demonstração não vão para o banco.
 
-Os registros iniciais de AFPCE e Coimbra estão somente na migração de banco, não nos arquivos públicos do cliente. As notas de 27/10/2026 são referências anteriores: as reuniões previstas não foram consideradas realizadas, os números são aproximados e os pins usam o centro das cidades até confirmação das sedes.
+A consolidação de 06/11/2026 reúne pesquisas locais anteriores e mensagens consultadas, com fontes por registro e histórico. A base comercial permanece somente no banco privado. Os indicadores mostram cobertura parcial: faixas, mínimos, estimativas, edições históricas e capacidade máxima são distintos; números históricos ou vagas não entram nos totais atuais. Pode haver sobreposição entre organizadores, ligas e eventos. Nenhum total representa usuários do Pitch.
+
+Pins aproximados usam cidades do GeoNames (CC BY 4.0), com atribuição no mapa; locais sem confirmação ficam na lista e no filtro de pendências, sem coordenadas inventadas. A lista tem carregamento progressivo e o mapa agrupa pins. A interface usa o logo oficial existente e a paleta do Pitch. Leaflet 1.9.4 e MarkerCluster 1.5.3 são servidos localmente com suas licenças em `public/CRM/vendor`.
+
+Respostas automáticas, encaminhamentos e envios não significam interesse confirmado. Pedidos explícitos para não receber contato ficam identificados e sem próxima abordagem. Conversas e relatórios incompletos não foram tratados como contratos ou reuniões concluídas sem evidência.
 
 Validação: compilação de produção; teste transacional com leitura e atualização da conta autorizada, incremento de revisão, bloqueio de revisão antiga e negação de leitura/escrita para outra conta; confirmação de que visitantes não possuem permissão de leitura; nenhum dado de teste permaneceu no banco. Testes da tela de login não devem alterar a senha ou criar uma sessão administrativa artificial.
 
