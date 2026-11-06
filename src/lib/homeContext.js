@@ -9,9 +9,16 @@ export function homeContexts({ leagues = [], teams = [], mode, product } = {}) {
   if (member && mode === 'league_only') return ['league'];
   return ['player', ...(teams.length ? ['rivals'] : []), ...(member ? ['league'] : [])];
 }
-export function resolveHomeContext({ preferred, ...inputs } = {}) {
+// Entry space. An explicit, valid preference always wins. Without one, someone
+// who belongs to a group opens as a Player (that is where the group, its
+// Fantasy and the OVR ratings live); Rivals / League stay one tap away in the
+// switcher. People with no group (team-only or league-only accounts) open in
+// their team / league space, as before.
+export function resolveHomeContext({ preferred, hasGroup = false, ...inputs } = {}) {
   const options = homeContexts(inputs);
-  return options.includes(preferred) ? preferred : options.includes('league') ? 'league' : options.includes('rivals') ? 'rivals' : 'player';
+  if (options.includes(preferred)) return preferred;
+  if (hasGroup && options.includes('player')) return 'player';
+  return options.includes('league') ? 'league' : options.includes('rivals') ? 'rivals' : 'player';
 }
 export function competitionTable(teams = [], matches = [], rules = {}) {
   const official = matches.filter(m => m.result_status === 'homologated' && m.match_status === 'finished'

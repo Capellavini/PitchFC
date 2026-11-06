@@ -30,3 +30,16 @@ test('league home counts unique teams and submitted squads, excludes past and ca
   const s=summarizeLeagueHome([c,{teams:[team]}],Date.parse('2026-10-23T12:00Z'));
   assert.equal(s.teams,1); assert.equal(s.competitions,2); assert.equal(s.pending,1); assert.deepEqual(s.upcoming.map(m=>m.id),['next']);
 });
+test('someone who belongs to a group opens as Player by default; a valid preference still wins',()=>{
+  assert.equal(resolveHomeContext({teams,hasGroup:true}), 'player');
+  assert.equal(resolveHomeContext({leagues,teams,hasGroup:true}), 'player');
+  assert.equal(resolveHomeContext({leagues,hasGroup:true}), 'player');
+  assert.equal(resolveHomeContext({leagues,teams,hasGroup:true,preferred:'rivals'}), 'rivals');
+  assert.equal(resolveHomeContext({leagues,teams,hasGroup:true,preferred:'league'}), 'league');
+  assert.equal(resolveHomeContext({teams,hasGroup:true,preferred:'league'}), 'player');
+});
+test('without a group the team / league space is still the entry, and league-only mode is untouched',()=>{
+  assert.equal(resolveHomeContext({teams,hasGroup:false}), 'rivals');
+  assert.equal(resolveHomeContext({leagues,teams,hasGroup:false}), 'league');
+  assert.equal(resolveHomeContext({leagues,teams,mode:'league_only',hasGroup:true}), 'league');
+});
