@@ -6,6 +6,8 @@ import { MEMBER_HOME_PATH } from "../../lib/leagueRoles";
 import BtnPrimary from "./visual/BtnPrimary";
 import LeagueContextApp from "./LeagueContextApp";
 import LeagueClaimPlayer from "./LeagueClaimPlayer";
+import LeagueMemberFantasyLink from "./LeagueMemberFantasyLink";
+import { memberFantasyHref } from "../../lib/leagueCommunity";
 
 const page = { minHeight: "100vh", background: C.bg, color: C.text2, padding: S.xl, display: "grid", placeItems: "center", textAlign: "center", fontSize: T.body };
 // A member follows the league and looks after their own team: no Fantasy, no fan vote (those need per-person data).
@@ -81,5 +83,10 @@ export default function LeagueMemberApp({ workspaceId }) {
     const squad = (data.state.data.players || []).filter((p) => p.teamId === athlete.teamId);
     return <LeagueClaimPlayer team={team} players={squad} onClaim={async (playerId) => { const r = await rolesApi.claim(workspaceId, playerId); if (!r.error) await load({ silent: true }); return r; }} />;
   }
-  return <LeagueContextApp store={store} />;
+  return (
+    <>
+      <LeagueMemberFantasyLink href={memberFantasyHref(data)} />
+      <LeagueContextApp store={store} />
+    </>
+  );
 }

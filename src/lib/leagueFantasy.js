@@ -141,10 +141,12 @@ export function leagueFantasyStanding(built) {
   for (const s of built.demo.fantasyScores) totals[s.participant_id] = (totals[s.participant_id] || 0) + Number(s.points || 0);
   const mine = totals[String(built.me.uuid)] ?? 0;
   const ids = Object.keys(totals);
+  // The manager counts in the field even before scoring a point, so the rank never exceeds "of".
+  const field = new Set([...ids, String(built.me.uuid)]);
   return {
     picked: (built.mySquad?.player_ids?.length || 0) >= built.seed.squadSize,
     points: Math.round(mine),
     rank: ids.length ? 1 + ids.filter((id) => totals[id] > mine).length : null,
-    of: ids.length,
+    of: ids.length ? field.size : 0,
   };
 }
